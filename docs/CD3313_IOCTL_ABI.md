@@ -51,6 +51,11 @@ The event_callback() branches for 0x56 (loudness) and 0xA3 (subwoofer GPIO) load
 
 This is an uninitialized-heap-data use in the callback path. It is not a confirmed privilege escalation or arbitrary memory disclosure, but it is a real malformed-request hazard. The emulator deliberately rejects 0x56 and 0xA3 frames that do not contain one complete 32-bit payload word; it does not reproduce the driver's stale-memory behavior.
 
+### Command 0xF1 power transition
+
+Unlike 0x56/0xA3, command 0xF1 is present in cmd_len_list with a one-word minimum, and its callback checks the size before reading the payload. The first word is boolean-like: zero calls dsp_shutdown() unconditionally; nonzero requests wakeup and calls dsp_wakeup.part.1() only if the driver's shutdown flag is set. A nonzero request while already awake does not replay the wakeup sequence. The emulator now models this command using the recovered shutdown and wakeup journals.
+
+
 
 
 ### Important length-validation distinction
