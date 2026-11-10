@@ -108,6 +108,9 @@ References: [Linux 4.9.117 simple_write_to_buffer()](https://github.com/gregkh/l
 
 - The raw write path does not run the high-level command dispatcher or its argument validation.
 
+The function passes the VFS file-position pointer directly to simple_write_to_buffer() and does not reset it. After the first write, the file position advances. On a later write using the same file descriptor, simple_write_to_buffer() places the new text at a nonzero offset in a freshly zeroed buffer; kstrtouint() then sees a NUL at byte 0 and rejects the empty string. The driver still returns the original count. Therefore ordinary repeated write() calls on one open descriptor appear to process only the first command; reopening the device (or explicitly writing at offset 0) is required for another command. This is a static consequence of the disassembly plus the Linux 4.9.117 helper implementation, not a runtime-tested behavior.
+
+
 The emulator's write_raw_command_byte() models the one-byte command/cache behavior. It does not yet model the permissive text parser or the driver's error-reporting quirks.
 
 ## 3. GPIOs and board-control labels recovered from probe
