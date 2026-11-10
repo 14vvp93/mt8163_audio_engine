@@ -19,6 +19,30 @@ int main() {
         check(read_device_identifier_payload() ==
                   std::array<std::uint8_t, 8>{{'c', 'd', '3', '3', '1', '3', 0U, 0U}},
               "0xF0 read ioctl returns the static cd3313 identifier bytes");
+        constexpr std::array<std::string_view, 7> channel_names{{
+            "RADIO", "ARM", "AUX", "EXBT", "AUX2", "DAB", "NONE"
+        }};
+        for (std::uint8_t channel = 0; channel < channel_names.size(); ++channel) {
+            check(input_channel_name(channel) == channel_names[channel],
+                  "driver channel-name table");
+        }
+        check(input_channel_name(7).empty(),
+              "channel-name lookup rejects indices outside the driver table");
+        Emulator empty_report_emulator;
+        check(!format_driver_read_report(empty_report_emulator.state()).has_value(),
+              "read report remains unavailable before probe cache initialization");
+        Emulator report_emulator;
+        report_emulator.apply_recovered_probe_setup();
+        const auto status_report = format_driver_read_report(report_emulator.state());
+        check(status_report.has_value() &&
+              status_report->find("Chip CD3313\\nRead reg Data:\\n") != std::string::npos &&
+              status_report->find("index 00xx xxxx: 0x3f (master volume)\\n") != std::string::npos &&
+              status_report->find("index 110x xxxx: 0xc0 (RL volume)\\n") != std::string::npos &&
+              status_report->find("master channel : NONE(6)\\n") != std::string::npos &&
+              status_report->find("master mute     : 0x80000000\\n") != std::string::npos &&
+              status_report->find("loudness on     : 0\\n") != std::string::npos &&
+              status_report->find("channel  RADIO(0) : mute:0, gain 0\\n") != std::string::npos,
+              "formatted read report matches the driver's cached-state layout");
         check(known_write_commands()[1].id == 0x03 &&
               known_write_commands()[1].minimum_size_words == 3,
               "0x03 minimum size field");
