@@ -736,7 +736,7 @@ int main() {
         check(static_cast<bool>(pm_wakeup.write(encode_driver_command(
                   make_master_volume_command(20)))) &&
               static_cast<bool>(pm_wakeup.write(encode_driver_command(
-                  DriverCommand{0x12, 2, {80, 0, 0, 0, 0, 0, 0, 0}})),
+                  DriverCommand{0x12, 2, {80, 0, 0, 0, 0, 0, 0, 0}}))),
               "PM wakeup fixture sets master volume and percentage");
         pm_wakeup.apply_recovered_shutdown();
         check(pm_wakeup.apply_recovered_pm_event(16U, 0U) == 0 &&
