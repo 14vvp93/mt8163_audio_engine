@@ -22,6 +22,26 @@ constexpr std::array<std::uint8_t, 8> kRecoveredInitializationBytes{{
     0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
 }};
 
+// cd3313_voltable_40 at .rodata offset 0x28, recovered from the ARM32 module.
+constexpr std::array<std::uint8_t, 41> kMasterVolumeCodes{{
+    0x3F, 0x2A, 0x26, 0x25, 0x24, 0x23, 0x22, 0x21, 0x20, 0x1F,
+    0x1E, 0x1D, 0x1C, 0x1B, 0x1A, 0x19, 0x18, 0x17, 0x16, 0x15,
+    0x14, 0x13, 0x12, 0x11, 0x10, 0x0F, 0x0E, 0x0D, 0x0C, 0x0B,
+    0x0A, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+    0x00
+}};
+
+std::uint8_t calculate_master_volume_register(std::uint32_t step,
+                                              std::uint32_t percentage) {
+    const std::uint32_t bounded_percentage = std::min(percentage, 100U);
+    const std::uint32_t percentage_attenuation =
+        (100U - bounded_percentage) / 3U;
+    const std::uint32_t target =
+        static_cast<std::uint32_t>(kMasterVolumeCodes[step]) +
+        percentage_attenuation;
+    return static_cast<std::uint8_t>(std::min(target, 63U));
+}
+
 bool apply_command(const DriverCommand& command, EmulatorState& state,
                    bool& modeled) {
     const auto& payload = command.payload;
@@ -31,6 +51,8 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         const std::uint32_t step = read_le32(payload, 0);
         if (step > 40U) return false;
         state.master_volume_step = step;
+        state.master_volume_register_value = calculate_master_volume_register(
+            step, state.master_volume_percentage.value_or(100U));
         return true;
     }
     case 0x11: {
@@ -47,6 +69,10 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         if (percentage < 1U || percentage > 100U) return false;
         state.master_volume_percentage = percentage;
         state.volume_percentage_opaque_arg1 = read_le32(payload, 4);
+        const std::uint32_t step = state.master_volume_step.value_or(0U);
+        state.master_volume_step = step;
+        state.master_volume_register_value =
+            calculate_master_volume_register(step, percentage);
         return true;
     }
     case 0x15: {
@@ -105,6 +131,21 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     }
     last_command_ = result.command;
     ++accepted_commands_;
+    if ((result.command->id == 0x10 || result.command->id == 0x12) &&
+        state_.master_volume_register_value.has_value()) {
+        const std::uint8_t target = *state_.master_volume_register_value;
+        if (before.master_volume_register_value.has_value()) {
+            std::uint8_t current = static_cast<std::uint8_t>(
+                *before.master_volume_register_value & 0x3FU);
+            while (current != target) {
+                current = static_cast<std::uint8_t>(
+                    current > target ? current - 1U : current + 1U);
+                record_command_byte(current, RegisterWriteSource::MasterVolumeTransition);
+            }
+        } else {
+            record_command_byte(target, RegisterWriteSource::MasterVolumeTransition);
+        }
+    }
     if (result.command->id == 0x15 && state_.speaker_register_bytes.has_value()) {
         for (const auto byte : *state_.speaker_register_bytes)
             record_command_byte(byte, RegisterWriteSource::IoctlFourChannelCommand);
