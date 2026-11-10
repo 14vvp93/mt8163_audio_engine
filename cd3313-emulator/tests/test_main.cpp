@@ -30,6 +30,33 @@ int main() {
                   {0x00, 0x10, 0x01, 0x40, 0x28, 0x00, 0x00, 0x00}),
               "write ioctl header and payload encoding");
 
+        const auto typed_volume = encode_driver_command(make_master_volume_command(40));
+        check(typed_volume == encoded,
+              "typed master-volume builder matches the recovered wire frame");
+        const auto typed_mute = encode_driver_command(make_master_mute_command(true, 24));
+        check(typed_mute == std::vector<std::uint8_t>(
+                  {0x00, 0x11, 0x02, 0x40, 0x01, 0, 0, 0, 0x18, 0, 0, 0}),
+              "typed master-mute builder encodes mute and reason words");
+        const auto typed_balance = encode_driver_command(
+            make_four_channel_level_command(15, 14, 13, 12));
+        check(typed_balance == std::vector<std::uint8_t>(
+                  {0x00, 0x15, 0x04, 0x40,
+                   0x0F, 0, 0, 0, 0x0E, 0, 0, 0,
+                   0x0D, 0, 0, 0, 0x0C, 0, 0, 0}),
+              "typed four-channel level builder encodes FL/FR/RL/RR indices");
+        bool rejected_volume = false;
+        try { (void)make_master_volume_command(41); }
+        catch (const std::invalid_argument&) { rejected_volume = true; }
+        check(rejected_volume, "typed volume builder rejects steps above 40");
+        bool rejected_mute_reason = false;
+        try { (void)make_master_mute_command(true, 32); }
+        catch (const std::invalid_argument&) { rejected_mute_reason = true; }
+        check(rejected_mute_reason, "typed mute builder rejects invalid bit positions");
+        bool rejected_level = false;
+        try { (void)make_four_channel_level_command(15, 16, 15, 15); }
+        catch (const std::invalid_argument&) { rejected_level = true; }
+        check(rejected_level, "typed channel builder rejects invalid level indices");
+
         const auto parsed = parse_driver_command(encoded);
         check(static_cast<bool>(parsed), "0x10 driver command should parse");
         check(parsed.command->id == 0x10 && parsed.command->size_field == 1,
