@@ -11,6 +11,8 @@ The queued event object starts with the original 32-bit Linux ioctl request word
 - size field: bits 16..29;
 - copied user payload: `size_field * 4` bytes, capped at 256 bytes by the driver.
 
+The ioctl cache object is 256 bytes total and already contains the 4-byte header. Because the module imports `__check_object_size`, a 256-byte payload would extend 4 bytes beyond that object under the upstream 4.9.117 hardened-usercopy implementation. The emulator therefore accepts at most 252 payload bytes (63 words) and rejects larger frames rather than reproducing a possible kernel BUG.
+
 The 12 `cmd_len_list` entries are minimum size-field thresholds, not exact payload lengths. The parser enforces the recovered minimum and the actual copied payload length. It preserves opaque argument bytes where command semantics are not fully proven.
 
 The dispatcher has two additional branches, `0x56` and `0xA3`, that are not in the 12-entry length table; both read at least one 32-bit argument, so the parser requires a one-word payload for them.
@@ -23,7 +25,7 @@ The driver's `cmd_write()` path is different: it parses hexadecimal text with ba
 
 - Little-endian ioctl request-word parsing and encoding.
 - Write-direction validation, command ID and 14-bit size-field extraction.
-- 32-bit-word payload sizing, 256-byte cap, recovered minimum-size validation.
+- 32-bit-word payload sizing, recovered 256-byte driver cap, conservative 252-byte safe payload limit, and recovered minimum-size validation.
 - Typed builders for input channel/gain/mute/mixing, master volume/mute, and four-channel levels.
 - State model for master-volume step and percentage, independent master-mute reasons, seven input channels (selection, recovered two-bit selector mapping, per-channel gain and mute-reason masks), mixing mode and HFP-active state, and FL/FR/RL/RR output levels.
 - Recovered 41-entry master-volume lookup table and stepped register-byte ramp.
