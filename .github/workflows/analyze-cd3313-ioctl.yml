@@ -46,11 +46,11 @@ jobs:
           arm-linux-gnueabi-readelf --debug-dump=decodedline cd3313.ko > cd3313-ioctl-analysis/dwarf-lines.txt
           arm-linux-gnueabi-objdump --dwarf=decodedline cd3313.ko > cd3313-ioctl-analysis/disassembly-lines.txt
           arm-linux-gnueabi-objdump -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
-          for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown; do
+          for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown dsp_probe dsp_wakeup.part.1 dsp_driver_init; do
             arm-linux-gnueabi-objdump -drwC --disassemble="$symbol" cd3313.ko > "cd3313-ioctl-analysis/$symbol.txt" 2>&1 || true
           done
           {
-            for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown; do
+            for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown dsp_probe dsp_wakeup.part.1 dsp_driver_init; do
               address="$(nm -an cd3313.ko | awk -v name="$symbol" '$3 == name { print "0x" $1; exit }')"
               if [ -n "$address" ]; then
                 printf '%s (%s): ' "$symbol" "$address"
