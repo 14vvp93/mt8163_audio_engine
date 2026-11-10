@@ -13,9 +13,9 @@ on:
 
 jobs:
   host-benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure host benchmark
         run: cmake -S pcm-dsp -B build/benchmark -DPCM_DSP_BUILD_TESTS=OFF -DPCM_DSP_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
       - name: Build host benchmark
@@ -24,9 +24,9 @@ jobs:
         run: ./build/benchmark/pcm_dsp_benchmark
 
   android-armv7:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Android NDK r27c
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
@@ -58,7 +58,7 @@ jobs:
           readelf -h quad_engine.cpp.o | grep -E "Class:|Machine:"
           readelf -h ../libmt8163_audio_jni.so | grep -E "Class:|Machine:"
       - name: Upload Android ARMv7 libraries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mt8163-audio-engine-android-armv7
           path: |
