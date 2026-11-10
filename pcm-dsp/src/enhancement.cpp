@@ -62,9 +62,9 @@ void QuadEnhancementProcessor::process(float* interleaved, std::size_t frames) {
                 const float low = std::max(-1.0F,
                     std::min(1.0F, state.bass_lowpass));
                 // Cubic waveshaping adds restrained odd harmonics.
-                const float third_harmonic = low * low * low - 0.75F * low;
-                output += third_harmonic *
-                    (parameters_.bass_amount * 0.75F);
+                const float harmonic_component = -(low * low * low);
+                output += harmonic_component *
+                    (parameters_.bass_amount * 0.65F);
             }
 
             if (parameters_.clarity_enabled &&
@@ -73,10 +73,9 @@ void QuadEnhancementProcessor::process(float* interleaved, std::size_t frames) {
                     (input - state.clarity_lowpass);
                 const float high = std::max(-1.0F, std::min(
                     1.0F, input - state.clarity_lowpass));
-                const float third_harmonic =
-                    high * high * high - 0.75F * high;
-                output += third_harmonic *
-                    (parameters_.clarity_amount * 0.45F);
+                const float harmonic_component = -(high * high * high);
+                output += harmonic_component *
+                    (parameters_.clarity_amount * 0.40F);
             }
 
             interleaved[index] = std::isfinite(output) ? output : 0.0F;
