@@ -61,7 +61,7 @@ void QuadEnhancementProcessor::process(float* interleaved, std::size_t frames) {
                     (input - state.bass_lowpass);
                 const float low = std::max(-1.0F,
                     std::min(1.0F, state.bass_lowpass));
-                // Cubic waveshaping adds a restrained third-harmonic component.
+                // Cubic waveshaping adds restrained odd harmonics.
                 const float third_harmonic = low * low * low - 0.75F * low;
                 output += third_harmonic *
                     (parameters_.bass_amount * 0.75F);
