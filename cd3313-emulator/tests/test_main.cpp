@@ -238,13 +238,13 @@ int main() {
               "GPIO 393 remains high while ACC state is off");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 2)))) &&
-              state_emulator.state().acc_on &&
+              !state_emulator.state().acc_on &&
               state_emulator.state().gpio_393_level == true,
-              "master mute reason 2 latches ACC on and keeps active mute asserted");
+              "master mute reason 2 latches ACC off and keeps GPIO 393 high");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(false, 9)))) &&
-              state_emulator.state().gpio_393_level == false,
-              "clearing the final ordinary mute releases GPIO 393 while ACC is on");
+              state_emulator.state().gpio_393_level == true,
+              "clearing reason 9 leaves reason 2 and ACC-off forcing GPIO 393 high");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 24)))) &&
               state_emulator.state().gpio_393_level == true,
@@ -258,8 +258,8 @@ int main() {
               "asserting master mute reason 24 replaces event 3 with a 1000 ms delayed clear");
         check(state_emulator.apply_recovered_system_mute_event(3U) &&
               (state_emulator.state().master_mute_reason_mask & (1U << 24U)) == 0U &&
-              state_emulator.state().gpio_393_level == false,
-              "system notifier event 3 clears reason 24 and recomputes GPIO 393");
+              state_emulator.state().gpio_393_level == true,
+              "system notifier event 3 clears reason 24 but reason 2 and ACC-off still hold GPIO 393 high");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 30)))) &&
               (state_emulator.state().master_mute_reason_mask & (1U << 30U)) != 0U,
@@ -271,13 +271,14 @@ int main() {
               "unmapped system notifier events are rejected");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(false, 2)))) &&
-              !state_emulator.state().acc_on &&
-              state_emulator.state().gpio_393_level == true,
-              "ACC-off latch forces GPIO 393 high even after ordinary mute clears");
+              state_emulator.state().acc_on &&
+              state_emulator.state().gpio_393_level == false,
+              "clearing reason 2 latches ACC on and releases GPIO when no other reasons remain");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 2)))) &&
-              state_emulator.state().acc_on,
-              "ACC-on latch can be restored through reason 2");
+              !state_emulator.state().acc_on &&
+              state_emulator.state().gpio_393_level == true,
+              "reason 2 can return the ACC latch to off");
         check(static_cast<bool>(state_emulator.write(encode_driver_command(
                   make_four_channel_level_command(15, 14, 13, 0)))),
               "four-channel state command is accepted");
