@@ -363,7 +363,9 @@ int main() {
               startup_emulator.state().speaker_register_bytes ==
                   std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}} &&
               startup_emulator.state().bass_register_value == 0x6FU &&
-              startup_emulator.state().treble_register_value == 0x7FU,
+              startup_emulator.state().treble_register_value == 0x7FU &&
+              startup_emulator.state().control_register_value == 0x47U &&
+              startup_emulator.state().loudness_enabled == false,
               "startup model restores neutral four-channel output registers");
         check(startup_emulator.register_journal().size() == 18U,
               "probe guard plus event_callback's 8 bytes twice and final control-byte rewrite are journaled");
@@ -413,6 +415,26 @@ int main() {
               effects_emulator.register_journal().size() == 22U &&
               effects_emulator.register_journal().back().command_byte == 0x7CU,
               "treble transition walks the recovered equalizer table to index 6");
+        check(static_cast<bool>(effects_emulator.write(encode_driver_command(
+                  DriverCommand{0x56, 1, {1, 0, 0, 0}}))),
+              "loudness enable request is accepted");
+        check(effects_emulator.state().loudness_enabled == true &&
+              effects_emulator.state().control_register_value == 0x43U &&
+              effects_emulator.register_journal().size() == 23U &&
+              effects_emulator.register_journal().back().source ==
+                  RegisterWriteSource::LoudnessControl,
+              "loudness enable clears the active-low control bit");
+        check(static_cast<bool>(effects_emulator.write(encode_driver_command(
+                  DriverCommand{0x56, 1, {1, 0, 0, 0}}))) &&
+              effects_emulator.register_journal().size() == 23U,
+              "repeating the current loudness state does not emit a redundant write");
+        check(static_cast<bool>(effects_emulator.write(encode_driver_command(
+                  DriverCommand{0x56, 1, {0, 0, 0, 0}}))) &&
+              effects_emulator.state().loudness_enabled == false &&
+              effects_emulator.state().control_register_value == 0x47U &&
+              effects_emulator.register_journal().size() == 24U &&
+              effects_emulator.register_journal().back().command_byte == 0x47U,
+              "loudness disable restores the recovered control byte");
 
         std::cout << "All CD3313 driver-command tests passed\n";
         return EXIT_SUCCESS;
