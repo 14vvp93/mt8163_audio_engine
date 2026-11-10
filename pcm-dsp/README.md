@@ -67,6 +67,23 @@ The crossover is integrated into the optional QuadEngine bass-management stage. 
 `MultibandDynamicsProcessor` splits each FL/FR/RL/RR channel into low, mid and high bands using two cascaded Linkwitz-Riley 24 dB/octave crossovers. Each of the 12 channel/band compressors has independent threshold, ratio, attack, release, soft-knee and makeup-gain settings. The defaults are bypassed. Processing is interleaved Float32, supports in-place operation, sanitizes non-finite input, and performs no heap allocation or locking. Configure outside the audio callback; reconfiguration resets crossover and detector state. `QuadEngine::configure_dynamics()` configures this stage; when enabled, it runs after the 32-band channel EQ and before time alignment, output routing, and the final safety limiter. The front and rear pairs, as well as individual channels, can be tuned independently. The Android audio path is not connected yet.
 
 
+## Unified audio profile API
+
+`audio_profile.hpp` defines a versioned, platform-independent `AudioProfile`
+snapshot that groups the four-channel EQ/gain/time-alignment/limiter parameters,
+output routing and bass-management settings, and all 12 multiband compressor
+configurations. `validate_audio_profile(profile, sample_rate_hz)` validates
+the complete snapshot before an adapter applies any part of it. It rejects
+unknown schema versions, unsupported sample rates, out-of-range values,
+non-finite values, invalid filter/crossover settings, and delays beyond the
+fixed time-alignment buffer.
+
+The profile is a data contract, not a persistence format or a real-time
+thread-safe handoff. The future Android adapter must publish immutable
+snapshots safely and apply configuration outside the audio callback. Profile
+validation deliberately does not mutate the engine, so a rejected profile
+cannot leave the DSP partially reconfigured.
+
 ## Android JNI bring-up bridge
 
 Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
