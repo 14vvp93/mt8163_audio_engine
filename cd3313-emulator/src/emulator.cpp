@@ -54,6 +54,10 @@ std::uint8_t decode_bass_treble_index(std::uint8_t register_byte) {
 void apply_active_input_register_fields(EmulatorState& state) {
     const std::uint32_t channel = state.active_input_channel;
     state.input_selector_code = kInputSelectorCodes[channel];
+    // The recovered routine drives GPIO 396 low only for channel 2,
+    // and GPIO 398 low only for channel 0. Electrical meaning is unknown.
+    state.input_gpio_396_level = channel != 2U;
+    state.input_gpio_398_level = channel != 0U;
     if (state.control_register_value.has_value()) {
         const std::uint8_t old = *state.control_register_value;
         const std::uint8_t gain = state.input_gain[channel];
