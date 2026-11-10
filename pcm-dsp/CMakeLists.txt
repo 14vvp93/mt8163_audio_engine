@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(mt8163_pcm_dsp LANGUAGES CXX)
 
+set_target_properties(mt8163_pcm_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 add_library(mt8163_pcm_dsp STATIC
     src/engine.cpp
     src/quad_engine.cpp
@@ -18,6 +20,14 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(pcm_dsp_tests PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_tests COMMAND pcm_dsp_tests)
+endif()
+
+option(PCM_DSP_BUILD_ANDROID_JNI "Build Android JNI bridge" OFF)
+if(ANDROID AND PCM_DSP_BUILD_ANDROID_JNI)
+    add_library(mt8163_audio_jni SHARED android/jni_bridge.cpp)
+    target_link_libraries(mt8163_audio_jni PRIVATE mt8163_pcm_dsp)
+    target_compile_features(mt8163_audio_jni PRIVATE cxx_std_17)
+    target_compile_options(mt8163_audio_jni PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
 option(PCM_DSP_BUILD_BENCHMARKS "Build DSP performance benchmark" OFF)
