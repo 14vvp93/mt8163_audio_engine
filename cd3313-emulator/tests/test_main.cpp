@@ -297,6 +297,47 @@ int main() {
               channel_state.reg_bufs_cache[2] == 0xFFU,
               "four speaker bytes update the exact driver reg_bufs slots");
 
+        Emulator hfp_gpio_emulator;
+        hfp_gpio_emulator.apply_recovered_probe_setup();
+        check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
+                  make_input_mute_command(1, false, 16)))) &&
+              hfp_gpio_emulator.state().hfp_active &&
+              hfp_gpio_emulator.state().gpio_393_level == false,
+              "HFP-active state suppresses ordinary mute reasons on GPIO 393");
+        check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
+                  make_master_mute_command(true, 24)))) &&
+              hfp_gpio_emulator.state().gpio_393_level == true,
+              "reason 24 still forces GPIO 393 high while HFP is active");
+        check(hfp_gpio_emulator.apply_recovered_system_mute_event(3U) &&
+              hfp_gpio_emulator.state().gpio_393_level == false,
+              "clearing reason 24 restores HFP suppression of ordinary mute");
+        check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
+                  make_input_mute_command(1, true, 16)))) &&
+              !hfp_gpio_emulator.state().hfp_active &&
+              hfp_gpio_emulator.state().gpio_393_level == true,
+              "clearing HFP-active state restores ordinary mute assertion");
+
+        Emulator volume_mute_emulator;
+        volume_mute_emulator.apply_recovered_probe_setup();
+        check(static_cast<bool>(volume_mute_emulator.write(encode_driver_command(
+                  make_master_mute_command(false, 31)))) &&
+              volume_mute_emulator.state().gpio_393_level == false,
+              "clearing startup mute allows volume ramp testing");
+        check(static_cast<bool>(volume_mute_emulator.write(encode_driver_command(
+                  make_master_volume_command(10)))) &&
+              volume_mute_emulator.state().gpio_393_level == false,
+              "nonzero master volume does not assert reason 29");
+        check(static_cast<bool>(volume_mute_emulator.write(encode_driver_command(
+                  make_master_volume_command(0)))) &&
+              (volume_mute_emulator.state().master_mute_reason_mask & (1U << 29U)) != 0U &&
+              volume_mute_emulator.state().gpio_393_level == true,
+              "master volume zero asserts mute reason 29 and GPIO 393");
+        check(static_cast<bool>(volume_mute_emulator.write(encode_driver_command(
+                  make_master_volume_command(10)))) &&
+              (volume_mute_emulator.state().master_mute_reason_mask & (1U << 29U)) == 0U &&
+              volume_mute_emulator.state().gpio_393_level == false,
+              "raising master volume clears reason 29 and releases GPIO 393");
+
         check(channel_state.command_page_cache[0x8].has_value() &&
               *channel_state.command_page_cache[0x8] == 0x80 &&
               channel_state.command_page_cache[0xA].has_value() &&
