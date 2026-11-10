@@ -106,6 +106,104 @@ int main() {
               "special 0xA3 dispatcher branch");
 
 
+        Emulator state_emulator;
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_volume_command(23)))),
+              "state emulator accepts master volume");
+        check(state_emulator.state().master_volume_step == 23U,
+              "master volume state is updated");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 4)))),
+              "first mute reason is accepted");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 9)))),
+              "second mute reason is accepted");
+        check(state_emulator.state().master_muted() &&
+              state_emulator.state().master_mute_reason_mask ==
+                  ((1U << 4U) | (1U << 9U)),
+              "independent mute reasons are accumulated");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(false, 4)))),
+              "clearing one mute reason is accepted");
+        check(state_emulator.state().master_muted() &&
+              state_emulator.state().master_mute_reason_mask == (1U << 9U),
+              "clearing one reason preserves another active mute");
+        check(static_cast<bool>(state_emulator.write(encode_driver_command(
+                  make_four_channel_level_command(15, 14, 13, 0)))),
+              "four-channel state command is accepted");
+        const auto& channel_state = state_emulator.state();
+        check(channel_state.channel_level_indices.has_value() &&
+              (*channel_state.channel_level_indices ==
+                  std::array<std::uint8_t, 4>{{15, 14, 13, 0}}),
+              "speaker indices are retained in FL/FR/RL/RR order");
+        check(channel_state.speaker_register_bytes.has_value() &&
+              (*channel_state.speaker_register_bytes ==
+                  std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC6, 0xFF}}),
+              "speaker register image uses recovered prefixes and table");
+
+        const auto make_two_word_command = [](std::uint8_t id,
+                                               std::uint32_t first,
+                                               std::uint32_t second) {
+            DriverCommand command{id, 2, {}};
+            const std::uint32_t words[] = {first, second};
+            for (const auto word : words) {
+                for (unsigned shift = 0; shift < 32; shift += 8)
+                    command.payload.push_back(
+                        static_cast<std::uint8_t>((word >> shift) & 0xFFU));
+            }
+            return encode_driver_command(command);
+        };
+        check(static_cast<bool>(state_emulator.write(
+                  make_two_word_command(0x55, 0x12345678U, 18U))),
+              "bass command is accepted");
+        check(state_emulator.state().bass_boost_target == 14U &&
+              state_emulator.state().bass_boost_opaque_arg0 == 0x12345678U,
+              "bass target is bounded and opaque first argument is preserved");
+        check(static_cast<bool>(state_emulator.write(
+                  make_two_word_command(0x5C, 0x87654321U, 7U))),
+              "treble command is accepted");
+        check(state_emulator.state().treble_target == 7U &&
+              state_emulator.state().treble_opaque_arg0 == 0x87654321U,
+              "treble target and opaque first argument are retained");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(DriverCommand{0x56, 1, {1, 0, 0, 0}}))),
+              "loudness command is accepted");
+        check(state_emulator.state().loudness_enabled == true,
+              "loudness state is modeled");
+        check(state_emulator.journal().size() == 9U &&
+              state_emulator.journal().front().sequence == 1U &&
+              state_emulator.journal().back().sequence == 9U,
+              "journal sequence IDs are deterministic and monotonic");
+        check(!state_emulator.journal().front().before.master_volume_step.has_value() &&
+              state_emulator.journal().front().after.master_volume_step == 23U,
+              "journal captures before/after snapshots");
+
+        const auto before_invalid = state_emulator.state();
+        check(state_emulator.write(encode_driver_command(
+                  DriverCommand{0x10, 1, {41, 0, 0, 0}})).error ==
+                  ParseError::InvalidArgumentValue,
+              "state model rejects an out-of-range raw volume command");
+        check(state_emulator.state().master_volume_step ==
+                  before_invalid.master_volume_step &&
+              state_emulator.journal().size() == 9U,
+              "rejected transition is atomic and is not journaled");
+
+        Emulator unknown_command_emulator;
+        check(static_cast<bool>(unknown_command_emulator.write(
+                  encode_driver_command(DriverCommand{0x01, 1, {0, 0, 0, 0}}))),
+              "recognized command with unresolved semantics is retained");
+        check(unknown_command_emulator.journal().size() == 1U &&
+              !unknown_command_emulator.journal().front().modeled &&
+              unknown_command_emulator.journal().front().command.id == 0x01,
+              "unresolved semantics remain visible as an unmodeled journal event");
+
+        state_emulator.reset();
+        check(state_emulator.journal().empty() &&
+              state_emulator.accepted_commands() == 0U &&
+              state_emulator.state().master_mute_reason_mask == 0U &&
+              !state_emulator.state().master_volume_step.has_value(),
+              "reset clears journal and restores synthetic baseline");
+
         const auto neutral = calculate_channel_levels({0, 0});
         check(neutral.front_left == 15 && neutral.front_right == 15 &&
               neutral.rear_left == 15 && neutral.rear_right == 15,
