@@ -734,13 +734,13 @@ int main() {
         check(static_cast<bool>(pm_wakeup.write(encode_driver_command(
                   make_master_volume_command(20)))) &&
               static_cast<bool>(pm_wakeup.write(encode_driver_command(
-                  make_master_volume_percentage_command(80))),
+                  DriverCommand{0x12, 2, {80, 0, 0, 0, 0, 0, 0, 0}})),
               "PM wakeup fixture sets master volume and percentage");
         pm_wakeup.apply_recovered_shutdown();
         check(pm_wakeup.apply_recovered_pm_event(16U, 0U) == 0 &&
               !pm_wakeup.state().shutdown_started &&
-              pm_wakeup.state().master_volume_register_value == 0x13U &&
-              pm_wakeup.state().current_volume_register_value == 0x13U,
+              pm_wakeup.state().master_volume_register_value == 0x1AU &&
+              pm_wakeup.state().current_volume_register_value == 0x1AU,
               "PM event 0 wakes a shut-down DSP and restores the cached volume byte");
         check(pm_wakeup.wakeup_journal().size() == 5U &&
               pm_wakeup.wakeup_journal()[0].kind == WakeupEventKind::RemoveQueuedEvent &&
