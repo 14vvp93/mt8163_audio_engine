@@ -44,6 +44,49 @@ The adapters select different command/status IDs:
 
 These are separate chip backends, not interchangeable transports. None is a CD3313 implementation.
 
+### CD3313 ASP path (distinct from the external-DSP adapters)
+
+The same APK has a separate ASP path that explicitly recognizes CD3313:
+
+- EqUtils.ASP_CHIP_3313 is the literal "cd3313".
+- The chip name is selected from ro.hw.dsp.chip.
+- hasAsp() is true for pt2348 and cd3313.
+- MainActivity creates the ASP equalizer and balance UI for this path.
+- AspSettings obtains android.audio.AudioEffect.getInstance() and calls the vendor methods setBalance(), setLoud(), setSubWoofer(), setBassBoost(), setTreble(), and setMasterVolume().
+
+This is a high-level CD3313-aware client path, separate from the AK7604/FY7604/CSC37534/SI47925 adapters above. The APK does not contain the implementation of android.audio.AudioEffect, so the underlying native/service transport and exact ioctl mapping remain unavailable.
+
+#### ASP equalizer is not a 12-band hardware PEQ
+
+AspFragment exposes 12 seek bars, but each drag recalculates two averages:
+- bass = integer average of UI bands 0..5;
+- treble = integer average of UI bands 6..11.
+
+It then calls AspSettings.setAspBassBoost(bass, false) and setAspTreble(treble, false). The 12 values are also stored as UI profile data. Therefore the visible 12-band UI does not prove that CD3313 receives 12 independent EQ bands; the observed ASP path reduces them to two coarse controls.
+
+#### Four-channel balance path
+
+AspSettings.setAspBalance() computes four integer output levels in FL, FR, RL, RR order from the balance/fader coordinates and calls AudioEffect.setBalance(FL, FR, RL, RR). The values are in a 0..15 range, matching the kernel's four-index 0x15 command and its 16-entry speaker attenuation table. This is a strong semantic correspondence, but the hidden framework method must be recovered before declaring a proven Java-method-to-ioctl mapping.
+
+After setting the four speaker values, the app also calls setMasterVolume(left, right) with:
+- left = max(FL, RL) / 15.0
+- right = max(FR, RR) / 15.0
+
+This appears intended to coordinate left/right master gain with the per-speaker balance values. The kernel module currently exposes one global volume_percentage variable, so the exact route for the two-float API is unresolved.
+
+#### Other ASP calls and kernel correlations
+
+| HEQ API call | Observed app arguments | Possible driver correspondence | Confidence |
+|---|---|---|---|
+| setBalance(FL, FR, RL, RR) | Four 0..15 levels | Command 0x15, four speaker indices | Strong semantic match; transport unverified |
+| setLoud(value) | 0/1 | Command 0x56 toggles a control bit | Likely semantic match; transport unverified |
+| setSubWoofer(value, 20) | Enable/value plus constant | Command 0xA3 reads one integer and changes GPIO 409 | Likely semantic match; transport unverified |
+| setBassBoost(value, 200) | Value plus constant | Command 0x55 transition routine | Mapping unresolved; kernel uses second payload word |
+| setTreble(value, Integer.MAX_VALUE) | Value plus sentinel | Command 0x5C transition routine | Mapping unresolved; kernel uses second payload word |
+| setMasterVolume(left, right) | Two floats | Master-volume/percentage path | Unresolved; kernel has one named percentage global |
+
+The 0x55 and 0x5C kernel paths consume the second payload word to calculate an internal table index. The Java calls pass constants in that position, so the hidden AudioEffect wrapper must transform/reorder arguments or use a different wire representation. Do not directly equate the Java parameters with raw ioctl payload words.
+
 ## 2. Coefficient and parameter findings
 
 ### AK7604
@@ -111,18 +154,18 @@ This is a valuable UX/control concept. Our PCM engine should apply parameter cha
 - AK7604/FY7604/CSC37534/SI47925 command IDs or integer payload layouts.
 - Their 24-bit coefficient packing, shift rules or vendor framework calls.
 - Their preset curves or APK resources without establishing licensing and provenance.
-- Any assumption that HEQ's external-DSP backend can control CD3313.
+- Any assumption that the external-DSP adapters for other chips can control CD3313. The separate ASP path explicitly recognizes CD3313, but its hidden framework transport is still unknown.
 
 ### Project decision
 
 Continue with our own independent PCM DSP and a separate CD3313 control layer. HEQ provides confirmation of useful automotive DSP concepts (RBJ peaking EQ, shelving, crossover sections, delay, channel attenuation, and smoothed transitions), but does not supply a compatible MT8163 integration route.
 
-The current MT8163 evidence still shows no verified userspace caller for `/dev/audiomux`, and the primary HAL does not expose a proven CD3313 control interface. Do not connect the PCM engine or issue CD3313 writes until the relevant Android integration point and ioctl ABI are verified.
+The HEQ APK is now confirmed as a high-level CD3313-aware ASP client, but no direct `/dev/audiomux` caller or method-to-ioctl transport has been verified. The matching android.audio.AudioEffect framework implementation is still missing. Do not connect the PCM engine or issue CD3313 writes until that integration point and the ioctl ABI are verified.
 
 ## 5. Verification limits
 
 - Static decompilation only; the HEQ APK was not executed.
-- No HEQ runtime, vendor effect implementation, or DSP firmware was available for inspection.
+- No HEQ runtime, android.audio.AudioEffect framework implementation, native/service transport, or DSP firmware was available for inspection.
 - No license/source provenance was established.
 - No head-unit playback, coefficient response measurement, CPU/latency measurement, or audible test was performed.
 - The HEQ APK targets multiple external DSP chip families; its presence alone does not establish which backend, if any, is active on the target MT8163 unit.
