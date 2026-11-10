@@ -37,7 +37,8 @@ enum class ParseError {
     SizeFieldTooSmall,
     InsufficientArgumentData,
     InvalidArgumentValue,
-    PayloadSizeMismatch
+    PayloadSizeMismatch,
+    UnsafePayloadSize
 };
 
 struct ParseResult {
@@ -48,7 +49,8 @@ struct ParseResult {
 
 // Parses the queued command: write-direction ioctl header (LE32), then
 // size_field * 4 bytes of opaque user payload, capped by the driver's 256-byte copy.
-// Unsafe short payloads are rejected even if the driver's own minimum-size table accepts them.
+// The host parser additionally rejects >252 bytes: the 4-byte header shares the
+// driver's 256-byte slab object, and hardened usercopy may BUG on a 256-byte copy.
 ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 
