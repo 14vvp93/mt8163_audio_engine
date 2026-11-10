@@ -81,6 +81,7 @@ enum class RegisterWriteSource {
     LoudnessControl,
     InputGainControl,
     InputSelectorControl,
+    InputSwitchAttenuation,
     IoctlFourChannelCommand,
     RawCommandByte
 };
