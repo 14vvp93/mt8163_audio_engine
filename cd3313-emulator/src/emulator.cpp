@@ -13,6 +13,10 @@ std::uint32_t read_le32(const std::vector<std::uint8_t>& payload,
            (static_cast<std::uint32_t>(payload[offset + 3U]) << 24U);
 }
 
+constexpr std::array<std::uint8_t, 16> kRegBufSlotByCommandPage{{
+    0, 0, 0, 0, 5, 5, 6, 7, 3, 3, 4, 4, 1, 1, 2, 2
+}};
+
 constexpr std::array<std::uint8_t, 7> kInputSelectorCodes{{
     2, 1, 0, 3, 0, 2, 3
 }};
@@ -467,10 +471,14 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
 void Emulator::record_command_byte(std::uint8_t command_byte,
                                    RegisterWriteSource source) {
     const std::uint8_t page = static_cast<std::uint8_t>(command_byte >> 4U);
-    const auto previous = state_.command_page_cache[page];
+    const std::uint8_t cache_slot = kRegBufSlotByCommandPage[page];
+    const auto previous_page_byte = state_.command_page_cache[page];
+    const auto previous_cache_slot_byte = state_.reg_bufs_cache[cache_slot];
     state_.command_page_cache[page] = command_byte;
+    state_.reg_bufs_cache[cache_slot] = command_byte;
     register_journal_.push_back(RegisterWriteEvent{
-        next_register_sequence_++, source, page, command_byte, previous
+        next_register_sequence_++, source, page, command_byte,
+        previous_page_byte, cache_slot, previous_cache_slot_byte
     });
 }
 
