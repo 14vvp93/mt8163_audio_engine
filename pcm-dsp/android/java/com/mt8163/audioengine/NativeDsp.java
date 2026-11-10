@@ -67,7 +67,7 @@ public final class NativeDsp implements AutoCloseable {
                 nativeHandle, enabled, crossoverHz, order, subGainDb, phaseInverted);
     }
 
-    /** Balance: -1=left, +1=right. Fader: -1=front, +1=rear. */
+    /** Configure psychoacoustic Bass and Clarity enhancement. Amounts: 0..1. */\n    public synchronized boolean configureEnhancements(boolean bassEnabled,\n            float bassAmount, float bassFrequencyHz, boolean clarityEnabled,\n            float clarityAmount, float clarityFrequencyHz) {\n        return nativeHandle != 0L && nativeConfigureEnhancements(nativeHandle,\n                bassEnabled, bassAmount, bassFrequencyHz, clarityEnabled,\n                clarityAmount, clarityFrequencyHz);\n    }\n\n    /** Balance: -1=left, +1=right. Fader: -1=front, +1=rear. */
     public synchronized boolean applyBalanceFader(float balance, float fader) {
         return nativeHandle != 0L && nativeApplyBalanceFader(nativeHandle, balance, fader);
     }
@@ -122,7 +122,7 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeSetChannelGainDb(long handle, int channel, float gainDb);
     private static native boolean nativeApplyQuadProfile(long handle, float[] packedProfile);
     private static native boolean nativeConfigureBassManagement(long handle, boolean enabled, float crossoverHz, int order, float subGainDb, boolean phaseInverted);
-    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);
+    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);\n    private static native boolean nativeConfigureEnhancements(long handle, boolean bassEnabled, float bassAmount, float bassFrequencyHz, boolean clarityEnabled, float clarityAmount, float clarityFrequencyHz);
     private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
