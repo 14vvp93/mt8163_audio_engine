@@ -34,7 +34,7 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 | `0x56` | Loudness enable/state | One value at +4 controls the driver's loudness state. The handler updates state value 0/4 and the loudness control bit in the register image. | High |
 | `0x5C` | Treble adjustment | Two-word command accepted by the dispatcher. The second word at +8 is converted to a bounded 0..14 transition target; writes use the treble register prefix `0x70` and the driver's lookup table. The first word's purpose is not established from this optimized path. | Medium |
 | `0xA3` | Subwoofer GPIO control | Boolean value at +4 is converted to 0/1 and written to GPIO 409 (`0x199`). This is a special dispatcher branch, not one of the 12 entries in `cmd_len_list`. | High |
-| `0xF0` | Unresolved/special | The write dispatcher has a branch, but no meaningful state update was recovered. Do not treat it as a confirmed setter. | Low |
+| `0xF0` | Static identifier read / write no-op | In read direction, cmd_ioctl() copies the static 8-byte .rodata identifier cd3313\\0\\0. In write direction, the callback has no recovered state mutation; the command is not a confirmed setter. | High for the read bytes and observed write-path no-op |
 | `0xF1` | DSP power control | Boolean value at +4 selects wake-up or shutdown. Nonzero enters the wake-up path; zero calls `dsp_shutdown()`. | High |
 
 ### Input routing, gain, and mute reconstruction
@@ -102,7 +102,7 @@ This confirms that the command path is asynchronous: the userspace-facing ioctl/
 1. Recover the exact caller-side structs and ioctl encodings, including the unit of the size field. The supplied `files.zip` archive scan found no CD3313 userspace client; see [the scan report](CD3313_USERSPACE_CLIENT_SCAN.md).
 2. Establish the user-facing meaning of `0x01` and the two modes selected by `0x20`.
 3. Determine the first argument of `0x55` and `0x5C` from userspace call sites.
-4. Decode the full `0xF0` behavior and any readback/status ABI.
+4. The 0xF0 read path is now recovered as a static cd3313 identifier string; the remaining ABI uncertainty is the exact userspace ioctl macro and low _IOC_NR byte.
 5. Correlate every register prefix and lookup table with the CD3313 datasheet or verified bus traces.
 6. Recover the four-channel level scale and verify the physical FL/FR/RL/RR speaker mapping before issuing `0x15` from a userspace controller.
 
@@ -246,3 +246,19 @@ Wakeup then requests these event operations in order:
 
 The host emulator exposes apply_recovered_pm_event(action, event_code) and a separate wakeup journal for these requested queue operations. It intentionally records both delayed event-2 posts without assuming whether the kernel event-queue implementation keeps both, replaces one, or coalesces them. Event 2 later clears master-mute reason 30 in event_callback(). The emulator does not execute kernel workqueues, prove callback timing, or demonstrate physical wakeup behavior.
 
+
+
+## ioctl ABI and queue API follow-up
+
+The focused artifact from workflow run [42878596077](https://github.com/14march93/mt8163_audio_engine/actions/runs/42878596077) resolves the ioctl request-word layout, write-buffer framing, static 0xF0 read response, and imported event-queue API prototypes. See [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md) for the exact bit fields, 12 command-length thresholds, queue scheduling sequence, and remaining limitations.
+
+The event-queue declarations recovered from DWARF are:
+- post_event_delayed(handler*, event_id, data, delay_ms)
+- remove_event(handler*, event_id)
+- callback: int callback(event_id, data)
+
+The helper implementations and opaque handler structures are not present in cd3313.ko. Therefore the driver's request order is known, but cancellation/coalescing behavior and actual callback timing are not.
+
+The focused analysis also flags two static bounds-audit items without claiming exploitability:
+1. Command 0x15 reads four 32-bit speaker arguments although its minimum size-field threshold is two words.
+2. cmd_ioctl() prepends a 4-byte header to a payload that may be copied up to 256 bytes into a 256-byte slab object. __check_object_size() is called before usercopy; exact behavior must be checked against the target kernel's hardened-usercopy implementation.
