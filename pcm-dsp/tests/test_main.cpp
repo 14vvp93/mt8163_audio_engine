@@ -3,6 +3,7 @@
 #include "pcm_dsp/time_alignment.hpp"
 #include "pcm_dsp/crossover.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
