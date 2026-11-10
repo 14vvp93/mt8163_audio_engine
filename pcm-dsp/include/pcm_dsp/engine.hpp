@@ -8,11 +8,22 @@ namespace pcm_dsp {
 
 constexpr std::size_t kEqBandCount = 10;
 
+enum class FilterType : std::uint8_t {
+    Peaking,
+    LowShelf,
+    HighShelf,
+    HighPass,
+    LowPass
+};
+
 struct EqBand {
     float frequency_hz;
     float gain_db;
     float q;
     bool enabled;
+    FilterType type{FilterType::Peaking};
+    // RBJ shelf slope S. Valid values are clamped to 0.1..1.0.
+    float shelf_slope{1.0F};
 };
 
 struct Parameters {
@@ -45,6 +56,7 @@ public:
 
     // Processes interleaved signed PCM16 stereo. Parameters must remain
     // immutable for the duration of this call. No memory is allocated here.
+    // Filter coefficients transition linearly across each processing block.
     bool process(const std::int16_t* input,
                  std::int16_t* output,
                  std::size_t frames,
@@ -66,8 +78,11 @@ private:
         float z2{0.0F};
     };
 
-    static BiquadCoefficients make_peaking(float sample_rate,
-                                           const EqBand& band);
+    static BiquadCoefficients make_filter(float sample_rate,
+                                          const EqBand& band);
+    static BiquadCoefficients interpolate(const BiquadCoefficients& from,
+                                          const BiquadCoefficients& to,
+                                          float amount);
     static float run_biquad(float input,
                             const BiquadCoefficients& coefficients,
                             BiquadState& state);
@@ -77,6 +92,7 @@ private:
 
     std::uint32_t sample_rate_hz_{0};
     std::array<std::array<BiquadState, 2>, kEqBandCount> states_{};
+    std::array<BiquadCoefficients, kEqBandCount> current_coefficients_{};
     float limiter_envelope_{0.0F};
 };
 
