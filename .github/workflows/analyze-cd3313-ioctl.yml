@@ -50,7 +50,7 @@ jobs:
           wanted = ("cmd_ioctl", "cmd_read", "cmd_write", "event_callback", "do_cmd_write")
           rows = []
           for line in symbols:
-              if any(re.search(r"\\b" + re.escape(name) + r"\\b", line) for name in wanted):
+              if any(re.search(r"\b" + re.escape(name) + r"\b", line) for name in wanted):
                   rows.append(line)
           (root / "target-symbols.txt").write_text("\\n".join(rows) + ("\\n" if rows else ""))
           PY
@@ -63,7 +63,7 @@ jobs:
             echo "Focused disassembly is provided per function where a symbol survived in the module."
             echo "An empty function report means the symbol was inlined, optimized out, or not exported under that name."
             echo
-            find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\\n' | sort
+            find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\n' | sort
           } > cd3313-ioctl-analysis/README.md
 
       - name: Upload focused analysis
