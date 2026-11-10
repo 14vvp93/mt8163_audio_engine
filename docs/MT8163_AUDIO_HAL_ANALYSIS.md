@@ -110,3 +110,7 @@ This is safer than replacing `audio.primary.mt8163.so` or injecting a global eff
 3. Decode `AudioMTKFilterManager` constructor call sites to label all five filter slots accurately.
 4. Recover the parameter block layouts passed to ACF/HCF preview/update functions.
 5. Map AudioFlinger effect-chain and HAL processing call sites before implementing any hook or replacement.
+
+## Related command service
+
+The separate `audiocmdservice_atci` executable is analyzed in [MTK_AUDIO_COMMAND_SERVICE.md](MTK_AUDIO_COMMAND_SERVICE.md). It bridges ATCI tuning commands to MTK's primary-device HAL client and reads/writes structured ACF filter parameters in persistent storage. It does not currently provide evidence of direct CD3313 access. Its three linked vendor libraries are not present in the supplied archive, so the filter parameter ABI remains an open dependency.
