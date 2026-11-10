@@ -37,6 +37,45 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 | `0xF0` | Static identifier read / reserved write | Read direction copies the static 8-byte .rodata identifier `cd3313\\0\\0`. Write direction has no recovered state mutation: size 0 logs a length error; nonzero size is dropped. | High for the read bytes; medium for the write no-op |
 | `0xF1` | DSP power control | Boolean value at +4 selects wake-up or shutdown. Nonzero enters the wake-up path; zero calls `dsp_shutdown()`. | High |
 
+## Complete status-ID inventory versus actual dispatcher support
+
+The DWARF enum inventory is broader than the command set accepted by `do_cmd_write()`. An identifier being present in a `STATUS_*_STATUS` enum does **not** prove that the ioctl dispatcher implements it.
+
+### Write identifiers
+
+| ID | DWARF name suffix | Dispatcher result |
+|---|---|---|
+| `0x01` | INPUT_STATUS | Accepted; input selection |
+| `0x02` | OUT_STATUS | Not present in recovered length table or special branches |
+| `0x03` | INPUT_GAIN_STATUS | Accepted; input gain |
+| `0x04` | INPUT_MUTE_STATUS | Accepted; input mute |
+| `0x10` | MASTER_VOLUME_STATUS | Accepted; master-volume step |
+| `0x11` | MASTER_MUTE_STATUS | Accepted; master-mute reason |
+| `0x12` | VOLUME_PERCENTAGE_STATUS | Accepted; volume percentage |
+| `0x15` | BALANCE_STATUS | Accepted; four speaker levels |
+| `0x20` | MIXING_STATUS | Accepted; input mixing mode |
+| `0x50` | EQ_BAND_STATUS | Enum exists; no recovered write-dispatch case |
+| `0x55` | EQ_BASSBOOST_STATUS | Accepted; bass transition |
+| `0x56` | EQ_LOUDNESS_STATUS | Accepted through a special branch |
+| `0x57` | EQ_SURROUND_STATUS | Enum exists; no recovered write-dispatch case |
+| `0x58` | EQ_COMPRESSOR_STATUS | Enum exists; no recovered write-dispatch case |
+| `0x59` | EQ_HFE_STATUS | Enum exists; no recovered write-dispatch case |
+| `0x5B` | EQ_ALTO_STATUS | Enum exists; no recovered write-dispatch case |
+| `0x5C` | EQ_TREBLE_STATUS | Accepted; treble transition |
+| `0x60` | DELAY_STATUS | Enum exists; no recovered write-dispatch case |
+| `0xA0` | EQ_BAND_REG | Enum exists; no recovered write-dispatch case |
+| `0xA1` | XOVER_LOW_REG | Enum exists; no recovered write-dispatch case |
+| `0xA2` | XOVER_HIGH_REG | Enum exists; no recovered write-dispatch case |
+| `0xA3` | SUBWOOFER_LPF_REG | Accepted through a special branch; writes GPIO 409, not a recovered LPF register sequence |
+| `0xF0` | RECOVRY_STATUS | Accepted write ID, but no recovered state mutation; read direction returns the static identifier |
+| `0xF1` | WAKE_SLEEP_CONTROL_STATUS | Accepted; DSP power transition |
+
+### Read identifiers
+
+The recovered read-direction handler accepts only `0xF0`. The other read enum values (`0x01`, `0x02`, `0x10`, `0x11`, `0x15`, `0x20`, `0x30`, `0x55`, `0x56`, `0x57`, `0x58`, and `0x59`) are declared identifiers, but this driver's recovered read path rejects them. In particular, the `cmd_read()` character-device text interface is separate from the ioctl read-direction handler.
+
+**Implementation rule:** treat only the accepted IDs above as supported by this exact dispatcher build. Do not send enum-only IDs based solely on their names. Their presence may reflect a shared vendor header, other chip implementations, or functionality absent from this module; the available binary does not distinguish those possibilities.
+
 ### Input routing, gain, and mute reconstruction
 
 The input-control handlers are distinct from the four-output-speaker command `0x15`:
