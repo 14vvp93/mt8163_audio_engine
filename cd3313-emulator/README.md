@@ -17,7 +17,7 @@ The dispatcher has two additional branches, `0x56` and `0xA3`, that are not in t
 
 ## Separate raw register interface
 
-The driver's `cmd_write()` path is different: it parses a decimal text value, truncates it to one byte, and sends that byte over I²C. It is not the same format as the ioctl command frame and is not conflated with this parser.
+The driver's `cmd_write()` path is different: it parses a decimal text value, truncates it to one byte, and sends that byte over I²C. The emulator represents it through `write_raw_command_byte()` and records it with a distinct journal source; it is not parsed as an ioctl frame.
 
 ## Current scope
 
@@ -39,7 +39,7 @@ Not implemented yet:
 - readback request `0xF0` response modeling;
 - I²C timing/electrical behavior.
 
-See [the command dispatch reconstruction](../docs/CD3313_COMMAND_DISPATCH.md) and [the protocol reconstruction](../docs/CD3313_PROTOCOL_RECONSTRUCTION.md) for evidence and confidence labels.
+See [the command dispatch reconstruction](../docs/CD3313_COMMAND_DISPATCH.md), [the register image reconstruction](../docs/CD3313_REGISTER_IMAGE.md), and [the protocol reconstruction](../docs/CD3313_PROTOCOL_RECONSTRUCTION.md) for evidence and confidence labels.
 
 
 ## Partial command-page register image
