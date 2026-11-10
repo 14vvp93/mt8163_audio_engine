@@ -208,6 +208,8 @@ The event callback's command `0x11` path has a special case for reason 2: it cop
 
 System notifier callback event 2 clears reason 30; event 3 clears reason 24. The emulator exposes `apply_recovered_system_mute_event(2|3)` for these two recovered clear operations. Unknown notifier event IDs are rejected. GPIO 393 is recalculated after each callback. The shutdown path separately recomputes the same GPIO using its own shutdown branch and is not treated as a normal `set_master_mute()` call.
 
+A separate `event_callback()` branch for command `0x11` with `mute=1` and `reason=24` first calls `remove_event(handler, 3)`, then `post_event_delayed(handler, 3, 0, 1000)`. Event 3 later clears reason 24. The emulator records these two queue requests in `event_queue_requests()` as a replacement request with a 1000 ms delay. This proves the driver's requested scheduling sequence, but not the internal queue helper's cancellation/coalescing policy or the exact wall-clock callback time.
+
 The transition journal now includes `Gpio393Write` after the reason-31 update. This models requested raw output levels, not physical readback or measured timing.
 
 
