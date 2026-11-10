@@ -6,6 +6,7 @@
 namespace cd3313 {
 namespace {
 constexpr std::size_t kMaxCopiedPayloadBytes = 256U;
+constexpr std::size_t kMaxSafePayloadBytes = 252U;
 
 std::size_t copied_payload_size(std::uint16_t size_field) {
     const std::size_t requested = static_cast<std::size_t>(size_field) * 4U;
@@ -92,6 +93,8 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
         return {{}, ParseError::InsufficientArgumentData};
 
     const std::size_t expected = copied_payload_size(size_field);
+    if (expected > kMaxSafePayloadBytes)
+        return {{}, ParseError::UnsafePayloadSize};
     if (bytes.size() - 4U != expected)
         return {{}, ParseError::PayloadSizeMismatch};
 
@@ -117,6 +120,8 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
         throw std::invalid_argument("CD3313 payload is too short for handler arguments");
 
     const std::size_t expected = copied_payload_size(command.size_field);
+    if (expected > kMaxSafePayloadBytes)
+        throw std::invalid_argument("CD3313 payload exceeds safe slab-object space");
     if (command.payload.size() != expected)
         throw std::invalid_argument("payload size does not match ioctl size field");
     if (command.id == 0x15 && !valid_channel_indices(command.payload))
