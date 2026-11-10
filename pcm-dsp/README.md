@@ -84,6 +84,25 @@ snapshots safely and apply configuration outside the audio callback. Profile
 validation deliberately does not mutate the engine, so a rejected profile
 cannot leave the DSP partially reconfigured.
 
+## Safe profile transitions
+
+`ProfiledQuadEngine` prepares a complete profile on a second DSP instance,
+then crossfades the old and new processing paths over a configurable interval
+(default 50 ms, accepted range 1–1000 ms). The control thread calls
+`apply_profile()`; one audio thread calls `process()`. The audio callback
+uses fixed scratch buffers, performs no heap allocation, and takes no locks.
+A second update is rejected while the transition is pending or running, and
+the retired engine slot becomes reusable only after the crossfade completes.
+Both main and optional subwoofer outputs are crossfaded. Processing accepts
+blocks larger than the internal scratch size by splitting them into bounded
+chunks.
+
+This API is a single-control-producer / single-audio-consumer contract.
+Configure the engine before starting audio processing. Do not call
+`configure()` concurrently with `process()`, and do not use multiple audio
+threads on one instance. This is an in-process transition mechanism; persistent
+profile storage and JNI synchronization are separate integration tasks.
+
 ## Android JNI bring-up bridge
 
 Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
