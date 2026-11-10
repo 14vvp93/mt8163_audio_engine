@@ -8,6 +8,7 @@ add_library(mt8163_pcm_dsp STATIC
     src/crossover.cpp
     src/eq_layout.cpp
     src/multiband_dynamics.cpp
+    src/audio_profile.cpp
 )
 set_target_properties(mt8163_pcm_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mt8163_pcm_dsp PUBLIC include)
@@ -41,6 +42,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(pcm_dsp_quad_dynamics_tests PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_quad_dynamics_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_quad_dynamics_tests COMMAND pcm_dsp_quad_dynamics_tests)
+
+    add_executable(pcm_dsp_audio_profile_tests tests/audio_profile_test.cpp)
+    target_link_libraries(pcm_dsp_audio_profile_tests PRIVATE mt8163_pcm_dsp)
+    target_compile_options(pcm_dsp_audio_profile_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME pcm_dsp_audio_profile_tests COMMAND pcm_dsp_audio_profile_tests)
 
     add_executable(pcm_dsp_multiband_quality_tests tests/multiband_dynamics_quality_test.cpp)
     target_link_libraries(pcm_dsp_multiband_quality_tests PRIVATE mt8163_pcm_dsp)
