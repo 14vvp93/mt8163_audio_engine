@@ -24,6 +24,8 @@ The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It 
 - [CD3313 userspace-client scan](docs/CD3313_USERSPACE_CLIENT_SCAN.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
+- [HEQ APK static analysis](docs/HEQ_APK_ANALYSIS.md)
+- [HEQ decompiled algorithm analysis](docs/HEQ_ALGORITHM_ANALYSIS.md)
 - [PCM DSP core](pcm-dsp/README.md)
 
 ## Development constraints
@@ -42,3 +44,4 @@ The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It 
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
 - Initial PCM DSP core implemented and host tests passed; Android integration is not implemented yet.
+- HEQ APK decompiled and analyzed: useful filter/control concepts documented, but its external DSP protocols are chip-specific and not compatible with CD3313.
