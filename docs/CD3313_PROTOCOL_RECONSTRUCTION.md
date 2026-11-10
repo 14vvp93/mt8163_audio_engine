@@ -93,7 +93,7 @@ DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: 
 | 0xF0 | 1 |
 | 0xF1 | 1 |
 
-This table is useful for validating the inner driver-command header. Do not assume that every identifier in the read/write enums is accepted by this particular table. The dispatcher also contains special branches for `0x56` and `0xA3`, which are not present in these 12 pairs.
+This table is useful for validating the ioctl command word queued to the driver. Do not assume that every identifier in the read/write enums is accepted by this particular table. The dispatcher also contains special branches for `0x56` and `0xA3`, which are not present in these 12 pairs.
 
 ## Register readback decoding documented by the driver
 
