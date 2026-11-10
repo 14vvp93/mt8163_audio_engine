@@ -43,7 +43,12 @@ jobs:
           arm-linux-gnueabi-objdump -s -j .data cd3313.ko > cd3313-ioctl-analysis/data-dump.txt 2>&1 || true
           arm-linux-gnueabi-objdump -s -j .bss cd3313.ko > cd3313-ioctl-analysis/bss-dump.txt 2>&1 || true
           readelf --debug-dump=info cd3313.ko > cd3313-ioctl-analysis/dwarf-info.txt
+          arm-linux-gnueabi-readelf --debug-dump=rawline cd3313.ko > cd3313-ioctl-analysis/dwarf-rawline.txt
           arm-linux-gnueabi-readelf --debug-dump=decodedline cd3313.ko > cd3313-ioctl-analysis/dwarf-lines.txt
+          strings -tx cd3313.ko > cd3313-ioctl-analysis/strings-offsets.txt
+          arm-linux-gnueabi-readelf --string-dump=.rodata.str1.4 cd3313.ko > cd3313-ioctl-analysis/rodata-strings.txt 2>&1 || true
+          arm-linux-gnueabi-objdump -s -j .rodata.str1.4 cd3313.ko > cd3313-ioctl-analysis/rodata-str1-dump.txt 2>&1 || true
+          nm -anS cd3313.ko > cd3313-ioctl-analysis/symbols-sized.txt
           arm-linux-gnueabi-objdump --dwarf=decodedline cd3313.ko > cd3313-ioctl-analysis/disassembly-lines.txt
           arm-linux-gnueabi-objdump -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
           for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown dsp_probe dsp_wakeup.part.1 dsp_driver_init; do
@@ -108,6 +113,8 @@ jobs:
             echo "address-to-source.txt maps surviving functions to their original cd3313.c lines."
             echo "sections.txt and relocation reports expose ELF data placement; rodata/data dumps preserve static lookup tables where present."
             echo "event-queue-symbols.txt and event-queue-disassembly.txt capture surviving queue-related symbols and their ARM disassembly."
+            echo "dwarf-rawline.txt preserves the DWARF file table; strings-offsets.txt and rodata-strings.txt expose format strings used by cmd_read and cmd_write."
+            echo "symbols-sized.txt includes symbol sizes for static table and object-length checks."
             echo "An empty function report means the symbol was inlined, optimized out, or not exported under that name."
             echo
             find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\n' | sort
