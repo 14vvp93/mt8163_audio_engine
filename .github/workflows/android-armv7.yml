@@ -46,4 +46,8 @@ jobs:
       - name: Build Android ARMv7 static library
         run: cmake --build build/android-armv7 --parallel
       - name: Verify ARM ELF architecture
-        run: readelf -h build/android-armv7/libmt8163_pcm_dsp.a | head -n 20
+        run: |
+          mkdir -p build/android-armv7/verify
+          cd build/android-armv7/verify
+          ar x ../libmt8163_pcm_dsp.a
+          readelf -h quad_engine.cpp.o | grep -E "Class:|Machine:"
