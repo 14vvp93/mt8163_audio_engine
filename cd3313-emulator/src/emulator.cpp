@@ -240,7 +240,7 @@ void Emulator::record_input_switch(std::uint32_t channel,
         if (delay_ms != 0U)
             record_event(InputTransitionKind::Delay, 0U, delay_ms);
     };
-    const auto write_attenuation = [this, &record_event, channel](
+    const auto write_attenuation = [this, &record_event](
                                        std::uint8_t value) {
         record_command_byte(value, RegisterWriteSource::InputSwitchAttenuation);
         state_.current_volume_register_value = value;
