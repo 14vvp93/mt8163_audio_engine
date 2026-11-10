@@ -22,20 +22,31 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 
 | ID | Reconstructed operation | Observed argument layout / behavior | Confidence |
 |---|---|---|---|
-| `0x01` | Update current channel selection state | One 32-bit value at +4. `-1` is converted to 6. The value is stored in driver state; under a state guard the handler calls `set_input_channel(8, 8)`. | Medium: behavior is clear; user-facing meaning of the value needs caller/source context. |
-| `0x03` | Set input gain | `channel` at +4, `gain` at +8. The gain is masked to 2 bits and encoded into the channel-select register. | High |
-| `0x04` | Set input mute | `channel` at +4, `mute` at +8, `reason` at +12. Updates per-channel mute state; when the channel is current, it also updates master mute/output attenuation state. | High |
+| `0x01` | Select current input channel | One 32-bit channel ID at +4. The sentinel `-1` maps to channel 6. The selected channel is remembered; when mixing mode is off, `set_input_channel(channel, 8)` applies it. | High for state transition; exact UI names for channel IDs remain unknown. |
+| `0x03` | Set per-channel input gain | `channel` at +4 and `gain` at +8. The gain is masked to two bits and cached in `channel_gain[channel]`; the active control byte's bits 3..4 are updated. The dispatcher minimum is three words although this optimized handler reads only the first two. | High for field use and bit mask; channel IDs are bounded to 0..6 in the safe emulator. |
+| `0x04` | Set per-channel input mute | `channel` at +4, `mute` at +8, `reason` at +12. Maintains a 32-bit mute-reason mask for each of seven channels. Channel `-1` maps to 6. If the channel is active, reason 31 of master mute follows whether that channel's mute mask is nonzero. Channel 1 / reason 16 also updates `hfp_active`. | High |
 | `0x10` | Set master volume step | One 32-bit value at +4; accepted range is 0..40. Calls the incremental master-volume routine. | High |
 | `0x11` | Set master mute reason | `mute` at +4 and mute-reason/bit index at +8. Calls `set_master_mute(mute, reason)`; mute state is maintained as a bitmask. | High |
 | `0x12` | Set master-volume percentage | One 32-bit value at +4; accepted range is 1..100. Stores the percentage and reapplies the current master-volume step. | High |
 | `0x15` | Set four-channel balance/gain values | Four 32-bit values at +4/+8/+12/+16, corresponding to FL, FR, RL, RR. The inlined `set_balance(fl, fr, rl, rr)` converts each value into a separate register field. | High |
-| `0x20` | Switch the active input path/mode | One value at +4. The false/zero path clears the mode and calls `set_input_channel(8, 8)`; the true/nonzero path sets the mode and calls `set_input_channel(1, 0)`. | Medium: calls and state transition are clear; names for the two modes are not. |
+| `0x20` | Toggle input mixing mode | First 32-bit value at +4 is a boolean; the dispatcher requires three words, but the optimized handler reads only the first. Enabling sets `is_mixing` and switches the active input path to channel 1. Disabling clears it and restores the remembered current channel. | High for state transition; exact signal-level meaning of the mode is not established. |
 | `0x55` | Bass-boost adjustment | Two-word command accepted by the dispatcher. The second word at +8 is converted to a bounded 0..14 transition target; writes use the bass register prefix `0x60` and the driver's lookup table. The first word's purpose is not established from this optimized path. | Medium |
 | `0x56` | Loudness enable/state | One value at +4 controls the driver's loudness state. The handler updates state value 0/4 and the loudness control bit in the register image. | High |
 | `0x5C` | Treble adjustment | Two-word command accepted by the dispatcher. The second word at +8 is converted to a bounded 0..14 transition target; writes use the treble register prefix `0x70` and the driver's lookup table. The first word's purpose is not established from this optimized path. | Medium |
 | `0xA3` | Subwoofer GPIO control | Boolean value at +4 is converted to 0/1 and written to GPIO 409 (`0x199`). This is a special dispatcher branch, not one of the 12 entries in `cmd_len_list`. | High |
 | `0xF0` | Unresolved/special | The write dispatcher has a branch, but no meaningful state update was recovered. Do not treat it as a confirmed setter. | Low |
 | `0xF1` | DSP power control | Boolean value at +4 selects wake-up or shutdown. Nonzero enters the wake-up path; zero calls `dsp_shutdown()`. | High |
+
+### Input routing, gain, and mute reconstruction
+
+The input-control handlers are distinct from the four-output-speaker command `0x15`:
+
+- `0x01` stores the requested current input channel. The signed sentinel `-1` is normalized to channel 6. When `is_mixing` is false, the driver applies the selection through `set_input_channel(channel, 8)`; while mixing is active it remembers the requested channel without replacing the active channel-1 path.
+- `0x03` stores a two-bit input-gain value in the seven-entry `channel_gain` array. The first argument is the channel index (0..6 in the safe model), the second is the gain (low two bits). The register byte at cached offset +17 has bits 3..4 replaced with this gain. The command-length table requires three words although the optimized handler consumes only the first two; the trailing word is retained in the raw command journal but assigned no invented meaning.
+- `0x04` updates the per-channel `channel_mute` bitmask. Its arguments are channel, mute boolean, and reason bit (0..31). The driver normalizes channel `-1` to channel 6. For the currently active channel, any remaining input-mute reason asserts master-mute reason 31; clearing the final reason releases it. Channel 1 / reason 16 also tracks the driver's `hfp_active` flag.
+- `0x20` toggles the `is_mixing` state. A nonzero first argument switches the active input path to channel 1; zero restores the remembered current channel. The dispatcher minimum is three words, but the optimized handler reads only the first word.
+
+The emulator now models the selected and active channel separately, the mixing flag, seven input-gain values, seven per-channel mute masks, the HFP-active flag, and the shared master-mute reason-31 interaction. It records the input-gain register-byte update when the startup control byte is known. The actual low-bit input-selector encoding and all GPIO/timing effects of `set_input_channel()` remain outside this model until their full mapping is verified. Channel labels such as AUX, radio, Bluetooth, or phone are intentionally not assigned to numeric IDs without caller-side evidence.
 
 ### Four-channel control: Balance and Front/Rear Fader
 
