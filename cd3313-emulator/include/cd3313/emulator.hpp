@@ -35,6 +35,9 @@ struct EmulatorState {
     std::array<std::uint8_t, 7> input_gain{};
     // Two-bit selector recovered from set_input_channel() and its .rodata table.
     std::optional<std::uint8_t> input_selector_code;
+    // Raw output levels requested by set_input_channel(); not physical GPIO readback.
+    std::optional<bool> input_gpio_396_level;
+    std::optional<bool> input_gpio_398_level;
     std::array<std::uint32_t, 7> input_mute_reason_masks{};
     // Requested GPIO state only; physical routing is not inferred.
     std::optional<bool> subwoofer_gpio_enabled;
