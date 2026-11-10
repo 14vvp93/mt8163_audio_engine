@@ -50,8 +50,8 @@ The driver-side reconstruction currently indicates that the request word carries
 1. The matching system framework JAR containing android.audio.AudioEffect and the corresponding native/service implementation used by HEQ.
 2. The vendor audio service or library that translates the HEQ ASP API calls into CD3313 commands.
 3. Any source/header files defining the ioctl macros and command structures.
-3. If a rooted target becomes available, read-only runtime evidence such as device-node permissions, process file descriptors, and relevant app/service package inventory. Do not issue write ioctls during discovery.
+4. If a rooted target becomes available, read-only runtime evidence such as device-node permissions, process file descriptors, and relevant app/service package inventory. Do not issue write ioctls during discovery.
 
 ## Limitations
 
-A negative string scan is not proof that no client exists on the actual head unit. The client may be outside `files.zip`, may construct the device path dynamically, or may use an indirect library call. This result only narrows the supplied archive and prevents us from incorrectly attributing unrelated HAL ioctl calls to CD3313.
+A negative string scan is not proof that no client exists on the actual head unit. The client may be outside `files.zip`, may construct the device path dynamically, or may use an indirect library call. This result only narrows the supplied files.zip archive and prevents us from incorrectly attributing unrelated HAL ioctl calls to CD3313. The separate HEQ analysis establishes an indirect high-level CD3313-aware client, but not its low-level transport.
