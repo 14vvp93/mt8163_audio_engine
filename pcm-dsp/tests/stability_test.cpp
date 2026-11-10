@@ -1,7 +1,9 @@
 #include "pcm_dsp/quad_engine.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
