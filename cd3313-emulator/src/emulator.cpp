@@ -542,6 +542,72 @@ void Emulator::write_raw_command_byte(std::uint8_t command_byte) {
     record_command_byte(command_byte, RegisterWriteSource::RawCommandByte);
 }
 
+RawWriteTextResult Emulator::write_raw_command_text(std::string_view text,
+                                                    std::size_t file_position) {
+    constexpr std::size_t kTextBufferSize = 12U;
+    RawWriteTextResult result;
+    result.reported_count = text.size();
+
+    const std::size_t available =
+        file_position < kTextBufferSize ? kTextBufferSize - file_position : 0U;
+    result.copied_count = std::min(text.size(), available);
+    result.new_file_position = file_position + result.copied_count;
+
+    std::array<char, kTextBufferSize> buffer{};
+    if (result.copied_count != 0U) {
+        std::copy_n(text.data(), result.copied_count,
+                    buffer.data() + file_position);
+    }
+
+    // The driver does not append a NUL after copying all 12 available bytes.
+    // Avoid parsing that unterminated stack buffer in the host emulator.
+    if (result.copied_count == kTextBufferSize) {
+        result.unterminated_buffer = true;
+        return result;
+    }
+
+    // cmd_write() passes the persistent VFS file position through unchanged.
+    // A nonzero offset leaves a leading NUL in this freshly zeroed buffer.
+    if (file_position != 0U || buffer[0] == '\\0') return result;
+
+    std::size_t length = 0U;
+    while (length < buffer.size() && buffer[length] != '\\0') ++length;
+    std::string_view token(buffer.data(), length);
+    if (token.empty()) return result;
+
+    if (token.back() == '\\n') token.remove_suffix(1U);
+    if (token.empty()) return result;
+
+    if (token.front() == '+') token.remove_prefix(1U);
+    if (token.size() >= 2U && token[0] == '0' &&
+        (token[1] == 'x' || token[1] == 'X')) {
+        token.remove_prefix(2U);
+    }
+    if (token.empty()) return result;
+
+    std::uint32_t value = 0U;
+    for (const char ch : token) {
+        std::uint32_t digit = 0U;
+        if (ch >= '0' && ch <= '9') {
+            digit = static_cast<std::uint32_t>(ch - '0');
+        } else if (ch >= 'a' && ch <= 'f') {
+            digit = static_cast<std::uint32_t>(ch - 'a') + 10U;
+        } else if (ch >= 'A' && ch <= 'F') {
+            digit = static_cast<std::uint32_t>(ch - 'A') + 10U;
+        } else {
+            return result;
+        }
+        if (value > (std::numeric_limits<std::uint32_t>::max() - digit) / 16U)
+            return result;
+        value = value * 16U + digit;
+    }
+
+    result.parsed = true;
+    result.command_byte = static_cast<std::uint8_t>(value & 0xFFU);
+    write_raw_command_byte(*result.command_byte);
+    return result;
+}
+
 void Emulator::apply_recovered_probe_setup() {
     // dsp_probe retries this 0x3F write up to three times on I2C failure.
     // The offline model records one successful attempt; it does not emulate bus errors.
