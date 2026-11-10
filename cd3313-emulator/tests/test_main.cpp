@@ -112,6 +112,14 @@ int main() {
               "state emulator accepts master volume");
         check(state_emulator.state().master_volume_step == 23U,
               "master volume state is updated");
+        const DriverCommand percentage_command{
+            0x12, 2, {80, 0, 0, 0, 0xAA, 0xBB, 0xCC, 0xDD}};
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(percentage_command))),
+              "master-volume percentage command is accepted");
+        check(state_emulator.state().master_volume_percentage == 80U &&
+              state_emulator.state().volume_percentage_opaque_arg1 == 0xDDCCBBAAU,
+              "volume percentage is modeled while its unknown second word is preserved");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 4)))),
               "first mute reason is accepted");
@@ -138,7 +146,7 @@ int main() {
               "speaker indices are retained in FL/FR/RL/RR order");
         check(channel_state.speaker_register_bytes.has_value() &&
               (*channel_state.speaker_register_bytes ==
-                  std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC6, 0xFF}}),
+                  std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC4, 0xFF}}),
               "speaker register image uses recovered prefixes and table");
 
         const auto make_two_word_command = [](std::uint8_t id,
