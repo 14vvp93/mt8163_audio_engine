@@ -7,6 +7,10 @@ package com.mt8163.audioengine;
  * Do not call it once per audio callback: JNI array access may copy or pin
  * memory. A future AudioFlinger/HAL adapter must call the C++ engine directly.
  *
+ * Control changes are applied as validated AudioProfile snapshots and
+ * crossfaded by the native engine (50 ms by default). A control update is
+ * rejected while another profile transition is still in progress.
+ *
  * Buffer layout: interleaved FL, FR, RL, RR normalized Float32 samples.
  */
 public final class NativeDsp implements AutoCloseable {
