@@ -56,14 +56,34 @@ Result run_case(std::uint32_t sample_rate, std::size_t frames) {
     routing.crossover_order = pcm_dsp::LinkwitzRileyOrder::Db24;
     if (!engine.configure_routing(routing)) return {};
 
+    // Exercise the complete production-intent chain, including all 12
+    // independent compressors, rather than benchmarking EQ/routing alone.
+    pcm_dsp::MultibandDynamicsParameters dynamics;
+    dynamics.enabled = true;
+    for (std::size_t channel = 0; channel < channels; ++channel) {
+        for (std::size_t band = 0; band < pcm_dsp::kDynamicsBandCount; ++band) {
+            auto& compressor = dynamics.compressors[channel][band];
+            compressor.enabled = true;
+            compressor.threshold_db = -18.0F;
+            compressor.ratio = band == 0U ? 2.5F : 2.0F;
+            compressor.attack_ms = 8.0F;
+            compressor.release_ms = 120.0F;
+            compressor.knee_db = 6.0F;
+            compressor.makeup_gain_db = 0.0F;
+        }
+    }
+    if (!engine.configure_dynamics(dynamics)) return {};
+
     std::vector<float> input(frames * channels);
     std::vector<float> output(frames * channels);
     std::vector<float> sub(frames);
     for (std::size_t i = 0; i < input.size(); ++i) {
-        input[i] = 0.2F * std::sin(
-            2.0F * 3.14159265358979323846F * 997.0F *
-            static_cast<float>(i / channels) /
-            static_cast<float>(sample_rate));
+        const float frame = static_cast<float>(i / channels);
+        const float rate = static_cast<float>(sample_rate);
+        const float low = std::sin(2.0F * 3.14159265358979323846F * 60.0F * frame / rate);
+        const float mid = std::sin(2.0F * 3.14159265358979323846F * 997.0F * frame / rate);
+        const float high = std::sin(2.0F * 3.14159265358979323846F * 9000.0F * frame / rate);
+        input[i] = 0.07F * (low + mid + high);
     }
 
     for (std::size_t i = 0; i < warmup_blocks; ++i) {
