@@ -55,3 +55,13 @@ jobs:
           cd build/android-armv7/verify
           ar x ../libmt8163_pcm_dsp.a
           readelf -h quad_engine.cpp.o | grep -E "Class:|Machine:"
+          readelf -h ../libmt8163_audio_jni.so | grep -E "Class:|Machine:"
+      - name: Upload Android ARMv7 libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt8163-audio-engine-android-armv7
+          path: |
+            build/android-armv7/libmt8163_pcm_dsp.a
+            build/android-armv7/libmt8163_audio_jni.so
+          if-no-files-found: error
+          retention-days: 30
