@@ -41,6 +41,7 @@ struct EmulatorEvent {
 enum class RegisterWriteSource {
     ProbeGuardWrite,
     InitializationSequence,
+    MasterVolumeTransition,
     IoctlFourChannelCommand,
     RawCommandByte
 };
