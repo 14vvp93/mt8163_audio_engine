@@ -500,6 +500,20 @@ int main() {
               "DSP power request is accepted");
         check(state_emulator.state().dsp_awake == true,
               "DSP awake request state is modeled");
+        Emulator f1_power_emulator;
+        f1_power_emulator.apply_recovered_probe_setup();
+        check(static_cast<bool>(f1_power_emulator.write(
+                  encode_driver_command(DriverCommand{0xF1, 1, {0, 0, 0, 0}}))) &&
+              f1_power_emulator.state().shutdown_started &&
+              f1_power_emulator.state().dsp_awake == false &&
+              f1_power_emulator.shutdown_journal().size() == 4U,
+              "0xF1 with zero requests the recovered DSP shutdown sequence");
+        check(static_cast<bool>(f1_power_emulator.write(
+                  encode_driver_command(DriverCommand{0xF1, 1, {1, 0, 0, 0}}))) &&
+              !f1_power_emulator.state().shutdown_started &&
+              f1_power_emulator.state().dsp_awake == true &&
+              f1_power_emulator.wakeup_journal().size() == 5U,
+              "0xF1 with nonzero wakes only after a prior shutdown");
         check(state_emulator.journal().size() == 17U &&
               state_emulator.journal().front().sequence == 1U &&
               state_emulator.journal().back().sequence == 17U,
