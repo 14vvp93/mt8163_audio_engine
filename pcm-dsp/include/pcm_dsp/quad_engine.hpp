@@ -34,6 +34,7 @@ struct QuadOutputRoutingParameters {
     float crossover_frequency_hz{80.0F};
     LinkwitzRileyOrder crossover_order{LinkwitzRileyOrder::Db24};
     float sub_gain_db{0.0F};
+    bool sub_phase_inverted{false};
     std::array<float, 16> matrix{{
         1.0F, 0.0F, 0.0F, 0.0F,
         0.0F, 1.0F, 0.0F, 0.0F,
