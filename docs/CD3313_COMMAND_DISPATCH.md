@@ -138,7 +138,7 @@ Modeled state:
 - `0x55` / `0x5C`: bass/treble transition indices (3..10) derived from the second argument and the recovered `cd3313_equalizer` table; the first argument is retained verbatim and remains opaque.
 - `0x56`: loudness enabled state.
 - `0xA3`: requested subwoofer GPIO state only; physical routing is not inferred.
-- `0xF1`: DSP awake/sleep request state.
+- `0xF1`: zero invokes the recovered `dsp_shutdown()` path; nonzero invokes `dsp_wakeup.part.1()` only when the shutdown flag is set. The emulator now journals the shutdown and wakeup side effects for this command.
 
 The model's reset baseline sets the synthetic master-mute reason mask to zero. Other values remain unset until a corresponding command is observed. Each accepted command produces a monotonically numbered journal event containing the raw parsed command, whether its semantics are modeled, and complete before/after state snapshots. Commands whose semantics remain unresolved are retained as unmodeled journal events. Invalid modeled values are rejected atomically without changing state or appending a journal event.
 
@@ -233,6 +233,8 @@ The static pm_event_notify() disassembly at 0x10EC handles only notifier action 
 - Codes 0 and 1 enter the wakeup branch only when the driver's shutdown flag is set. Their external semantic labels are not established by the available binary, so they remain numeric event codes.
 - Codes 2, 3, and 4 call dsp_shutdown().
 - Values greater than 4 return -EINVAL (-22).
+
+The command 0xF1 path has the same state gate: a zero first word calls dsp_shutdown() unconditionally; a nonzero first word logs the wake-up request and calls dsp_wakeup.part.1() only if the shutdown flag is currently set. A nonzero request while already awake does not replay the wakeup sequence. The emulator routes this command through the recovered shutdown/wakeup models and verifies the five delayed/remove queue requests after a shutdown.
 
 The recovered dsp_wakeup.part.1() path clears the shutdown flag and recalculates the cached master-volume byte from master_volume and volume_percentage. The percentage is clamped to 0..100 for this calculation; attenuation is (100 - percentage) / 3, added to the selected entry in the 41-byte cd3313_voltable_40 table and capped at 0x3F. A zero master-volume step selects 0x3F. This updates the driver's cached byte; it is not itself an immediate I2C write.
 
