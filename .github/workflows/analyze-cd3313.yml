@@ -34,15 +34,24 @@ jobs:
         run: |
           mkdir -p cd3313-analysis
           cp module-file.txt module-sha256.txt cd3313-analysis/
-          readelf -h cd3313.ko > cd3313-analysis/elf-header.txt
-          readelf -S cd3313.ko > cd3313-analysis/sections.txt
-          readelf -sW cd3313.ko > cd3313-analysis/symbols-readelf.txt
-          readelf -rW cd3313.ko > cd3313-analysis/relocations.txt
-          readelf --debug-dump=info cd3313.ko > cd3313-analysis/dwarf-info.txt 2>&1 || true
-          nm -an cd3313.ko > cd3313-analysis/symbols-nm.txt 2>&1 || true
-          strings -a -n 4 -t x cd3313.ko > cd3313-analysis/strings.txt
-          objdump -drwC cd3313.ko > cd3313-analysis/disassembly-relocations.txt 2>&1
-          objdump -s cd3313.ko > cd3313-analysis/section-bytes.txt 2>&1
+          set +e
+          run_report() {
+            name="$1"
+            shift
+            "$@" > "cd3313-analysis/$name" 2>&1
+            code=$?
+            printf '%s\texit=%s\n' "$name" "$code" >> cd3313-analysis/command-status.txt
+          }
+          run_report elf-header.txt readelf -h cd3313.ko
+          run_report sections.txt readelf -S cd3313.ko
+          run_report symbols-readelf.txt readelf -sW cd3313.ko
+          run_report relocations.txt readelf -rW cd3313.ko
+          run_report dwarf-info.txt readelf --debug-dump=info cd3313.ko
+          run_report symbols-nm.txt nm -an cd3313.ko
+          run_report strings.txt strings -a -n 4 -t x cd3313.ko
+          run_report disassembly-relocations.txt objdump -drwC cd3313.ko
+          run_report section-bytes.txt objdump -s cd3313.ko
+          true
           {
             echo "# CD3313 module analysis"
             echo
