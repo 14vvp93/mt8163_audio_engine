@@ -730,6 +730,58 @@ int main() {
         check(shutdown_reason24.state().gpio_393_level == true,
               "shutdown reason 24 forces GPIO high even while HFP and ACC are active");
 
+        Emulator pm_wakeup;
+        check(static_cast<bool>(pm_wakeup.write(encode_driver_command(
+                  make_master_volume_command(20)))) &&
+              static_cast<bool>(pm_wakeup.write(encode_driver_command(
+                  make_master_volume_percentage_command(80))),
+              "PM wakeup fixture sets master volume and percentage");
+        pm_wakeup.apply_recovered_shutdown();
+        check(pm_wakeup.apply_recovered_pm_event(16U, 0U) == 0 &&
+              !pm_wakeup.state().shutdown_started &&
+              pm_wakeup.state().master_volume_register_value == 0x13U &&
+              pm_wakeup.state().current_volume_register_value == 0x13U,
+              "PM event 0 wakes a shut-down DSP and restores the cached volume byte");
+        check(pm_wakeup.wakeup_journal().size() == 5U &&
+              pm_wakeup.wakeup_journal()[0].kind == WakeupEventKind::RemoveQueuedEvent &&
+              pm_wakeup.wakeup_journal()[0].event_id == 0U &&
+              pm_wakeup.wakeup_journal()[1].kind == WakeupEventKind::PostDelayedEvent &&
+              pm_wakeup.wakeup_journal()[1].event_id == 0U &&
+              pm_wakeup.wakeup_journal()[1].delay_ms == 50U &&
+              pm_wakeup.wakeup_journal()[2].kind == WakeupEventKind::RemoveQueuedEvent &&
+              pm_wakeup.wakeup_journal()[2].event_id == 2U &&
+              pm_wakeup.wakeup_journal()[3].delay_ms == 1200U &&
+              pm_wakeup.wakeup_journal()[4].delay_ms == 1500U,
+              "wakeup journals the recovered event cancellation and delayed posts in order");
+        check(pm_wakeup.state().master_mute_reason_mask & (1U << 30U),
+              "wakeup leaves reason 30 set for the delayed callback to clear");
+
+        Emulator pm_wakeup_one;
+        pm_wakeup_one.apply_recovered_shutdown();
+        check(pm_wakeup_one.apply_recovered_pm_event(16U, 1U) == 0 &&
+              !pm_wakeup_one.state().shutdown_started &&
+              pm_wakeup_one.wakeup_journal().size() == 5U,
+              "PM event 1 follows the same recovered wakeup branch");
+
+        Emulator pm_ignored;
+        pm_ignored.apply_recovered_shutdown();
+        check(pm_ignored.apply_recovered_pm_event(15U, 2U) == 0 &&
+              pm_ignored.state().shutdown_started &&
+              pm_ignored.shutdown_journal().size() == 4U,
+              "PM actions other than 16 are ignored");
+        check(pm_ignored.apply_recovered_pm_event(16U, 5U) == -22 &&
+              pm_ignored.state().shutdown_started,
+              "unknown PM event codes return -EINVAL without state changes");
+
+        Emulator pm_shutdown;
+        check(pm_shutdown.apply_recovered_pm_event(16U, 4U) == 0 &&
+              pm_shutdown.state().shutdown_started &&
+              pm_shutdown.shutdown_journal().size() == 4U,
+              "PM event 4 enters the recovered shutdown path");
+        check(pm_shutdown.apply_recovered_pm_event(16U, 2U) == 0 &&
+              pm_shutdown.shutdown_journal().size() == 8U,
+              "PM events 2 and 3-class codes dispatch shutdown each time");
+
         Emulator effects_emulator;
         effects_emulator.apply_recovered_probe_setup();
         effects_emulator.apply_recovered_initialization_sequence();
