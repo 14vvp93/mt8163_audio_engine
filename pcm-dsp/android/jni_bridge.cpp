@@ -2,6 +2,7 @@
 
 #include <jni.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -198,6 +199,31 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyChannelEq(
     return JNI_TRUE;
 }
 
+// Bass management controls: crossover frequency, LR order and sub level.
+// Order values are 2, 4, 6 or 8 (12/24/36/48 dB per octave).
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_mt8163_audioengine_NativeDsp_nativeConfigureBassManagement(
+        JNIEnv*, jclass, jlong native_handle, jboolean enabled,
+        jfloat frequency_hz, jint order, jfloat sub_gain_db) {
+    EngineHandle* handle = from_handle(native_handle);
+    if (handle == nullptr || !std::isfinite(frequency_hz) ||
+        !std::isfinite(sub_gain_db) || frequency_hz < 20.0F ||
+        frequency_hz > 400.0F || sub_gain_db < -24.0F ||
+        sub_gain_db > 12.0F || (order != 2 && order != 4 && order != 6 && order != 8)) {
+        return JNI_FALSE;
+    }
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    candidate.routing.enabled = true;
+    candidate.routing.bass_management_enabled = enabled == JNI_TRUE;
+    candidate.routing.crossover_frequency_hz = frequency_hz;
+    candidate.routing.crossover_order =
+        static_cast<pcm_dsp::LinkwitzRileyOrder>(order);
+    candidate.routing.sub_gain_db = sub_gain_db;
+    if (!handle->engine.apply_profile(candidate)) return JNI_FALSE;
+    handle->profile = candidate;
+    return JNI_TRUE;
+}
+
 // Balance and fader are represented by a diagonal 4x4 output-routing matrix.
 // Center is unity; moving a control attenuates only the opposite side/row pair.
 extern "C" JNIEXPORT jboolean JNICALL
@@ -256,8 +282,21 @@ Java_com_mt8163_audioengine_NativeDsp_nativeProcess(
         return JNI_FALSE;
     }
 
-    const bool ok = handle->engine.process(
-        input, output, static_cast<std::size_t>(frames));
+    // Offline JNI path supplies a dedicated mono subwoofer buffer. Process in
+    // bounded chunks so the stack scratch remains fixed-size on ARMv7.
+    std::array<float, 1024> sub_scratch{};
+    bool ok = true;
+    std::size_t offset_frames = 0U;
+    while (offset_frames < static_cast<std::size_t>(frames)) {
+        const std::size_t chunk = std::min<std::size_t>(
+            sub_scratch.size(), static_cast<std::size_t>(frames) - offset_frames);
+        ok = handle->engine.process(
+            input + offset_frames * pcm_dsp::kOutputChannelCount,
+            output + offset_frames * pcm_dsp::kOutputChannelCount,
+            chunk, sub_scratch.data());
+        if (!ok) break;
+        offset_frames += chunk;
+    }
     env->ReleaseFloatArrayElements(output_array, output, 0);
     env->ReleaseFloatArrayElements(input_array, input, JNI_ABORT);
     return ok ? JNI_TRUE : JNI_FALSE;
