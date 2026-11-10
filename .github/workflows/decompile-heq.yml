@@ -13,6 +13,7 @@ permissions:
 jobs:
   decompile:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Download verified HEQ artifact
         env:
@@ -38,7 +39,7 @@ jobs:
 
       - name: Decompile APK
         run: |
-          jadx/bin/jadx --show-bad-code --threads-count 2 -d decompiled input/extracted/HEQ.apk
+          jadx/bin/jadx --no-res --show-bad-code --threads-count 2 -d decompiled input/extracted/HEQ.apk
           find decompiled -type f | sort > decompiled-files.txt
 
       - name: Extract targeted algorithm and DSP references
