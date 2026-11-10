@@ -64,14 +64,39 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
+          import subprocess
+
           root = Path("cd3313-ioctl-analysis")
           symbols = (root / "symbols.txt").read_text(errors="replace").splitlines()
           wanted = ("cmd_ioctl", "cmd_read", "cmd_write", "event_callback", "do_cmd_write", "cd3313_voltable_40", "cd3313_speaker", "cd3313_equalizer")
-          rows = []
-          for line in symbols:
-              if any(re.search(r"\b" + re.escape(name) + r"\b", line) for name in wanted):
-                  rows.append(line)
+          rows = [line for line in symbols if any(re.search(r"\b" + re.escape(name) + r"\b", line) for name in wanted)]
           (root / "target-symbols.txt").write_text("\n".join(rows) + ("\n" if rows else ""))
+
+          raw = subprocess.run(["nm", "-an", "cd3313.ko"], check=True, text=True, capture_output=True).stdout
+          queue_symbols = []
+          for line in raw.splitlines():
+              fields = line.split()
+              if len(fields) >= 3 and fields[1] in ("t", "T") and re.search(r"event|queue|delayed|work|timer|remove", fields[2], re.I):
+                  queue_symbols.append((fields[2], fields[0]))
+          queue_symbols = queue_symbols[:40]
+          (root / "event-queue-symbols.txt").write_text(
+              "\n".join(f"{address} {name}" for name, address in queue_symbols) + ("\n" if queue_symbols else "")
+          )
+
+          reports = []
+          for name, _ in queue_symbols:
+              result = subprocess.run(
+                  ["arm-linux-gnueabi-objdump", "-drwC", f"--disassemble={name}", "cd3313.ko"],
+                  check=False, text=True, capture_output=True
+              )
+              reports.append(f"===== {name} =====\n{result.stdout}{result.stderr}")
+          (root / "event-queue-disassembly.txt").write_text(
+              "\n".join(reports) if reports else "No separately named event/queue/work/timer functions survived in the symbol table.\n"
+          )
+          print("=== EVENT / QUEUE SYMBOLS ===")
+          print((root / "event-queue-symbols.txt").read_text() or "(none)")
+          print("=== EVENT / QUEUE DISASSEMBLY ===")
+          print((root / "event-queue-disassembly.txt").read_text())
           PY
           {
             echo "# Focused CD3313 ioctl analysis"
@@ -82,6 +107,7 @@ jobs:
             echo "Focused ARM disassembly and DWARF source-line reports are provided where available."
             echo "address-to-source.txt maps surviving functions to their original cd3313.c lines."
             echo "sections.txt and relocation reports expose ELF data placement; rodata/data dumps preserve static lookup tables where present."
+            echo "event-queue-symbols.txt and event-queue-disassembly.txt capture surviving queue-related symbols and their ARM disassembly."
             echo "An empty function report means the symbol was inlined, optimized out, or not exported under that name."
             echo
             find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\n' | sort
