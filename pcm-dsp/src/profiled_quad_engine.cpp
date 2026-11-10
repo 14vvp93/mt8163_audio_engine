@@ -11,7 +11,8 @@ bool ProfiledQuadEngine::prepare_engine(std::size_t slot,
     engine.reset();
     if (!engine.configure(sample_rate_hz_) ||
         !engine.configure_routing(profile.routing) ||
-        !engine.configure_dynamics(profile.dynamics)) {
+        !engine.configure_dynamics(profile.dynamics) ||
+        !engine.configure_enhancements(profile.enhancements)) {
         return false;
     }
     profiles_[slot] = profile;
