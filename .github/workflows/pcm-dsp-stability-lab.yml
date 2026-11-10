@@ -1,0 +1,24 @@
+name: PCM DSP Stability Lab
+
+on:
+  push:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/pcm-dsp-stability-lab.yml"
+  pull_request:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/pcm-dsp-stability-lab.yml"
+  workflow_dispatch:
+
+jobs:
+  stability-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S pcm-dsp -B build -DCMAKE_BUILD_TYPE=Release -DPCM_DSP_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Run standard and stability tests
+        run: ctest --test-dir build --output-on-failure
