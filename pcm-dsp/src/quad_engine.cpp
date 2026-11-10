@@ -200,6 +200,9 @@ bool QuadEngine::process(const float* input, float* output,
         if (input != output) {
             std::copy(input, input + frames * kOutputChannelCount, output);
         }
+        if (sub_output != nullptr) {
+            std::fill(sub_output, sub_output + frames, 0.0F);
+        }
         reset();
         return true;
     }
