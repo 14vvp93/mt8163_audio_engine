@@ -8,7 +8,7 @@
 namespace {
 void check(bool condition, const char* message) {
     if (!condition) {
-        std::cerr << "FAIL: " << message << '\\n';
+        std::cerr << "FAIL: " << message << '\n';
         std::exit(EXIT_FAILURE);
     }
 }
@@ -62,6 +62,6 @@ int main() {
         invalid.bass_amount = 1.1F;
         return invalid;
     }()), "invalid enhancement amount is rejected");
-    std::cout << "All enhancement tests passed\\n";
+    std::cout << "All enhancement tests passed\n";
     return EXIT_SUCCESS;
 }
