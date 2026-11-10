@@ -41,6 +41,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(pcm_dsp_quad_dynamics_tests PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_quad_dynamics_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_quad_dynamics_tests COMMAND pcm_dsp_quad_dynamics_tests)
+
+    add_executable(pcm_dsp_multiband_quality_tests tests/multiband_dynamics_quality_test.cpp)
+    target_link_libraries(pcm_dsp_multiband_quality_tests PRIVATE mt8163_pcm_dsp)
+    target_compile_options(pcm_dsp_multiband_quality_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME pcm_dsp_multiband_quality_tests COMMAND pcm_dsp_multiband_quality_tests)
 endif()
 
 option(PCM_DSP_BUILD_ANDROID_JNI "Build Android JNI bridge" OFF)
