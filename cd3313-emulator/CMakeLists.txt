@@ -3,7 +3,11 @@ project(cd3313_emulator LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_library(cd3313_protocol src/protocol.cpp src/emulator.cpp)
+add_library(cd3313_protocol
+    src/protocol.cpp
+    src/emulator.cpp
+    src/channel_control.cpp
+)
 target_include_directories(cd3313_protocol PUBLIC include)
 target_compile_options(cd3313_protocol PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(cd3313_tests tests/test_main.cpp)
