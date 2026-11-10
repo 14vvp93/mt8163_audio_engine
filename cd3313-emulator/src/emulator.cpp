@@ -75,11 +75,12 @@ void apply_active_input_register_fields(EmulatorState& state) {
     }
 }
 
-bool update_master_mute_gpio(EmulatorState& state, bool mute_argument) {
+bool update_master_mute_gpio(EmulatorState& state) {
     const bool reason24 =
         (state.master_mute_reason_mask & (1U << 24U)) != 0U;
+    const bool any_mute_reason = state.master_mute_reason_mask != 0U;
     const bool raw_level =
-        (mute_argument && !state.hfp_active) || reason24 || !state.acc_on;
+        (any_mute_reason && !state.hfp_active) || reason24 || !state.acc_on;
     state.gpio_393_level = raw_level;
     return raw_level;
 }
@@ -138,7 +139,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         if (mute != 0U) state.input_mute_reason_masks[channel] |= mask;
         else state.input_mute_reason_masks[channel] &= ~mask;
         if (channel == 1U && reason == 16U)
-            state.hfp_active = mute != 0U;
+            state.hfp_active = mute == 0U;
         if (channel == state.active_input_channel) {
             const bool input_muted =
                 state.input_mute_reason_masks[channel] != 0U;
@@ -146,7 +147,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
                 state.master_mute_reason_mask |= (1U << 31U);
             else
                 state.master_mute_reason_mask &= ~(1U << 31U);
-            update_master_mute_gpio(state, input_muted);
+            update_master_mute_gpio(state);
         }
         return true;
     }
@@ -166,7 +167,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         if (mute != 0U) state.master_mute_reason_mask |= mask;
         else state.master_mute_reason_mask &= ~mask;
         // event_callback treats master-mute reason 2 as the ACC state latch.
-        if (reason == 2U) state.acc_on = mute != 0U;
+        if (reason == 2U) state.acc_on = mute == 0U;
         update_master_mute_gpio(state, mute != 0U);
         return true;
     }
@@ -645,7 +646,7 @@ void Emulator::apply_recovered_probe_setup() {
         0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
     }};
     state_.master_mute_reason_mask |= (1U << 31U);
-    const bool gpio393 = update_master_mute_gpio(state_, true);
+    const bool gpio393 = update_master_mute_gpio(state_);
     input_transition_journal_.push_back(InputTransitionEvent{
         next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
         state_.active_input_channel, gpio393 ? 1U : 0U, 0U
@@ -659,7 +660,7 @@ bool Emulator::apply_recovered_system_mute_event(std::uint32_t event) {
     else return false;
 
     state_.master_mute_reason_mask &= ~(1U << reason);
-    const bool gpio393 = update_master_mute_gpio(state_, false);
+    const bool gpio393 = update_master_mute_gpio(state_);
     input_transition_journal_.push_back(InputTransitionEvent{
         next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
         state_.active_input_channel, gpio393 ? 1U : 0U, 0U
