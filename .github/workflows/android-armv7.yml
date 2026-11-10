@@ -1,0 +1,49 @@
+name: Android ARMv7 build and DSP benchmark
+
+on:
+  push:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/android-armv7.yml"
+  pull_request:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/android-armv7.yml"
+  workflow_dispatch:
+
+jobs:
+  host-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure host benchmark
+        run: cmake -S pcm-dsp -B build/benchmark -DPCM_DSP_BUILD_TESTS=OFF -DPCM_DSP_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build host benchmark
+        run: cmake --build build/benchmark --parallel
+      - name: Run full-chain benchmark
+        run: ./build/benchmark/pcm_dsp_benchmark
+
+  android-armv7:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android NDK r27c
+        run: sdkmanager --install "ndk;27.2.12479018"
+      - name: Locate NDK
+        run: echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Configure Android ARMv7
+        run: >
+          cmake -S pcm-dsp -B build/android-armv7
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=armeabi-v7a
+          -DANDROID_PLATFORM=android-28
+          -DANDROID_STL=c++_static
+          -DPCM_DSP_BUILD_TESTS=OFF
+          -DPCM_DSP_BUILD_BENCHMARKS=OFF
+          -DCMAKE_BUILD_TYPE=Release
+      - name: Build Android ARMv7 static library
+        run: cmake --build build/android-armv7 --parallel
+      - name: Verify ARM ELF architecture
+        run: readelf -h build/android-armv7/libmt8163_pcm_dsp.a | head -n 20
