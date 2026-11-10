@@ -107,6 +107,8 @@ public:
     void apply_recovered_probe_setup();
     // Replays the exact byte order recovered from event_callback(event=0).
     void apply_recovered_initialization_sequence();
+    // Models event_callback events 2 (clear reason 30) and 3 (clear reason 24).
+    bool apply_recovered_system_mute_event(std::uint32_t event);
     const std::optional<DriverCommand>& last_command() const { return last_command_; }
     std::uint64_t accepted_commands() const { return accepted_commands_; }
     std::uint64_t rejected_commands() const { return rejected_commands_; }
