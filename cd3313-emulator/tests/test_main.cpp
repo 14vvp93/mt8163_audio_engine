@@ -912,7 +912,7 @@ int main() {
                   make_master_mute_command(false, 2)))),
               "shutdown HFP case enables ACC latch");
         check(static_cast<bool>(shutdown_hfp.write(encode_driver_command(DriverCommand{
-                  0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
+                  0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0}}))) &&
               shutdown_hfp.state().hfp_active,
               "shutdown HFP case activates HFP state");
         shutdown_hfp.apply_recovered_shutdown();
@@ -924,7 +924,7 @@ int main() {
                   make_master_mute_command(false, 2)))),
               "shutdown reason-24 case enables ACC latch");
         check(static_cast<bool>(shutdown_reason24.write(encode_driver_command(DriverCommand{
-                  0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
+                  0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0}}))) &&
               static_cast<bool>(shutdown_reason24.write(encode_driver_command(
                   make_master_mute_command(true, 24)))),
               "shutdown reason-24 case activates HFP and reason 24");
