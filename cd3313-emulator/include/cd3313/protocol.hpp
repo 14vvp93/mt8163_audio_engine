@@ -7,31 +7,35 @@
 namespace cd3313 {
 struct CommandSpec {
     std::uint8_t id;
-    std::uint8_t payload_size;
+    std::uint16_t minimum_size_field;
 };
 
-// Recovered from cmd_len_list in the CD3313 driver's DWARF information.
-// These lengths are payload bytes, excluding the command byte.
+// The second DWARF value is the minimum encoded size-field threshold,
+// not a proven byte count for the command payload.
 const std::vector<CommandSpec>& known_write_commands();
+bool is_dispatch_command(std::uint8_t id);
 
-struct Packet {
-    std::uint8_t command{};
+struct DriverCommand {
+    std::uint8_t id{};
+    std::uint16_t size_field{};
     std::vector<std::uint8_t> payload;
 };
 
 enum class ParseError {
     None,
-    EmptyPacket,
+    TruncatedHeader,
     UnknownCommand,
-    InvalidLength
+    SizeFieldTooSmall
 };
 
 struct ParseResult {
-    std::optional<Packet> packet;
+    std::optional<DriverCommand> command;
     ParseError error{ParseError::None};
-    explicit operator bool() const { return packet.has_value(); }
+    explicit operator bool() const { return command.has_value(); }
 };
 
-ParseResult parse_write_packet(const std::vector<std::uint8_t>& bytes);
-std::vector<std::uint8_t> encode_write_packet(const Packet& packet);
+// Parses the driver's queued command buffer:
+// LE32 header (id in bits 8..15, size field in bits 16..29), then opaque data.
+ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
+std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 } // namespace cd3313
