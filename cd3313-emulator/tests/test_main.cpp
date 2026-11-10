@@ -336,10 +336,12 @@ int main() {
               raw_text_emulator.register_journal().size() == 2U,
               "malformed raw write text still reports the original byte count");
         const auto full_buffer_raw_write =
-            raw_text_emulator.write_raw_command_text("000000000000");
+            raw_text_emulator.write_raw_command_text("0000000000000");
         check(full_buffer_raw_write.unterminated_buffer &&
               !full_buffer_raw_write.parsed &&
+              full_buffer_raw_write.reported_count == 13U &&
               full_buffer_raw_write.copied_count == 12U &&
+              full_buffer_raw_write.new_file_position == 12U &&
               raw_text_emulator.register_journal().size() == 2U,
               "full 12-byte raw text is rejected safely instead of reading past the buffer");
 
