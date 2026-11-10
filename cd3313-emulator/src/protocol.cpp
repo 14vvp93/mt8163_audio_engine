@@ -29,6 +29,19 @@ std::uint16_t required_size_words(std::uint8_t id) {
     const auto* spec = find_command(id);
     return spec == nullptr ? 0 : spec->required_size_words;
 }
+
+bool valid_channel_indices(const std::vector<std::uint8_t>& payload) {
+    if (payload.size() < 16U) return false;
+    for (std::size_t offset = 0; offset < 16U; offset += 4U) {
+        const std::uint32_t value =
+            static_cast<std::uint32_t>(payload[offset]) |
+            (static_cast<std::uint32_t>(payload[offset + 1U]) << 8U) |
+            (static_cast<std::uint32_t>(payload[offset + 2U]) << 16U) |
+            (static_cast<std::uint32_t>(payload[offset + 3U]) << 24U);
+        if (value >= 16U) return false;
+    }
+    return true;
+}
 } // namespace
 
 const std::vector<CommandSpec>& known_write_commands() {
@@ -70,6 +83,10 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
     if (bytes.size() - 4U != expected)
         return {{}, ParseError::PayloadSizeMismatch};
 
+    if (id == 0x15 && !valid_channel_indices(
+            std::vector<std::uint8_t>(bytes.begin() + 4, bytes.end())))
+        return {{}, ParseError::InvalidArgumentValue};
+
     DriverCommand command;
     command.id = id;
     command.size_field = size_field;
@@ -90,6 +107,8 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
     const std::size_t expected = copied_payload_size(command.size_field);
     if (command.payload.size() != expected)
         throw std::invalid_argument("payload size does not match ioctl size field");
+    if (command.id == 0x15 && !valid_channel_indices(command.payload))
+        throw std::invalid_argument("CD3313 speaker channel index must be in range 0..15");
 
     const std::uint32_t header =
         (1U << 30U) |
