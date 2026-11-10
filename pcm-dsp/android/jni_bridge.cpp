@@ -160,6 +160,36 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyQuadProfile(
     return JNI_TRUE;
 }
 
+// Balance and fader are represented by a diagonal 4x4 output-routing matrix.
+// Center is unity; moving a control attenuates only the opposite side/row pair.
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_mt8163_audioengine_NativeDsp_nativeApplyBalanceFader(
+        JNIEnv*, jclass, jlong native_handle, jfloat balance, jfloat fader) {
+    EngineHandle* handle = from_handle(native_handle);
+    if (handle == nullptr || !std::isfinite(balance) ||
+        !std::isfinite(fader) || balance < -1.0F || balance > 1.0F ||
+        fader < -1.0F || fader > 1.0F) {
+        return JNI_FALSE;
+    }
+    constexpr float kHalfPi = 1.57079632679489661923F;
+    const float left_gain = balance > 0.0F ? std::cos(balance * kHalfPi) : 1.0F;
+    const float right_gain = balance < 0.0F ? std::cos(-balance * kHalfPi) : 1.0F;
+    const float front_gain = fader > 0.0F ? std::cos(fader * kHalfPi) : 1.0F;
+    const float rear_gain = fader < 0.0F ? std::cos(-fader * kHalfPi) : 1.0F;
+
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    auto& routing = candidate.routing;
+    routing.enabled = true;
+    routing.matrix.fill(0.0F);
+    routing.matrix[0] = left_gain * front_gain;
+    routing.matrix[5] = right_gain * front_gain;
+    routing.matrix[10] = left_gain * rear_gain;
+    routing.matrix[15] = right_gain * rear_gain;
+    if (!handle->engine.apply_profile(candidate)) return JNI_FALSE;
+    handle->profile = candidate;
+    return JNI_TRUE;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_mt8163_audioengine_NativeDsp_nativeProcess(
         JNIEnv* env, jclass, jlong native_handle,
