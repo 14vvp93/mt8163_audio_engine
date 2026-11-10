@@ -122,6 +122,7 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeSetChannelGainDb(long handle, int channel, float gainDb);
     private static native boolean nativeApplyQuadProfile(long handle, float[] packedProfile);
     private static native boolean nativeConfigureBassManagement(long handle, boolean enabled, float crossoverHz, int order, float subGainDb);
-    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);\n    private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
+    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);
+    private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
