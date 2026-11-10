@@ -68,6 +68,8 @@ private:
                    kOutputChannelCount> coefficients{};
         std::array<std::array<BiquadState, kQuadEqBandCount>,
                    kOutputChannelCount> states{};
+        std::array<std::array<bool, kQuadEqBandCount>,
+                   kOutputChannelCount> filter_enabled{};
         std::array<float, kOutputChannelCount> gains{{1.0F, 1.0F, 1.0F, 1.0F}};
     };
 
