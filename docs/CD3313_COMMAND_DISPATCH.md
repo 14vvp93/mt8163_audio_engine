@@ -172,7 +172,7 @@ The four speaker bytes are the neutral attenuation settings: FL=`0x80`, FR=`0xA0
 For the reconstructed probe guard write, exact event-0 initialization sequence, 16-page cache model, and master-volume lookup/ramp implementation, see [CD3313 Register Image Emulator](CD3313_REGISTER_IMAGE.md). The extended static-analysis artifact [run 42852859151](https://github.com/14march93/mt8163_audio_engine/actions/runs/42852859151) includes the `dsp_probe` disassembly, ELF section map, relocations, and `.rodata`/`.data` dumps used to recover these values.
 
 
-The bass/treble lookup and transition path is now documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md): `cd3313_equalizer` contains `04 05 06 07 0E 0D 0C 0B 0A 09 08 00 00 00 00`; commands `0x55` and `0x5C` derive an internal transition index 3..10 from their second word and write stepped `0x60`/`0x70` command bytes. The first argument remains unresolved.
+The bass/treble lookup and transition path is now documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md): `cd3313_equalizer` contains `00 01 02 03 04 05 06 07 0E 0D 0C 0B 0A 09 08`; commands `0x55` and `0x5C` derive an internal transition index 3..10 from their second word and write stepped `0x60`/`0x70` command bytes. The first argument remains unresolved.
 
 
 Command `0x56` now has a register-level model for the recovered active-low loudness bit: a nonzero argument clears bit 2 of the `0x47` control byte (enabled, `0x43`), and zero sets it (disabled, `0x47`). Repeated requests for the current state do not emit a redundant write. Other control-byte bits remain opaque.
