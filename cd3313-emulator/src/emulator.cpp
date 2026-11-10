@@ -368,6 +368,20 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
             state_.active_input_channel, gpio393 ? 1U : 0U, 0U
         });
     }
+    if (result.command->id == 0x04) {
+        const std::uint32_t requested = read_le32(result.command->payload, 0);
+        const std::uint32_t channel =
+            requested == 0xFFFFFFFFU ? 6U : requested;
+        if (channel == before.active_input_channel) {
+            // The driver calls set_master_mute() for an active-channel mute
+            // update, which writes GPIO 393 even when its raw level is unchanged.
+            const bool gpio393 = state_.gpio_393_level.value_or(false);
+            input_transition_journal_.push_back(InputTransitionEvent{
+                next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
+                state_.active_input_channel, gpio393 ? 1U : 0U, 0U
+            });
+        }
+    }
     if (result.command->id == 0x55 && state_.bass_register_value.has_value()) {
         const std::uint8_t target = *state_.bass_boost_target;
         if (before.bass_register_value.has_value()) {
