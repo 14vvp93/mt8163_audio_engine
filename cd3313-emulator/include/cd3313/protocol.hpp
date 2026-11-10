@@ -7,11 +7,12 @@
 namespace cd3313 {
 struct CommandSpec {
     std::uint8_t id;
+    // Minimum accepted by the recovered driver command-length table.
     std::uint16_t minimum_size_words;
+    // Minimum needed to safely contain all arguments read by the handler.
+    std::uint16_t required_size_words;
 };
 
-// The second DWARF value is the minimum accepted size-field value.
-// cmd_ioctl copies size_field * 4 bytes, so the field counts 32-bit words.
 const std::vector<CommandSpec>& known_write_commands();
 bool is_dispatch_command(std::uint8_t id);
 
@@ -27,6 +28,7 @@ enum class ParseError {
     UnsupportedDirection,
     UnknownCommand,
     SizeFieldTooSmall,
+    InsufficientArgumentData,
     PayloadSizeMismatch
 };
 
@@ -38,6 +40,7 @@ struct ParseResult {
 
 // Parses the queued command: write-direction ioctl header (LE32), then
 // size_field * 4 bytes of opaque user payload, capped by the driver's 256-byte copy.
+// Unsafe short payloads are rejected even if the driver's own minimum-size table accepts them.
 ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 } // namespace cd3313
