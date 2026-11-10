@@ -15,7 +15,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### PCM DSP core
 
-The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It currently includes 10-band parametric EQ, preamp, balance, limiter and bit-exact bypass. Its host CMake build and tests passed in [GitHub Actions](https://github.com/14march93/mt8163_audio_engine/actions/runs/42801853494). This is not yet connected to the Android audio path.
+The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It currently includes 10 configurable biquad bands (peaking, low/high shelf, high-pass and low-pass), preamp, balance, limiter, bit-exact bypass and block-smoothed filter coefficient transitions. Its host CMake build and tests passed in [GitHub Actions](https://github.com/14march93/mt8163_audio_engine/actions/runs/42801853494). This is not yet connected to the Android audio path.
 
 ## Reverse-engineering documents
 
