@@ -12,6 +12,9 @@ constexpr float kMaxEqGainDb = 18.0F;
 constexpr float kMinEqGainDb = -18.0F;
 constexpr float kMaxPreampDb = 12.0F;
 constexpr float kMinPreampDb = -24.0F;
+constexpr float kMinFrequencyHz = 10.0F;
+constexpr float kMaxShelfSlope = 1.0F;
+constexpr float kMinShelfSlope = 0.1F;
 }
 
 bool Engine::configure(std::uint32_t sample_rate_hz) {
@@ -31,6 +34,9 @@ void Engine::reset() {
             channel = {};
         }
     }
+    for (auto& coefficients : current_coefficients_) {
+        coefficients = {};
+    }
     limiter_envelope_ = 0.0F;
 }
 
@@ -47,29 +53,109 @@ std::int16_t Engine::to_pcm16(float sample) {
     return static_cast<std::int16_t>(std::lrint(scaled));
 }
 
-Engine::BiquadCoefficients Engine::make_peaking(float sample_rate,
-                                                const EqBand& band) {
+Engine::BiquadCoefficients Engine::make_filter(float sample_rate,
+                                               const EqBand& band) {
     BiquadCoefficients c;
-    if (!band.enabled || std::fabs(band.gain_db) < 0.0001F ||
-        band.frequency_hz <= 0.0F || band.frequency_hz >= sample_rate * 0.49F) {
+    if (!band.enabled || band.frequency_hz < kMinFrequencyHz ||
+        band.frequency_hz >= sample_rate * 0.49F) {
         return c;
     }
 
-    const float frequency = clamp(band.frequency_hz, 10.0F, sample_rate * 0.49F);
+    const float frequency = clamp(band.frequency_hz,
+                                  kMinFrequencyHz, sample_rate * 0.49F);
     const float q = clamp(band.q, kMinQ, kMaxQ);
     const float gain_db = clamp(band.gain_db, kMinEqGainDb, kMaxEqGainDb);
-    const float a = std::pow(10.0F, gain_db / 40.0F);
     const float omega = 2.0F * kPi * frequency / sample_rate;
     const float cosine = std::cos(omega);
-    const float alpha = std::sin(omega) / (2.0F * q);
-    const float a0 = 1.0F + alpha / a;
+    const float sine = std::sin(omega);
+    const float a = std::pow(10.0F, gain_db / 40.0F);
+    float a0 = 1.0F;
 
-    c.b0 = (1.0F + alpha * a) / a0;
-    c.b1 = (-2.0F * cosine) / a0;
-    c.b2 = (1.0F - alpha * a) / a0;
-    c.a1 = (-2.0F * cosine) / a0;
-    c.a2 = (1.0F - alpha / a) / a0;
+    switch (band.type) {
+        case FilterType::Peaking: {
+            if (std::fabs(gain_db) < 0.0001F) {
+                return c;
+            }
+            const float alpha = sine / (2.0F * q);
+            a0 = 1.0F + alpha / a;
+            c.b0 = (1.0F + alpha * a) / a0;
+            c.b1 = (-2.0F * cosine) / a0;
+            c.b2 = (1.0F - alpha * a) / a0;
+            c.a1 = (-2.0F * cosine) / a0;
+            c.a2 = (1.0F - alpha / a) / a0;
+            break;
+        }
+        case FilterType::LowShelf:
+        case FilterType::HighShelf: {
+            if (std::fabs(gain_db) < 0.0001F) {
+                return c;
+            }
+            const float slope = clamp(band.shelf_slope,
+                                      kMinShelfSlope, kMaxShelfSlope);
+            const float alpha = (sine * 0.5F) *
+                std::sqrt((a + 1.0F / a) * (1.0F / slope - 1.0F) + 2.0F);
+            const float beta = 2.0F * std::sqrt(a) * alpha;
+            if (band.type == FilterType::LowShelf) {
+                c.b0 = a * ((a + 1.0F) - (a - 1.0F) * cosine + beta);
+                c.b1 = 2.0F * a * ((a - 1.0F) - (a + 1.0F) * cosine);
+                c.b2 = a * ((a + 1.0F) - (a - 1.0F) * cosine - beta);
+                a0 = (a + 1.0F) + (a - 1.0F) * cosine + beta;
+                c.a1 = -2.0F * ((a - 1.0F) + (a + 1.0F) * cosine);
+                c.a2 = (a + 1.0F) + (a - 1.0F) * cosine - beta;
+            } else {
+                c.b0 = a * ((a + 1.0F) + (a - 1.0F) * cosine + beta);
+                c.b1 = -2.0F * a * ((a - 1.0F) + (a + 1.0F) * cosine);
+                c.b2 = a * ((a + 1.0F) + (a - 1.0F) * cosine - beta);
+                a0 = (a + 1.0F) - (a - 1.0F) * cosine + beta;
+                c.a1 = 2.0F * ((a - 1.0F) - (a + 1.0F) * cosine);
+                c.a2 = (a + 1.0F) - (a - 1.0F) * cosine - beta;
+            }
+            c.b0 /= a0;
+            c.b1 /= a0;
+            c.b2 /= a0;
+            c.a1 /= a0;
+            c.a2 /= a0;
+            break;
+        }
+        case FilterType::HighPass:
+        case FilterType::LowPass: {
+            const float alpha = sine / (2.0F * q);
+            if (band.type == FilterType::LowPass) {
+                c.b0 = (1.0F - cosine) * 0.5F;
+                c.b1 = 1.0F - cosine;
+                c.b2 = (1.0F - cosine) * 0.5F;
+            } else {
+                c.b0 = (1.0F + cosine) * 0.5F;
+                c.b1 = -(1.0F + cosine);
+                c.b2 = (1.0F + cosine) * 0.5F;
+            }
+            a0 = 1.0F + alpha;
+            c.a1 = -2.0F * cosine;
+            c.a2 = 1.0F - alpha;
+            c.b0 /= a0;
+            c.b1 /= a0;
+            c.b2 /= a0;
+            c.a1 /= a0;
+            c.a2 /= a0;
+            break;
+        }
+        default:
+            return BiquadCoefficients{};
+    }
     return c;
+}
+
+Engine::BiquadCoefficients Engine::interpolate(
+        const BiquadCoefficients& from,
+        const BiquadCoefficients& to,
+        float amount) {
+    BiquadCoefficients result;
+    result.b0 = from.b0 + (to.b0 - from.b0) * amount;
+    result.b1 = from.b1 + (to.b1 - from.b1) * amount;
+    result.b2 = from.b2 + (to.b2 - from.b2) * amount;
+    result.a1 = from.a1 + (to.a1 - from.a1) * amount;
+    result.a2 = from.a2 + (to.a2 - from.a2) * amount;
+    return result;
 }
 
 float Engine::run_biquad(float input,
@@ -92,6 +178,7 @@ bool Engine::process(const std::int16_t* input,
         if (input != output) {
             std::copy(input, input + frames * 2U, output);
         }
+        reset();
         return true;
     }
 
@@ -102,9 +189,9 @@ bool Engine::process(const std::int16_t* input,
     const float left_gain = balance > 0.0F ? 1.0F - balance : 1.0F;
     const float right_gain = balance < 0.0F ? 1.0F + balance : 1.0F;
 
-    std::array<BiquadCoefficients, kEqBandCount> coefficients{};
+    std::array<BiquadCoefficients, kEqBandCount> target_coefficients{};
     for (std::size_t band = 0; band < kEqBandCount; ++band) {
-        coefficients[band] = make_peaking(sample_rate, parameters.bands[band]);
+        target_coefficients[band] = make_filter(sample_rate, parameters.bands[band]);
     }
 
     const float threshold = clamp(parameters.limiter_threshold, 0.1F, 1.0F);
@@ -114,6 +201,9 @@ bool Engine::process(const std::int16_t* input,
     const float release_coeff = std::exp(-1.0F / (release_ms * 0.001F * sample_rate));
 
     for (std::size_t frame = 0; frame < frames; ++frame) {
+        const float amount = frames > 1U
+            ? static_cast<float>(frame + 1U) / static_cast<float>(frames)
+            : 1.0F;
         const std::size_t index = frame * 2U;
         float left = static_cast<float>(input[index]) / 32768.0F;
         float right = static_cast<float>(input[index + 1U]) / 32768.0F;
@@ -122,8 +212,11 @@ bool Engine::process(const std::int16_t* input,
         right *= preamp * right_gain;
 
         for (std::size_t band = 0; band < kEqBandCount; ++band) {
-            left = run_biquad(left, coefficients[band], states_[band][0]);
-            right = run_biquad(right, coefficients[band], states_[band][1]);
+            const auto coefficients = interpolate(current_coefficients_[band],
+                                                   target_coefficients[band],
+                                                   amount);
+            left = run_biquad(left, coefficients, states_[band][0]);
+            right = run_biquad(right, coefficients, states_[band][1]);
         }
 
         if (parameters.limiter_enabled) {
@@ -137,14 +230,15 @@ bool Engine::process(const std::int16_t* input,
                 left *= gain;
                 right *= gain;
             }
-            // Final safety ceiling prevents integer wrap/clipping even on
-            // sudden transients before the envelope has settled.
             left = clamp(left, -threshold, threshold);
             right = clamp(right, -threshold, threshold);
         }
 
         output[index] = to_pcm16(left);
         output[index + 1U] = to_pcm16(right);
+    }
+    for (std::size_t band = 0; band < kEqBandCount; ++band) {
+        current_coefficients_[band] = target_coefficients[band];
     }
     return true;
 }
