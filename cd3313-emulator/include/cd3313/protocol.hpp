@@ -7,11 +7,11 @@
 namespace cd3313 {
 struct CommandSpec {
     std::uint8_t id;
-    std::uint16_t minimum_size_field;
+    std::uint16_t minimum_size_words;
 };
 
-// The second DWARF value is the minimum encoded size-field threshold,
-// not a proven byte count for the command payload.
+// The second DWARF value is the minimum accepted size-field value.
+// cmd_ioctl copies size_field * 4 bytes, so the field counts 32-bit words.
 const std::vector<CommandSpec>& known_write_commands();
 bool is_dispatch_command(std::uint8_t id);
 
@@ -24,8 +24,10 @@ struct DriverCommand {
 enum class ParseError {
     None,
     TruncatedHeader,
+    UnsupportedDirection,
     UnknownCommand,
-    SizeFieldTooSmall
+    SizeFieldTooSmall,
+    PayloadSizeMismatch
 };
 
 struct ParseResult {
@@ -34,8 +36,8 @@ struct ParseResult {
     explicit operator bool() const { return command.has_value(); }
 };
 
-// Parses the driver's queued command buffer:
-// LE32 header (id in bits 8..15, size field in bits 16..29), then opaque data.
+// Parses the queued command: write-direction ioctl header (LE32), then
+// size_field * 4 bytes of opaque user payload, capped by the driver's 256-byte copy.
 ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 } // namespace cd3313
