@@ -2,6 +2,7 @@
 
 #include "pcm_dsp/engine.hpp"
 #include "pcm_dsp/time_alignment.hpp"
+#include "pcm_dsp/crossover.hpp"
 
 #include <array>
 #include <cstddef>
@@ -25,6 +26,21 @@ struct QuadChannelParameters {
     std::array<EqBand, kQuadEqBandCount> bands{};
 };
 
+// Row-major output matrix: matrix[output * 4 + input]. Default is identity.
+struct QuadOutputRoutingParameters {
+    bool enabled{false};
+    bool bass_management_enabled{false};
+    float crossover_frequency_hz{80.0F};
+    LinkwitzRileyOrder crossover_order{LinkwitzRileyOrder::Db24};
+    float sub_gain_db{0.0F};
+    std::array<float, 16> matrix{{
+        1.0F, 0.0F, 0.0F, 0.0F,
+        0.0F, 1.0F, 0.0F, 0.0F,
+        0.0F, 0.0F, 1.0F, 0.0F,
+        0.0F, 0.0F, 0.0F, 1.0F
+    }};
+};
+
 struct QuadParameters {
     bool enabled{false};
     float preamp_db{0.0F};
@@ -42,12 +58,14 @@ struct QuadParameters {
 class QuadEngine {
 public:
     bool configure(std::uint32_t sample_rate_hz);
+    bool configure_routing(const QuadOutputRoutingParameters& parameters);
     void reset();
 
     bool process(const float* input,
                  float* output,
                  std::size_t frames,
-                 const QuadParameters& parameters);
+                 const QuadParameters& parameters,
+                 float* sub_output = nullptr);
 
     std::uint32_t sample_rate() const { return sample_rate_hz_; }
 
@@ -90,6 +108,9 @@ private:
     std::size_t active_bank_{0};
     std::array<float, kOutputChannelCount> limiter_envelope_{};
     QuadTimeAlignment time_alignment_{};
+    QuadOutputRoutingParameters routing_{};
+    std::array<LinkwitzRileyCrossover, kOutputChannelCount> crossovers_{};
+    float sub_limiter_envelope_{0.0F};
 };
 
 } // namespace pcm_dsp
