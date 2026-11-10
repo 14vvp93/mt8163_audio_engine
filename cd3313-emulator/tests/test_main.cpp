@@ -16,6 +16,22 @@ int main() {
     try {
         check(known_write_commands().size() == 12,
               "expected 12 recovered command specifications");
+        constexpr std::array<std::uint8_t, 14> accepted_dispatch_ids{{
+            0x01, 0x03, 0x04, 0x10, 0x11, 0x12, 0x15,
+            0x20, 0x55, 0x56, 0x5C, 0xA3, 0xF0, 0xF1
+        }};
+        for (const auto id : accepted_dispatch_ids) {
+            check(is_dispatch_command(id),
+                  "every recovered normal/special command ID is dispatched");
+        }
+        constexpr std::array<std::uint8_t, 11> enum_only_write_ids{{
+            0x02, 0x50, 0x57, 0x58, 0x59, 0x5B,
+            0x60, 0xA0, 0xA1, 0xA2, 0x7F
+        }};
+        for (const auto id : enum_only_write_ids) {
+            check(!is_dispatch_command(id),
+                  "enum-only or unknown IDs must not be treated as dispatched");
+        }
         check(read_device_identifier_payload() ==
                   std::array<std::uint8_t, 8>{{'c', 'd', '3', '3', '1', '3', 0U, 0U}},
               "0xF0 read ioctl returns the static cd3313 identifier bytes");
