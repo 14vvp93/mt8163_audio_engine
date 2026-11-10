@@ -202,6 +202,30 @@ int main() {
         check(aligned[2] == 1.0F && aligned[3] == 1.0F,
               "rear channels remain independently undelayed");
 
+        // QuadEngine integrates time alignment before the output limiter.
+        quad.reset();
+        pcm_dsp::QuadParameters aligned_parameters;
+        aligned_parameters.enabled = true;
+        aligned_parameters.limiter_enabled = false;
+        aligned_parameters.channels[1].delay_ms = 1.0F;
+        std::vector<float> quad_silence(64U * 4U, 0.0F);
+        std::vector<float> quad_aligned(64U * 4U, 0.0F);
+        check(quad.process(quad_silence.data(), quad_aligned.data(), 64U,
+                           aligned_parameters),
+              "QuadEngine delay transition block succeeds");
+        std::vector<float> quad_impulse(64U * 4U, 0.0F);
+        quad_impulse[0] = quad_impulse[1] =
+            quad_impulse[2] = quad_impulse[3] = 1.0F;
+        check(quad.process(quad_impulse.data(), quad_aligned.data(), 64U,
+                           aligned_parameters),
+              "QuadEngine integrated delay processes impulse");
+        check(quad_aligned[0] == 1.0F && quad_aligned[2] == 1.0F &&
+              quad_aligned[3] == 1.0F,
+              "QuadEngine undelayed channels remain immediate");
+        check(quad_aligned[1] == 0.0F &&
+              quad_aligned[48U * 4U + 1U] > 0.99F,
+              "QuadEngine FR alignment is exactly 1 ms at 48 kHz");
+
         // Verify Linkwitz-Riley branches sum to unity after settling.
         for (const auto order : {
                 pcm_dsp::LinkwitzRileyOrder::Db12,
