@@ -41,6 +41,9 @@ The callback therefore receives a buffer with the original request word at offse
 
 The callback extracts the ID and size from the prepended request word. It does not receive a second nested header.
 
+Important stage distinction: cmd_ioctl() itself does not validate the command ID against cmd_len_list and does not enforce the per-command minimum size. For write direction it copies the capped payload, logs it, and queues event ID 1. The callback then performs command-specific dispatch and applies cmd_len_list checks for the 12 listed commands. The extra 0x56 and 0xA3 branches are handled outside that 12-pair table. Therefore the table is callback-side validation, not an ioctl-entry whitelist. Unknown IDs can reach the callback and must be understood from its default branch; do not treat the ioctl wrapper as rejecting them.
+
+
 ### Important length-validation distinction
 
 The DWARF cmd_len_list is exactly 12 (command ID, minimum size-field) pairs:
