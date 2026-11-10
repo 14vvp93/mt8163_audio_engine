@@ -22,7 +22,7 @@ jobs:
       - name: Install analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y binutils file python3
+          sudo apt-get install -y binutils binutils-arm-linux-gnueabi file python3
 
       - name: Validate module
         run: |
@@ -49,8 +49,8 @@ jobs:
           run_report dwarf-info.txt readelf --debug-dump=info cd3313.ko
           run_report symbols-nm.txt nm -an cd3313.ko
           run_report strings.txt strings -a -n 4 -t x cd3313.ko
-          run_report disassembly-relocations.txt objdump -drwC cd3313.ko
-          run_report section-bytes.txt objdump -s cd3313.ko
+          run_report disassembly-relocations.txt arm-linux-gnueabi-objdump -drwC cd3313.ko
+          run_report section-bytes.txt arm-linux-gnueabi-objdump -s cd3313.ko
           true
           {
             echo "# CD3313 module analysis"
