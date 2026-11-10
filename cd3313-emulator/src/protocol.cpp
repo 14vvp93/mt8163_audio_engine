@@ -11,29 +11,38 @@ std::size_t copied_payload_size(std::uint16_t size_field) {
     return std::min(requested, kMaxCopiedPayloadBytes);
 }
 
-std::uint16_t minimum_size_words(std::uint8_t id) {
-    if (id == 0x56 || id == 0xA3) return 1;
+const CommandSpec* find_command(std::uint8_t id) {
     const auto& commands = known_write_commands();
     const auto it = std::find_if(commands.begin(), commands.end(),
         [&](const CommandSpec& spec) { return spec.id == id; });
-    return it == commands.end() ? 0 : it->minimum_size_words;
+    return it == commands.end() ? nullptr : &*it;
+}
+
+std::uint16_t minimum_size_words(std::uint8_t id) {
+    if (id == 0x56 || id == 0xA3) return 1;
+    const auto* spec = find_command(id);
+    return spec == nullptr ? 0 : spec->minimum_size_words;
+}
+
+std::uint16_t required_size_words(std::uint8_t id) {
+    if (id == 0x56 || id == 0xA3) return 1;
+    const auto* spec = find_command(id);
+    return spec == nullptr ? 0 : spec->required_size_words;
 }
 } // namespace
 
 const std::vector<CommandSpec>& known_write_commands() {
     static const std::vector<CommandSpec> commands{
-        {0x01, 1}, {0x03, 3}, {0x04, 3}, {0x10, 1},
-        {0x11, 2}, {0x12, 2}, {0x15, 2}, {0x20, 3},
-        {0x55, 2}, {0x5C, 2}, {0xF0, 1}, {0xF1, 1}
+        {0x01, 1, 1}, {0x03, 3, 3}, {0x04, 3, 3}, {0x10, 1, 1},
+        {0x11, 2, 2}, {0x12, 2, 2}, {0x15, 2, 4}, {0x20, 3, 3},
+        {0x55, 2, 2}, {0x5C, 2, 2}, {0xF0, 1, 1}, {0xF1, 1, 1}
     };
     return commands;
 }
 
 bool is_dispatch_command(std::uint8_t id) {
     if (id == 0x56 || id == 0xA3) return true;
-    const auto& commands = known_write_commands();
-    return std::any_of(commands.begin(), commands.end(),
-        [&](const CommandSpec& spec) { return spec.id == id; });
+    return find_command(id) != nullptr;
 }
 
 ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
@@ -54,6 +63,8 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
 
     if (size_field < minimum_size_words(id))
         return {{}, ParseError::SizeFieldTooSmall};
+    if (size_field < required_size_words(id))
+        return {{}, ParseError::InsufficientArgumentData};
 
     const std::size_t expected = copied_payload_size(size_field);
     if (bytes.size() - 4U != expected)
@@ -73,6 +84,8 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
         throw std::invalid_argument("CD3313 size field exceeds 14 bits");
     if (command.size_field < minimum_size_words(command.id))
         throw std::invalid_argument("CD3313 size field below recovered minimum");
+    if (command.size_field < required_size_words(command.id))
+        throw std::invalid_argument("CD3313 payload is too short for handler arguments");
 
     const std::size_t expected = copied_payload_size(command.size_field);
     if (command.payload.size() != expected)
