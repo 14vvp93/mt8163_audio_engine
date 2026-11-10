@@ -22,7 +22,7 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 ## Current scope
 
 Implemented:
-- four-channel Balance/Fader percentage-to-hardware-level mapping;
+- four-channel Balance/Fader mapping and independent rear-level compensation (implemented by front attenuation, since the chip cannot boost);
 - CD3313 speaker register-byte encoder for FL/FR/RL/RR;
 - little-endian ioctl request-word parsing/encoding;
 - write-direction validation;
