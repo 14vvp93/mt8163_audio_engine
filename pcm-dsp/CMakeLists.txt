@@ -6,6 +6,7 @@ add_library(mt8163_pcm_dsp STATIC
     src/quad_engine.cpp
     src/time_alignment.cpp
     src/crossover.cpp
+    src/eq_layout.cpp
 )
 set_target_properties(mt8163_pcm_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mt8163_pcm_dsp PUBLIC include)
@@ -24,6 +25,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(pcm_dsp_stability_tests PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_stability_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_stability_tests COMMAND pcm_dsp_stability_tests)
+
+    add_executable(pcm_dsp_eq_layout_tests tests/eq_layout_test.cpp)
+    target_link_libraries(pcm_dsp_eq_layout_tests PRIVATE mt8163_pcm_dsp)
+    target_compile_options(pcm_dsp_eq_layout_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME pcm_dsp_eq_layout_tests COMMAND pcm_dsp_eq_layout_tests)
 endif()
 
 option(PCM_DSP_BUILD_ANDROID_JNI "Build Android JNI bridge" OFF)
