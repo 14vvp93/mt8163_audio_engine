@@ -24,6 +24,7 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 - [CD3313 ioctl and event-queue ABI](docs/CD3313_IOCTL_ABI.md)
 - [CD3313 command dispatch map](docs/CD3313_COMMAND_DISPATCH.md)
 - [CD3313 register image and datasheet correlation](docs/CD3313_REGISTER_IMAGE.md)
+- [CD3313 static driver risk audit](docs/CD3313_DRIVER_RISK_AUDIT.md)
 - [CD3313 userspace-client scan](docs/CD3313_USERSPACE_CLIENT_SCAN.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
