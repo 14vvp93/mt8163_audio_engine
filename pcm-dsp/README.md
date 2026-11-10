@@ -54,13 +54,17 @@ The host workflow builds the library with CMake and runs tests for stereo behavi
 
 ### Time alignment
 
-\`QuadTimeAlignment\` provides independent FL/FR/RL/RR delays from 0 to 20 ms at 44.1/48 kHz. It uses fixed-size ring buffers, performs no allocation or locking in process(), and crossfades delay-tap changes over one block.
+`QuadTimeAlignment` provides independent FL/FR/RL/RR delays from 0 to 20 ms at 44.1/48 kHz. It uses fixed-size ring buffers, performs no allocation or locking in process(), and crossfades delay-tap changes over one block.
 
 ### Linkwitz-Riley crossover
 
-\`LinkwitzRileyCrossover\` is a mono splitter; instantiate one per channel. It supports 12, 24, 36 and 48 dB/octave Linkwitz-Riley alignments built from cascaded Butterworth sections. The high branch polarity is corrected for odd prototype order. The branches are tested for a flat summed response at the crossover frequency.
+`LinkwitzRileyCrossover` is a mono splitter; instantiate one per channel. It supports 12, 24, 36 and 48 dB/octave Linkwitz-Riley alignments built from cascaded Butterworth sections. The high branch polarity is corrected for odd prototype order. The branches are tested for a flat summed response at the crossover frequency.
 
 The crossover is integrated into the optional QuadEngine bass-management stage. The output matrix is applied after crossover splitting and before the final output limiters. Configure routing outside the real-time process callback with `configure_routing()`. When bass management is enabled, pass a separate mono `sub_output` buffer to `process()`; the call fails rather than silently discarding low-frequency content if that buffer is missing. The default routing remains disabled and therefore preserves the four-channel signal path.
+
+### Multiband dynamics
+
+`MultibandDynamicsProcessor` splits each FL/FR/RL/RR channel into low, mid and high bands using two cascaded Linkwitz-Riley 24 dB/octave crossovers. Each of the 12 channel/band compressors has independent threshold, ratio, attack, release, soft-knee and makeup-gain settings. The defaults are bypassed. Processing is interleaved Float32, supports in-place operation, sanitizes non-finite input, and performs no heap allocation or locking. Configure outside the audio callback; reconfiguration resets crossover and detector state. This module is standalone and is not yet inserted into `QuadEngine` or the Android audio path.
 
 
 ## Android JNI bring-up bridge
