@@ -130,6 +130,16 @@ void Emulator::write_raw_command_byte(std::uint8_t command_byte) {
     record_command_byte(command_byte, RegisterWriteSource::RawCommandByte);
 }
 
+void Emulator::apply_recovered_probe_setup() {
+    // dsp_probe retries this 0x3F write up to three times on I2C failure.
+    // The offline model records one successful attempt; it does not emulate bus errors.
+    record_command_byte(0x3F, RegisterWriteSource::ProbeGuardWrite);
+    state_.master_volume_step = 0U;
+    state_.master_volume_register_value = 0x3FU;
+    state_.master_volume_percentage = 100U;
+    state_.master_mute_reason_mask |= (1U << 31U);
+}
+
 void Emulator::apply_recovered_initialization_sequence() {
     for (unsigned pass = 0; pass < 2U; ++pass) {
         for (const auto command_byte : kRecoveredInitializationBytes)
@@ -138,9 +148,6 @@ void Emulator::apply_recovered_initialization_sequence() {
     // event_callback(event=0) writes the control byte at offset +17 once more.
     record_command_byte(0x47, RegisterWriteSource::InitializationSequence);
 
-    state_.master_volume_step = 0U;
-    state_.master_volume_register_value = 0x3FU;
-    state_.master_volume_percentage = 100U;
     state_.channel_level_indices = std::array<std::uint8_t, 4>{{15, 15, 15, 15}};
     state_.speaker_register_bytes = std::array<std::uint8_t, 4>{{
         0x80, 0xA0, 0xC0, 0xE0
