@@ -178,9 +178,19 @@ int main() {
               "loudness command is accepted");
         check(state_emulator.state().loudness_enabled == true,
               "loudness state is modeled");
-        check(state_emulator.journal().size() == 9U &&
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(DriverCommand{0xA3, 1, {1, 0, 0, 0}}))),
+              "subwoofer GPIO request is accepted");
+        check(state_emulator.state().subwoofer_gpio_enabled == true,
+              "subwoofer GPIO request state is modeled without claiming physical routing");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(DriverCommand{0xF1, 1, {1, 0, 0, 0}}))),
+              "DSP power request is accepted");
+        check(state_emulator.state().dsp_awake == true,
+              "DSP awake request state is modeled");
+        check(state_emulator.journal().size() == 11U &&
               state_emulator.journal().front().sequence == 1U &&
-              state_emulator.journal().back().sequence == 9U,
+              state_emulator.journal().back().sequence == 11U,
               "journal sequence IDs are deterministic and monotonic");
         check(!state_emulator.journal().front().before.master_volume_step.has_value() &&
               state_emulator.journal().front().after.master_volume_step == 23U,
@@ -193,7 +203,7 @@ int main() {
               "state model rejects an out-of-range raw volume command");
         check(state_emulator.state().master_volume_step ==
                   before_invalid.master_volume_step &&
-              state_emulator.journal().size() == 9U,
+              state_emulator.journal().size() == 11U,
               "rejected transition is atomic and is not journaled");
 
         Emulator unknown_command_emulator;
