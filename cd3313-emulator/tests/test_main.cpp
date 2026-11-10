@@ -685,6 +685,51 @@ int main() {
               startup_emulator.register_journal().empty(),
               "reset clears recovered startup image and write history");
 
+        Emulator shutdown_default;
+        shutdown_default.apply_recovered_shutdown();
+        check(shutdown_default.state().shutdown_started &&
+              (shutdown_default.state().master_mute_reason_mask & (1U << 30U)) != 0U &&
+              shutdown_default.state().gpio_393_level == true &&
+              shutdown_default.shutdown_journal().size() == 4U,
+              "shutdown sets its flag and reason 30 and computes GPIO high when HFP is inactive");
+        check(shutdown_default.shutdown_journal()[0].kind == ShutdownEventKind::Gpio393Write &&
+              shutdown_default.shutdown_journal()[0].value == 1U &&
+              shutdown_default.shutdown_journal()[1].kind == ShutdownEventKind::RemoveQueuedEvent &&
+              shutdown_default.shutdown_journal()[1].value == 0U &&
+              shutdown_default.shutdown_journal()[2].kind == ShutdownEventKind::RemoveQueuedEvent &&
+              shutdown_default.shutdown_journal()[2].value == 1U &&
+              shutdown_default.shutdown_journal()[3].kind == ShutdownEventKind::FinalI2cWrite &&
+              shutdown_default.shutdown_journal()[3].value == 0x3FU &&
+              shutdown_default.register_journal().size() == 1U &&
+              shutdown_default.register_journal().back().source == RegisterWriteSource::ShutdownFinalWrite &&
+              shutdown_default.register_journal().back().command_byte == 0x3FU,
+              "shutdown journal preserves GPIO, event-removal, and final I2C write order");
+
+        Emulator shutdown_hfp;
+        check(static_cast<bool>(shutdown_hfp.write(encode_driver_command(
+                  make_master_mute_command(true, 2)))),
+              "shutdown HFP case enables ACC latch");
+        check(static_cast<bool>(shutdown_hfp.write(encode_driver_command(DriverCommand{
+                  0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
+              shutdown_hfp.state().hfp_active,
+              "shutdown HFP case activates HFP state");
+        shutdown_hfp.apply_recovered_shutdown();
+        check(shutdown_hfp.state().gpio_393_level == false,
+              "shutdown leaves GPIO low when HFP and ACC are active and reason 24 is clear");
+
+        Emulator shutdown_reason24;
+        check(static_cast<bool>(shutdown_reason24.write(encode_driver_command(
+                  make_master_mute_command(true, 2)))),
+              "shutdown reason-24 case enables ACC latch");
+        check(static_cast<bool>(shutdown_reason24.write(encode_driver_command(DriverCommand{
+                  0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
+              static_cast<bool>(shutdown_reason24.write(encode_driver_command(
+                  make_master_mute_command(true, 24)))),
+              "shutdown reason-24 case activates HFP and reason 24");
+        shutdown_reason24.apply_recovered_shutdown();
+        check(shutdown_reason24.state().gpio_393_level == true,
+              "shutdown reason 24 forces GPIO high even while HFP and ACC are active");
+
         Emulator effects_emulator;
         effects_emulator.apply_recovered_probe_setup();
         effects_emulator.apply_recovered_initialization_sequence();
