@@ -47,6 +47,22 @@ The public command parser accepts master-volume steps 0..40 and percentage value
 
 The module's initialized `volume_percentage` data value is 100. The driver's zero-initialized master-volume step is 0; the probe guard byte is `0x3F`.
 
+## Bass and treble transition table
+
+The ELF `.rodata` symbol `cd3313_equalizer` begins at offset `0x8C` and contains these 15 bytes:
+
+```
+04 05 06 07 0E 0D 0C 0B 0A 09 08 00 00 00 00
+```
+
+For commands `0x55` (bass) and `0x5C` (treble), the second argument is decremented, clamped to 0..14, divided by two, and offset by three:
+
+`target_index = floor(min(max(argument - 1, 0), 14) / 2) + 3`
+
+The resulting transition index is 3..10. The first argument remains opaque because its meaning is not established. The current index is recovered from the current register byte's low nibble: values 0..7 map directly, while values 8..15 map to `22 - nibble`. Each transition step writes `0x60 | cd3313_equalizer[index]` for bass or `0x70 | cd3313_equalizer[index]` for treble, with a 20 ms delay in the driver. The emulator records the byte ramp when the previous register byte is known; otherwise it records only the final target byte.
+
+The startup bytes `0x6F` and `0x7F` are preserved as the initial bass and treble register values. The table and transition mapping are reconstructed from the disassembly; the first command argument and higher-level UI scale remain unresolved.
+
 ## Command-page cache and write journal
 
 The cache has 16 optional entries. For each observed command byte, page = `byte >> 4`; the corresponding cache entry stores the most recent byte. It is deliberately called a command-page cache, not a physical register-address map.
