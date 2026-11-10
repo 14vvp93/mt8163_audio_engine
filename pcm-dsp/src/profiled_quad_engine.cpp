@@ -83,7 +83,6 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
         return false;
     }
     const int active = active_slot_.load(std::memory_order_acquire);
-    const int pending = pending_slot_.load(std::memory_order_acquire);
     const int current_target = transition_target_.load(std::memory_order_acquire);
     const bool active_needs_sub =
         profiles_[static_cast<std::size_t>(active)].routing.bass_management_enabled;
