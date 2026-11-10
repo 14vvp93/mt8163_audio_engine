@@ -1,42 +1,46 @@
-# PCM DSP core (initial stage)
+# PCM DSP core
 
 This library is an independent, host-buildable C++17 DSP core. It is not yet connected to AudioFlinger or the MTK HAL.
 
-## Implemented
+## Implemented cores
 
-- interleaved signed PCM16 stereo processing;
-- 44.1 kHz and 48 kHz configuration;
-- 10 configurable biquad bands:
-  - RBJ peaking EQ;
-  - low-shelf and high-shelf;
-  - second-order high-pass and low-pass;
-- shelf slope control (RBJ S parameter, clamped to 0.1..1.0);
-- preamp gain;
-- stereo balance;
-- linked stereo peak limiter with attack/release envelope and hard safety ceiling;
-- exact bit-preserving bypass when disabled;
-- fixed filter state and no heap allocation in the processing method;
-- linear coefficient transitions across each processing block when EQ parameters change.
+### Legacy stereo core
+
+- interleaved signed PCM16 stereo;
+- 44.1 kHz and 48 kHz;
+- 10 configurable RBJ biquad bands: peaking, low/high shelf, second-order HPF/LPF;
+- preamp, balance, linked stereo peak limiter;
+- bit-exact bypass and no heap allocation in the processing method.
+
+### Four-channel Float32 foundation
+
+- interleaved Float32 FL/FR/RL/RR processing;
+- 44.1 kHz and 48 kHz;
+- 32 independent biquad slots per channel (128 possible channel/filter stages);
+- per-channel gain and independent filter settings;
+- peaking, low/high shelf, second-order HPF/LPF;
+- per-channel peak envelope and configurable limiter ceiling;
+- bit-exact Float32 bypass;
+- no heap allocation or locks in the processing method;
+- non-finite input samples are treated as silence while DSP is enabled;
+- parameter changes use a dual-filter-bank state copy and output crossfade instead of linearly interpolating normalized denominator coefficients.
+
+The dual-bank transition is intentionally conservative: the new filter bank starts from a copy of the active filter states, and old/new outputs are crossfaded over the supplied block. This avoids relying on linear interpolation of IIR denominator coefficients, which can produce unstable intermediate filters for some parameter changes. Callers should provide reasonably sized audio blocks; transition duration is one block.
 
 ## Real-time contract
 
-The processing method does not allocate memory or acquire locks. The caller must pass an immutable Parameters snapshot for the duration of each call. Parameter ownership/snapshot transfer will be implemented in the Android adapter, not hidden inside the audio callback.
+Call configure() before processing. A sample-rate change resets filter and limiter state. Unsupported rates are rejected. Parameters must remain immutable for the duration of each process call. Parameter snapshots and thread-safe handoff belong in the future Android adapter, not in the audio callback.
 
-Call configure() before processing. A sample-rate change resets all filter and limiter state. Unsupported rates are rejected.
-
-Filter coefficients are normalized before processing. Filter frequency is constrained below Nyquist, Q and gain are clamped, and shelf slope is constrained to the RBJ-supported range. Peaking and shelf filters with zero gain reduce to identity; HPF/LPF do not use gain_db.
-
-When parameters change, the current normalized biquad coefficients are linearly interpolated to the new target over the next supplied processing block. This avoids an instantaneous coefficient step. It is a first-stage transition strategy; device listening and numerical stress tests are still required before production use.
+The Float32 API expects normalized samples. When limiting is enabled, each channel is constrained to the configured ceiling. With limiting disabled, output is still hard-clamped to [-1, 1] before handing samples to a PCM sink.
 
 ## Current limits
 
-- Only PCM16 stereo is supported.
-- The first integration target is primary media/music output.
-- No AudioFlinger effect registration, HAL patch, global hook, SCO/call processing, microphone path, resampling, multichannel routing, or CD3313 control is implemented here.
-- The limiter is an initial safety-oriented peak limiter, not a final mastering limiter.
-- Preamp and balance currently update at block boundaries; smoothing them is a separate follow-up.
+- The Float32 four-channel core is a processing foundation, not an Android integration.
+- The legacy stereo PCM16 API remains available and unchanged.
+- No AudioFlinger effect registration, HAL adapter, global hook, SCO/call processing, microphone path, resampling, CD3313 control, crossover module, time alignment, dynamic EQ, or multiband compression is connected yet.
+- The limiter is a safety limiter, not a mastering-grade loudness processor.
 - No Android/head-unit runtime or audible validation has been performed.
 
 ## Host tests
 
-The test-pcm-dsp.yml workflow builds the library with CMake and runs host-side tests for bypass, preamp, EQ, limiter ceiling, supported sample rates, all five filter types, and coefficient transitions.
+The host workflow builds the library with CMake and runs tests for stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling.
