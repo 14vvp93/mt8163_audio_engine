@@ -18,6 +18,10 @@ constexpr std::array<std::uint8_t, 16> kSpeakerAttenuationCodes{{
     0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x00
 }};
 
+constexpr std::array<std::uint8_t, 8> kRecoveredInitializationBytes{{
+    0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
+}};
+
 bool apply_command(const DriverCommand& command, EmulatorState& state,
                    bool& modeled) {
     const auto& payload = command.payload;
@@ -124,6 +128,24 @@ void Emulator::record_command_byte(std::uint8_t command_byte,
 
 void Emulator::write_raw_command_byte(std::uint8_t command_byte) {
     record_command_byte(command_byte, RegisterWriteSource::RawCommandByte);
+}
+
+void Emulator::apply_recovered_initialization_sequence() {
+    for (unsigned pass = 0; pass < 2U; ++pass) {
+        for (const auto command_byte : kRecoveredInitializationBytes)
+            record_command_byte(command_byte, RegisterWriteSource::InitializationSequence);
+    }
+    // event_callback(event=0) writes the control byte at offset +17 once more.
+    record_command_byte(0x47, RegisterWriteSource::InitializationSequence);
+
+    state_.master_volume_step = 0U;
+    state_.master_volume_register_value = 0x3FU;
+    state_.master_volume_percentage = 100U;
+    state_.channel_level_indices = std::array<std::uint8_t, 4>{{15, 15, 15, 15}};
+    state_.speaker_register_bytes = std::array<std::uint8_t, 4>{{
+        0x80, 0xA0, 0xC0, 0xE0
+    }};
+    state_.initialization_sequence_applied = true;
 }
 
 void Emulator::reset() {
