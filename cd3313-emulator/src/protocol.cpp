@@ -12,35 +12,60 @@ const std::vector<CommandSpec>& known_write_commands() {
     return commands;
 }
 
-ParseResult parse_write_packet(const std::vector<std::uint8_t>& bytes) {
-    if (bytes.empty()) return {{}, ParseError::EmptyPacket};
-
+bool is_dispatch_command(std::uint8_t id) {
+    if (id == 0x56 || id == 0xA3) return true;
     const auto& commands = known_write_commands();
-    const auto it = std::find_if(commands.begin(), commands.end(),
-        [&](const CommandSpec& spec) { return spec.id == bytes.front(); });
-    if (it == commands.end()) return {{}, ParseError::UnknownCommand};
-
-    if (bytes.size() != static_cast<std::size_t>(it->payload_size) + 1U)
-        return {{}, ParseError::InvalidLength};
-
-    Packet packet;
-    packet.command = bytes.front();
-    packet.payload.assign(bytes.begin() + 1, bytes.end());
-    return {packet, ParseError::None};
+    return std::any_of(commands.begin(), commands.end(),
+        [&](const CommandSpec& spec) { return spec.id == id; });
 }
 
-std::vector<std::uint8_t> encode_write_packet(const Packet& packet) {
-    const auto& commands = known_write_commands();
-    const auto it = std::find_if(commands.begin(), commands.end(),
-        [&](const CommandSpec& spec) { return spec.id == packet.command; });
-    if (it == commands.end()) throw std::invalid_argument("unknown CD3313 command");
-    if (packet.payload.size() != it->payload_size)
-        throw std::invalid_argument("invalid CD3313 payload length");
+ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
+    if (bytes.size() < 4U) return {{}, ParseError::TruncatedHeader};
 
-    std::vector<std::uint8_t> bytes;
-    bytes.reserve(packet.payload.size() + 1U);
-    bytes.push_back(packet.command);
-    bytes.insert(bytes.end(), packet.payload.begin(), packet.payload.end());
+    const std::uint32_t header =
+        static_cast<std::uint32_t>(bytes[0]) |
+        (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+        (static_cast<std::uint32_t>(bytes[2]) << 16U) |
+        (static_cast<std::uint32_t>(bytes[3]) << 24U);
+
+    const auto id = static_cast<std::uint8_t>((header >> 8U) & 0xFFU);
+    const auto size_field = static_cast<std::uint16_t>((header >> 16U) & 0x3FFFU);
+    if (!is_dispatch_command(id)) return {{}, ParseError::UnknownCommand};
+
+    const auto& specs = known_write_commands();
+    const auto it = std::find_if(specs.begin(), specs.end(),
+        [&](const CommandSpec& spec) { return spec.id == id; });
+    if (it != specs.end() && size_field < it->minimum_size_field)
+        return {{}, ParseError::SizeFieldTooSmall};
+
+    DriverCommand command;
+    command.id = id;
+    command.size_field = size_field;
+    command.payload.assign(bytes.begin() + 4, bytes.end());
+    return {command, ParseError::None};
+}
+
+std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
+    if (!is_dispatch_command(command.id))
+        throw std::invalid_argument("unknown CD3313 driver command");
+
+    const auto& specs = known_write_commands();
+    const auto it = std::find_if(specs.begin(), specs.end(),
+        [&](const CommandSpec& spec) { return spec.id == command.id; });
+    if (it != specs.end() && command.size_field < it->minimum_size_field)
+        throw std::invalid_argument("CD3313 size field below recovered minimum");
+
+    const std::uint32_t header =
+        (static_cast<std::uint32_t>(command.id) << 8U) |
+        ((static_cast<std::uint32_t>(command.size_field) & 0x3FFFU) << 16U);
+
+    std::vector<std::uint8_t> bytes{
+        static_cast<std::uint8_t>(header & 0xFFU),
+        static_cast<std::uint8_t>((header >> 8U) & 0xFFU),
+        static_cast<std::uint8_t>((header >> 16U) & 0xFFU),
+        static_cast<std::uint8_t>((header >> 24U) & 0xFFU)
+    };
+    bytes.insert(bytes.end(), command.payload.begin(), command.payload.end());
     return bytes;
 }
 } // namespace cd3313
