@@ -6,7 +6,8 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;\nimport android.widget.ScrollView;
+import android.widget.SeekBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +24,12 @@ public final class MainActivity extends Activity {
     private SeekBar balanceBar;
     private SeekBar faderBar;
     private TextView balanceLabel;
-    private TextView faderLabel;\n    private final float[][] eqGainsDb = new float[CHANNELS][32];\n    private final TextView[] eqBandLabels = new TextView[32];\n    private final SeekBar[] eqBandBars = new SeekBar[32];\n    private int selectedEqChannel = 0;\n    private TextView eqChannelTitle;
+    private TextView faderLabel;
+    private final float[][] eqGainsDb = new float[CHANNELS][32];
+    private final TextView[] eqBandLabels = new TextView[32];
+    private final SeekBar[] eqBandBars = new SeekBar[32];
+    private int selectedEqChannel = 0;
+    private TextView eqChannelTitle;
     private NativeDsp dsp;
     private TextView status;
     private boolean dspEnabled = true;
