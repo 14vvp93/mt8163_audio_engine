@@ -279,7 +279,7 @@ std::optional<std::string> format_driver_read_report(const EmulatorState& state)
                << descriptions[i];
     }
 
-    report << std::dec << "master channel : "
+    report << std::dec << std::setfill(' ') << "master channel : "
            << input_channel_name(static_cast<std::uint8_t>(state.current_input_channel))
            << '(' << state.current_input_channel << ")\\n"
            << "master volume   : " << *state.master_volume_step << "\\n"
