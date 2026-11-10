@@ -100,6 +100,9 @@ The first eight .rodata bytes are:
 
 Thus this read request returns a static cd3313 identifier string, not a live DSP status structure or a hardware version readback. Other read IDs take the error branch. The read path's exact userspace ioctl macro and low-byte _IOC_NR value are not recovered.
 
+The same ID 0xF0 in write direction is a different callback branch. No state-changing operation was recovered there: a zero-word payload reaches the driver's length-error logger, while a nonzero-size object is freed/dropped. Do not use write-direction 0xF0 as a substitute for the read-direction identifier query.
+
+
 ## 4. Event-queue API declarations recovered from DWARF
 
 The module's DWARF contains external declarations for the imported queue API. The raw DWARF line table resolves the declaration file to the vendor build-tree path:
