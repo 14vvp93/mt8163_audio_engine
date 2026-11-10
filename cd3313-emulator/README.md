@@ -58,3 +58,9 @@ Static analysis of `dsp_probe()` and `event_callback(event=0)` recovered:
 The emulator exposes `apply_recovered_probe_setup()` and `apply_recovered_initialization_sequence()` for these two phases. The latter restores neutral FL/FR/RL/RR attenuation bytes (`80 A0 C0 E0`), bass/treble bytes (`6F`/`7F`), and the initial loudness control byte (`47`).
 
 See [the command-dispatch reconstruction](../docs/CD3313_COMMAND_DISPATCH.md), [the register-image reconstruction](../docs/CD3313_REGISTER_IMAGE.md), and [the protocol reconstruction](../docs/CD3313_PROTOCOL_RECONSTRUCTION.md) for evidence and confidence labels.
+
+### Input switch transition model
+
+The emulator reconstructs the ordered set_input_channel() sequence: ramp attenuation to 0x3F in three-code increments, write the input selector, request GPIO 396/398 levels, update master mute reason 31, then restore the requested master volume unless the selected input is muted while HFP is inactive. The ordinary selector path uses the driver's 8 ms delay; mixing enable selects channel 1 with a zero delay. Inspect Emulator::input_transition_journal() for ordered attenuation, selector, GPIO, mute, and delay events.
+
+This is an offline static model. Delays are nominal driver arguments, not measured bus timings, and GPIO events are requested raw output levels rather than hardware readback.
