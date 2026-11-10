@@ -224,6 +224,11 @@ int main() {
               (*channel_state.speaker_register_bytes ==
                   std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC4, 0xFF}}),
               "speaker register image uses recovered prefixes and table");
+        check(channel_state.reg_bufs_cache[3] == 0x80U &&
+              channel_state.reg_bufs_cache[4] == 0xA2U &&
+              channel_state.reg_bufs_cache[1] == 0xC4U &&
+              channel_state.reg_bufs_cache[2] == 0xFFU,
+              "four speaker bytes update the exact driver reg_bufs slots");
 
         check(channel_state.command_page_cache[0x8].has_value() &&
               *channel_state.command_page_cache[0x8] == 0x80 &&
@@ -256,9 +261,33 @@ int main() {
         check(state_emulator.register_journal().back().previous_command_byte == 0x6A &&
               *state_emulator.state().command_page_cache[0x6] == 0x6B,
               "register journal preserves the previous cached byte on overwrite");
+        check(state_emulator.register_journal().back().cache_slot == 6U &&
+              state_emulator.register_journal().back().previous_cache_slot_byte == 0x6AU &&
+              state_emulator.state().reg_bufs_cache[6] == 0x6BU,
+              "register journal preserves the TAB.33841 slot and previous slot byte");
+
+        Emulator cache_map_emulator;
+        constexpr std::array<std::uint8_t, 16> expected_cache_slots{{
+            0, 0, 0, 0, 5, 5, 6, 7, 3, 3, 4, 4, 1, 1, 2, 2
+        }};
+        for (std::uint32_t page = 0; page < expected_cache_slots.size(); ++page) {
+            cache_map_emulator.write_raw_command_byte(
+                static_cast<std::uint8_t>((page << 4U) | 1U));
+            check(cache_map_emulator.register_journal().back().cache_slot ==
+                      expected_cache_slots[page],
+                  "TAB.33841 maps every command page to the recovered reg_bufs slot");
+        }
+        check(cache_map_emulator.register_journal()[9].previous_cache_slot_byte == 0x81U &&
+              cache_map_emulator.state().reg_bufs_cache[3] == 0x91U,
+              "different command pages can address the same driver cache slot");
 
         Emulator selector_emulator;
         selector_emulator.apply_recovered_initialization_sequence();
+        check(selector_emulator.state().reg_bufs_cache ==
+                  std::array<std::optional<std::uint8_t>, 8>{{
+                      0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
+                  }},
+              "event-0 initialization reconstructs the driver's eight reg_bufs slots");
         constexpr std::array<std::uint8_t, 7> expected_selector_codes{{
             2, 1, 0, 3, 0, 2, 3
         }};
