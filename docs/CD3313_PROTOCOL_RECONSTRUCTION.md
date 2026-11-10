@@ -126,7 +126,35 @@ DWARF and ELF section layout identify these constant arrays. The byte sequences 
 - `channel_gain`: 7-entry array, source line 77.
 - `channel_mute`, `master_mute`, `master_volume`, `volume_percentage`, `loudness_gain`, `bassboost_gain`, `master_channel`, and `cur_channel` are present as driver state.
 
-The raw bytes are preserved in the Actions artifact's `section-bytes.txt`. Array semantics and units still need to be derived from the relevant function logic before exposing them as user-facing values.
+The raw bytes are preserved in the Actions artifact's `section-bytes.txt`. The volume, speaker, and equalizer consumers are now traced in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md); the remaining compiler-generated lookup tables are decoded below. Their numeric values are driver indices, not verified acoustic dB values.
+
+
+
+## Compiler-generated lookup tables decoded from call sites
+
+### TAB.33841 — command-page cache slot map
+
+The 16-byte table at .rodata + 0x54 is:
+
+`00 00 00 00 05 05 06 07 03 03 04 04 01 01 02 02`
+
+cd3313_write_reg() takes the high nibble of the outgoing command byte, indexes this table, then uses the result to select one of the eight reg_bufs cache entries. It is a software cache-slot map, not a physical silicon register-address map.
+
+### CSWTCH.194 — input selector map
+
+The table at .rodata + 0x64 consists of six 32-bit entries:
+
+`2, 1, 0, 3, 0, 2`
+
+set_input_channel() indexes it for channel IDs 0..5 and masks the result to two bits. Channel 6 bypasses the table and uses selector code 3. The resulting channel-to-selector map is therefore 0→2, 1→1, 2→0, 3→3, 4→0, 5→2, 6→3. This is a selector code only; it does not establish the human-facing source identity of any channel.
+
+### cd3313_equalizer — corrected complete lookup
+
+The exact 15-byte table at .rodata + 0x8C is:
+
+`00 01 02 03 04 05 06 07 0E 0D 0C 0B 0A 09 08`
+
+The bass/treble transition routine uses this array with an internal index range 3..10. The previously published emulator constant omitted the first four bytes and was incorrect; the emulator and transition tests have now been corrected to use the exact 15-byte array. The resulting internal indices 3..10 map to register nibbles 3, 4, 5, 6, 7, 14, 13, and 12 respectively.
 
 ## Additional facts confirmed by ARM disassembly
 
