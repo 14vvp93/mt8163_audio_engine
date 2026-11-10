@@ -68,6 +68,15 @@ void apply_active_input_register_fields(EmulatorState& state) {
     }
 }
 
+bool update_master_mute_gpio(EmulatorState& state, bool mute_argument) {
+    const bool reason24 =
+        (state.master_mute_reason_mask & (1U << 24U)) != 0U;
+    const bool raw_level =
+        (mute_argument && !state.hfp_active) || reason24 || !state.acc_on;
+    state.gpio_393_level = raw_level;
+    return raw_level;
+}
+
 std::uint8_t calculate_master_volume_register(std::uint32_t step,
                                               std::uint32_t percentage) {
     const std::uint32_t bounded_percentage = std::min(percentage, 100U);
@@ -124,10 +133,13 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         if (channel == 1U && reason == 16U)
             state.hfp_active = mute != 0U;
         if (channel == state.active_input_channel) {
-            if (state.input_mute_reason_masks[channel] != 0U)
+            const bool input_muted =
+                state.input_mute_reason_masks[channel] != 0U;
+            if (input_muted)
                 state.master_mute_reason_mask |= (1U << 31U);
             else
                 state.master_mute_reason_mask &= ~(1U << 31U);
+            update_master_mute_gpio(state, input_muted);
         }
         return true;
     }
@@ -146,6 +158,9 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         const std::uint32_t mask = 1U << reason;
         if (mute != 0U) state.master_mute_reason_mask |= mask;
         else state.master_mute_reason_mask &= ~mask;
+        // event_callback treats master-mute reason 2 as the ACC state latch.
+        if (reason == 2U) state.acc_on = mute != 0U;
+        update_master_mute_gpio(state, mute != 0U);
         return true;
     }
     case 0x12: {
@@ -279,9 +294,12 @@ void Emulator::record_input_switch(std::uint32_t channel,
     record_event(InputTransitionKind::Gpio396Write, gpio396, 0U);
     record_event(InputTransitionKind::Gpio398Write, gpio398, 0U);
     const bool channel_muted = state_.input_mute_reason_masks[channel] != 0U;
-    const bool master_reason31 = (state_.master_mute_reason_mask & (1U << 31U)) != 0U;
+    const bool master_reason31 =
+        (state_.master_mute_reason_mask & (1U << 31U)) != 0U;
     record_event(InputTransitionKind::MasterMuteReason31,
                  master_reason31 ? 1U : 0U, 0U);
+    const bool gpio393 = update_master_mute_gpio(state_, channel_muted);
+    record_event(InputTransitionKind::Gpio393Write, gpio393 ? 1U : 0U, 0U);
     record_delay();
 
     // The original routine intentionally leaves attenuation at 0x3F for a
@@ -342,6 +360,13 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     if ((result.command->id == 0x10 || result.command->id == 0x12) &&
         state_.master_volume_register_value.has_value()) {
         state_.current_volume_register_value = state_.master_volume_register_value;
+    }
+    if (result.command->id == 0x11) {
+        const bool gpio393 = state_.gpio_393_level.value_or(false);
+        input_transition_journal_.push_back(InputTransitionEvent{
+            next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
+            state_.active_input_channel, gpio393 ? 1U : 0U, 0U
+        });
     }
     if (result.command->id == 0x55 && state_.bass_register_value.has_value()) {
         const std::uint8_t target = *state_.bass_boost_target;
@@ -434,7 +459,9 @@ void Emulator::apply_recovered_probe_setup() {
     state_.master_volume_register_value = 0x3FU;
     state_.current_volume_register_value = 0x3FU;
     state_.master_volume_percentage = 100U;
+    state_.acc_on = true;
     state_.master_mute_reason_mask |= (1U << 31U);
+    update_master_mute_gpio(state_, true);
 }
 
 void Emulator::apply_recovered_initialization_sequence() {
