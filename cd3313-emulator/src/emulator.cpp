@@ -464,6 +464,21 @@ void Emulator::apply_recovered_probe_setup() {
     update_master_mute_gpio(state_, true);
 }
 
+bool Emulator::apply_recovered_system_mute_event(std::uint32_t event) {
+    std::uint32_t reason = 0U;
+    if (event == 2U) reason = 30U;
+    else if (event == 3U) reason = 24U;
+    else return false;
+
+    state_.master_mute_reason_mask &= ~(1U << reason);
+    const bool gpio393 = update_master_mute_gpio(state_, false);
+    input_transition_journal_.push_back(InputTransitionEvent{
+        next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
+        state_.active_input_channel, gpio393 ? 1U : 0U, 0U
+    });
+    return true;
+}
+
 void Emulator::apply_recovered_initialization_sequence() {
     for (unsigned pass = 0; pass < 2U; ++pass) {
         for (const auto command_byte : kRecoveredInitializationBytes)
