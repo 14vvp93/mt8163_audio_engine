@@ -38,3 +38,16 @@ planned.
 ## CI
 
 Workflow: [PCM DSP Stability Lab](../.github/workflows/pcm-dsp-stability-lab.yml)
+
+
+## Performance benchmark
+
+A separate workflow builds the existing 32-band/four-channel benchmark in
+Release mode and uploads its timing report as the `pcm-dsp-host-benchmark`
+artifact. It reports average, p95 and maximum block processing time for
+44.1/48 kHz and 128/256/512-frame blocks, including four-channel EQ,
+time-alignment, bass management, crossover and output limiting.
+
+These figures are a desktop CI baseline only. They must not be presented as
+MT8163 CPU utilization or real-time performance; the target ARMv7 head unit
+still requires an on-device benchmark.
