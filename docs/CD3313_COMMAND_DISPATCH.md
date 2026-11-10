@@ -127,3 +127,16 @@ Modeled state:
 The model's reset baseline sets the synthetic master-mute reason mask to zero. Other values remain unset until a corresponding command is observed. Each accepted command produces a monotonically numbered journal event containing the raw parsed command, whether its semantics are modeled, and complete before/after state snapshots. Commands whose semantics remain unresolved are retained as unmodeled journal events. Invalid modeled values are rejected atomically without changing state or appending a journal event.
 
 The journal and state are useful for deterministic sequence tests and future adapter development, but are not a readback of the physical CD3313. Unknown registers and arguments remain unknown.
+
+
+## Partial command-page register image emulator
+
+The host emulator now maintains a 16-entry cache indexed by the upper nibble of each observed command byte. This models the driver's recovered cache lookup pattern; it is intentionally named a **command-page cache** rather than a complete silicon register map.
+
+- The recovered 0x15 four-channel command updates four observed command bytes using the confirmed channel prefixes and 16-entry attenuation table.
+- The driver's separate raw cmd_write() interface is represented by Emulator::write_raw_command_byte(). It is not parsed as an ioctl frame.
+- Each observed byte produces a register journal event with a monotonic sequence, source (ioctl four-channel command or raw command byte), page, current byte, and previous cached byte.
+- Unobserved pages remain unset. Reset clears the synthetic observation cache.
+- The initialization callback is known to iterate and transmit a register image, but its complete byte sequence has not yet been reconstructed from the available analysis. The emulator therefore does not invent a startup image or claim a full physical register map.
+
+This is an offline observation model only. It does not call /dev/audiomux, issue I2C writes, or read hardware state.
