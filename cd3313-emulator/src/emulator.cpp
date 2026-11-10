@@ -527,6 +527,48 @@ void Emulator::apply_recovered_shutdown() {
     });
 }
 
+int Emulator::apply_recovered_pm_event(std::uint32_t action,
+                                         std::uint32_t event_code) {
+    // pm_event_notify() ignores every action except the recovered PM action 16.
+    if (action != 16U) return 0;
+    if (event_code > 4U) return -22;
+
+    if (event_code == 2U || event_code == 3U || event_code == 4U) {
+        apply_recovered_shutdown();
+        return 0;
+    }
+
+    // Event codes 0/1 only wake the device when dsp_shutdown() marked it asleep.
+    if (!state_.shutdown_started) return 0;
+
+    // Restore the cached master-volume byte. This is a cache update, not an
+    // immediate I2C transfer; the calculation matches set_master_volume().
+    const std::uint32_t step = state_.master_volume_step.value_or(0U);
+    const std::uint32_t percentage =
+        state_.master_volume_percentage.value_or(100U);
+    const std::uint8_t restored =
+        calculate_master_volume_register(step, percentage);
+    state_.shutdown_started = false;
+    state_.current_volume_register_value = restored;
+    state_.master_volume_register_value = restored;
+    state_.command_page_cache[(restored >> 4U) & 0x0FU] = restored;
+
+    const auto record = [this](WakeupEventKind kind, std::uint32_t event_id,
+                               std::uint32_t delay_ms) {
+        wakeup_journal_.push_back(WakeupEvent{
+            next_wakeup_sequence_++, kind, event_id, delay_ms
+        });
+    };
+
+    // Preserve the exact call order from dsp_wakeup.part.1().
+    record(WakeupEventKind::RemoveQueuedEvent, 0U, 0U);
+    record(WakeupEventKind::PostDelayedEvent, 0U, 50U);
+    record(WakeupEventKind::RemoveQueuedEvent, 2U, 0U);
+    record(WakeupEventKind::PostDelayedEvent, 2U, 1200U);
+    record(WakeupEventKind::PostDelayedEvent, 2U, 1500U);
+    return 0;
+}
+
 void Emulator::apply_recovered_initialization_sequence() {
     for (unsigned pass = 0; pass < 2U; ++pass) {
         for (const auto command_byte : kRecoveredInitializationBytes)
@@ -555,10 +597,12 @@ void Emulator::reset() {
     next_register_sequence_ = 1;
     next_input_transition_sequence_ = 1;
     next_shutdown_sequence_ = 1;
+    next_wakeup_sequence_ = 1;
     state_ = EmulatorState{};
     journal_.clear();
     register_journal_.clear();
     input_transition_journal_.clear();
     shutdown_journal_.clear();
+    wakeup_journal_.clear();
 }
 } // namespace cd3313
