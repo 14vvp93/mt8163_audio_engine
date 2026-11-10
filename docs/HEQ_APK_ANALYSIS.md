@@ -64,9 +64,9 @@ The APK does not contain the implementation of android.audio.AudioEffect. The ve
 
 ## Recommended next steps
 
-1. Decompile `classes.dex` for the exact implementations of `Biquad`, `EqualizerController`, `EqualizerTransaction`, `NativeHelper`, and the four chip adapters.
-2. Trace the command/data serialization for FY7604 and the other external DSP backends; compare their parameter semantics with our own PCM DSP and CD3313.
+1. Obtain the matching system framework JAR and native/service implementation for android.audio.AudioEffect.
+2. Trace how the CD3313 ASP methods serialize parameters and reach the kernel; compare the result with the recovered ioctl dispatcher and event queue.
 3. Extract default EQ frequency/Q/gain tables and preset curves for analysis only, recording their provenance and license status.
-4. Keep the current architecture: independent PCM DSP plus a separately verified CD3313 transport. Do not integrate HEQ's chip adapters or claim CD3313 compatibility based only on this APK.
+4. Keep the current architecture: independent PCM DSP plus a separately verified CD3313 transport. Do not reuse the other-chip external-DSP adapters or assume that the hidden ASP API is equivalent to a direct ioctl.
 
 This is static APK inspection, not execution on the head unit. No device compatibility or audible improvement has been validated.
