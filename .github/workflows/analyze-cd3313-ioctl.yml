@@ -38,9 +38,9 @@ jobs:
           nm -anC cd3313.ko > cd3313-ioctl-analysis/symbols.txt
           readelf -h cd3313.ko > cd3313-ioctl-analysis/elf-header.txt
           readelf --debug-dump=info cd3313.ko > cd3313-ioctl-analysis/dwarf-info.txt
-          objdump -m arm -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
+          arm-linux-gnueabi-objdump -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
           for symbol in cmd_ioctl cmd_read cmd_write event_callback do_cmd_write set_balance set_master_volume set_master_mute; do
-            objdump -m arm -drwC --disassemble="$symbol" cd3313.ko > "cd3313-ioctl-analysis/$symbol.txt" 2>&1 || true
+            arm-linux-gnueabi-objdump -drwC --disassemble="$symbol" cd3313.ko > "cd3313-ioctl-analysis/$symbol.txt" 2>&1 || true
           done
           python3 - <<'PY'
           from pathlib import Path
