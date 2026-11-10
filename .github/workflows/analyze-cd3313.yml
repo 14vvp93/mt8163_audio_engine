@@ -1,0 +1,59 @@
+name: Analyze CD3313 kernel module
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils file python3
+
+      - name: Validate module
+        run: |
+          test -s cd3313.ko
+          file cd3313.ko | tee module-file.txt
+          sha256sum cd3313.ko | tee module-sha256.txt
+
+      - name: Generate static analysis reports
+        run: |
+          mkdir -p cd3313-analysis
+          cp module-file.txt module-sha256.txt cd3313-analysis/
+          readelf -h cd3313.ko > cd3313-analysis/elf-header.txt
+          readelf -S cd3313.ko > cd3313-analysis/sections.txt
+          readelf -sW cd3313.ko > cd3313-analysis/symbols-readelf.txt
+          readelf -rW cd3313.ko > cd3313-analysis/relocations.txt
+          readelf --debug-dump=info cd3313.ko > cd3313-analysis/dwarf-info.txt 2>&1 || true
+          nm -an cd3313.ko > cd3313-analysis/symbols-nm.txt 2>&1 || true
+          strings -a -n 4 -t x cd3313.ko > cd3313-analysis/strings.txt
+          objdump -drwC cd3313.ko > cd3313-analysis/disassembly-relocations.txt 2>&1
+          objdump -s cd3313.ko > cd3313-analysis/section-bytes.txt 2>&1
+          {
+            echo "# CD3313 module analysis"
+            echo
+            echo "Generated from repository file cd3313.ko."
+            echo
+            echo '## Module identity'
+            cat module-file.txt
+            cat module-sha256.txt
+            echo
+            echo '## Report files'
+            find cd3313-analysis -maxdepth 1 -type f -printf '%f\n' | sort
+          } > cd3313-analysis/README.md
+
+      - name: Upload analysis reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: cd3313-static-analysis
+          path: cd3313-analysis/
+          if-no-files-found: error
+          retention-days: 14
