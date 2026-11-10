@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.mt8163.audiotest'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.mt8163.audiotest'
+        minSdk 28
+        targetSdk 28
+        versionCode 1
+        versionName '0.1.0'
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DPCM_DSP_BUILD_TESTS=OFF',
+                          '-DPCM_DSP_BUILD_BENCHMARKS=OFF',
+                          '-DPCM_DSP_BUILD_ANDROID_JNI=ON'
+                cppFlags '-std=c++17'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../pcm-dsp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    sourceSets {
+        main.java.srcDirs += ['../../pcm-dsp/android/java']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
