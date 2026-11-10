@@ -115,6 +115,11 @@ The emulator now exposes safe typed builders for the commands whose payloads and
 - `make_master_volume_command(step)`: command `0x10`, one little-endian 32-bit word, range 0..40.
 - `make_master_mute_command(mute, reason)`: command `0x11`, two little-endian 32-bit words; the mute value is 0/1 and the reason bit index is restricted to 0..31.
 - `make_four_channel_level_command(fl, fr, rl, rr)`: command `0x15`, four little-endian 32-bit speaker-table indices in FL/FR/RL/RR order; each index is restricted to 0..15.
+- `make_input_channel_command(channel)`: command `0x01`, accepts channel IDs 0..6 or sentinel -1.
+- `make_input_gain_command(channel, gain, opaque_word)`: command `0x03`, channel 0..6, gain 0..3, preserves the otherwise-uninterpreted third word.
+- `make_input_mute_command(channel, mute, reason)`: command `0x04`, channel 0..6 or -1, boolean mute, reason 0..31.
+- `make_input_mixing_command(enabled, opaque_word0, opaque_word1)`: command `0x20`, boolean mode plus two preserved opaque words.
+
 
 These builders create emulator command frames only. They do not open `/dev/audiomux`, issue ioctls, or write I²C. The command parser continues to reject the unsafe short `0x15` payload even though the original driver's minimum-length table accepts a smaller size.
 
