@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pcm_dsp/engine.hpp"
+#include "pcm_dsp/time_alignment.hpp"
 
 #include <array>
 #include <cstddef>
@@ -20,6 +21,7 @@ enum class OutputChannel : std::uint8_t {
 
 struct QuadChannelParameters {
     float gain_db{0.0F};
+    float delay_ms{0.0F};
     std::array<EqBand, kQuadEqBandCount> bands{};
 };
 
@@ -87,6 +89,7 @@ private:
     std::array<Bank, 2> banks_{};
     std::size_t active_bank_{0};
     std::array<float, kOutputChannelCount> limiter_envelope_{};
+    QuadTimeAlignment time_alignment_{};
 };
 
 } // namespace pcm_dsp
