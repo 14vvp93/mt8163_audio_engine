@@ -54,6 +54,26 @@ int main() {
         check(!engine.apply_profile(invalid, 50U),
               "invalid profile is rejected before publication");
 
+        ProfiledQuadEngine sub_engine;
+        AudioProfile no_sub;
+        no_sub.quad.enabled = true;
+        check(sub_engine.configure(48000U, no_sub),
+              "subwoofer test engine configures");
+        AudioProfile with_sub = no_sub;
+        with_sub.routing.enabled = true;
+        with_sub.routing.bass_management_enabled = true;
+        with_sub.routing.crossover_frequency_hz = 90.0F;
+        check(sub_engine.apply_profile(with_sub, 10U),
+              "subwoofer profile is queued");
+        std::vector<float> sub_output(frames, 0.0F);
+        check(sub_engine.process(input.data(), output.data(), frames),
+              "old profile continues when sub buffer is absent");
+        check(sub_engine.transition_pending(),
+              "subwoofer transition remains queued without its output buffer");
+        check(sub_engine.process(input.data(), output.data(), frames,
+                                 sub_output.data()),
+              "subwoofer transition starts when its output buffer is supplied");
+
         std::cout << "Profile transition tests passed\n";
         return 0;
     } catch (const std::exception& error) {
