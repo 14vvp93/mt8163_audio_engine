@@ -58,6 +58,9 @@ bool ProfiledQuadEngine::apply_profile(const AudioProfile& profile,
         return false;
     }
 
+    // Publish non-atomic transition data before the release operation.
+    transition_total_ = static_cast<std::uint64_t>(sample_rate_hz_) *
+                        transition_ms / 1000U;
     int no_pending = -1;
     if (!pending_slot_.compare_exchange_strong(
             no_pending, static_cast<int>(target),
@@ -65,16 +68,12 @@ bool ProfiledQuadEngine::apply_profile(const AudioProfile& profile,
         slot_available_[target].store(true, std::memory_order_release);
         return false;
     }
-    // transition_total_ is read by the audio thread only after pending_slot_
-    // publishes the target. It is safe to set before the release operation.
-    transition_total_ = static_cast<std::uint64_t>(sample_rate_hz_) *
-                        transition_ms / 1000U;
     return true;
 }
 
 bool ProfiledQuadEngine::transition_pending() const {
     return pending_slot_.load(std::memory_order_acquire) >= 0 ||
-           transition_target_ >= 0;
+           transition_target_.load(std::memory_order_acquire) >= 0;
 }
 
 bool ProfiledQuadEngine::process(const float* input, float* output,
@@ -84,7 +83,8 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
     }
     const int active = active_slot_.load(std::memory_order_acquire);
     const int pending = pending_slot_.load(std::memory_order_acquire);
-    const int target = transition_target_ >= 0 ? transition_target_ : pending;
+    const int current_target = transition_target_.load(std::memory_order_acquire);
+    const int target = current_target >= 0 ? current_target : pending;
     if (target >= 0 &&
         (profiles_[static_cast<std::size_t>(active)].routing.bass_management_enabled ||
          profiles_[static_cast<std::size_t>(target)].routing.bass_management_enabled) &&
@@ -106,16 +106,17 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
 
 void ProfiledQuadEngine::process_chunk(const float* input, float* output,
                                       std::size_t frames, float* sub_output) {
-    if (transition_target_ < 0) {
+    if (transition_target_.load(std::memory_order_relaxed) < 0) {
         const int pending = pending_slot_.exchange(-1, std::memory_order_acq_rel);
         if (pending >= 0) {
-            transition_target_ = pending;
             transition_position_ = 0U;
+            transition_target_.store(pending, std::memory_order_release);
         }
     }
 
     const int active = active_slot_.load(std::memory_order_relaxed);
-    if (transition_target_ < 0) {
+    const int target_slot = transition_target_.load(std::memory_order_relaxed);
+    if (target_slot < 0) {
         const bool ok = engines_[static_cast<std::size_t>(active)].process(
             input, output, frames, profiles_[static_cast<std::size_t>(active)].quad,
             sub_output);
@@ -131,9 +132,9 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
     const bool active_ok = engines_[static_cast<std::size_t>(active)].process(
         input_scratch_.data(), output, frames,
         profiles_[static_cast<std::size_t>(active)].quad, active_sub);
-    const bool target_ok = engines_[static_cast<std::size_t>(transition_target_)].process(
+    const bool target_ok = engines_[static_cast<std::size_t>(target_slot)].process(
         input_scratch_.data(), target_scratch_.data(), frames,
-        profiles_[static_cast<std::size_t>(transition_target_)].quad, target_sub);
+        profiles_[static_cast<std::size_t>(target_slot)].quad, target_sub);
     if (!active_ok || !target_ok) {
         std::fill(output, output + samples, 0.0F);
         if (sub_output != nullptr) std::fill(sub_output, sub_output + frames, 0.0F);
@@ -150,7 +151,7 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
             output[index] += (target_scratch_[index] - output[index]) * mix;
         }
         if (sub_output != nullptr) {
-            sub_output[frame] +=
+            sub_output[frame] = active_sub_scratch_[frame] +
                 (target_sub_scratch_[frame] - active_sub_scratch_[frame]) * mix;
         }
     }
@@ -158,8 +159,8 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
     transition_position_ += frames;
     if (transition_position_ >= transition_total_) {
         const int retired = active;
-        active_slot_.store(transition_target_, std::memory_order_release);
-        transition_target_ = -1;
+        active_slot_.store(target_slot, std::memory_order_release);
+        transition_target_.store(-1, std::memory_order_release);
         transition_position_ = 0U;
         slot_available_[static_cast<std::size_t>(retired)].store(
             true, std::memory_order_release);
