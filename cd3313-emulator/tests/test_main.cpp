@@ -723,7 +723,7 @@ int main() {
         Emulator input_emulator;
         input_emulator.apply_recovered_initialization_sequence();
         check(static_cast<bool>(input_emulator.write(
-                  encode_driver_command(make_master_mute_command(true, 2)))) &&
+                  encode_driver_command(make_master_mute_command(false, 2)))) &&
               input_emulator.state().acc_on,
               "input mute fixture enables the recovered ACC latch");
         const DriverCommand input_gain_command{
