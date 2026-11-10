@@ -11,6 +11,7 @@ struct EmulatorState {
     std::optional<std::uint8_t> master_volume_register_value;
     std::uint32_t master_mute_reason_mask{0};
     bool initialization_sequence_applied{false};
+    bool shutdown_started{false};
     std::optional<std::uint32_t> master_volume_percentage;
     std::optional<std::uint32_t> volume_percentage_opaque_arg1;
     std::optional<std::array<std::uint8_t, 4>> channel_level_indices;
@@ -86,7 +87,16 @@ enum class RegisterWriteSource {
     InputSelectorControl,
     InputSwitchAttenuation,
     IoctlFourChannelCommand,
-    RawCommandByte
+    RawCommandByte,
+    ShutdownFinalWrite
+};
+
+enum class ShutdownEventKind { Gpio393Write, RemoveQueuedEvent, FinalI2cWrite };
+
+struct ShutdownEvent {
+    std::uint64_t sequence{};
+    ShutdownEventKind kind{};
+    std::uint32_t value{};
 };
 
 struct RegisterWriteEvent {
@@ -109,6 +119,9 @@ public:
     void apply_recovered_initialization_sequence();
     // Models event_callback events 2 (clear reason 30) and 3 (clear reason 24).
     bool apply_recovered_system_mute_event(std::uint32_t event);
+    // Models dsp_shutdown(): reason 30, shutdown-specific GPIO 393 formula,
+    // removal requests for queued events 0/1, and the final 0x3F I2C write.
+    void apply_recovered_shutdown();
     const std::optional<DriverCommand>& last_command() const { return last_command_; }
     std::uint64_t accepted_commands() const { return accepted_commands_; }
     std::uint64_t rejected_commands() const { return rejected_commands_; }
@@ -117,6 +130,7 @@ public:
     const std::vector<RegisterWriteEvent>& register_journal() const {
         return register_journal_;
     }
+    const std::vector<ShutdownEvent>& shutdown_journal() const { return shutdown_journal_; }
     const std::vector<InputTransitionEvent>& input_transition_journal() const {
         return input_transition_journal_;
     }
@@ -131,9 +145,11 @@ private:
     std::uint64_t next_sequence_{1};
     std::uint64_t next_register_sequence_{1};
     std::uint64_t next_input_transition_sequence_{1};
+    std::uint64_t next_shutdown_sequence_{1};
     EmulatorState state_{};
     std::vector<EmulatorEvent> journal_;
     std::vector<RegisterWriteEvent> register_journal_;
     std::vector<InputTransitionEvent> input_transition_journal_;
+    std::vector<ShutdownEvent> shutdown_journal_;
 };
 } // namespace cd3313
