@@ -11,7 +11,7 @@ The GitHub Actions workflow **Scan vendor archive for CD3313 userspace clients**
 
 ## Findings
 
-No userspace client for `/dev/audiomux` was identified in this archive.
+No direct `/dev/audiomux` ioctl client was identified in this 36-file archive. A separate HEQ APK analysis has since identified a high-level CD3313-aware ASP client that uses android.audio.AudioEffect; its hidden transport remains unresolved.
 
 The binary and text scan found no actual string occurrences of:
 
@@ -25,6 +25,20 @@ The text/source match report was empty. The binary string report contained gener
 
 The archive also contains `audiocmdservice_atci`. Its previously analyzed strings and imports point to the MediaTek ACF/HCF/BES audio-parameter path; this scan did not find a `/dev/audiomux` or CD3313 reference in it. Do not treat that service as the CD3313 ioctl client.
 
+## HEQ APK follow-up: high-level CD3313 caller found
+
+A separate full JADX analysis of HEQ.apk found explicit CD3313 support:
+
+- EqUtils.ASP_CHIP_3313 is "cd3313".
+- The app selects the chip through ro.hw.dsp.chip and treats cd3313 as an ASP backend.
+- AspSettings calls the vendor android.audio.AudioEffect API for four-channel balance, bass, treble, loudness, subwoofer and master volume.
+- AspFragment reduces its 12 UI bands to two averages (low six -> bass, high six -> treble).
+- The four-channel balance API uses FL/FR/RL/RR values in the same 0..15 domain as the driver's 0x15 speaker command.
+
+This resolves the earlier ambiguity: HEQ is a high-level CD3313-aware ASP client. It does not contradict the negative scan of files.zip, because the HEQ APK is a separate artifact and the Java code calls a hidden vendor framework API.
+
+The HEQ APK contains no implementation of android.audio.AudioEffect and no direct /dev/audiomux open/ioctl call. Its native/service transport is still unknown. Some Java API argument pairs also do not match the raw kernel handler's consumed words, so the hidden wrapper must be recovered before mapping methods to ioctl commands.
+
 ## What this means for the ABI
 
 The kernel module's dispatcher-side behavior remains recoverable from `cd3313.ko`, but the caller-side ioctl encoding and argument structures are not established by this archive. In particular, do not invent an ioctl magic/type, request word, or command payload layout and do not send experimental writes to the live device.
@@ -33,8 +47,9 @@ The driver-side reconstruction currently indicates that the request word carries
 
 ## Next evidence to obtain
 
-1. A fuller vendor/system image or extracted filesystem containing the factory audio settings application and its native libraries.
-2. Any vendor APK/JAR/native library that opens `/dev/audiomux`, or source/header files defining the ioctl macros and command structures.
+1. The matching system framework JAR containing android.audio.AudioEffect and the corresponding native/service implementation used by HEQ.
+2. The vendor audio service or library that translates the HEQ ASP API calls into CD3313 commands.
+3. Any source/header files defining the ioctl macros and command structures.
 3. If a rooted target becomes available, read-only runtime evidence such as device-node permissions, process file descriptors, and relevant app/service package inventory. Do not issue write ioctls during discovery.
 
 ## Limitations
