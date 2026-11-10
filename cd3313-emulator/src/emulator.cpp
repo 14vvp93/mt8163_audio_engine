@@ -405,6 +405,23 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     last_command_ = result.command;
     ++accepted_commands_;
     if ((result.command->id == 0x10 || result.command->id == 0x12) &&
+        state_.master_volume_step.has_value()) {
+        std::optional<std::uint8_t> previous_volume = before.reg_bufs_cache[0];
+        if (!previous_volume) previous_volume = before.current_volume_register_value;
+        if (!previous_volume) previous_volume = before.master_volume_register_value;
+
+        if (previous_volume.has_value()) {
+            const std::uint32_t step = *state_.master_volume_step;
+            if (step == 0U && *previous_volume != 0x3FU) {
+                state_.master_mute_reason_mask |= (1U << 29U);
+                update_master_mute_gpio(state_);
+            } else if (step != 0U && *previous_volume == 0x3FU) {
+                state_.master_mute_reason_mask &= ~(1U << 29U);
+                update_master_mute_gpio(state_);
+            }
+        }
+    }
+    if ((result.command->id == 0x10 || result.command->id == 0x12) &&
         state_.master_volume_register_value.has_value()) {
         const std::uint8_t target = *state_.master_volume_register_value;
         if (before.master_volume_register_value.has_value()) {
