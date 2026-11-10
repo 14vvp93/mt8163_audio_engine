@@ -1,0 +1,30 @@
+name: PCM DSP Performance Benchmark
+
+on:
+  push:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/pcm-dsp-performance.yml"
+  pull_request:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/pcm-dsp-performance.yml"
+  workflow_dispatch:
+
+jobs:
+  host-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure release benchmark
+        run: cmake -S pcm-dsp -B build -DCMAKE_BUILD_TYPE=Release -DPCM_DSP_BUILD_TESTS=OFF -DPCM_DSP_BUILD_BENCHMARKS=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Run benchmark
+        run: ./build/pcm_dsp_benchmark | tee pcm-dsp-host-benchmark.txt
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcm-dsp-host-benchmark
+          path: pcm-dsp-host-benchmark.txt
+          retention-days: 30
