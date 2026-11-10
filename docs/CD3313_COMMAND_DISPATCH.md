@@ -9,7 +9,7 @@ This document records behavior recovered from the ARM32 disassembly and DWARF li
 - Kernel target: ARM32, Linux 4.9.117+
 - Source path embedded in DWARF: `drivers/misc/cd3313/cd3313.c`
 - Dispatcher: `do_cmd_write()`, inlined into `event_callback()`
-- The analysis workflow emits `dwarf-lines.txt`, `disassembly-lines.txt`, and `address-to-source.txt` to preserve source-line correlation.
+- The latest detailed analysis workflow [42849777588](https://github.com/14march93/mt8163_audio_engine/actions/runs/42849777588) emits `dwarf-lines.txt`, `disassembly-lines.txt`, and `address-to-source.txt` to preserve source-line correlation.
 
 The event object begins with the original 32-bit ioctl request word. The dispatcher extracts:
 - direction from bits 30..31 (1 = write, 2 = read);
