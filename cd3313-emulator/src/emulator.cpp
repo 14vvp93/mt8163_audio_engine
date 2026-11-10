@@ -63,6 +63,52 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
     const auto& payload = command.payload;
     modeled = true;
     switch (command.id) {
+    case 0x01: {
+        const std::uint32_t requested = read_le32(payload, 0);
+        const std::uint32_t channel =
+            requested == 0xFFFFFFFFU ? 6U : requested;
+        if (channel > 6U) return false;
+        state.current_input_channel = channel;
+        if (!state.mixing_mode) {
+            state.active_input_channel = channel;
+            if (state.input_mute_reason_masks[channel] != 0U)
+                state.master_mute_reason_mask |= (1U << 31U);
+            else
+                state.master_mute_reason_mask &= ~(1U << 31U);
+        }
+        return true;
+    }
+    case 0x03: {
+        const std::uint32_t channel = read_le32(payload, 0);
+        const std::uint32_t gain = read_le32(payload, 4);
+        if (channel > 6U || gain > 3U) return false;
+        state.input_gain[channel] = static_cast<std::uint8_t>(gain);
+        if (state.control_register_value.has_value()) {
+            state.control_register_value = static_cast<std::uint8_t>(
+                (*state.control_register_value & ~0x18U) | (gain << 3U));
+        }
+        return true;
+    }
+    case 0x04: {
+        const std::uint32_t requested = read_le32(payload, 0);
+        const std::uint32_t channel =
+            requested == 0xFFFFFFFFU ? 6U : requested;
+        const std::uint32_t mute = read_le32(payload, 4);
+        const std::uint32_t reason = read_le32(payload, 8);
+        if (channel > 6U || mute > 1U || reason > 31U) return false;
+        const std::uint32_t mask = 1U << reason;
+        if (mute != 0U) state.input_mute_reason_masks[channel] |= mask;
+        else state.input_mute_reason_masks[channel] &= ~mask;
+        if (channel == 1U && reason == 16U)
+            state.hfp_active = mute != 0U;
+        if (channel == state.active_input_channel) {
+            if (state.input_mute_reason_masks[channel] != 0U)
+                state.master_mute_reason_mask |= (1U << 31U);
+            else
+                state.master_mute_reason_mask &= ~(1U << 31U);
+        }
+        return true;
+    }
     case 0x10: {
         const std::uint32_t step = read_le32(payload, 0);
         if (step > 40U) return false;
@@ -104,6 +150,18 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         }
         state.channel_level_indices = indices;
         state.speaker_register_bytes = registers;
+        return true;
+    }
+    case 0x20: {
+        const std::uint32_t enabled = read_le32(payload, 0);
+        if (enabled > 1U) return false;
+        state.mixing_mode = enabled != 0U;
+        state.active_input_channel = state.mixing_mode
+            ? 1U : state.current_input_channel;
+        if (state.input_mute_reason_masks[state.active_input_channel] != 0U)
+            state.master_mute_reason_mask |= (1U << 31U);
+        else
+            state.master_mute_reason_mask &= ~(1U << 31U);
         return true;
     }
     case 0x55: {
@@ -207,6 +265,13 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
             record_command_byte(*state_.treble_register_value,
                                 RegisterWriteSource::TrebleTransition);
         }
+    }
+    if (result.command->id == 0x03 &&
+        before.control_register_value.has_value() &&
+        state_.control_register_value.has_value() &&
+        before.control_register_value != state_.control_register_value) {
+        record_command_byte(*state_.control_register_value,
+                            RegisterWriteSource::InputGainControl);
     }
     if (result.command->id == 0x56 &&
         before.control_register_value.has_value() &&
