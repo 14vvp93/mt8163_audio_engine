@@ -326,7 +326,7 @@ int main() {
               !second_raw_write.parsed &&
               raw_text_emulator.register_journal().size() == 1U,
               "a second write at the advanced file offset is ignored by the text parser");
-        const auto reopened_raw_write = raw_text_emulator.write_raw_command_text("0x4A\\n");
+        const auto reopened_raw_write = raw_text_emulator.write_raw_command_text("0x4A");
         check(reopened_raw_write.parsed && reopened_raw_write.command_byte == 0x4AU &&
               raw_text_emulator.register_journal().size() == 2U,
               "reopening at offset zero accepts a prefixed hexadecimal byte");
