@@ -72,3 +72,14 @@ The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel g
 ## Validation
 
 See [PCM DSP Stability Lab](../docs/PCM_DSP_STABILITY_LAB.md) for the host-side frequency-response, extreme-transition, and input-sanitization tests.
+
+
+### 32-band logarithmic PEQ layout
+
+`make_logarithmic_eq_layout_32()` creates 32 center frequencies spaced evenly
+on a logarithmic scale from 20 Hz to 20 kHz by default. The generated bands
+start disabled with 0 dB gain, peaking type, and Q=1.0. Copy the layout to each
+of the four channel parameter arrays, then edit each channel independently.
+The helper validates the frequency range and Q before changing the output
+array. This is a parameter-layout utility; it does not add processing stages
+beyond the 32 biquad slots already present in each channel.
