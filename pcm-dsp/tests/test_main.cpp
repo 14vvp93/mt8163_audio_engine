@@ -135,9 +135,9 @@ int main() {
         check(quad.process(quad_input.data(), quad_output.data(), 2U,
                            quad_parameters), "quad channel gains process");
         check(quad_output[0] > quad_output[1], "front-left gain is independent");
-        check(quad_output[2] == quad_output[1], "front-right remains unchanged");
-        check(quad_output[4] < quad_output[5], "rear-left attenuation is independent");
-        check(quad_output[6] == quad_output[5], "rear-right remains unchanged");
+        check(quad_output[3] == quad_output[1], "rear-right remains unchanged");
+        check(quad_output[6] < quad_output[7], "rear-left attenuation is independent");
+        check(quad_output[7] == quad_output[5], "rear-right remains unchanged");
 
         // Exercise all 32 slots and abrupt extreme parameter changes.
         std::vector<float> stress_input(4096U * 4U);
