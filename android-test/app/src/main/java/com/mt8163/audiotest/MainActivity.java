@@ -242,6 +242,14 @@ public final class MainActivity extends Activity {
             @Override public void onStopTrackingTouch(SeekBar bar) { applyBassManagement(); }
         });
         root.addView(subGainBar);
+        Button phaseButton = button("SUBWOOFER PHASE: 0°");
+        phaseButton.setOnClickListener(v -> {
+            subPhaseInverted = !subPhaseInverted;
+            phaseButton.setText(subPhaseInverted
+                    ? "SUBWOOFER PHASE: 180°" : "SUBWOOFER PHASE: 0°");
+            applyBassManagement();
+        });
+        root.addView(phaseButton);
 
         Button run = button("RUN PCM TEST · 512 FRAMES");
         run.setOnClickListener(v -> runPcmTest());
@@ -256,7 +264,7 @@ public final class MainActivity extends Activity {
     private void applyBassManagement() {
         if (dsp == null) return;
         if (dsp.configureBassManagement(bassManagementEnabled, crossoverHz,
-                crossoverOrder, subGainDb)) {
+                crossoverOrder, subGainDb, subPhaseInverted)) {
             bassStatus.setText(String.format(Locale.US,
                     "Bass management · %s · %.0f Hz · %d dB/oct · Sub %.1f dB",
                     bassManagementEnabled ? "ON" : "OFF", crossoverHz,
