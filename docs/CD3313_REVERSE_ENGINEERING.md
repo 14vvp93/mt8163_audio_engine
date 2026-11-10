@@ -13,52 +13,48 @@ The repository contains `cd3313.ko` (ELF32 ARM module, 183,368 bytes). Earlier s
 - Other data tables observed include `TAB.33841` and `CSWTCH.194`.
 - Earlier analysis also reported volume, mute, channel, bass/treble/loudness/subwoofer and callback-related functions.
 
-These are static-analysis findings, not confirmation of live hardware behavior. Exact ioctl numbers, argument layouts, register addresses, bit fields, table meanings and the volume-to-dB transfer curve are still open questions.
+These are static-analysis findings, not confirmation of live hardware behavior. Since the initial notes, the ioctl bit layout, command payload offsets, command-length thresholds, event scheduling calls, and the principal lookup tables have been reconstructed. The exact userspace ioctl macro, imported event-queue internals, complete physical register map, acoustic dB curves, and hardware behavior remain open. See CD3313_IOCTL_ABI.md, CD3313_COMMAND_DISPATCH.md, and CD3313_REGISTER_IMAGE.md.
 
 ## Reverse-engineering work plan
 
-### 1. Recover the userspace ABI
+### 1. Recover the userspace ABI — mostly reconstructed statically
 
-- Enumerate misc-device file operations and ioctl dispatch.
-- Recover ioctl command values and direction/size fields.
-- Recover argument structures, integer widths, packing and pointer semantics.
-- Document read/write behavior and error returns.
-- Identify whether the existing userspace client uses `/dev/audiomux` and which commands it sends.
+- Confirmed ioctl direction, command-ID, and size-field bit positions; the size field counts 32-bit words on writes.
+- Confirmed write framing: original 32-bit request word followed by the copied payload.
+- Recovered the 12 command-length thresholds and the observed argument layouts for implemented commands.
+- Recovered read ID 0xF0 as a static 8-byte cd3313 identifier response.
+- Remaining: exact vendor userspace ioctl macro/low _IOC_NR byte and actual client call sites.
 
-### 2. Recover register access
+### 2. Recover register access — partial software map reconstructed
 
-- Find every call site of `cd3313_write_reg` and any register-read helper.
-- Build a register-write map: address, value source, initialization/runtime context.
-- Separate confirmed register addresses from inferred ones.
-- Record masks, shifts, enumerations and reset/default values only when supported by code evidence.
+- Recovered one-byte I²C write behavior, initialization sequence, volume ramp, speaker output bytes, input control byte, bass/treble transition bytes, and mute-related GPIO requests.
+- Decoded TAB.33841 as the 16-page-to-8-slot reg_bufs cache mapping.
+- Remaining: full silicon register-address semantics, complete register-read path, and datasheet correlation.
 
-### 3. Identify data tables
+### 3. Identify data tables — principal consumers decoded
 
-Investigate the roles and consumers of:
+- cd3313_voltable_40: 41-entry master-volume attenuation lookup.
+- cd3313_speaker: 16-entry four-output attenuation lookup.
+- cd3313_equalizer: exact 15-byte bass/treble register-code lookup.
+- TAB.33841: command-page to reg_bufs cache-slot mapping.
+- CSWTCH.194: six-entry input selector lookup for channels 0..5; channel 6 uses selector 3.
 
-- `cd3313_voltable_40`
-- `cd3313_speaker`
-- `cd3313_equalizer`
-- `TAB.33841`
-- `CSWTCH.194`
+The raw indices and register codes are known from static analysis; acoustic dB meaning and physical signal-source labels remain unverified.
 
-Do not assign semantic meaning from a symbol name alone. Trace each table's references and transformations.
+### 4. Reconstruct volume behavior — raw transfer logic recovered
 
-### 4. Reconstruct volume behavior
-
-- Trace the input/output volume setters to the table lookup and register write.
-- Determine index range, clamping, mute/zero behavior and channel handling.
-- Distinguish raw register codes from dB values.
-- Keep any estimated dB curve explicitly marked as an estimate until confirmed by datasheet or measurement.
+- Master-volume range 0..40 and 41-entry lookup are recovered.
+- Percentage adjustment is floor((100 - percentage) / 3), added to the table code and capped at 0x3F.
+- The driver ramps the attenuation register incrementally.
+- Remaining: convert raw codes to acoustic dB only with datasheet evidence or hardware measurements.
 
 ## Offline test strategy
 
-Create a host-side CD3313 emulator with:
+The repository now contains a host-side CD3313 emulator with:
 
-- A 256-byte register bank initially marked unknown.
-- A write log containing timestamp, register, value and caller/action label.
-- A mock `audiomux` command dispatcher once the ABI is recovered.
-- Unit tests for argument validation, volume mapping, mute and channel operations.
+- A safe ioctl-frame parser and typed command builders.
+- State and write journals, including both a diagnostic command-page view and the recovered eight-slot reg_bufs cache.
+- Tests for command validation, exact lookup tables, volume transitions, mute, input routing, event requests, and startup/shutdown sequences.
 - Golden traces based only on sequences proven by static code evidence.
 
 The emulator must not silently invent register defaults. Unknown values remain unknown.
