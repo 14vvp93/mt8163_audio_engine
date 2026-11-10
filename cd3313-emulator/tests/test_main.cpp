@@ -184,6 +184,24 @@ int main() {
                   encode_driver_command(make_master_mute_command(false, 24)))) &&
               state_emulator.state().gpio_393_level == false,
               "clearing reason 24 releases GPIO 393 when ACC is on and HFP is inactive");
+
+        check(state_emulator.apply_recovered_system_mute_event(3U) &&
+              state_emulator.state().gpio_393_level == false,
+              "system notifier event 3 clears reason 24 and recomputes GPIO 393");
+        check(state_emulator.apply_recovered_system_mute_event(2U) &&
+              (state_emulator.state().master_mute_reason_mask & (1U << 30U)) == 0U,
+              "system notifier event 2 clears reason 30");
+        check(!state_emulator.apply_recovered_system_mute_event(1U),
+              "unmapped system notifier events are rejected");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(false, 2)))) &&
+              !state_emulator.state().acc_on &&
+              state_emulator.state().gpio_393_level == true,
+              "ACC-off latch forces GPIO 393 high even after ordinary mute clears");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 2)))) &&
+              state_emulator.state().acc_on,
+              "ACC-on latch can be restored through reason 2");
         check(static_cast<bool>(state_emulator.write(encode_driver_command(
                   make_four_channel_level_command(15, 14, 13, 0)))),
               "four-channel state command is accepted");
@@ -593,7 +611,7 @@ int main() {
         startup_emulator.apply_recovered_probe_setup();
         check(startup_emulator.state().master_mute_reason_mask == (1U << 31U) &&
               startup_emulator.state().acc_on &&
-              startup_emulator.state().gpio_393_level == false &&
+              startup_emulator.state().gpio_393_level == true &&
               startup_emulator.register_journal().size() == 1U &&
               startup_emulator.register_journal().front().command_byte == 0x3FU &&
               startup_emulator.register_journal().front().source ==
