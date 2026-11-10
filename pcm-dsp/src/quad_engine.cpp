@@ -57,6 +57,14 @@ bool QuadEngine::configure_routing(
     return true;
 }
 
+bool QuadEngine::configure_enhancements(
+        const EnhancementParameters& parameters) {
+    if (sample_rate_hz_ == 0U ||
+        !enhancements_.configure(sample_rate_hz_, parameters)) return false;
+    enhancement_parameters_ = parameters;
+    return true;
+}
+
 bool QuadEngine::configure_dynamics(
         const MultibandDynamicsParameters& parameters) {
     if (sample_rate_hz_ == 0U ||
