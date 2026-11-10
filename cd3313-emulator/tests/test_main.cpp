@@ -510,8 +510,10 @@ int main() {
         state_emulator.reset();
         check(state_emulator.journal().empty() &&
               state_emulator.register_journal().empty() &&
+              state_emulator.shutdown_journal().empty() &&
+              state_emulator.wakeup_journal().empty() &&
               !state_emulator.state().command_page_cache[0x6].has_value(),
-              "reset clears command-page cache and both journals");
+              "reset clears command-page cache and all transition journals");
         state_emulator.write_raw_command_byte(0x6C);
         check(state_emulator.register_journal().size() == 1U &&
               state_emulator.register_journal().front().sequence == 1U,
