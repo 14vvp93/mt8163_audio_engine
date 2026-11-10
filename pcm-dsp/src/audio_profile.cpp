@@ -116,7 +116,9 @@ bool validate_audio_profile(const AudioProfile& profile,
         !finite_in_range(enhancement.clarity_frequency_hz, 1500.0F,
                          static_cast<float>(sample_rate_hz) * 0.45F)) {
         return false;
-    }\n\n    return valid_dynamics(profile.dynamics, sample_rate_hz);
+    }
+
+    return valid_dynamics(profile.dynamics, sample_rate_hz);
 }
 
 } // namespace pcm_dsp
