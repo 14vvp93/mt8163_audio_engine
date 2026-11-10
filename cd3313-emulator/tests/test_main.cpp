@@ -180,6 +180,13 @@ int main() {
                   encode_driver_command(make_master_mute_command(true, 24)))) &&
               state_emulator.state().gpio_393_level == true,
               "master mute reason 24 independently forces GPIO 393 high");
+        check(state_emulator.event_queue_requests().size() == 2U &&
+              state_emulator.event_queue_requests()[0].kind == EventQueueRequestKind::RemoveQueuedEvent &&
+              state_emulator.event_queue_requests()[0].event_id == 3U &&
+              state_emulator.event_queue_requests()[1].kind == EventQueueRequestKind::PostDelayedEvent &&
+              state_emulator.event_queue_requests()[1].event_id == 3U &&
+              state_emulator.event_queue_requests()[1].delay_ms == 1000U,
+              "asserting master mute reason 24 replaces event 3 with a 1000 ms delayed clear");
         check(state_emulator.apply_recovered_system_mute_event(3U) &&
               (state_emulator.state().master_mute_reason_mask & (1U << 24U)) == 0U &&
               state_emulator.state().gpio_393_level == false,
@@ -512,6 +519,7 @@ int main() {
               state_emulator.register_journal().empty() &&
               state_emulator.shutdown_journal().empty() &&
               state_emulator.wakeup_journal().empty() &&
+              state_emulator.event_queue_requests().empty() &&
               !state_emulator.state().command_page_cache[0x6].has_value(),
               "reset clears command-page cache and all transition journals");
         state_emulator.write_raw_command_byte(0x6C);
