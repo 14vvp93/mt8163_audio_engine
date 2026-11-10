@@ -101,6 +101,10 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     }
     last_command_ = result.command;
     ++accepted_commands_;
+    if (result.command->id == 0x15 && state_.speaker_register_bytes.has_value()) {
+        for (const auto byte : *state_.speaker_register_bytes)
+            record_command_byte(byte, RegisterWriteSource::IoctlFourChannelCommand);
+    }
     journal_.push_back(EmulatorEvent{
         next_sequence_++, result.command->id, modeled, *result.command,
         std::move(before), state_
@@ -108,12 +112,28 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     return result;
 }
 
+void Emulator::record_command_byte(std::uint8_t command_byte,
+                                   RegisterWriteSource source) {
+    const std::uint8_t page = static_cast<std::uint8_t>(command_byte >> 4U);
+    const auto previous = state_.command_page_cache[page];
+    state_.command_page_cache[page] = command_byte;
+    register_journal_.push_back(RegisterWriteEvent{
+        next_register_sequence_++, source, page, command_byte, previous
+    });
+}
+
+void Emulator::write_raw_command_byte(std::uint8_t command_byte) {
+    record_command_byte(command_byte, RegisterWriteSource::RawCommandByte);
+}
+
 void Emulator::reset() {
     last_command_.reset();
     accepted_commands_ = 0;
     rejected_commands_ = 0;
     next_sequence_ = 1;
+    next_register_sequence_ = 1;
     state_ = EmulatorState{};
     journal_.clear();
+    register_journal_.clear();
 }
 } // namespace cd3313
