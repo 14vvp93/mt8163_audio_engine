@@ -286,16 +286,30 @@ int main() {
                   make_input_channel_command(5)))) &&
               selector_emulator.state().input_selector_code == 2U,
               "channel 5 selector code is restored before mixing");
+        const auto before_mixing_enable_events =
+            selector_emulator.input_transition_journal().size();
         check(static_cast<bool>(selector_emulator.write(encode_driver_command(
                   make_input_mixing_command(true)))) &&
               selector_emulator.state().active_input_channel == 1U &&
               selector_emulator.state().input_selector_code == 1U,
               "mixing mode switches selector to channel 1");
+        const auto after_mixing_enable_events =
+            selector_emulator.input_transition_journal().size();
+        check(after_mixing_enable_events > before_mixing_enable_events,
+              "mixing enable records an input-switch transition");
+        for (std::size_t i = before_mixing_enable_events;
+             i < after_mixing_enable_events; ++i) {
+            check(selector_emulator.input_transition_journal()[i].kind !=
+                      InputTransitionKind::Delay,
+                  "mixing enable uses the recovered zero-millisecond delay");
+        }
         check(static_cast<bool>(selector_emulator.write(encode_driver_command(
                   make_input_channel_command(2)))) &&
               selector_emulator.state().current_input_channel == 2U &&
               selector_emulator.state().active_input_channel == 1U &&
-              selector_emulator.state().input_selector_code == 1U,
+              selector_emulator.state().input_selector_code == 1U &&
+              selector_emulator.input_transition_journal().size() ==
+                  after_mixing_enable_events,
               "channel selection during mixing is remembered without switching active selector");
         check(static_cast<bool>(selector_emulator.write(encode_driver_command(
                   make_input_mixing_command(false)))) &&
