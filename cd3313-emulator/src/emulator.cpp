@@ -2,19 +2,19 @@
 
 namespace cd3313 {
 ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
-    ParseResult result = parse_write_packet(bytes);
+    ParseResult result = parse_driver_command(bytes);
     if (result) {
-        last_packet_ = result.packet;
-        ++accepted_packets_;
+        last_command_ = result.command;
+        ++accepted_commands_;
     } else {
-        ++rejected_packets_;
+        ++rejected_commands_;
     }
     return result;
 }
 
 void Emulator::reset() {
-    last_packet_.reset();
-    accepted_packets_ = 0;
-    rejected_packets_ = 0;
+    last_command_.reset();
+    accepted_commands_ = 0;
+    rejected_commands_ = 0;
 }
 } // namespace cd3313
