@@ -3,6 +3,7 @@
 #include "pcm_dsp/engine.hpp"
 #include "pcm_dsp/time_alignment.hpp"
 #include "pcm_dsp/crossover.hpp"
+#include "pcm_dsp/multiband_dynamics.hpp"
 
 #include <array>
 #include <cstddef>
@@ -59,6 +60,7 @@ class QuadEngine {
 public:
     bool configure(std::uint32_t sample_rate_hz);
     bool configure_routing(const QuadOutputRoutingParameters& parameters);
+    bool configure_dynamics(const MultibandDynamicsParameters& parameters);
     void reset();
 
     bool process(const float* input,
@@ -111,6 +113,8 @@ private:
     QuadOutputRoutingParameters routing_{};
     std::array<LinkwitzRileyCrossover, kOutputChannelCount> crossovers_{};
     float sub_limiter_envelope_{0.0F};
+    MultibandDynamicsParameters dynamics_parameters_{};
+    MultibandDynamicsProcessor dynamics_{};
 };
 
 } // namespace pcm_dsp
