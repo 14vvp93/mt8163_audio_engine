@@ -45,6 +45,10 @@ bool valid_channel_indices(const std::vector<std::uint8_t>& payload) {
 }
 } // namespace
 
+std::array<std::uint8_t, 8> read_device_identifier_payload() {
+    return {{'c', 'd', '3', '3', '1', '3', 0U, 0U}};
+}
+
 const std::vector<CommandSpec>& known_write_commands() {
     static const std::vector<CommandSpec> commands{
         {0x01, 1, 1}, {0x03, 3, 3}, {0x04, 3, 3}, {0x10, 1, 1},
