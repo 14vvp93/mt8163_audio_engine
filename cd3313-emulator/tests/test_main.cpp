@@ -555,6 +555,8 @@ int main() {
             0x04, 3, {
                 1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0
             }};
+        const auto gpio_journal_before_hfp_mute =
+            input_emulator.input_transition_journal().size();
         check(static_cast<bool>(input_emulator.write(
                   encode_driver_command(mute_input_one))) &&
               input_emulator.state().input_mute_reason_masks[1] == (1U << 16U) &&
@@ -562,6 +564,12 @@ int main() {
               input_emulator.state().gpio_393_level == false &&
               (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
               "HFP suppresses the ordinary GPIO 393 mute request while ACC is on");
+        check(input_emulator.input_transition_journal().size() ==
+                  gpio_journal_before_hfp_mute + 1U &&
+              input_emulator.input_transition_journal().back().kind ==
+                  InputTransitionKind::Gpio393Write &&
+              input_emulator.input_transition_journal().back().value == 0U,
+              "active-channel HFP mute records the GPIO 393 write even when the raw level stays low");
         const DriverCommand add_input_mute_reason{
             0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0}};
         check(static_cast<bool>(input_emulator.write(
