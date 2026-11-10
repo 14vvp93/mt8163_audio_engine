@@ -16,6 +16,9 @@ int main() {
     try {
         check(known_write_commands().size() == 12,
               "expected 12 recovered command specifications");
+        check(read_device_identifier_payload() ==
+                  std::array<std::uint8_t, 8>{{'c', 'd', '3', '3', '1', '3', 0U, 0U}},
+              "0xF0 read ioctl returns the static cd3313 identifier bytes");
         check(known_write_commands()[1].id == 0x03 &&
               known_write_commands()[1].minimum_size_words == 3,
               "0x03 minimum size field");
