@@ -49,7 +49,7 @@ These are separate chip backends, not interchangeable transports. None is a CD33
 The same APK has a separate ASP path that explicitly recognizes CD3313:
 
 - EqUtils.ASP_CHIP_3313 is the literal "cd3313".
-- The chip name is selected from ro.hw.dsp.chip.
+- The chip name is selected from ro.hw.dsp.chip. The decompiled EqUtils class defines KEY_DSP_CHIP as ro.hw.dsp.chip, ASP_CHIP_3313 as the literal cd3313, and hasAsp() as true for either pt2348 or cd3313. MainActivity uses that result to create the ASP settings/balance UI and hide the unrelated external-DSP tabs.
 - hasAsp() is true for pt2348 and cd3313.
 - MainActivity creates the ASP equalizer and balance UI for this path.
 - AspSettings obtains android.audio.AudioEffect.getInstance() and calls the vendor methods setBalance(), setLoud(), setSubWoofer(), setBassBoost(), setTreble(), and setMasterVolume().
@@ -66,13 +66,16 @@ It then calls AspSettings.setAspBassBoost(bass, false) and setAspTreble(treble, 
 
 #### Four-channel balance path
 
-AspSettings.setAspBalance() computes four integer output levels in FL, FR, RL, RR order from the balance/fader coordinates and calls AudioEffect.setBalance(FL, FR, RL, RR). The values are in a 0..15 range, matching the kernel's four-index 0x15 command and its 16-entry speaker attenuation table. This is a strong semantic correspondence, but the hidden framework method must be recovered before declaring a proven Java-method-to-ioctl mapping.
+AspSettings.setAspBalance() converts the two stored balance/fader coordinates into four integer output levels in FL, FR, RL, RR order and calls AudioEffect.setBalance(FL, FR, RL, RR). The ASP balance depth is 15; the generated values are 0..15, and the centered (0,0) setting produces 15/15/15/15. This matches the kernel's four-index 0x15 command and its 16-entry speaker attenuation table. This is a strong semantic correspondence, but the hidden framework method must be recovered before declaring a proven Java-method-to-ioctl mapping.
 
 After setting the four speaker values, the app also calls setMasterVolume(left, right) with:
 - left = max(FL, RL) / 15.0
 - right = max(FR, RR) / 15.0
 
 This appears intended to coordinate left/right master gain with the per-speaker balance values. The kernel module currently exposes one global volume_percentage variable, so the exact route for the two-float API is unresolved.
+
+The Java signature is setMasterVolume(float, float). The vendor AudioEffect implementation is absent from the APK and from the supplied audio-HAL archive, so it is not known whether these floats are converted to one or two integer commands, normalized, or routed through another system service. The kernel's 0x12 callback accepts a two-word minimum but reads only the first 32-bit word, validates it as 1..100, stores it as the single global volume_percentage, and recalculates the master-volume register. This mismatch prevents a proven direct mapping.
+
 
 #### Other ASP calls and kernel correlations
 
@@ -86,6 +89,9 @@ This appears intended to coordinate left/right master gain with the per-speaker 
 | setMasterVolume(left, right) | Two floats | Master-volume/percentage path | Unresolved; kernel has one named percentage global |
 
 The 0x55 and 0x5C kernel paths consume the second payload word to calculate an internal table index. The Java calls pass constants in that position, so the hidden AudioEffect wrapper must transform/reorder arguments or use a different wire representation. Do not directly equate the Java parameters with raw ioctl payload words.
+
+At boot, startBootAspSetting() applies treble, bass boost, the saved four-channel balance, loudness, and subwoofer in that order. The Java API calls are therefore useful evidence of intended controls and initialization order, but not of the raw ioctl word order.
+
 
 ## 2. Coefficient and parameter findings
 
