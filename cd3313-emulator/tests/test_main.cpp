@@ -631,6 +631,10 @@ int main() {
         check(startup_emulator.state().master_mute_reason_mask == (1U << 31U) &&
               startup_emulator.state().acc_on &&
               startup_emulator.state().gpio_393_level == true &&
+              startup_emulator.input_transition_journal().size() == 1U &&
+              startup_emulator.input_transition_journal().front().kind ==
+                  InputTransitionKind::Gpio393Write &&
+              startup_emulator.input_transition_journal().front().value == 1U &&
               startup_emulator.register_journal().size() == 1U &&
               startup_emulator.register_journal().front().command_byte == 0x3FU &&
               startup_emulator.register_journal().front().source ==
