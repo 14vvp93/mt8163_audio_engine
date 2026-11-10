@@ -96,3 +96,15 @@ This confirms that the command path is asynchronous: the userspace-facing ioctl/
 6. Recover the four-channel level scale and verify the physical FL/FR/RL/RR speaker mapping before issuing `0x15` from a userspace controller.
 
 Until these are resolved, the emulator must preserve unknown fields and mark unverified semantics explicitly rather than inventing behavior.
+
+## Host-side typed command builders
+
+The emulator now exposes safe typed builders for the commands whose payloads and ranges are recovered with high confidence:
+
+- `make_master_volume_command(step)`: command `0x10`, one little-endian 32-bit word, range 0..40.
+- `make_master_mute_command(mute, reason)`: command `0x11`, two little-endian 32-bit words; the mute value is 0/1 and the reason bit index is restricted to 0..31.
+- `make_four_channel_level_command(fl, fr, rl, rr)`: command `0x15`, four little-endian 32-bit speaker-table indices in FL/FR/RL/RR order; each index is restricted to 0..15.
+
+These builders create emulator command frames only. They do not open `/dev/audiomux`, issue ioctls, or write I²C. The command parser continues to reject the unsafe short `0x15` payload even though the original driver's minimum-length table accepts a smaller size.
+
+The implementation and host tests passed in [CD3313 protocol emulator run 42850101047](https://github.com/14march93/mt8163_audio_engine/actions/runs/42850101047).
