@@ -25,6 +25,7 @@ struct EmulatorState {
     std::optional<std::uint32_t> treble_opaque_arg0;
     std::optional<std::uint8_t> treble_register_value;
     std::optional<bool> loudness_enabled;
+    std::optional<std::uint8_t> control_register_value;
     std::optional<bool> dsp_awake;
     // Requested GPIO state only; physical routing is not inferred.
     std::optional<bool> subwoofer_gpio_enabled;
@@ -46,6 +47,7 @@ enum class RegisterWriteSource {
     MasterVolumeTransition,
     BassTransition,
     TrebleTransition,
+    LoudnessControl,
     IoctlFourChannelCommand,
     RawCommandByte
 };
