@@ -119,7 +119,7 @@ Modeled state:
 - `0x11`: independent master-mute reason bits; output is considered muted while any bit remains set.
 - `0x12`: volume percentage (1..100); its second argument is preserved as opaque data because its meaning is unresolved.
 - `0x15`: four FL/FR/RL/RR speaker indices and corresponding register bytes, using the recovered 16-entry attenuation table and register prefixes.
-- `0x55` / `0x5C`: bounded bass/treble transition targets (0..14); the first argument is retained verbatim and is not assigned an invented meaning.
+- `0x55` / `0x5C`: bass/treble transition indices (3..10) derived from the second argument and the recovered `cd3313_equalizer` table; the first argument is retained verbatim and remains opaque.
 - `0x56`: loudness enabled state.
 - `0xA3`: requested subwoofer GPIO state only; physical routing is not inferred.
 - `0xF1`: DSP awake/sleep request state.
@@ -154,3 +154,6 @@ The four speaker bytes are the neutral attenuation settings: FL=`0x80`, FR=`0xA0
 
 
 For the reconstructed probe guard write, exact event-0 initialization sequence, 16-page cache model, and master-volume lookup/ramp implementation, see [CD3313 Register Image Emulator](CD3313_REGISTER_IMAGE.md). The extended static-analysis artifact [run 42852859151](https://github.com/14march93/mt8163_audio_engine/actions/runs/42852859151) includes the `dsp_probe` disassembly, ELF section map, relocations, and `.rodata`/`.data` dumps used to recover these values.
+
+
+The bass/treble lookup and transition path is now documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md): `cd3313_equalizer` contains `04 05 06 07 0E 0D 0C 0B 0A 09 08 00 00 00 00`; commands `0x55` and `0x5C` derive an internal transition index 3..10 from their second word and write stepped `0x60`/`0x70` command bytes. The first argument remains unresolved.
