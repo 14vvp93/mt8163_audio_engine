@@ -107,7 +107,7 @@ profile storage and JNI synchronization are separate integration tasks.
 
 Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
 
-The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from a verified native AudioFlinger/HAL integration point, preserving the stock routing and bypassing calls, microphone, and Bluetooth SCO until those paths are separately mapped.
+The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing through `ProfiledQuadEngine`. Every control change is submitted as a complete validated `AudioProfile` snapshot and crossfaded over the default 50 ms transition. A new control update is rejected while the previous transition is pending or running; the test UI therefore commits channel gain when the user releases the slider instead of flooding the control thread during a drag. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from a verified native AudioFlinger/HAL integration point, preserving the stock routing and bypassing calls, microphone, and Bluetooth SCO until those paths are separately mapped.
 
 ## Validation
 
