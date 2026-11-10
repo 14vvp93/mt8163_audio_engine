@@ -67,6 +67,28 @@ The crossover is integrated into the optional QuadEngine bass-management stage. 
 `MultibandDynamicsProcessor` splits each FL/FR/RL/RR channel into low, mid and high bands using two cascaded Linkwitz-Riley 24 dB/octave crossovers. Each of the 12 channel/band compressors has independent threshold, ratio, attack, release, soft-knee and makeup-gain settings. The defaults are bypassed. Processing is interleaved Float32, supports in-place operation, sanitizes non-finite input, and performs no heap allocation or locking. Configure outside the audio callback; reconfiguration resets crossover and detector state. `QuadEngine::configure_dynamics()` configures this stage; when enabled, it runs after the 32-band channel EQ and before time alignment, output routing, and the final safety limiter. The front and rear pairs, as well as individual channels, can be tuned independently. The Android audio path is not connected yet.
 
 
+## Psychoacoustic Bass and Clarity enhancement
+
+The optional four-channel enhancement stage provides two independent harmonic
+exciters inspired by common psychoacoustic bass and clarity processors:
+
+- **Bass Enhancement** applies a low-pass analysis path (40–160 Hz) and a
+  restrained cubic harmonic generator. It adds upper harmonics that can make
+  bass notes more perceptible on small automotive speakers without simply
+  boosting the lowest frequencies.
+- **Clarity Enhancement** extracts content above a selectable 1.5–8 kHz focus
+  point and adds a low-level nonlinear harmonic component to increase presence.
+  It is deliberately conservative to reduce harshness and listening fatigue.
+
+Both controls are independently enabled, have normalized 0–100% intensity,
+are configured as part of the validated AudioProfile, and participate in the
+existing profile crossfade. The processor uses fixed per-channel state, no
+heap allocation, and no locks in process(). It is an original lightweight
+implementation, not copied ViPER4Android code. These are early DSP controls:
+the default is OFF, and final tuning requires listening tests and measurement
+on the actual head unit and speakers. The stage is not yet connected to the
+Android system audio path.
+
 ## Unified audio profile API
 
 `audio_profile.hpp` defines a versioned, platform-independent `AudioProfile`
