@@ -340,7 +340,7 @@ bool QuadEngine::process(const float* input, float* output,
                     main[channel] = high;
                     sub_sample += low * 0.25F;
                 }
-                sub_sample *= sub_gain;
+                sub_sample *= sub_gain * (routing_.sub_phase_inverted ? -1.0F : 1.0F);
             } else {
                 main = source;
             }
