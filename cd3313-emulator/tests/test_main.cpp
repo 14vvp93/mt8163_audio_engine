@@ -778,7 +778,7 @@ int main() {
                   encode_driver_command(add_input_mute_reason))),
               "independent input mute reason is accepted");
         const DriverCommand clear_hfp_mute{
-            0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0}};
+            0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}};
         check(static_cast<bool>(input_emulator.write(
                   encode_driver_command(clear_hfp_mute))) &&
               !input_emulator.state().hfp_active &&
