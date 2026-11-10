@@ -64,7 +64,7 @@ The crossover is integrated into the optional QuadEngine bass-management stage. 
 
 ### Multiband dynamics
 
-`MultibandDynamicsProcessor` splits each FL/FR/RL/RR channel into low, mid and high bands using two cascaded Linkwitz-Riley 24 dB/octave crossovers. Each of the 12 channel/band compressors has independent threshold, ratio, attack, release, soft-knee and makeup-gain settings. The defaults are bypassed. Processing is interleaved Float32, supports in-place operation, sanitizes non-finite input, and performs no heap allocation or locking. Configure outside the audio callback; reconfiguration resets crossover and detector state. This module is standalone and is not yet inserted into `QuadEngine` or the Android audio path.
+`MultibandDynamicsProcessor` splits each FL/FR/RL/RR channel into low, mid and high bands using two cascaded Linkwitz-Riley 24 dB/octave crossovers. Each of the 12 channel/band compressors has independent threshold, ratio, attack, release, soft-knee and makeup-gain settings. The defaults are bypassed. Processing is interleaved Float32, supports in-place operation, sanitizes non-finite input, and performs no heap allocation or locking. Configure outside the audio callback; reconfiguration resets crossover and detector state. `QuadEngine::configure_dynamics()` configures this stage; when enabled, it runs after the 32-band channel EQ and before time alignment, output routing, and the final safety limiter. The front and rear pairs, as well as individual channels, can be tuned independently. The Android audio path is not connected yet.
 
 
 ## Android JNI bring-up bridge
