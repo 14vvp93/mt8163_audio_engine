@@ -111,6 +111,44 @@ Each register-journal entry contains:
 
 The separate raw `cmd_write()` interface is represented by `Emulator::write_raw_command_byte()`; it is not parsed as an ioctl frame. The four-channel `0x15` command updates the four speaker command bytes using the recovered prefixes and 16-entry attenuation table.
 
+## Command-to-register and side-effect matrix
+
+This matrix connects the accepted dispatcher commands to the exact register-byte families or non-I²C side effects recovered from the handler paths. The cache-slot column is the driver's software `reg_bufs` slot selected by TAB.33841; it is not a silicon register address.
+
+| Command | Register byte / field affected | Cache slot | Other recovered side effect |
+|---|---|---:|---|
+| `0x01` input channel | Control byte `0x4x`: selector bits 1..0 | 5 | Requests GPIO 396/398 levels; may run the input-switch attenuation/mute sequence |
+| `0x03` input gain | Control byte `0x4x`: gain bits 4..3 | 5 | Updates per-channel software gain cache |
+| `0x04` input mute | No independent register family identified; changes mute state and can trigger the master attenuation/mute path | — | Per-channel reason mask; active-channel state feeds master mute reason 31 and GPIO 393 |
+| `0x10` master volume step | `0x00..0x3F` volume attenuation code | 0 | Incremental I²C byte ramp |
+| `0x11` master mute reason | No direct CD3313 register byte identified | — | Updates mute-reason mask and GPIO 393; reason 2 also updates the ACC latch |
+| `0x12` volume percentage | Recalculates the same `0x00..0x3F` target as `0x10` | 0 | Stores percentage and reapplies current volume step |
+| `0x15` four-channel levels | FL `0x80..`, FR `0xA0..`, RL `0xC0..`, RR `0xE0..` | 3, 4, 1, 2 | Four independent speaker attenuation bytes |
+| `0x20` mixing mode | Control byte `0x4x`: selector/gain fields for active channel | 5 | Switches active input path and recalculates active-channel mute |
+| `0x55` bass | `0x60..` bass code | 6 | Stepped transition; second argument selects target |
+| `0x56` loudness | Control byte `0x4x`: bit 2, active-low | 5 | No redundant write when the requested state is already active |
+| `0x5C` treble | `0x70..` treble code | 7 | Stepped transition; second argument selects target |
+| `0xA3` subwoofer | No CD3313 register byte identified | — | Writes requested raw GPIO 409 level |
+| `0xF0` read/write identifier | No register write | — | Read direction returns static `cd3313\\0\\0`; write direction is a no-op/error-log path |
+| `0xF1` DSP power | No register byte identified in the recovered command handler | — | Calls DSP shutdown or conditional wake-up path |
+
+### Register-byte families and cache slots
+
+The known register-byte families can be summarized without pretending they are the complete silicon address map:
+
+| Byte family | Meaning recovered from caller/handler | TAB.33841 cache slot |
+|---|---|---:|
+| `0x00..0x3F` | Master-volume attenuation code | 0 |
+| `0x4x` | Input control: gain, loudness, selector fields | 5 |
+| `0x60..` | Bass control | 6 |
+| `0x70..` | Treble control | 7 |
+| `0x80..` | Front-left output attenuation | 3 |
+| `0xA0..` | Front-right output attenuation | 4 |
+| `0xC0..` | Rear-left output attenuation | 1 |
+| `0xE0..` | Rear-right output attenuation | 2 |
+
+The driver's cache slot mapping is exact for the recovered `cd3313_write_reg()` implementation. The byte families above are supported by observed command prefixes and cached startup bytes, but the full physical register-address map and any undocumented bits remain outside the reconstruction.
+
 ## Known limitations
 
 - The full physical register-address map and all control-byte bit meanings are not reconstructed.
