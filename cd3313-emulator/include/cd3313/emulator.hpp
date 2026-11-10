@@ -91,6 +91,15 @@ enum class RegisterWriteSource {
     ShutdownFinalWrite
 };
 
+enum class WakeupEventKind { RemoveQueuedEvent, PostDelayedEvent };
+
+struct WakeupEvent {
+    std::uint64_t sequence{};
+    WakeupEventKind kind{};
+    std::uint32_t event_id{};
+    std::uint32_t delay_ms{};
+};
+
 enum class ShutdownEventKind { Gpio393Write, RemoveQueuedEvent, FinalI2cWrite };
 
 struct ShutdownEvent {
@@ -122,6 +131,8 @@ public:
     // Models dsp_shutdown(): reason 30, shutdown-specific GPIO 393 formula,
     // removal requests for queued events 0/1, and the final 0x3F I2C write.
     void apply_recovered_shutdown();
+    // Replays pm_event_notify(action, event_code); returns 0 or -EINVAL (-22).
+    int apply_recovered_pm_event(std::uint32_t action, std::uint32_t event_code);
     const std::optional<DriverCommand>& last_command() const { return last_command_; }
     std::uint64_t accepted_commands() const { return accepted_commands_; }
     std::uint64_t rejected_commands() const { return rejected_commands_; }
@@ -131,6 +142,7 @@ public:
         return register_journal_;
     }
     const std::vector<ShutdownEvent>& shutdown_journal() const { return shutdown_journal_; }
+    const std::vector<WakeupEvent>& wakeup_journal() const { return wakeup_journal_; }
     const std::vector<InputTransitionEvent>& input_transition_journal() const {
         return input_transition_journal_;
     }
@@ -146,10 +158,12 @@ private:
     std::uint64_t next_register_sequence_{1};
     std::uint64_t next_input_transition_sequence_{1};
     std::uint64_t next_shutdown_sequence_{1};
+    std::uint64_t next_wakeup_sequence_{1};
     EmulatorState state_{};
     std::vector<EmulatorEvent> journal_;
     std::vector<RegisterWriteEvent> register_journal_;
     std::vector<InputTransitionEvent> input_transition_journal_;
     std::vector<ShutdownEvent> shutdown_journal_;
+    std::vector<WakeupEvent> wakeup_journal_;
 };
 } // namespace cd3313
