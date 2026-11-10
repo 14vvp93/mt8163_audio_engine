@@ -265,3 +265,16 @@ The focused analysis also flags two static bounds-audit items without claiming e
 
 
 The follow-up table analysis now confirms that TAB.33841 is the command-page-to-reg_bufs-slot mapping and that CSWTCH.194 is the six-entry input selector map. The emulator now mirrors the actual eight-slot reg_bufs cache in addition to retaining the 16-page diagnostic view. Its tests cover every TAB.33841 mapping and the aliasing of different command pages onto the same cache slot.
+
+
+## Manufacturer datasheet cross-check
+
+The driver tables and bit fields are cross-checked against the manufacturer document **CD3313-AX-BJ-24, revision 2012-01-B1** ([PDF](https://datasheet4u.com/pdf/831243/CD3313.pdf)).
+
+- Input control byte format is 010 G1 G0 S2 S1 S0. G1G0 (bits 4..3) select 0/3.75/7.5/11.25 dB input gain; S2 (bit 2) is loudness (0=on, 1=off); S1S0 (bits 1..0) select chip input 1..4.
+- The datasheet specifies three external stereo inputs; input 4 has no external pins. The driver's channel map 0..6 therefore resolves to chip input numbers 3, 2, 1, 4, 1, 3, 4. This does not identify AUX/radio/Bluetooth/phone wiring.
+- Startup control byte 0x47 selects input 4, 0 dB input gain, and loudness off. The driver changes S1S0 and G1G0 while preserving the loudness bit; command 0x56 toggles that bit.
+- The four-speaker attenuation lookup spans -38.75 dB to 0 dB in the recovered table order. The 16 levels are -38.75, -35, -32.5, -30, -27.5, -25, -22.5, -20, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, and 0 dB.
+- The datasheet defines bass and treble control in 2 dB steps. The driver's transition routine currently uses lookup indices 3..10, which decode to -8, -6, -4, -2, 0, +2, +4, and +6 dB. This is the range of the recovered command path, not the chip's full ±14 dB capability.
+
+The complete raw tables, register-cache mappings, and master-volume dB list are in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md). Datasheet correlation does not prove board-level wiring or runtime behavior on the target head unit.
