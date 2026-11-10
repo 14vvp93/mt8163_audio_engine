@@ -32,6 +32,8 @@ struct EmulatorState {
     std::uint32_t active_input_channel{6U};
     bool mixing_mode{false};
     bool hfp_active{false};
+    bool acc_on{false};
+    std::optional<bool> gpio_393_level;
     std::array<std::uint8_t, 7> input_gain{};
     // Two-bit selector recovered from set_input_channel() and its .rodata table.
     std::optional<std::uint8_t> input_selector_code;
@@ -61,6 +63,7 @@ enum class InputTransitionKind {
     Gpio396Write,
     Gpio398Write,
     MasterMuteReason31,
+    Gpio393Write,
     Delay
 };
 
