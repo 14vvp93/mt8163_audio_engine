@@ -149,8 +149,8 @@ int main() {
                   std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC4, 0xFF}}),
               "speaker register image uses recovered prefixes and table");
 
-        check(channel_state.command_page_cache[0x9].has_value() &&
-              *channel_state.command_page_cache[0x9] == 0x9F &&
+        check(channel_state.command_page_cache[0x8].has_value() &&
+              *channel_state.command_page_cache[0x8] == 0x80 &&
               channel_state.command_page_cache[0xA].has_value() &&
               *channel_state.command_page_cache[0xA] == 0xA2 &&
               channel_state.command_page_cache[0xC].has_value() &&
