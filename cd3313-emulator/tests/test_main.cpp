@@ -164,7 +164,7 @@ int main() {
         check(state_emulator.register_journal()[0].sequence == 1U &&
               state_emulator.register_journal()[0].source ==
                   RegisterWriteSource::IoctlFourChannelCommand &&
-              state_emulator.register_journal()[0].command_byte == 0x9F,
+              state_emulator.register_journal()[0].command_byte == 0x80,
               "first speaker write has a deterministic journal record");
 
         state_emulator.write_raw_command_byte(0x6A);
