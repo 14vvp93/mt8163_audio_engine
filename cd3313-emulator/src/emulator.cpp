@@ -114,9 +114,17 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
             0x60U | kBassTrebleCodes[target]);
         return true;
     }
-    case 0x56:
-        state.loudness_enabled = read_le32(payload, 0) != 0U;
+    case 0x56: {
+        const bool enabled = read_le32(payload, 0) != 0U;
+        state.loudness_enabled = enabled;
+        if (state.control_register_value.has_value()) {
+            std::uint8_t control = *state.control_register_value;
+            if (enabled) control = static_cast<std::uint8_t>(control & ~0x04U);
+            else control = static_cast<std::uint8_t>(control | 0x04U);
+            state.control_register_value = control;
+        }
         return true;
+    }
     case 0x5C: {
         state.treble_opaque_arg0 = read_le32(payload, 0);
         const std::uint32_t target = bass_treble_target(read_le32(payload, 4));
@@ -200,6 +208,13 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
                                 RegisterWriteSource::TrebleTransition);
         }
     }
+    if (result.command->id == 0x56 &&
+        before.control_register_value.has_value() &&
+        state_.control_register_value.has_value() &&
+        before.control_register_value != state_.control_register_value) {
+        record_command_byte(*state_.control_register_value,
+                            RegisterWriteSource::LoudnessControl);
+    }
     if (result.command->id == 0x15 && state_.speaker_register_bytes.has_value()) {
         for (const auto byte : *state_.speaker_register_bytes)
             record_command_byte(byte, RegisterWriteSource::IoctlFourChannelCommand);
@@ -249,6 +264,8 @@ void Emulator::apply_recovered_initialization_sequence() {
     }};
     state_.bass_register_value = 0x6FU;
     state_.treble_register_value = 0x7FU;
+    state_.control_register_value = 0x47U;
+    state_.loudness_enabled = false;
     state_.initialization_sequence_applied = true;
 }
 
