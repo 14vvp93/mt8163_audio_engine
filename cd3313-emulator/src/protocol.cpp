@@ -125,6 +125,66 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
     bytes.insert(bytes.end(), command.payload.begin(), command.payload.end());
     return bytes;
 }
+namespace {
+std::vector<std::uint8_t> word_bytes(std::uint32_t value) {
+    return {
+        static_cast<std::uint8_t>(value & 0xFFU),
+        static_cast<std::uint8_t>((value >> 8U) & 0xFFU),
+        static_cast<std::uint8_t>((value >> 16U) & 0xFFU),
+        static_cast<std::uint8_t>((value >> 24U) & 0xFFU)
+    };
+}
+void append_word(std::vector<std::uint8_t>& payload, std::uint32_t value) {
+    const auto bytes = word_bytes(value);
+    payload.insert(payload.end(), bytes.begin(), bytes.end());
+}
+}
+
+DriverCommand make_input_channel_command(std::int32_t channel) {
+    if (channel < -1 || channel > 6)
+        throw std::invalid_argument("CD3313 input channel must be -1 or in range 0..6");
+    return {0x01, 1, word_bytes(static_cast<std::uint32_t>(channel))};
+}
+
+DriverCommand make_input_gain_command(std::uint32_t channel, std::uint32_t gain,
+                                      std::uint32_t opaque_word) {
+    if (channel > 6U)
+        throw std::invalid_argument("CD3313 input gain channel must be in range 0..6");
+    if (gain > 3U)
+        throw std::invalid_argument("CD3313 input gain must be in range 0..3");
+    std::vector<std::uint8_t> payload;
+    payload.reserve(12U);
+    append_word(payload, channel);
+    append_word(payload, gain);
+    append_word(payload, opaque_word);
+    return {0x03, 3, std::move(payload)};
+}
+
+DriverCommand make_input_mute_command(std::int32_t channel, bool mute,
+                                      std::uint32_t reason) {
+    if (channel < -1 || channel > 6)
+        throw std::invalid_argument("CD3313 input mute channel must be -1 or in range 0..6");
+    if (reason > 31U)
+        throw std::invalid_argument("CD3313 input mute reason must be in range 0..31");
+    std::vector<std::uint8_t> payload;
+    payload.reserve(12U);
+    append_word(payload, static_cast<std::uint32_t>(channel));
+    append_word(payload, mute ? 1U : 0U);
+    append_word(payload, reason);
+    return {0x04, 3, std::move(payload)};
+}
+
+DriverCommand make_input_mixing_command(bool enabled,
+                                        std::uint32_t opaque_word0,
+                                        std::uint32_t opaque_word1) {
+    std::vector<std::uint8_t> payload;
+    payload.reserve(12U);
+    append_word(payload, enabled ? 1U : 0U);
+    append_word(payload, opaque_word0);
+    append_word(payload, opaque_word1);
+    return {0x20, 3, std::move(payload)};
+}
+
 DriverCommand make_master_volume_command(std::uint32_t step) {
     if (step > 40U)
         throw std::invalid_argument("CD3313 master volume step must be in range 0..40");
