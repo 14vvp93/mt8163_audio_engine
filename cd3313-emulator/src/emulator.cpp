@@ -13,6 +13,10 @@ std::uint32_t read_le32(const std::vector<std::uint8_t>& payload,
            (static_cast<std::uint32_t>(payload[offset + 3U]) << 24U);
 }
 
+constexpr std::array<std::uint8_t, 7> kInputSelectorCodes{{
+    2, 1, 0, 3, 0, 2, 3
+}};
+
 constexpr std::array<std::uint8_t, 16> kSpeakerAttenuationCodes{{
     0x1F, 0x1C, 0x1A, 0x18, 0x16, 0x14, 0x12, 0x10,
     0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x00
@@ -47,6 +51,19 @@ std::uint8_t decode_bass_treble_index(std::uint8_t register_byte) {
     return nibble > 7U ? static_cast<std::uint8_t>(22U - nibble) : nibble;
 }
 
+void apply_active_input_register_fields(EmulatorState& state) {
+    const std::uint32_t channel = state.active_input_channel;
+    state.input_selector_code = kInputSelectorCodes[channel];
+    if (state.control_register_value.has_value()) {
+        const std::uint8_t old = *state.control_register_value;
+        const std::uint8_t gain = state.input_gain[channel];
+        state.control_register_value = static_cast<std::uint8_t>(
+            (old & static_cast<std::uint8_t>(~0x1BU)) |
+            static_cast<std::uint8_t>(gain << 3U) |
+            *state.input_selector_code);
+    }
+}
+
 std::uint8_t calculate_master_volume_register(std::uint32_t step,
                                               std::uint32_t percentage) {
     const std::uint32_t bounded_percentage = std::min(percentage, 100U);
@@ -71,6 +88,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         state.current_input_channel = channel;
         if (!state.mixing_mode) {
             state.active_input_channel = channel;
+            apply_active_input_register_fields(state);
             if (state.input_mute_reason_masks[channel] != 0U)
                 state.master_mute_reason_mask |= (1U << 31U);
             else
@@ -158,6 +176,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         state.mixing_mode = enabled != 0U;
         state.active_input_channel = state.mixing_mode
             ? 1U : state.current_input_channel;
+        apply_active_input_register_fields(state);
         if (state.input_mute_reason_masks[state.active_input_channel] != 0U)
             state.master_mute_reason_mask |= (1U << 31U);
         else
@@ -265,6 +284,13 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
             record_command_byte(*state_.treble_register_value,
                                 RegisterWriteSource::TrebleTransition);
         }
+    }
+    if ((result.command->id == 0x01 || result.command->id == 0x20) &&
+        before.control_register_value.has_value() &&
+        state_.control_register_value.has_value() &&
+        before.control_register_value != state_.control_register_value) {
+        record_command_byte(*state_.control_register_value,
+                            RegisterWriteSource::InputSelectorControl);
     }
     if (result.command->id == 0x03 &&
         before.control_register_value.has_value() &&
