@@ -3,6 +3,7 @@ project(mt8163_pcm_dsp LANGUAGES CXX)
 
 add_library(mt8163_pcm_dsp STATIC
     src/engine.cpp
+    src/quad_engine.cpp
 )
 target_include_directories(mt8163_pcm_dsp PUBLIC include)
 target_compile_features(mt8163_pcm_dsp PUBLIC cxx_std_17)
