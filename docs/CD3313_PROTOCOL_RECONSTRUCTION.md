@@ -1,7 +1,7 @@
 # CD3313 protocol reconstruction — static analysis
 
 Source: `cd3313.ko` from this repository.
-Analysis artifact: GitHub Actions run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) (ARM disassembly completed; all report commands exited 0).
+Latest detailed analysis artifact: GitHub Actions run [42849777588](https://github.com/14march93/mt8163_audio_engine/actions/runs/42849777588) (ARM disassembly, DWARF decoded lines, and function-to-source mapping completed successfully).
 Module SHA-256: `b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb`.
 
 ## Confidence and scope
@@ -130,7 +130,7 @@ The raw bytes are preserved in the Actions artifact's `section-bytes.txt`. Array
 
 ## Additional facts confirmed by ARM disassembly
 
-The corrected analysis run successfully disassembled the module as ARM (`elf32-littlearm`). The following points are directly visible in the function bodies:
+The latest corrected analysis run [42849777588](https://github.com/14march93/mt8163_audio_engine/actions/runs/42849777588) successfully disassembled the module as ARM (`elf32-littlearm`) and generated DWARF line tables plus function-to-source mappings. The following points are directly visible in the function bodies:
 
 - `cmd_write()` parses the userspace write buffer as an unsigned decimal integer with `kstrtouint()`, truncates it to one byte, and sends that single byte with `i2c_master_send()`. It also updates a cached register byte selected using the high nibble. This path is a raw one-byte register write interface, not the framed multi-byte command protocol.
 - `cd3313_write_reg()` sends exactly one byte per call using `i2c_master_send()`, then updates the driver's cached register image.
@@ -161,7 +161,7 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 
 ## Disassembly note
 
-The initial x86 objdump attempt failed. The workflow was corrected to install multiarch binutils and run `objdump -m arm -drwC`. The latest run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) completed successfully; `disassembly-relocations.txt` is a valid ARM disassembly report and its command exit status is 0.
+The initial x86 objdump attempt failed. The workflow now uses ARM cross-binutils and emits both instruction disassembly and DWARF source-line correlation. The latest run [42849777588](https://github.com/14march93/mt8163_audio_engine/actions/runs/42849777588) completed successfully.
 
 ### Potential bounds issue found in the original driver\n\nThe `0x15` balance handler reads four 32-bit values at offsets +4, +8, +12, and +16, but the recovered `cmd_len_list` minimum for `0x15` is only 2 words (8 copied payload bytes). If a caller supplies exactly the minimum, the handler appears to read beyond the copied payload. This is a static-analysis warning, not proof of an exploitable bug; callers may always pass a larger size. The emulator validates the actual copied payload length but does not emulate unsafe out-of-bounds reads.\n\n## Detailed command dispatcher map
 
