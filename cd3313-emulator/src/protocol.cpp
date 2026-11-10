@@ -1,6 +1,7 @@
 #include "cd3313/protocol.hpp"
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace cd3313 {
 namespace {
