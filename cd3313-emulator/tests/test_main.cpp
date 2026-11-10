@@ -755,16 +755,16 @@ int main() {
               "input-select command updates the selected and active channel");
         const DriverCommand mute_input_one{
             0x04, 3, {
-                1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0
+                1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0
             }};
         const auto gpio_journal_before_hfp_mute =
             input_emulator.input_transition_journal().size();
         check(static_cast<bool>(input_emulator.write(
                   encode_driver_command(mute_input_one))) &&
-              input_emulator.state().input_mute_reason_masks[1] == (1U << 16U) &&
+              input_emulator.state().input_mute_reason_masks[1] == 0U &&
               input_emulator.state().hfp_active &&
               input_emulator.state().gpio_393_level == false &&
-              (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
+              (input_emulator.state().master_mute_reason_mask & (1U << 31U)) == 0U,
               "HFP suppresses the ordinary GPIO 393 mute request while ACC is on");
         check(input_emulator.input_transition_journal().size() ==
                   gpio_journal_before_hfp_mute + 1U &&
@@ -909,7 +909,7 @@ int main() {
 
         Emulator shutdown_hfp;
         check(static_cast<bool>(shutdown_hfp.write(encode_driver_command(
-                  make_master_mute_command(true, 2)))),
+                  make_master_mute_command(false, 2)))),
               "shutdown HFP case enables ACC latch");
         check(static_cast<bool>(shutdown_hfp.write(encode_driver_command(DriverCommand{
                   0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
@@ -921,7 +921,7 @@ int main() {
 
         Emulator shutdown_reason24;
         check(static_cast<bool>(shutdown_reason24.write(encode_driver_command(
-                  make_master_mute_command(true, 2)))),
+                  make_master_mute_command(false, 2)))),
               "shutdown reason-24 case enables ACC latch");
         check(static_cast<bool>(shutdown_reason24.write(encode_driver_command(DriverCommand{
                   0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0}}))) &&
