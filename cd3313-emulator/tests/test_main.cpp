@@ -341,6 +341,100 @@ int main() {
               "reset restarts register-journal sequence numbering");
         state_emulator.reset();
 
+        Emulator input_emulator;
+        input_emulator.apply_recovered_initialization_sequence();
+        const DriverCommand input_gain_command{
+            0x03, 3, {
+                2, 0, 0, 0, 3, 0, 0, 0,
+                0xBE, 0xBA, 0xFE, 0xCA
+            }};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(input_gain_command))),
+              "input-gain command with recovered three-word minimum is accepted");
+        check(input_emulator.state().input_gain[2] == 3U &&
+              input_emulator.state().control_register_value == 0x5FU &&
+              input_emulator.register_journal().size() == 18U &&
+              input_emulator.register_journal().back().source ==
+                  RegisterWriteSource::InputGainControl,
+              "input gain is cached per channel and updates bits 3..4 of control byte");
+        const auto input_journal_before_invalid = input_emulator.journal().size();
+        check(!input_emulator.write(encode_driver_command(DriverCommand{
+                  0x03, 3, {7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}})) &&
+              input_emulator.journal().size() == input_journal_before_invalid,
+              "input gain rejects channel IDs outside the recovered 0..6 range atomically");
+
+        const DriverCommand select_input_one{
+            0x01, 1, {1, 0, 0, 0}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(select_input_one))) &&
+              input_emulator.state().current_input_channel == 1U &&
+              input_emulator.state().active_input_channel == 1U,
+              "input-select command updates the selected and active channel");
+        const DriverCommand mute_input_one{
+            0x04, 3, {
+                1, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0
+            }};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(mute_input_one))) &&
+              input_emulator.state().input_mute_reason_masks[1] == (1U << 16U) &&
+              input_emulator.state().hfp_active &&
+              (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
+              "input mute tracks per-channel reason bits, HFP state, and active-channel master mute");
+        const DriverCommand add_input_mute_reason{
+            0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(add_input_mute_reason))),
+              "independent input mute reason is accepted");
+        const DriverCommand clear_hfp_mute{
+            0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(clear_hfp_mute))) &&
+              !input_emulator.state().hfp_active &&
+              input_emulator.state().input_mute_reason_masks[1] == (1U << 3U) &&
+              (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
+              "clearing HFP mute preserves another active input-mute reason");
+        const DriverCommand clear_last_input_mute{
+            0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(clear_last_input_mute))) &&
+              input_emulator.state().input_mute_reason_masks[1] == 0U &&
+              (input_emulator.state().master_mute_reason_mask & (1U << 31U)) == 0U,
+              "clearing the final active-channel input mute releases master mute reason 31");
+
+        const DriverCommand enable_mixing{
+            0x20, 3, {1, 0, 0, 0, 0xAA, 0xBB, 0xCC, 0xDD, 0x11, 0x22, 0x33, 0x44}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(enable_mixing))) &&
+              input_emulator.state().mixing_mode &&
+              input_emulator.state().active_input_channel == 1U,
+              "mixing mode selects the recovered channel-1 input path");
+        const DriverCommand select_input_three{
+            0x01, 1, {3, 0, 0, 0}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(select_input_three))) &&
+              input_emulator.state().current_input_channel == 3U &&
+              input_emulator.state().active_input_channel == 1U,
+              "channel selection is remembered without replacing the active mixing path");
+        const DriverCommand disable_mixing{
+            0x20, 3, {0, 0, 0, 0, 0xAA, 0xBB, 0xCC, 0xDD, 0x11, 0x22, 0x33, 0x44}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(disable_mixing))) &&
+              !input_emulator.state().mixing_mode &&
+              input_emulator.state().active_input_channel == 3U,
+              "disabling mixing restores the remembered input channel");
+        const DriverCommand select_default_channel{
+            0x01, 1, {0xFF, 0xFF, 0xFF, 0xFF}};
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(select_default_channel))) &&
+              input_emulator.state().current_input_channel == 6U &&
+              input_emulator.state().active_input_channel == 6U,
+              "driver channel sentinel -1 maps to channel 6");
+        const auto input_event_count = input_emulator.journal().size();
+        check(!input_emulator.write(encode_driver_command(DriverCommand{
+                  0x20, 3, {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}})) &&
+              input_emulator.journal().size() == input_event_count,
+              "mixing command rejects non-boolean values without changing the journal");
+
         Emulator startup_emulator;
         startup_emulator.apply_recovered_probe_setup();
         check(startup_emulator.state().master_mute_reason_mask == (1U << 31U) &&
