@@ -63,7 +63,7 @@ The module's initialized `volume_percentage` data value is 100. The driver's zer
 The ELF `.rodata` symbol `cd3313_equalizer` begins at offset `0x8C` and contains these 15 bytes:
 
 ```
-04 05 06 07 0E 0D 0C 0B 0A 09 08 00 00 00 00
+00 01 02 03 04 05 06 07 0E 0D 0C 0B 0A 09 08
 ```
 
 For commands `0x55` (bass) and `0x5C` (treble), the second argument is decremented, clamped to 0..14, divided by two, and offset by three:
@@ -151,3 +151,55 @@ Only reason bit 24 is independently tested from the aggregate mask in this expre
 The event callback's `0x11` handler special-cases reason 2 by assigning its boolean mute argument to `acc_on`, then calls `set_master_mute()`. The probe path sets `acc_on` true before asserting startup reason 31. System notifier event 2 clears reason 30; event 3 clears reason 24. The host emulator models these exact state transitions and records GPIO 393 raw-level requests as `Gpio393Write` journal entries.
 
 GPIO 393's physical signal name and board-level active polarity remain unknown. The emulator records raw HIGH/LOW requests only; it does not drive hardware.
+
+
+## Recovered software lookup tables
+
+The focused .rodata analysis also resolves two previously unnamed/compiler-generated lookup tables:
+
+### TAB.33841 — command-page cache slot mapping
+
+The 16-byte table at .rodata + 0x54 is:
+
+00 00 00 00 05 05 06 07 03 03 04 04 01 01 02 02
+
+cd3313_write_reg() selects an entry using the command byte's upper nibble, then uses the table value as the index into the driver's eight-entry reg_bufs cache. This is a software cache-slot mapping, not a physical CD3313 register address table.
+
+| Command byte high nibble | reg_bufs slot |
+|---:|---:|
+| 0x0 | 0 |
+| 0x1 | 0 |
+| 0x2 | 0 |
+| 0x3 | 0 |
+| 0x4 | 5 |
+| 0x5 | 5 |
+| 0x6 | 6 |
+| 0x7 | 7 |
+| 0x8 | 3 |
+| 0x9 | 3 |
+| 0xA | 4 |
+| 0xB | 4 |
+| 0xC | 1 |
+| 0xD | 1 |
+| 0xE | 2 |
+| 0xF | 2 |
+
+### CSWTCH.194 — input selector mapping
+
+The six 32-bit entries at .rodata + 0x64 are:
+
+2, 1, 0, 3, 0, 2
+
+set_input_channel() indexes this table for channel IDs 0..5 and masks the result to two bits. Channel 6 bypasses the table and uses selector code 3. This yields the complete mapping:
+
+| Driver channel | Selector bits 1..0 |
+|---:|---:|
+| 0 | 2 |
+| 1 | 1 |
+| 2 | 0 |
+| 3 | 3 |
+| 4 | 0 |
+| 5 | 2 |
+| 6 / sentinel -1 | 3 |
+
+The table does not identify user-facing source names. AUX, radio, Bluetooth, phone, and other labels still require caller-side evidence.
