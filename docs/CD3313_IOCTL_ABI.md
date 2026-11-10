@@ -2,7 +2,7 @@
 
 ## Evidence identity and scope
 
-This document is based on the ARM32 cd3313.ko analysis artifact produced by focused workflow run [42878596077](https://github.com/14march93/mt8163_audio_engine/actions/runs/42878596077).
+This document is based on the ARM32 cd3313.ko analysis artifact produced by focused workflow run [42878596077](https://github.com/14march93/mt8163_audio_engine/actions/runs/42878596077). The follow-up artifact [42883809539](https://github.com/14march93/mt8163_audio_engine/actions/runs/42883809539) adds the raw DWARF file table and the .rodata.str1.4 strings used to reconstruct cmd_read(), cmd_write(), and the driver channel labels.
 
 - Module SHA-256: b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb
 - ELF: 32-bit little-endian ARM, EABI5, relocatable module with DWARF.
