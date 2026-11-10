@@ -317,8 +317,8 @@ int main() {
         check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
                   make_input_mute_command(1, true, 16)))) &&
               !hfp_gpio_emulator.state().hfp_active &&
-              hfp_gpio_emulator.state().gpio_393_level == true,
-              "clearing HFP-active state restores ordinary mute assertion");
+              hfp_gpio_emulator.state().gpio_393_level == false,
+              "clearing HFP-active state does not assert mute without another reason");
 
         Emulator volume_mute_emulator;
         volume_mute_emulator.apply_recovered_probe_setup();
