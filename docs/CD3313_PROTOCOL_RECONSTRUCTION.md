@@ -1,7 +1,7 @@
 # CD3313 protocol reconstruction — static analysis
 
 Source: `cd3313.ko` from this repository.
-Analysis artifact: GitHub Actions run [42798271937](https://github.com/14march93/mt8163_audio_engine/actions/runs/42798271937).
+Analysis artifact: GitHub Actions run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) (ARM disassembly completed; all report commands exited 0).
 Module SHA-256: `b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb`.
 
 ## Confidence and scope
@@ -128,6 +128,20 @@ DWARF and ELF section layout identify these constant arrays. The byte sequences 
 
 The raw bytes are preserved in the Actions artifact's `section-bytes.txt`. Array semantics and units still need to be derived from the relevant function logic before exposing them as user-facing values.
 
+## Additional facts confirmed by ARM disassembly
+
+The corrected analysis run successfully disassembled the module as ARM (`elf32-littlearm`). The following points are directly visible in the function bodies:
+
+- `cmd_write()` parses the userspace write buffer as an unsigned decimal integer with `kstrtouint()`, truncates it to one byte, and sends that single byte with `i2c_master_send()`. It also updates a cached register byte selected using the high nibble. This path is a raw one-byte register write interface, not the framed multi-byte command protocol.
+- `cd3313_write_reg()` sends exactly one byte per call using `i2c_master_send()`, then updates the driver's cached register image.
+- `cmd_ioctl()` extracts the ioctl direction from bits 30–31, the request number from bits 8–15, and the encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy.
+- The read-direction path accepts request number `0xF0` and copies an 8-byte object from driver state back to userspace. Other read request numbers return an error.
+- For write requests with command byte `0x55` or `0x5C`, the ioctl path waits 30 ms after posting the event. This is a driver timing behavior, not a payload semantic.
+- `set_master_volume()` changes the hardware volume register incrementally, one step per I²C write, with a delay between steps. It uses a 0–63 internal attenuation scale and applies a separate percentage-derived adjustment. The exact user-facing mapping still needs correlation with the constant volume table and call sites.
+- `set_master_mute()` manipulates a bit in a software mute mask and controls GPIO 393 (`0x189`) through `gpiod_set_raw_value()`. This indicates master mute includes an external GPIO/amplifier-enable path, not only an I²C register write.
+
+These findings narrow the ABI and behavior, but they do not yet identify the complete ioctl magic/type contract, every event payload structure, or all command-to-register mappings. Those must be recovered before implementing hardware writes in the emulator.
+
 ## Important implementation consequence
 
 The driver is a command/control layer for the external CD3313 DSP over I²C. It is not itself the Android PCM audio-processing engine. Our architecture should keep these responsibilities separate:
@@ -147,4 +161,4 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 
 ## Disassembly note
 
-The first workflow run used the host x86 objdump and could not disassemble ARM. The workflow has now been corrected to install and invoke `arm-linux-gnueabi-objdump`; its next run will produce the ARM disassembly report if the toolchain accepts the module.
+The initial x86 objdump attempt failed. The workflow was corrected to install multiarch binutils and run `objdump -m arm -drwC`. The latest run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) completed successfully; `disassembly-relocations.txt` is a valid ARM disassembly report and its command exit status is 0.
