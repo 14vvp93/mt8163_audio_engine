@@ -147,6 +147,32 @@ int main() {
               "0x15 rejects an index outside the 16-entry speaker table");
         check(parse_driver_command({0x00, 0x10, 0x01, 0x40, 0x28, 0, 0}).error ==
                   ParseError::PayloadSizeMismatch, "truncated payload");
+        const DriverCommand max_safe_payload{
+            0x10, 63, std::vector<std::uint8_t>(252U, 0U)
+        };
+        const auto max_safe_frame = encode_driver_command(max_safe_payload);
+        check(static_cast<bool>(parse_driver_command(max_safe_frame)),
+              "63-word payload fits the 256-byte slab after the 4-byte header");
+        std::vector<std::uint8_t> unsafe_64_word_frame(260U, 0U);
+        const std::uint32_t unsafe_header =
+            (1U << 30U) | (64U << 16U) | (0x10U << 8U);
+        for (std::size_t i = 0; i < 4U; ++i) {
+            unsafe_64_word_frame[i] = static_cast<std::uint8_t>(
+                (unsafe_header >> (i * 8U)) & 0xFFU);
+        }
+        check(parse_driver_command(unsafe_64_word_frame).error ==
+                  ParseError::UnsafePayloadSize,
+              "64-word payload is rejected before it can exceed the ioctl slab object");
+        bool unsafe_encode_rejected = false;
+        try {
+            (void)encode_driver_command(DriverCommand{
+                0x10, 64, std::vector<std::uint8_t>(256U, 0U)
+            });
+        } catch (...) {
+            unsafe_encode_rejected = true;
+        }
+        check(unsafe_encode_rejected,
+              "encoder refuses payloads that would trigger hardened-usercopy bounds failure");
         check(static_cast<bool>(parse_driver_command(
                   {0x00, 0x56, 0x01, 0x40, 0, 0, 0, 0})),
               "special 0x56 dispatcher branch");
