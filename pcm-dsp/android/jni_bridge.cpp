@@ -1,16 +1,17 @@
-#include "pcm_dsp/quad_engine.hpp"
+#include "pcm_dsp/profiled_quad_engine.hpp"
 
 #include <jni.h>
 
+#include <cmath>
 #include <cstdint>
-#include <memory>
 #include <limits>
+#include <memory>
 
 namespace {
 
 struct EngineHandle {
-    pcm_dsp::QuadEngine engine;
-    pcm_dsp::QuadParameters parameters{};
+    pcm_dsp::ProfiledQuadEngine engine;
+    pcm_dsp::AudioProfile profile{};
 };
 
 EngineHandle* from_handle(jlong value) {
@@ -26,10 +27,11 @@ Java_com_mt8163_audioengine_NativeDsp_nativeCreate(JNIEnv*, jclass, jint sample_
     }
 
     std::unique_ptr<EngineHandle> handle(new EngineHandle());
-    if (!handle->engine.configure(static_cast<std::uint32_t>(sample_rate))) {
+    handle->profile.quad.enabled = true;
+    if (!handle->engine.configure(
+            static_cast<std::uint32_t>(sample_rate), handle->profile)) {
         return 0;
     }
-    handle->parameters.enabled = true;
     return static_cast<jlong>(reinterpret_cast<std::uintptr_t>(handle.release()));
 }
 
@@ -45,7 +47,13 @@ Java_com_mt8163_audioengine_NativeDsp_nativeSetEnabled(
     if (handle == nullptr) {
         return JNI_FALSE;
     }
-    handle->parameters.enabled = enabled == JNI_TRUE;
+
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    candidate.quad.enabled = enabled == JNI_TRUE;
+    if (!handle->engine.apply_profile(candidate)) {
+        return JNI_FALSE;
+    }
+    handle->profile = candidate;
     return JNI_TRUE;
 }
 
@@ -55,10 +63,16 @@ Java_com_mt8163_audioengine_NativeDsp_nativeSetChannelGainDb(
     EngineHandle* handle = from_handle(native_handle);
     if (handle == nullptr || channel < 0 ||
         channel >= static_cast<jint>(pcm_dsp::kOutputChannelCount) ||
-        gain_db < -24.0F || gain_db > 12.0F) {
+        !std::isfinite(gain_db) || gain_db < -24.0F || gain_db > 12.0F) {
         return JNI_FALSE;
     }
-    handle->parameters.channels[static_cast<std::size_t>(channel)].gain_db = gain_db;
+
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    candidate.quad.channels[static_cast<std::size_t>(channel)].gain_db = gain_db;
+    if (!handle->engine.apply_profile(candidate)) {
+        return JNI_FALSE;
+    }
+    handle->profile = candidate;
     return JNI_TRUE;
 }
 
@@ -93,7 +107,7 @@ Java_com_mt8163_audioengine_NativeDsp_nativeProcess(
     }
 
     const bool ok = handle->engine.process(
-        input, output, static_cast<std::size_t>(frames), handle->parameters);
+        input, output, static_cast<std::size_t>(frames));
 
     env->ReleaseFloatArrayElements(output_array, output, 0);
     env->ReleaseFloatArrayElements(input_array, input, JNI_ABORT);
