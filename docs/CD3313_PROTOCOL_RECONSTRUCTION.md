@@ -203,3 +203,8 @@ The focused analysis artifact from run [42878596077](https://github.com/14march9
 The imported event-queue declarations are present in DWARF, but their implementations are not linked into cd3313.ko. The driver calls post_event_delayed(handler, event_id, data, delay_ms) and remove_event(handler, event_id). Their prototypes and all observed scheduling requests are documented in [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md). Cancellation/coalescing semantics and actual callback timing remain unknown.
 
 That same analysis confirms a static length-validation concern: command 0x15 reads four 32-bit arguments although cmd_len_list permits a size-field value of 2. The emulator continues to require all four words and does not reproduce a possible out-of-bounds read. The allocation/copy path also deserves a hardened-usercopy audit because the command cache object is 256 bytes while the maximum copied payload is 256 bytes in addition to the prepended 4-byte header. This is an audit finding, not a confirmed exploitable vulnerability.
+
+
+## Datasheet correlation update
+
+The driver control-byte fields are now cross-checked against the manufacturer CD3313-AX-BJ-24 datasheet (revision 2012-01-B1): [PDF](https://datasheet4u.com/pdf/831243/CD3313.pdf). The 2-bit selector values correspond to chip input numbers 1..4; input 4 has no external pins. The 2-bit gain field represents 0, 3.75, 7.5, or 11.25 dB, and the preserved bit 2 is the active-low loudness control. This identifies chip input numbers but still does not label the board's physical sources as AUX, radio, Bluetooth, or phone. The complete mapping and decoded attenuation tables are recorded in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md).
