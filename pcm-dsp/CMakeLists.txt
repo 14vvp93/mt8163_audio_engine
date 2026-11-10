@@ -8,6 +8,7 @@ add_library(mt8163_pcm_dsp STATIC
     src/crossover.cpp
     src/eq_layout.cpp
     src/multiband_dynamics.cpp
+    src/enhancement.cpp
     src/audio_profile.cpp
     src/profiled_quad_engine.cpp
 )
