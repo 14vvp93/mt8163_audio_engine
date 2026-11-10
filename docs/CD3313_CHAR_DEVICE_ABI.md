@@ -78,6 +78,9 @@ These labels are explicit strings in the driver. They do not, by themselves, pro
 
 The report is a software snapshot assembled from global state and cached bytes. Because the function builds it anew for each read call, a multi-call read using file offsets could theoretically span changing state. No synchronization around the snapshot was identified in the recovered function.
 
+This file read() operation is distinct from the ioctl read direction. ioctl ID 0xF0 returns exactly eight static bytes, cd3313 followed by two NUL bytes; it does not return this status report. See [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md).
+
+
 ## 2. write(): raw one-byte I²C command path
 
 cmd_write() is separate from the high-level ioctl dispatcher.
