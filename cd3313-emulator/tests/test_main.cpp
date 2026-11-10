@@ -112,6 +112,28 @@ int main() {
               clamped.rear_left == 0 && clamped.rear_right == 15,
               "out-of-range slider values are clamped");
 
+        const auto rear_compensation = calculate_channel_levels({0, 0, 100});
+        check(rear_compensation.front_left == 10 &&
+              rear_compensation.front_right == 10 &&
+              rear_compensation.rear_left == 15 &&
+              rear_compensation.rear_right == 15,
+              "rear compensation attenuates front pair by approximately 12 dB");
+
+        const auto no_rear_compensation = calculate_channel_levels({0, 0, 0});
+        check(no_rear_compensation.front_left == 15 &&
+              no_rear_compensation.front_right == 15 &&
+              no_rear_compensation.rear_left == 15 &&
+              no_rear_compensation.rear_right == 15,
+              "zero rear compensation preserves neutral output");
+
+        const auto rear_compensation_clamped =
+            calculate_channel_levels({0, 0, 250});
+        check(rear_compensation_clamped.front_left == 10 &&
+              rear_compensation_clamped.front_right == 10 &&
+              rear_compensation_clamped.rear_left == 15 &&
+              rear_compensation_clamped.rear_right == 15,
+              "rear compensation clamps at 100 percent");
+
         Emulator emulator;
         check(static_cast<bool>(emulator.write(encoded)),
               "emulator accepts a valid driver command");
