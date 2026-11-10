@@ -27,6 +27,17 @@ The probe initializes eight cached command bytes:
 
 The four output bytes `0x80`, `0xA0`, `0xC0`, and `0xE0` correspond to FL, FR, RL, and RR at speaker-table index 15 (0 dB / neutral attenuation).
 
+## Input-control state recovered from the driver
+
+The ARM32 DWARF records confirm seven-element `channel_gain` and `channel_mute` arrays, plus `is_mixing`, `hfp_active`, and the current-channel state. The initial current-channel value in the module's data image is 6.
+
+- `0x01`: stores current input channel; argument `0xFFFFFFFF` (signed `-1`) maps to channel 6. Outside mixing mode, it applies the requested channel; during mixing it only remembers it.
+- `0x03`: stores a two-bit gain value for channel 0..6. The second word's low two bits are the gain. The handler updates bits 3..4 of the cached control byte at offset +17. The command-length table requires three words, although the optimized handler reads only the first two.
+- `0x04`: maintains per-channel mute-reason bitmasks. Arguments are channel, mute, reason. Channel `-1` maps to 6. For the active channel, a nonempty input-mute mask asserts master-mute reason 31; clearing the final reason clears it. Channel 1 / reason 16 also updates `hfp_active`.
+- `0x20`: toggles `is_mixing`. Nonzero selects the channel-1 active path; zero restores the remembered current channel. The dispatcher minimum is three words, but only the first word is read by the optimized handler.
+
+The host emulator models these state transitions and per-channel masks. It does not yet emulate the complete input-selector bit mapping, GPIO switching, or the delays and attenuation ramps inside `set_input_channel()`. Numeric channel IDs are therefore left unlabeled; no AUX/radio/Bluetooth/phone identity is inferred.
+
 ## Master-volume table and transition
 
 The ELF `.rodata` dump identifies `cd3313_voltable_40` at offset `0x28`, containing 41 bytes for steps 0..40:
