@@ -323,6 +323,17 @@ int main() {
         check(!emulator.last_command() && emulator.accepted_commands() == 0,
               "reset clears emulator state");
 
+        state_emulator.reset();
+        check(state_emulator.journal().empty() &&
+              state_emulator.register_journal().empty() &&
+              !state_emulator.state().command_page_cache[0x6].has_value(),
+              "reset clears command-page cache and both journals");
+        state_emulator.write_raw_command_byte(0x6C);
+        check(state_emulator.register_journal().size() == 1U &&
+              state_emulator.register_journal().front().sequence == 1U,
+              "reset restarts register-journal sequence numbering");
+        state_emulator.reset();
+
         std::cout << "All CD3313 driver-command tests passed\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
