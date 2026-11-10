@@ -13,10 +13,10 @@ permissions:
 
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install ARM analysis tools
         run: |
@@ -97,7 +97,7 @@ jobs:
           PY
 
       - name: Upload reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mt8163-audio-hal-analysis
           path: audio-hal-analysis/reports/
