@@ -4,9 +4,6 @@
 #include <cmath>
 
 namespace pcm_dsp {
-namespace {
-constexpr float kPi = 3.14159265358979323846F;
-}
 
 bool QuadTimeAlignment::configure(std::uint32_t sample_rate_hz) {
     if (sample_rate_hz != 44100U && sample_rate_hz != 48000U) return false;
