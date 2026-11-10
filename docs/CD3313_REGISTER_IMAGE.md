@@ -36,7 +36,7 @@ The ARM32 DWARF records confirm seven-element `channel_gain` and `channel_mute` 
 - `0x04`: maintains per-channel mute-reason bitmasks. Arguments are channel, mute, reason. Channel `-1` maps to 6. For the active channel, a nonempty input-mute mask asserts master-mute reason 31; clearing the final reason clears it. Channel 1 / reason 16 also updates `hfp_active`.
 - `0x20`: toggles `is_mixing`. Nonzero selects the channel-1 active path; zero restores the remembered current channel. The dispatcher minimum is three words, but only the first word is read by the optimized handler.
 
-The host emulator models these state transitions and per-channel masks. It does not yet emulate the complete input-selector bit mapping, GPIO switching, or the delays and attenuation ramps inside `set_input_channel()`. Numeric channel IDs are therefore left unlabeled; no AUX/radio/Bluetooth/phone identity is inferred.
+The host emulator models these state transitions and per-channel masks. The `set_input_channel()` disassembly and `.rodata` mapping recover the two-bit selector field in control-byte bits 0..1: channel IDs 0..6 map to codes `2, 1, 0, 3, 0, 2, 3`. Bits 3..4 carry the active channel's two-bit gain; bits 2 and 5..7 are preserved by this selector update. The emulator applies and journals the control-byte update when the startup control byte is known. GPIO switching and the driver's attenuation/mute timing ramps are not simulated. Numeric channel IDs remain unlabeled; no AUX/radio/Bluetooth/phone identity is inferred.
 
 ## Master-volume table and transition
 
@@ -105,3 +105,20 @@ The separate raw `cmd_write()` interface is represented by `Emulator::write_raw_
 - Focused disassembly includes `dsp_probe`, `event_callback`, `set_master_volume.part.0`, and `cd3313_write_reg.constprop.4`.
 - [Static analysis artifact workflow](https://github.com/14march93/mt8163_audio_engine/actions/runs/42852859151).
 - [Host emulator tests](https://github.com/14march93/mt8163_audio_engine/actions/runs/42853276716).
+
+
+## Input selector control field
+
+`set_input_channel()` loads a six-entry 32-bit lookup table for channel IDs 0..5 and uses selector code `3` for channel 6. The recovered values are:
+
+| Driver channel ID | Control-byte bits 1..0 |
+|---:|---:|
+| 0 | `2` (`10b`) |
+| 1 | `1` (`01b`) |
+| 2 | `0` (`00b`) |
+| 3 | `3` (`11b`) |
+| 4 | `0` (`00b`) |
+| 5 | `2` (`10b`) |
+| 6 / sentinel `-1` | `3` (`11b`) |
+
+The routine constructs the control byte from the existing byte masked with `0xE4`, the active channel's gain shifted into bits 3..4, and the selector code in bits 0..1. Thus the update preserves loudness bit 2 and upper bits 5..7. The host model records the selected selector code and journals a changed control byte. This is a static driver reconstruction, not proof of the board-level source names or GPIO electrical polarity.
