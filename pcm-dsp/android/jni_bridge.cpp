@@ -204,7 +204,8 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyChannelEq(
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_mt8163_audioengine_NativeDsp_nativeConfigureBassManagement(
         JNIEnv*, jclass, jlong native_handle, jboolean enabled,
-        jfloat frequency_hz, jint order, jfloat sub_gain_db) {
+        jfloat frequency_hz, jint order, jfloat sub_gain_db,
+        jboolean phase_inverted) {
     EngineHandle* handle = from_handle(native_handle);
     if (handle == nullptr || !std::isfinite(frequency_hz) ||
         !std::isfinite(sub_gain_db) || frequency_hz < 20.0F ||
@@ -219,6 +220,7 @@ Java_com_mt8163_audioengine_NativeDsp_nativeConfigureBassManagement(
     candidate.routing.crossover_order =
         static_cast<pcm_dsp::LinkwitzRileyOrder>(order);
     candidate.routing.sub_gain_db = sub_gain_db;
+    candidate.routing.sub_phase_inverted = phase_inverted == JNI_TRUE;
     if (!handle->engine.apply_profile(candidate)) return JNI_FALSE;
     handle->profile = candidate;
     return JNI_TRUE;
