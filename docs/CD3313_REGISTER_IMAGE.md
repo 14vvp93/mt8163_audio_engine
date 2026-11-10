@@ -25,7 +25,7 @@ The probe initializes eight cached command bytes:
 
 `event_callback(event=0)` sends these eight bytes twice in order, then sends `0x47` once more. That is 17 writes in the event, plus the earlier probe guard write. The host model exposes separate methods for the probe phase and the event-0 sequence.
 
-The four output bytes `0x80`, `0xA0`, `0xC0`, and `0xE0` correspond to FL, FR, RL, and RR at speaker-table index 15 (lookup code `0x00`). The exact acoustic dB value of this code has not been measured.
+The four output bytes `0x80`, `0xA0`, `0xC0`, and `0xE0` correspond to FL, FR, RL, and RR at speaker-table index 15 (lookup code `0x00`, 0 dB per the datasheet). The full 16-index attenuation range is -38.75 dB to 0 dB, in the table order: -38.75, -35, -32.5, -30, -27.5, -25, -22.5, -20, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, 0 dB.
 
 ## Input-control state recovered from the driver
 
@@ -35,6 +35,20 @@ The ARM32 DWARF records confirm seven-element `channel_gain` and `channel_mute` 
 - `0x03`: stores a two-bit gain value for channel 0..6. The second word's low two bits are the gain. The handler updates bits 3..4 of the cached control byte at offset +17. The command-length table requires three words, although the optimized handler reads only the first two.
 - `0x04`: maintains per-channel mute-reason bitmasks. Arguments are channel, mute, reason. Channel `-1` maps to 6. For the active channel, a nonempty input-mute mask asserts master-mute reason 31; clearing the final reason clears it. Channel 1 / reason 16 also updates `hfp_active`.
 - `0x20`: toggles `is_mixing`. Nonzero selects the channel-1 active path; zero restores the remembered current channel. The dispatcher minimum is three words, but only the first word is read by the optimized handler.
+
+The CD3313-AX-BJ-24 datasheet identifies the control byte as 010 G1 G0 S2 S1 S0: G1G0 (bits 4..3) select input gain 0, 3.75, 7.5, or 11.25 dB; S2 (bit 2) enables loudness when 0 and disables it when 1; S1S0 (bits 1..0) select chip input 1..4. The datasheet specifies three external stereo inputs; source 4 has no external pins. Therefore the driver's selector map resolves to chip source numbers, without assigning application labels:
+
+| Driver channel | Selector code | CD3313 input |
+|---:|---:|---|
+| 0 | 2 | Source 3 |
+| 1 | 1 | Source 2 |
+| 2 | 0 | Source 1 |
+| 3 | 3 | Source 4 (no external pins) |
+| 4 | 0 | Source 1 |
+| 5 | 2 | Source 3 |
+| 6 | 3 | Source 4 (no external pins) |
+
+The startup control byte 0x47 therefore selects source 4, input gain 0 dB, and loudness disabled. set_input_channel() changes S1S0 and G1G0 while preserving S2; command 0x56 controls S2. This is chip-level source numbering only: the actual AUX/radio/Bluetooth/phone wiring is not established.
 
 The host emulator models these state transitions and per-channel masks. The `set_input_channel()` disassembly and `.rodata` mapping recover the two-bit selector field in control-byte bits 0..1: channel IDs 0..6 map to codes `2, 1, 0, 3, 0, 2, 3`. Bits 3..4 carry the active channel's two-bit gain; bits 2 and 5..7 are preserved by this selector update. The emulator applies and journals the control-byte update when the startup control byte is known. The same routine sets raw GPIO output levels: GPIO 396 is low only for channel 2, and GPIO 398 is low only for channel 0. These are requested logic levels, not physical readback or source labels. The attenuation/mute sequence is modeled in the Input-switch transition timeline below, with nominal delays rather than measured hardware timing. Numeric channel IDs remain unlabeled; no AUX/radio/Bluetooth/phone identity is inferred.
 
@@ -50,13 +64,13 @@ The ELF `.rodata` dump identifies `cd3313_voltable_40` at offset `0x28`, contain
 00
 ```
 
-The disassembly shows that the percentage control is clamped to 0..100 for the internal calculation, inverted, divided by three, and added to the table code. The final 6-bit target is capped at 63:
+The disassembly shows that the percentage control is clamped to 0..100 for the internal calculation, inverted, divided by three, and added to the table code. The final 6-bit target is capped at 63. The manufacturer datasheet decodes the base volume byte as B2..B0 = 10 dB steps and A2..A0 = 1.25 dB steps of attenuation; therefore code 0x3F is -78.75 dB and code 0x00 is 0 dB. The 41 base table entries correspond to these attenuation values (steps 0..40):
 
 `target = min(63, table[step] + floor((100 - percentage) / 3))`
 
 The public command parser accepts master-volume steps 0..40 and percentage values 1..100. The driver transitions from its current 6-bit attenuation code to the target one unit at a time, issuing one I2C byte per step with a delay between writes. The emulator reproduces the byte sequence and records each transition in the register journal; it does not emulate the driver's sleeps, GPIO timing, or transient hardware mute behavior.
 
-The module's initialized `volume_percentage` data value is 100. The driver's zero-initialized master-volume step is 0; the probe guard byte is `0x3F`.
+The module's initialized `volume_percentage` data value is 100. The driver's zero-initialized master-volume step is 0; the probe guard byte is `0x3F` (-78.75 dB per the datasheet encoding). The percentage overlay is added in raw control-code space, so its exact acoustic dB effect is not a simple linear percentage.
 
 ## Bass and treble transition table
 
@@ -70,7 +84,7 @@ For commands `0x55` (bass) and `0x5C` (treble), the second argument is decrement
 
 `target_index = floor(min(max(argument - 1, 0), 14) / 2) + 3`
 
-The resulting transition index is 3..10. The first argument remains opaque because its meaning is not established. The current index is recovered from the current register byte's low nibble: values 0..7 map directly, while values 8..15 map to `22 - nibble`. Each transition step writes `0x60 | cd3313_equalizer[index]` for bass or `0x70 | cd3313_equalizer[index]` for treble, with a 20 ms delay in the driver. The emulator records the byte ramp when the previous register byte is known; otherwise it records only the final target byte.
+The resulting transition index is 3..10. The first argument remains opaque because its meaning is not established. The manufacturer datasheet specifies 2 dB per bass/treble code step; the exact driver-used lookup entries at indices 3..10 decode to -8, -6, -4, -2, 0, +2, +4, and +6 dB respectively. The current index is recovered from the current register byte's low nibble: values 0..7 map directly, while values 8..15 map to `22 - nibble`. Each transition step writes `0x60 | cd3313_equalizer[index]` for bass or `0x70 | cd3313_equalizer[index]` for treble, with a 20 ms delay in the driver. The emulator records the byte ramp when the previous register byte is known; otherwise it records only the final target byte.
 
 The startup bytes `0x6F` and `0x7F` are preserved as the initial bass and treble register values. The table and transition mapping are reconstructed from the disassembly; the first command argument and higher-level UI scale remain unresolved.
 
@@ -204,3 +218,8 @@ set_input_channel() indexes this table for channel IDs 0..5 and masks the result
 | 6 / sentinel -1 | 3 |
 
 The table does not identify user-facing source names. AUX, radio, Bluetooth, phone, and other labels still require caller-side evidence.
+
+
+## Datasheet correlation
+
+The silicon-level bit definitions and dB values above are cross-checked against the manufacturer document **CD3313-AX-BJ-24, revision 2012-01-B1**: [CD3313 datasheet (PDF)](https://datasheet4u.com/pdf/831243/CD3313.pdf). The PDF identifies Wuxi I-CORE Electronics Co., Ltd. as the manufacturer. This datasheet confirms the chip's input selector/gain/loudness fields, four-channel output attenuation encoding, and 2 dB bass/treble steps. It does not prove the physical wiring of this particular head unit.
