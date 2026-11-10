@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(mt8163_pcm_dsp LANGUAGES CXX)
 
-set_target_properties(mt8163_pcm_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
 add_library(mt8163_pcm_dsp STATIC
     src/engine.cpp
     src/quad_engine.cpp
     src/time_alignment.cpp
     src/crossover.cpp
 )
+set_target_properties(mt8163_pcm_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mt8163_pcm_dsp PUBLIC include)
 target_compile_features(mt8163_pcm_dsp PUBLIC cxx_std_17)
 target_compile_options(mt8163_pcm_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
