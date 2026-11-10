@@ -37,6 +37,11 @@ jobs:
           cp module-file.txt module-sha256.txt cd3313-ioctl-analysis/
           nm -anC cd3313.ko > cd3313-ioctl-analysis/symbols.txt
           readelf -h cd3313.ko > cd3313-ioctl-analysis/elf-header.txt
+          readelf -SW cd3313.ko > cd3313-ioctl-analysis/sections.txt
+          readelf -rW cd3313.ko > cd3313-ioctl-analysis/relocations.txt
+          arm-linux-gnueabi-objdump -s -j .rodata cd3313.ko > cd3313-ioctl-analysis/rodata-dump.txt 2>&1 || true
+          arm-linux-gnueabi-objdump -s -j .data cd3313.ko > cd3313-ioctl-analysis/data-dump.txt 2>&1 || true
+          arm-linux-gnueabi-objdump -s -j .bss cd3313.ko > cd3313-ioctl-analysis/bss-dump.txt 2>&1 || true
           readelf --debug-dump=info cd3313.ko > cd3313-ioctl-analysis/dwarf-info.txt
           arm-linux-gnueabi-readelf --debug-dump=decodedline cd3313.ko > cd3313-ioctl-analysis/dwarf-lines.txt
           arm-linux-gnueabi-objdump --dwarf=decodedline cd3313.ko > cd3313-ioctl-analysis/disassembly-lines.txt
@@ -61,7 +66,7 @@ jobs:
           import re
           root = Path("cd3313-ioctl-analysis")
           symbols = (root / "symbols.txt").read_text(errors="replace").splitlines()
-          wanted = ("cmd_ioctl", "cmd_read", "cmd_write", "event_callback", "do_cmd_write")
+          wanted = ("cmd_ioctl", "cmd_read", "cmd_write", "event_callback", "do_cmd_write", "cd3313_voltable_40", "cd3313_speaker", "cd3313_equalizer")
           rows = []
           for line in symbols:
               if any(re.search(r"\b" + re.escape(name) + r"\b", line) for name in wanted):
@@ -76,6 +81,7 @@ jobs:
             echo
             echo "Focused ARM disassembly and DWARF source-line reports are provided where available."
             echo "address-to-source.txt maps surviving functions to their original cd3313.c lines."
+            echo "sections.txt and relocation reports expose ELF data placement; rodata/data dumps preserve static lookup tables where present."
             echo "An empty function report means the symbol was inlined, optimized out, or not exported under that name."
             echo
             find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\n' | sort
