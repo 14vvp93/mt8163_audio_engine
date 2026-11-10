@@ -6,7 +6,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
+import android.widget.SeekBar;\nimport android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +23,7 @@ public final class MainActivity extends Activity {
     private SeekBar balanceBar;
     private SeekBar faderBar;
     private TextView balanceLabel;
-    private TextView faderLabel;
+    private TextView faderLabel;\n    private final float[][] eqGainsDb = new float[CHANNELS][32];\n    private final TextView[] eqBandLabels = new TextView[32];\n    private final SeekBar[] eqBandBars = new SeekBar[32];\n    private int selectedEqChannel = 0;\n    private TextView eqChannelTitle;
     private NativeDsp dsp;
     private TextView status;
     private boolean dspEnabled = true;
@@ -130,6 +130,53 @@ public final class MainActivity extends Activity {
         });
         root.addView(toggle);
 
+        TextView eqTitle = text("32-BAND PARAMETRIC EQ", 18, Color.WHITE);
+        eqTitle.setPadding(0, dp(22), 0, dp(8));
+        root.addView(eqTitle);
+        eqChannelTitle = text("EQ channel · Front Left", 14, Color.CYAN);
+        root.addView(eqChannelTitle);
+        LinearLayout channelPicker = new LinearLayout(this);
+        channelPicker.setOrientation(LinearLayout.HORIZONTAL);
+        String[] shortNames = {"FL", "FR", "RL", "RR"};
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            final int channel = ch;
+            Button pick = button(shortNames[ch]);
+            pick.setOnClickListener(v -> selectEqChannel(channel));
+            channelPicker.addView(pick, new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        }
+        root.addView(channelPicker);
+        Button resetEq = button("RESET SELECTED EQ");
+        resetEq.setOnClickListener(v -> resetSelectedEq());
+        root.addView(resetEq);
+
+        for (int band = 0; band < 32; band++) {
+            final int bandIndex = band;
+            double position = band / 31.0;
+            int frequency = (int) Math.round(20.0 * Math.pow(1000.0, position));
+            String frequencyLabel = frequency >= 1000
+                    ? String.format(Locale.US, "%.2f kHz", frequency / 1000.0)
+                    : frequency + " Hz";
+            eqBandLabels[band] = text(frequencyLabel + " · 0.0 dB", 13, Color.WHITE);
+            root.addView(eqBandLabels[band]);
+            eqBandBars[band] = new SeekBar(this);
+            eqBandBars[band].setMax(48);
+            eqBandBars[band].setProgress(24);
+            eqBandBars[band].setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                    float db = (value - 24) * 0.5f;
+                    eqBandLabels[bandIndex].setText(frequencyLabel + " · " +
+                            String.format(Locale.US, "%.1f dB", db));
+                }
+                @Override public void onStartTrackingTouch(SeekBar bar) {}
+                @Override public void onStopTrackingTouch(SeekBar bar) {
+                    eqGainsDb[selectedEqChannel][bandIndex] =
+                            (bar.getProgress() - 24) * 0.5f;
+                    applySelectedEq();
+                }
+            });
+            root.addView(eqBandBars[band]);
+        }
+
         Button run = button("RUN PCM TEST · 512 FRAMES");
         run.setOnClickListener(v -> runPcmTest());
         root.addView(run);
@@ -137,7 +184,34 @@ public final class MainActivity extends Activity {
         TextView note = text("Test signal is generated locally. No microphone, speaker output, Bluetooth or system audio is accessed.", 12, Color.GRAY);
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
-        setContentView(root);
+        setContentView(new ScrollView(this) {{ setFillViewport(true); addView(root); }});
+    }
+
+    private void selectEqChannel(int channel) {
+        selectedEqChannel = channel;
+        eqChannelTitle.setText("EQ channel · " + CHANNEL_NAMES[channel]);
+        for (int band = 0; band < 32; band++) {
+            int progress = Math.round(eqGainsDb[channel][band] * 2.0f + 24.0f);
+            eqBandBars[band].setProgress(Math.max(0, Math.min(48, progress)));
+        }
+        status.setText("Editing " + CHANNEL_NAMES[channel] + " EQ");
+    }
+
+    private void applySelectedEq() {
+        if (dsp == null) return;
+        float[] gains = eqGainsDb[selectedEqChannel].clone();
+        if (dsp.applyChannelEq(selectedEqChannel, gains)) {
+            status.setText(CHANNEL_NAMES[selectedEqChannel] +
+                    " EQ applied · 32 bands · 50 ms crossfade");
+        } else {
+            status.setText("DSP busy · wait for the current profile transition");
+        }
+    }
+
+    private void resetSelectedEq() {
+        java.util.Arrays.fill(eqGainsDb[selectedEqChannel], 0.0f);
+        for (SeekBar bar : eqBandBars) bar.setProgress(24);
+        applySelectedEq();
     }
 
     private void applyBalanceFader() {
