@@ -46,6 +46,7 @@ jobs:
           -DANDROID_STL=c++_static
           -DPCM_DSP_BUILD_TESTS=OFF
           -DPCM_DSP_BUILD_BENCHMARKS=OFF
+          -DPCM_DSP_BUILD_ANDROID_JNI=ON
           -DCMAKE_BUILD_TYPE=Release
       - name: Build Android ARMv7 static library
         run: cmake --build build/android-armv7 --parallel
