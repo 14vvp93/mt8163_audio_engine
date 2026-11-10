@@ -11,7 +11,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 1. **CD3313 control layer** — validated userspace ABI for the existing `/dev/audiomux` driver and its I²C register interface.
 2. **PCM DSP core** — independent C++ processing library with format-aware input/output, explicit bypass, controlled latency, and host-side tests.
 3. **Android integration adapter** — integration at a verified AudioFlinger/HAL processing point; no global hook until call/SCO bypass and routing are understood.
-4. **Control API/UI** — separate controls for EQ, bass/treble, loudness, balance and profiles, with safe state persistence. The CD3313 reverse engineering also confirms a four-argument FL/FR/RL/RR control path, which is the hardware basis for separate L/R balance and Front/Rear fader; the exact vendor scale and speaker mapping remain under investigation.
+4. **Control API/UI** — separate controls for EQ, bass/treble, loudness, balance and profiles, with safe state persistence. The CD3313 reverse engineering also confirms a four-argument FL/FR/RL/RR control path, which is the hardware basis for separate L/R balance and Front/Rear fader. A host-side rear-level compensation trim is modeled as front-pair attenuation (the chip cannot provide positive gain); hardware routing and factory levels remain to be verified.
 
 ### PCM DSP core
 
