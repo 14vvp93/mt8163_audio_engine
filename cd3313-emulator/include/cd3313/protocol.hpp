@@ -29,6 +29,7 @@ enum class ParseError {
     UnknownCommand,
     SizeFieldTooSmall,
     InsufficientArgumentData,
+    InvalidArgumentValue,
     PayloadSizeMismatch
 };
 
