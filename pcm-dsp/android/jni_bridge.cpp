@@ -226,6 +226,36 @@ Java_com_mt8163_audioengine_NativeDsp_nativeConfigureBassManagement(
     return JNI_TRUE;
 }
 
+// Applies both psychoacoustic enhancement modules as one profile snapshot.
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_mt8163_audioengine_NativeDsp_nativeConfigureEnhancements(
+        JNIEnv*, jclass, jlong native_handle,
+        jboolean bass_enabled, jfloat bass_amount, jfloat bass_frequency_hz,
+        jboolean clarity_enabled, jfloat clarity_amount,
+        jfloat clarity_frequency_hz) {
+    EngineHandle* handle = from_handle(native_handle);
+    if (handle == nullptr || !std::isfinite(bass_amount) ||
+        !std::isfinite(bass_frequency_hz) ||
+        !std::isfinite(clarity_amount) ||
+        !std::isfinite(clarity_frequency_hz) ||
+        bass_amount < 0.0F || bass_amount > 1.0F ||
+        bass_frequency_hz < 40.0F || bass_frequency_hz > 160.0F ||
+        clarity_amount < 0.0F || clarity_amount > 1.0F ||
+        clarity_frequency_hz < 1500.0F || clarity_frequency_hz > 8000.0F) {
+        return JNI_FALSE;
+    }
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    candidate.enhancements.bass_enabled = bass_enabled == JNI_TRUE;
+    candidate.enhancements.bass_amount = bass_amount;
+    candidate.enhancements.bass_frequency_hz = bass_frequency_hz;
+    candidate.enhancements.clarity_enabled = clarity_enabled == JNI_TRUE;
+    candidate.enhancements.clarity_amount = clarity_amount;
+    candidate.enhancements.clarity_frequency_hz = clarity_frequency_hz;
+    if (!handle->engine.apply_profile(candidate)) return JNI_FALSE;
+    handle->profile = candidate;
+    return JNI_TRUE;
+}
+
 // Balance and fader are represented by a diagonal 4x4 output-routing matrix.
 // Center is unity; moving a control attenuates only the opposite side/row pair.
 extern "C" JNIEXPORT jboolean JNICALL
