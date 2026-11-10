@@ -162,13 +162,13 @@ The normal selector path uses an 8 ms delay; the mixing-enable path selects chan
 
 ## Master mute and GPIO 393 reconstruction
 
-The ARM32 `set_master_mute(mute, reason)` function updates the 32-bit master mute reason mask and then writes GPIO 393 using this recovered raw-level expression:
+The ARM32 `set_master_mute(mute, reason)` function first updates the 32-bit master mute reason mask and then writes GPIO 393 using this recovered raw-level expression:
 
-`(mute && !hfp_active) || reason24_is_set || !acc_on`
+`(master_mute_reason_mask != 0 && !hfp_active) || reason24_is_set || !acc_on`
 
-Only reason bit 24 is independently tested from the aggregate mask in this expression. The ordinary `mute` argument is gated by HFP state; ACC-off forces the raw GPIO high regardless of that argument. This is distinct from `master_muted()`, which reports whether any reason bit is set.
+Any active mute reason asserts GPIO 393 while HFP is inactive. HFP suppresses ordinary reasons, but reason 24 is explicitly ORed back in and therefore still forces GPIO 393 high during HFP. ACC-off also forces the raw GPIO high. This is distinct from `master_muted()`, which reports whether any reason bit is set without applying HFP/ACC output gating.
 
-The event callback's `0x11` handler special-cases reason 2 by assigning its boolean mute argument to `acc_on`, then calls `set_master_mute()`. The probe path sets `acc_on` true before asserting startup reason 31. System notifier event 2 clears reason 30; event 3 clears reason 24. The host emulator models these exact state transitions and records GPIO 393 raw-level requests as `Gpio393Write` journal entries.
+The event callback's `0x11` handler special-cases reason 2 by assigning `acc_on = (mute == 0)` before calling `set_master_mute()`: mute=0 means ACC active; mute=1 means ACC off. Channel 1 / input-mute reason 16 similarly sets `hfp_active = (mute == 0)`. The probe path initializes `acc_on` true before asserting startup reason 31. System notifier event 2 clears reason 30; event 3 clears reason 24. The host emulator models these state transitions and records GPIO 393 raw-level requests as `Gpio393Write` journal entries.
 
 GPIO 393's physical signal name and board-level active polarity remain unknown. The emulator records raw HIGH/LOW requests only; it does not drive hardware.
 
