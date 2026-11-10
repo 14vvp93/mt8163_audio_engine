@@ -397,10 +397,14 @@ int main() {
               "DSP power request is accepted");
         check(state_emulator.state().dsp_awake == true,
               "DSP awake request state is modeled");
-        check(state_emulator.journal().size() == 11U &&
+        check(state_emulator.journal().size() == 12U &&
               state_emulator.journal().front().sequence == 1U &&
-              state_emulator.journal().back().sequence == 11U,
+              state_emulator.journal().back().sequence == 12U,
               "journal sequence IDs are deterministic and monotonic");
+        for (std::size_t i = 0; i < state_emulator.journal().size(); ++i) {
+            check(state_emulator.journal()[i].sequence == i + 1U,
+                  "journal sequence IDs are contiguous and strictly increasing");
+        }
         check(!state_emulator.journal().front().before.master_volume_step.has_value() &&
               state_emulator.journal().front().after.master_volume_step == 23U,
               "journal captures before/after snapshots");
