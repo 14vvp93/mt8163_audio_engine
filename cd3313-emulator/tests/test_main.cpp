@@ -140,6 +140,17 @@ int main() {
         };
         check(static_cast<bool>(parse_driver_command(fader_frame)),
               "0x15 accepts four complete 32-bit channel arguments");
+        const std::vector<std::uint8_t> short_fader_two_words{
+            0x00, 0x15, 0x02, 0x40, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+        const std::vector<std::uint8_t> short_fader_three_words{
+            0x00, 0x15, 0x03, 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+        check(parse_driver_command(short_fader_two_words).error ==
+                  ParseError::InsufficientArgumentData &&
+              parse_driver_command(short_fader_three_words).error ==
+                  ParseError::InsufficientArgumentData,
+              "0x15 rejects two- and three-word frames before the four-index handler read");
         auto invalid_fader_frame = fader_frame;
         invalid_fader_frame[4] = 16;
         check(parse_driver_command(invalid_fader_frame).error ==
