@@ -1,4 +1,5 @@
 #include "cd3313/emulator.hpp"
+#include "cd3313/channel_control.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
@@ -76,6 +77,40 @@ int main() {
         check(static_cast<bool>(parse_driver_command(
                   {0x00, 0xA3, 0x01, 0x40, 1, 0, 0, 0})),
               "special 0xA3 dispatcher branch");
+
+
+        const auto neutral = calculate_channel_levels({0, 0});
+        check(neutral.front_left == 15 && neutral.front_right == 15 &&
+              neutral.rear_left == 15 && neutral.rear_right == 15,
+              "centered controls produce 0 dB on all channels");
+        check(speaker_register_byte(0, 15) == 0x80 &&
+              speaker_register_byte(1, 15) == 0xA0 &&
+              speaker_register_byte(2, 15) == 0xC0 &&
+              speaker_register_byte(3, 15) == 0xE0,
+              "neutral register bytes");
+        check(speaker_register_byte(0, 0) == 0x9F &&
+              speaker_register_byte(3, 0) == 0xFF,
+              "maximum attenuation register bytes");
+        const auto right = calculate_channel_levels({100, 0});
+        check(right.front_left == 0 && right.rear_left == 0 &&
+              right.front_right == 15 && right.rear_right == 15,
+              "right balance attenuates left channels");
+        const auto front = calculate_channel_levels({0, 100});
+        check(front.front_left == 15 && front.front_right == 15 &&
+              front.rear_left == 0 && front.rear_right == 0,
+              "front fader attenuates rear channels");
+        const auto rear = calculate_channel_levels({0, -100});
+        check(rear.front_left == 0 && rear.front_right == 0 &&
+              rear.rear_left == 15 && rear.rear_right == 15,
+              "rear fader attenuates front channels");
+        const auto corner = calculate_channel_levels({100, 100});
+        check(corner.front_left == 0 && corner.front_right == 15 &&
+              corner.rear_left == 0 && corner.rear_right == 0,
+              "combined controls compose per channel");
+        const auto clamped = calculate_channel_levels({250, -250});
+        check(clamped.front_left == 0 && clamped.front_right == 0 &&
+              clamped.rear_left == 0 && clamped.rear_right == 15,
+              "out-of-range slider values are clamped");
 
         Emulator emulator;
         check(static_cast<bool>(emulator.write(encoded)),
