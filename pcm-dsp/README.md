@@ -75,6 +75,8 @@ The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel g
 
 ## Validation
 
+The release benchmark exercises the full QuadEngine chain at 44.1/48 kHz and 128/256/512-frame blocks, including all 32 EQ slots per channel, all 12 multiband compressor instances, time alignment, bass management, and output limiting. It reports average, p95, maximum block time, and average one-core real-time budget usage on the host runner. Host timing is a regression indicator, not a substitute for measurement on the MT8163 target.
+
 See [PCM DSP Stability Lab](../docs/PCM_DSP_STABILITY_LAB.md) for the host-side frequency-response, extreme-transition, and input-sanitization tests.
 
 
