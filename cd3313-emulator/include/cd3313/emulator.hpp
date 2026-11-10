@@ -91,6 +91,17 @@ enum class RegisterWriteSource {
     ShutdownFinalWrite
 };
 
+enum class EventQueueRequestKind { RemoveQueuedEvent, PostDelayedEvent };
+enum class EventQueueRequestSource { MasterMuteReason24 };
+
+struct EventQueueRequest {
+    std::uint64_t sequence{};
+    EventQueueRequestSource source{};
+    EventQueueRequestKind kind{};
+    std::uint32_t event_id{};
+    std::uint32_t delay_ms{};
+};
+
 enum class WakeupEventKind { RemoveQueuedEvent, PostDelayedEvent };
 
 struct WakeupEvent {
@@ -143,6 +154,9 @@ public:
     }
     const std::vector<ShutdownEvent>& shutdown_journal() const { return shutdown_journal_; }
     const std::vector<WakeupEvent>& wakeup_journal() const { return wakeup_journal_; }
+    const std::vector<EventQueueRequest>& event_queue_requests() const {
+        return event_queue_requests_;
+    }
     const std::vector<InputTransitionEvent>& input_transition_journal() const {
         return input_transition_journal_;
     }
@@ -159,11 +173,13 @@ private:
     std::uint64_t next_input_transition_sequence_{1};
     std::uint64_t next_shutdown_sequence_{1};
     std::uint64_t next_wakeup_sequence_{1};
+    std::uint64_t next_event_queue_sequence_{1};
     EmulatorState state_{};
     std::vector<EmulatorEvent> journal_;
     std::vector<RegisterWriteEvent> register_journal_;
     std::vector<InputTransitionEvent> input_transition_journal_;
     std::vector<ShutdownEvent> shutdown_journal_;
     std::vector<WakeupEvent> wakeup_journal_;
+    std::vector<EventQueueRequest> event_queue_requests_;
 };
 } // namespace cd3313
