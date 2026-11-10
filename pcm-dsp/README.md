@@ -18,6 +18,9 @@ This library is an independent, host-buildable C++17 DSP core. It is not yet con
 - 44.1 kHz and 48 kHz;
 - 32 independent biquad slots per channel (128 possible channel/filter stages);
 - per-channel gain, independent filter settings, and integrated 0–20 ms time alignment;
+- optional 4×4 output matrix with explicit row-major routing coefficients;
+- optional four-way Linkwitz-Riley bass management (12/24/36/48 dB/oct) with four high-passed speaker outputs and a separate mono low-frequency bus;
+- independent safety limiting for the four main outputs and the mono low-frequency bus;
 - peaking, low/high shelf, second-order HPF/LPF;
 - per-channel peak envelope and configurable limiter ceiling;
 - bit-exact Float32 bypass;
@@ -37,7 +40,8 @@ The Float32 API expects normalized samples. Per-channel delay is configured in m
 
 - The Float32 four-channel core is a processing foundation, not an Android integration.
 - The legacy stereo PCM16 API remains available and unchanged.
-- No AudioFlinger effect registration, HAL adapter, global hook, SCO/call processing, microphone path, resampling, CD3313 control, crossover module, time alignment, dynamic EQ, or multiband compression is connected yet.
+- No AudioFlinger effect registration, HAL adapter, global hook, SCO/call processing, microphone path, resampling, or CD3313 control is connected yet.
+- The mono low-frequency bus is a software output only. Its physical CD3313/amplifier route has not been identified, so it is deliberately not connected to hardware.
 - The limiter is a safety limiter, not a mastering-grade loudness processor.
 - No Android/head-unit runtime or audible validation has been performed.
 
@@ -56,4 +60,4 @@ The host workflow builds the library with CMake and runs tests for stereo behavi
 
 \`LinkwitzRileyCrossover\` is a mono splitter; instantiate one per channel. It supports 12, 24, 36 and 48 dB/octave Linkwitz-Riley alignments built from cascaded Butterworth sections. The high branch polarity is corrected for odd prototype order. The branches are tested for a flat summed response at the crossover frequency.
 
-Both modules are standalone building blocks at this stage; the QuadEngine pipeline integration is a subsequent step.
+The crossover is integrated into the optional QuadEngine bass-management stage. The output matrix is applied after crossover splitting and before the final output limiters. Configure routing outside the real-time process callback with `configure_routing()`. When bass management is enabled, pass a separate mono `sub_output` buffer to `process()`; the call fails rather than silently discarding low-frequency content if that buffer is missing. The default routing remains disabled and therefore preserves the four-channel signal path.
