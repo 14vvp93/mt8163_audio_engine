@@ -68,3 +68,7 @@ The crossover is integrated into the optional QuadEngine bass-management stage. 
 Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
 
 The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from a verified native AudioFlinger/HAL integration point, preserving the stock routing and bypassing calls, microphone, and Bluetooth SCO until those paths are separately mapped.
+
+## Validation
+
+See [PCM DSP Stability Lab](../docs/PCM_DSP_STABILITY_LAB.md) for the host-side frequency-response, extreme-transition, and input-sanitization tests.
