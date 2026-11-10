@@ -25,7 +25,7 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 - Write-direction validation, command ID and 14-bit size-field extraction.
 - 32-bit-word payload sizing, 256-byte cap, recovered minimum-size validation.
 - Typed builders for master volume, master mute, and four-channel levels.
-- State model for master-volume step and percentage, independent master-mute reasons, and FL/FR/RL/RR output levels.
+- State model for master-volume step and percentage, independent master-mute reasons, seven input channels (selection, per-channel gain and mute-reason masks), mixing mode and HFP-active state, and FL/FR/RL/RR output levels.
 - Recovered 41-entry master-volume lookup table and stepped register-byte ramp.
 - Recovered 15-byte bass/treble lookup table and stepped register-byte ramps; first command argument remains opaque.
 - Active-low loudness control bit in the recovered `0x47` control byte.
