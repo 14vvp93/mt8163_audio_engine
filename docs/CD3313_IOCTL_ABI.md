@@ -43,6 +43,15 @@ The callback extracts the ID and size from the prepended request word. It does n
 
 Important stage distinction: cmd_ioctl() itself does not validate the command ID against cmd_len_list and does not enforce the per-command minimum size. For write direction it copies the capped payload, logs it, and queues event ID 1. The callback then performs command-specific dispatch and applies cmd_len_list checks for the 12 listed commands. The extra 0x56 and 0xA3 branches are handled outside that 12-pair table. Therefore the table is callback-side validation, not an ioctl-entry whitelist. Unknown IDs can reach the callback and must be understood from its default branch; do not treat the ioctl wrapper as rejecting them.
 
+### Short-payload hazard for commands 0x56 and 0xA3
+
+The event_callback() branches for 0x56 (loudness) and 0xA3 (subwoofer GPIO) load the first payload word at offset +4 without checking the size field. These IDs are not in cmd_len_list. cmd_ioctl() allocates the 256-byte cache object without zeroing it, writes the request header, and copies only the declared payload bytes. A write-direction request with size=0 therefore leaves the word at +4 as stale slab data, which the callback then consumes:
+- 0x56 can unexpectedly enable or disable loudness.
+- 0xA3 can unexpectedly change the subwoofer GPIO raw level.
+
+This is an uninitialized-heap-data use in the callback path. It is not a confirmed privilege escalation or arbitrary memory disclosure, but it is a real malformed-request hazard. The emulator deliberately rejects 0x56 and 0xA3 frames that do not contain one complete 32-bit payload word; it does not reproduce the driver's stale-memory behavior.
+
+
 
 ### Important length-validation distinction
 
