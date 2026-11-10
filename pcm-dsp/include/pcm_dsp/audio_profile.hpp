@@ -15,6 +15,7 @@ struct AudioProfile {
     QuadParameters quad{};
     QuadOutputRoutingParameters routing{};
     MultibandDynamicsParameters dynamics{};
+    EnhancementParameters enhancements{};
 };
 
 // Validates the complete profile before any part of it is applied to an engine.
