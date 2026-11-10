@@ -569,14 +569,14 @@ RawWriteTextResult Emulator::write_raw_command_text(std::string_view text,
 
     // cmd_write() passes the persistent VFS file position through unchanged.
     // A nonzero offset leaves a leading NUL in this freshly zeroed buffer.
-    if (file_position != 0U || buffer[0] == '\\0') return result;
+    if (file_position != 0U || buffer[0] == '\0') return result;
 
     std::size_t length = 0U;
-    while (length < buffer.size() && buffer[length] != '\\0') ++length;
+    while (length < buffer.size() && buffer[length] != '\0') ++length;
     std::string_view token(buffer.data(), length);
     if (token.empty()) return result;
 
-    if (token.back() == '\\n') token.remove_suffix(1U);
+    if (token.back() == '\n') token.remove_suffix(1U);
     if (token.empty()) return result;
 
     if (token.front() == '+') token.remove_prefix(1U);
