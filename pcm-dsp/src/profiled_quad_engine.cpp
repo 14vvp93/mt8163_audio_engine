@@ -85,11 +85,14 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
     const int active = active_slot_.load(std::memory_order_acquire);
     const int pending = pending_slot_.load(std::memory_order_acquire);
     const int current_target = transition_target_.load(std::memory_order_acquire);
-    const int target = current_target >= 0 ? current_target : pending;
-    if (target >= 0 &&
-        (profiles_[static_cast<std::size_t>(active)].routing.bass_management_enabled ||
-         profiles_[static_cast<std::size_t>(target)].routing.bass_management_enabled) &&
-        sub_output == nullptr) {
+    const bool active_needs_sub =
+        profiles_[static_cast<std::size_t>(active)].routing.bass_management_enabled;
+    const bool running_target_needs_sub = current_target >= 0 &&
+        profiles_[static_cast<std::size_t>(current_target)]
+            .routing.bass_management_enabled;
+    // A merely pending target may wait for a sub buffer; an active transition
+    // cannot safely continue without one.
+    if ((active_needs_sub || running_target_needs_sub) && sub_output == nullptr) {
         return false;
     }
 
