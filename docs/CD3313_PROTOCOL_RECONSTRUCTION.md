@@ -146,7 +146,7 @@ The table at .rodata + 0x64 consists of six 32-bit entries:
 
 `2, 1, 0, 3, 0, 2`
 
-set_input_channel() indexes it for channel IDs 0..5 and masks the result to two bits. Channel 6 bypasses the table and uses selector code 3. The resulting channel-to-selector map is therefore 0→2, 1→1, 2→0, 3→3, 4→0, 5→2, 6→3. This is a selector code only; it does not establish the human-facing source identity of any channel.
+set_input_channel() indexes it for channel IDs 0..5 and masks the result to two bits. Channel 6 bypasses the table and uses selector code 3. The cmd_read() channel-name pointer table independently identifies the seven driver labels as RADIO, ARM, AUX, EXBT, AUX2, DAB, and NONE. Combining both tables yields RADIO→source3, ARM→source2, AUX→source1, EXBT→source4, AUX2→source1, DAB→source3, and NONE→source4. The datasheet says source4 has no external pins, so EXBT may use a separate route; the board-level path remains unverified.
 
 ### cd3313_equalizer — corrected complete lookup
 
