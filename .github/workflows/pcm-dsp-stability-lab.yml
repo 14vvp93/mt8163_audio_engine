@@ -13,9 +13,9 @@ on:
 
 jobs:
   stability-lab:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: cmake -S pcm-dsp -B build -DCMAKE_BUILD_TYPE=Release -DPCM_DSP_BUILD_TESTS=ON
       - name: Build
