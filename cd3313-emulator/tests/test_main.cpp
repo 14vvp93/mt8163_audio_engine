@@ -310,6 +310,39 @@ int main() {
               cache_map_emulator.state().reg_bufs_cache[3] == 0x91U,
               "different command pages can address the same driver cache slot");
 
+        Emulator raw_text_emulator;
+        const auto first_raw_write = raw_text_emulator.write_raw_command_text("47");
+        check(first_raw_write.reported_count == 2U &&
+              first_raw_write.copied_count == 2U &&
+              first_raw_write.new_file_position == 2U &&
+              first_raw_write.parsed && first_raw_write.command_byte == 0x47U &&
+              raw_text_emulator.state().reg_bufs_cache[5] == 0x47U,
+              "raw write text parses hexadecimal and journals the low command byte");
+        const auto second_raw_write = raw_text_emulator.write_raw_command_text(
+            "48", first_raw_write.new_file_position);
+        check(second_raw_write.reported_count == 2U &&
+              second_raw_write.copied_count == 2U &&
+              second_raw_write.new_file_position == 4U &&
+              !second_raw_write.parsed &&
+              raw_text_emulator.register_journal().size() == 1U,
+              "a second write at the advanced file offset is ignored by the text parser");
+        const auto reopened_raw_write = raw_text_emulator.write_raw_command_text("0x4A\\n");
+        check(reopened_raw_write.parsed && reopened_raw_write.command_byte == 0x4AU &&
+              raw_text_emulator.register_journal().size() == 2U,
+              "reopening at offset zero accepts a prefixed hexadecimal byte");
+        const auto malformed_raw_write = raw_text_emulator.write_raw_command_text("GG");
+        check(!malformed_raw_write.parsed &&
+              malformed_raw_write.reported_count == 2U &&
+              raw_text_emulator.register_journal().size() == 2U,
+              "malformed raw write text still reports the original byte count");
+        const auto full_buffer_raw_write =
+            raw_text_emulator.write_raw_command_text("000000000000");
+        check(full_buffer_raw_write.unterminated_buffer &&
+              !full_buffer_raw_write.parsed &&
+              full_buffer_raw_write.copied_count == 12U &&
+              raw_text_emulator.register_journal().size() == 2U,
+              "full 12-byte raw text is rejected safely instead of reading past the buffer");
+
         Emulator selector_emulator;
         selector_emulator.apply_recovered_initialization_sequence();
         check(selector_emulator.state().reg_bufs_cache ==
