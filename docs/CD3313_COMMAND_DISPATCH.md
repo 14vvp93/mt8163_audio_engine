@@ -11,11 +11,12 @@ This document records behavior recovered from the ARM32 disassembly and DWARF li
 - Dispatcher: `do_cmd_write()`, inlined into `event_callback()`
 - The latest analysis workflow emits `dwarf-lines.txt`, `disassembly-lines.txt`, and `address-to-source.txt` to preserve source-line correlation.
 
-The command word is read as a 32-bit value. The dispatcher extracts:
+The event object begins with the original 32-bit ioctl request word. The dispatcher extracts:
+- direction from bits 30..31 (1 = write, 2 = read);
 - command ID from bits 8..15;
 - a 14-bit size field from bits 16..29.
 
-The queued buffer is accessed as 32-bit fields: the first command argument is at offset +4, the next at +8, then +12 and +16. These offsets are observed directly in the ARM disassembly. The exact public ABI meaning and unit of the encoded size field are not yet fully established; do not assume it is a byte count.
+For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, capped at 256 bytes, then prepends the ioctl request word to the event object. The first command argument is therefore at offset +4, followed by 32-bit arguments at +8, +12, and +16. The size field counts 32-bit words for the copy operation; the 12 `cmd_len_list` values are minimum thresholds, not exact argument counts.
 
 ## Reconstructed command map
 
@@ -53,6 +54,10 @@ The volume routine changes the hardware register incrementally, one step per I²
 ### Notes on bass and treble
 
 The `0x55` and `0x5C` handlers use different register prefixes (`0x60` and `0x70`) and a shared lookup-table style conversion. They perform a stepped transition with approximately 20 ms sleeps between writes. The exact user-visible scale and the meaning of the first argument remain open questions.
+
+## Potential bounds issue in command 0x15
+
+The balance handler reads four 32-bit arguments at offsets +4, +8, +12, and +16. However, the recovered minimum size threshold for `0x15` is only 2 words (8 bytes). A caller passing exactly that minimum would cause the handler to read beyond the copied payload. The original vendor caller may always pass a larger size; this is a static-analysis warning that should be checked before reproducing the ABI. The host parser validates the actual copied payload size and does not emulate out-of-bounds reads.
 
 ## Internal event callback behavior
 
