@@ -25,7 +25,7 @@ The probe initializes eight cached command bytes:
 
 `event_callback(event=0)` sends these eight bytes twice in order, then sends `0x47` once more. That is 17 writes in the event, plus the earlier probe guard write. The host model exposes separate methods for the probe phase and the event-0 sequence.
 
-The four output bytes `0x80`, `0xA0`, `0xC0`, and `0xE0` correspond to FL, FR, RL, and RR at speaker-table index 15 (0 dB / neutral attenuation).
+The four output bytes `0x80`, `0xA0`, `0xC0`, and `0xE0` correspond to FL, FR, RL, and RR at speaker-table index 15 (lookup code `0x00`). The exact acoustic dB value of this code has not been measured.
 
 ## Input-control state recovered from the driver
 
