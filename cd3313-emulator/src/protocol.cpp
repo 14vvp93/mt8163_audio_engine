@@ -49,6 +49,13 @@ std::array<std::uint8_t, 8> read_device_identifier_payload() {
     return {{'c', 'd', '3', '3', '1', '3', 0U, 0U}};
 }
 
+std::string_view input_channel_name(std::uint8_t channel) {
+    static constexpr std::array<std::string_view, 7> names{{
+        "RADIO", "ARM", "AUX", "EXBT", "AUX2", "DAB", "NONE"
+    }};
+    return channel < names.size() ? names[channel] : std::string_view{};
+}
+
 const std::vector<CommandSpec>& known_write_commands() {
     static const std::vector<CommandSpec> commands{
         {0x01, 1, 1}, {0x03, 3, 3}, {0x04, 3, 3}, {0x10, 1, 1},
