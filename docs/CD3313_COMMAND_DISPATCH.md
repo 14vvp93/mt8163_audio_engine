@@ -209,3 +209,16 @@ The event callback's command `0x11` path has a special case for reason 2: it cop
 System notifier callback event 2 clears reason 30; event 3 clears reason 24. The emulator exposes `apply_recovered_system_mute_event(2|3)` for these two recovered clear operations. Unknown notifier event IDs are rejected. GPIO 393 is recalculated after each callback. The shutdown path separately recomputes the same GPIO using its own shutdown branch and is not treated as a normal `set_master_mute()` call.
 
 The transition journal now includes `Gpio393Write` after the reason-31 update. This models requested raw output levels, not physical readback or measured timing.
+
+
+### Shutdown path reconstruction
+
+The `dsp_shutdown()` disassembly at `0xFF4` is a separate path from `set_master_mute()`:
+
+1. Set the driver's shutdown flag.
+2. Set master-mute reason bit 30.
+3. Compute raw GPIO 393 as `!hfp_active || !acc_on || reason24_is_set` and call `gpiod_set_raw_value()`.
+4. Request removal of queued event IDs 0 and 1, in that order.
+5. Send the final stack-local byte `0x3F` through `i2c_master_send()`, then update the driver's cached command-page byte.
+
+The shutdown GPIO expression is recovered directly from the conditional sequence and global symbols: `hfp_active` at `.bss+0x20`, `acc_on` at `.data+0x38`, and reason 24 in `master_mute` at `.bss+0x18`. It must not be replaced with the ordinary `set_master_mute()` expression. The host model journals requested event removals and the final write; it cannot prove queue cancellation or physical GPIO/I2C behavior.
