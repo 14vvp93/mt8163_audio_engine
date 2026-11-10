@@ -23,6 +23,8 @@ public final class MainActivity extends Activity {
     private NativeDsp dsp;
     private TextView status;
     private boolean dspEnabled = true;
+    private volatile boolean profilePumpRunning;
+    private Thread profilePump;
 
     @Override
     public void onCreate(Bundle state) {
@@ -32,6 +34,7 @@ public final class MainActivity extends Activity {
         try {
             dsp = new NativeDsp(48000);
             status.setText("DSP ready · 48 kHz · 4 channels · Float32");
+            startProfilePump();
         } catch (Throwable error) {
             status.setText("DSP initialization failed: " + error.getMessage());
         }
@@ -101,6 +104,28 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
+    // Keeps native profile crossfades advancing while the test UI is idle.
+    // This is a silent offline pump, not an Android system-audio connection.
+    private void startProfilePump() {
+        profilePumpRunning = true;
+        profilePump = new Thread(() -> {
+            float[] input = new float[FRAMES * CHANNELS];
+            float[] output = new float[input.length];
+            while (profilePumpRunning) {
+                NativeDsp current = dsp;
+                if (current == null) break;
+                current.process(input, output, FRAMES);
+                try {
+                    Thread.sleep(10L);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }, "DSP-Profile-Pump");
+        profilePump.start();
+    }
+
     private void runPcmTest() {
         if (dsp == null) {
             status.setText("Native DSP is not available");
@@ -153,6 +178,16 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        profilePumpRunning = false;
+        if (profilePump != null) {
+            profilePump.interrupt();
+            try {
+                profilePump.join(250L);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            profilePump = null;
+        }
         if (dsp != null) {
             dsp.close();
             dsp = null;
