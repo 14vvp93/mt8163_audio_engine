@@ -1,0 +1,75 @@
+name: Focused CD3313 ioctl ABI analysis
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/analyze-cd3313-ioctl.yml"
+      - "cd3313.ko"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ioctl-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install ARM analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils binutils-arm-linux-gnueabi file python3
+
+      - name: Validate module identity
+        run: |
+          test -s cd3313.ko
+          file cd3313.ko | tee module-file.txt
+          sha256sum cd3313.ko | tee module-sha256.txt
+          grep -q 'b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb' module-sha256.txt
+
+      - name: Extract ioctl and command-dispatch functions
+        run: |
+          mkdir -p cd3313-ioctl-analysis
+          cp module-file.txt module-sha256.txt cd3313-ioctl-analysis/
+          nm -anC cd3313.ko > cd3313-ioctl-analysis/symbols.txt
+          readelf -h cd3313.ko > cd3313-ioctl-analysis/elf-header.txt
+          readelf --debug-dump=info cd3313.ko > cd3313-ioctl-analysis/dwarf-info.txt
+          objdump -m arm -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
+          for symbol in cmd_ioctl cmd_read cmd_write event_callback do_cmd_write set_balance set_master_volume set_master_mute; do
+            objdump -m arm -drwC --disassemble="$symbol" cd3313.ko > "cd3313-ioctl-analysis/$symbol.txt" 2>&1 || true
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("cd3313-ioctl-analysis")
+          symbols = (root / "symbols.txt").read_text(errors="replace").splitlines()
+          wanted = ("cmd_ioctl", "cmd_read", "cmd_write", "event_callback", "do_cmd_write")
+          rows = []
+          for line in symbols:
+              if any(re.search(r"\\b" + re.escape(name) + r"\\b", line) for name in wanted):
+                  rows.append(line)
+          (root / "target-symbols.txt").write_text("\\n".join(rows) + ("\\n" if rows else ""))
+          PY
+          {
+            echo "# Focused CD3313 ioctl analysis"
+            echo
+            cat module-file.txt
+            cat module-sha256.txt
+            echo
+            echo "Focused disassembly is provided per function where a symbol survived in the module."
+            echo "An empty function report means the symbol was inlined, optimized out, or not exported under that name."
+            echo
+            find cd3313-ioctl-analysis -maxdepth 1 -type f -printf '%f\\n' | sort
+          } > cd3313-ioctl-analysis/README.md
+
+      - name: Upload focused analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: cd3313-ioctl-abi-analysis
+          path: cd3313-ioctl-analysis/
+          if-no-files-found: error
+          retention-days: 14
