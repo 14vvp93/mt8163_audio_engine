@@ -140,3 +140,14 @@ The host emulator now maintains a 16-entry cache indexed by the upper nibble of 
 - The initialization callback is known to iterate and transmit a register image, but its complete byte sequence has not yet been reconstructed from the available analysis. The emulator therefore does not invent a startup image or claim a full physical register map.
 
 This is an offline observation model only. It does not call /dev/audiomux, issue I2C writes, or read hardware state.
+
+
+### Recovered probe and event-0 initialization bytes
+
+The additional `dsp_probe()` disassembly identifies a successful guard write of `0x3F` (the code retries up to three times when the I2C write fails) and a call to `set_master_mute(1, 31)`, which sets startup mute reason bit 31. It initializes the driver's cached command bytes at structure offsets +12 through +19 to:
+
+`3F C0 E0 80 A0 47 6F 7F`
+
+The `event_callback()` event-0 loop sends the eight cached bytes twice in that order, with the driver's per-write delays, then writes the byte at offset +17 (`0x47`) one additional time. This gives 17 writes in event 0, plus the earlier probe guard write. The emulator models the successful probe write and mute bit, then replays the 17 event-0 bytes into its command-page cache and write journal. It does not emulate I2C errors, electrical timing, or GPIO hardware.
+
+The four speaker bytes are the neutral attenuation settings: FL=`0x80`, FR=`0xA0`, RL=`0xC0`, RR=`0xE0`. The probe's master-volume state starts at step 0, with the percentage initialized to 100 and the guard register value `0x3F`. This is static reconstruction from the supplied module, not a live hardware readback.
