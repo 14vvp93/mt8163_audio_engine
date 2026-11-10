@@ -300,6 +300,9 @@ int main() {
         Emulator hfp_gpio_emulator;
         hfp_gpio_emulator.apply_recovered_probe_setup();
         check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
+                  make_input_channel_command(1)))),
+              "selecting ARM makes the HFP channel active before testing its mute path");
+        check(static_cast<bool>(hfp_gpio_emulator.write(encode_driver_command(
                   make_input_mute_command(1, false, 16)))) &&
               hfp_gpio_emulator.state().hfp_active &&
               hfp_gpio_emulator.state().gpio_393_level == false,
