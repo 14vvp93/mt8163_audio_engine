@@ -50,6 +50,33 @@ This resolves the earlier ambiguity: HEQ is a high-level CD3313-aware ASP client
 
 The HEQ APK contains no implementation of android.audio.AudioEffect and no direct /dev/audiomux open/ioctl call. Its native/service transport is still unknown. Some Java API argument pairs also do not match the raw kernel handler's consumed words, so the hidden wrapper must be recovered before mapping methods to ioctl commands.
 
+## Related MT8163 board lead: carstatus device and ACC source
+
+A separate public MT8163 board-support repository, `Tec4Sho/android_device_alps_tb8163p3_bsp`, provides a useful lead for the origin of the driver's ACC state. This is related-platform evidence, not proof that the exact target head unit uses the same board image.
+
+The board configuration contains the following static evidence:
+
+- `recovery/root/init.mt8163.rc` loads both `/vendor/lib/modules/carstatus.ko` and `/vendor/lib/modules/cd3313.ko` during initialization.
+- `recovery/root/factory_init.rc` also loads both modules.
+- `recovery/root/sbin/init.insmod.cfg` lists `carstatus.ko` immediately before `cd3313.ko`.
+- `recovery/root/ueventd.rc` assigns `/dev/carstatus` mode `0664`, owner `root`, group `system`.
+
+Sources:
+- [MT8163 init module loading](https://github.com/Tec4Sho/android_device_alps_tb8163p3_bsp/blob/dae4caeb433746ee84e42443ea1b904f3b590a59/recovery/root/init.mt8163.rc)
+- [Module load list](https://github.com/Tec4Sho/android_device_alps_tb8163p3_bsp/blob/dae4caeb433746ee84e42443ea1b904f3b590a59/recovery/root/sbin/init.insmod.cfg)
+- [carstatus device-node permissions](https://github.com/Tec4Sho/android_device_alps_tb8163p3_bsp/blob/dae4caeb433746ee84e42443ea1b904f3b590a59/recovery/root/ueventd.rc)
+
+This establishes that at least one MT8163 Android 9 BSP carries a dedicated `carstatus` kernel module and exposes `/dev/carstatus` to the system group, while loading it alongside the CD3313 module. It makes `carstatus.ko` a strong candidate to investigate for vehicle-state/ACC handling.
+
+It does **not** yet establish:
+- that `carstatus.ko` itself reads the physical ACC wire rather than receiving MCU/CAN data;
+- the ioctl/read/write ABI of `/dev/carstatus`;
+- which process opens `/dev/carstatus`;
+- whether that process sends CD3313 command `0x11`, reason `2`;
+- that this board's wiring or module revision matches the user's head unit.
+
+The current supplied audio archive does not contain `carstatus.ko` or a framework JAR, and the previous 36-file scan was scoped to audio-related files only. The next high-value artifact is the matching `carstatus.ko` binary plus its userspace client/service, or a full vendor image from the same head-unit firmware. Until then, keep the ACC-to-CD3313 sender classified as unresolved.
+
 ## What this means for the ABI
 
 The kernel module's dispatcher-side behavior remains recoverable from `cd3313.ko`, but the caller-side ioctl encoding and argument structures are not established by this archive. In particular, do not invent an ioctl magic/type, request word, or command payload layout and do not send experimental writes to the live device.
