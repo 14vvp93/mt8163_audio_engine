@@ -163,6 +163,27 @@ int main() {
         check(state_emulator.state().master_muted() &&
               state_emulator.state().master_mute_reason_mask == (1U << 9U),
               "clearing one reason preserves another active mute");
+
+        check(state_emulator.state().gpio_393_level == true &&
+              state_emulator.state().acc_on == false,
+              "GPIO 393 remains high while ACC state is off");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 2)))) &&
+              state_emulator.state().acc_on &&
+              state_emulator.state().gpio_393_level == true,
+              "master mute reason 2 latches ACC on and keeps active mute asserted");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(false, 9)))) &&
+              state_emulator.state().gpio_393_level == false,
+              "clearing the final ordinary mute releases GPIO 393 while ACC is on");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 24)))) &&
+              state_emulator.state().gpio_393_level == true,
+              "master mute reason 24 independently forces GPIO 393 high");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(false, 24)))) &&
+              state_emulator.state().gpio_393_level == false,
+              "clearing reason 24 releases GPIO 393 when ACC is on and HFP is inactive");
         check(static_cast<bool>(state_emulator.write(encode_driver_command(
                   make_four_channel_level_command(15, 14, 13, 0)))),
               "four-channel state command is accepted");
@@ -232,7 +253,7 @@ int main() {
                   RegisterWriteSource::InputSelectorControl,
               "input selector byte is journaled between attenuation writes");
         const auto& first_switch = selector_emulator.input_transition_journal();
-        check(first_switch.size() >= 8U &&
+        check(first_switch.size() >= 9U &&
               first_switch[0].kind == InputTransitionKind::AttenuationWrite &&
               first_switch[0].value == 0x3FU &&
               first_switch[1].kind == InputTransitionKind::Delay &&
@@ -241,8 +262,8 @@ int main() {
               first_switch[3].kind == InputTransitionKind::Gpio396Write &&
               first_switch[4].kind == InputTransitionKind::Gpio398Write &&
               first_switch[5].kind == InputTransitionKind::MasterMuteReason31 &&
-              first_switch[6].kind == InputTransitionKind::Delay &&
-              first_switch[7].kind == InputTransitionKind::AttenuationWrite,
+              first_switch[6].kind == InputTransitionKind::Gpio393Write &&
+              first_switch[7].kind == InputTransitionKind::Delay,
               "input switch journal preserves the recovered attenuation-selector-GPIO-mute order");
 
         Emulator ramp_emulator;
@@ -389,6 +410,8 @@ int main() {
         check(state_emulator.journal().empty() &&
               state_emulator.accepted_commands() == 0U &&
               state_emulator.state().master_mute_reason_mask == 0U &&
+              !state_emulator.state().acc_on &&
+              !state_emulator.state().gpio_393_level.has_value() &&
               !state_emulator.state().master_volume_step.has_value(),
               "reset clears journal and restores synthetic baseline");
 
@@ -569,6 +592,8 @@ int main() {
         Emulator startup_emulator;
         startup_emulator.apply_recovered_probe_setup();
         check(startup_emulator.state().master_mute_reason_mask == (1U << 31U) &&
+              startup_emulator.state().acc_on &&
+              startup_emulator.state().gpio_393_level == false &&
               startup_emulator.register_journal().size() == 1U &&
               startup_emulator.register_journal().front().command_byte == 0x3FU &&
               startup_emulator.register_journal().front().source ==
