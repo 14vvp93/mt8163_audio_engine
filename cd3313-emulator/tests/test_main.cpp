@@ -184,6 +184,10 @@ int main() {
               (state_emulator.state().master_mute_reason_mask & (1U << 24U)) == 0U &&
               state_emulator.state().gpio_393_level == false,
               "system notifier event 3 clears reason 24 and recomputes GPIO 393");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 30)))) &&
+              (state_emulator.state().master_mute_reason_mask & (1U << 30U)) != 0U,
+              "reason 30 can be asserted before the system notifier");
         check(state_emulator.apply_recovered_system_mute_event(2U) &&
               (state_emulator.state().master_mute_reason_mask & (1U << 30U)) == 0U,
               "system notifier event 2 clears reason 30");
