@@ -34,7 +34,7 @@ Implemented:
 
 Not implemented yet:
 - userspace `/dev/audiomux` controller and confirmed ioctl ABI;
-- complete CD3313 silicon register map and initialization sequence (not yet fully recovered);
+- complete CD3313 silicon register map and hardware readback (not yet recovered);
 - full argument validation and command semantics for every command;
 - readback request `0xF0` response modeling;
 - I²C timing/electrical behavior.
@@ -48,4 +48,16 @@ The emulator tracks the last observed command byte in each of 16 high-nibble pag
 
 Known four-channel command 0x15 updates the four command-byte cache entries using the recovered channel prefixes and attenuation lookup table. The separate raw cmd_write() path can update one cache page through write_raw_command_byte(). Every observed write creates a deterministic register journal entry with sequence number, source, page, byte, and previous cached byte.
 
-Unknown pages remain unset. The initialization event's complete byte sequence is not yet reconstructed, so reset does not fabricate a powered-on register image. The full silicon register map, startup image, and hardware readback remain future work.
+Unknown pages remain unset. The probe guard write and event-0 startup byte sequence are now reconstructed from ARM disassembly. The complete silicon register map and hardware readback remain future work.
+
+
+## Recovered probe and initialization sequence
+
+Static analysis of `dsp_probe()` and `event_callback(event=0)` recovered these operations:
+
+1. `dsp_probe()` writes `0x3F` as a safe maximum-attenuation guard byte, retrying up to three times if the I2C write reports an error. The host model records one successful attempt and does not simulate I2C failures.
+2. `dsp_probe()` calls `set_master_mute(1, 31)`, so startup mute reason bit 31 is active in the modeled state.
+3. The eight initialized command bytes are `3F C0 E0 80 A0 47 6F 7F`.
+4. `event_callback(event=0)` sends those eight bytes twice in order, then writes `0x47` once more: 17 writes in that event.
+
+The emulator exposes `apply_recovered_probe_setup()` and `apply_recovered_initialization_sequence()` for these two distinct phases. The latter populates the observed command-page cache and restores neutral FL/FR/RL/RR attenuation bytes (`80 A0 C0 E0`). No physical I2C/GPIO operation is performed.
