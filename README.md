@@ -13,12 +13,17 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 3. **Android integration adapter** — integration at a verified AudioFlinger/HAL processing point; no global hook until call/SCO bypass and routing are understood.
 4. **Control API/UI** — separate controls for EQ, bass/treble, loudness, balance and profiles, with safe state persistence.
 
+### PCM DSP core
+
+The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It currently includes 10-band parametric EQ, preamp, balance, limiter and bit-exact bypass. Its host CMake build and tests passed in [GitHub Actions](https://github.com/14march93/mt8163_audio_engine/actions/runs/42801853494). This is not yet connected to the Android audio path.
+
 ## Reverse-engineering documents
 
 - [CD3313 kernel protocol](docs/CD3313_PROTOCOL_RECONSTRUCTION.md)
 - [CD3313 command dispatch map](docs/CD3313_COMMAND_DISPATCH.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
+- [PCM DSP core](pcm-dsp/README.md)
 
 ## Development constraints
 
@@ -35,4 +40,4 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 - Initial CD3313 command emulator and CI tests implemented.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
-- Full PCM DSP and Android integration are not implemented yet.
+- Initial PCM DSP core implemented and host tests passed; Android integration is not implemented yet.
