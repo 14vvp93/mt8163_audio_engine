@@ -31,7 +31,8 @@ jobs:
             printf '%s\n' "${parts[@]}"
             exit 1
           fi
-          for i in $(seq -w 1 17); do
+          for n in {1..17}; do
+            i=$(printf '%03d' "$n")
             file="HEQ/HEQ.zip.$i"
             test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
           done
