@@ -397,9 +397,9 @@ int main() {
               "DSP power request is accepted");
         check(state_emulator.state().dsp_awake == true,
               "DSP awake request state is modeled");
-        check(state_emulator.journal().size() == 12U &&
+        check(state_emulator.journal().size() == 17U &&
               state_emulator.journal().front().sequence == 1U &&
-              state_emulator.journal().back().sequence == 12U,
+              state_emulator.journal().back().sequence == 17U,
               "journal sequence IDs are deterministic and monotonic");
         for (std::size_t i = 0; i < state_emulator.journal().size(); ++i) {
             check(state_emulator.journal()[i].sequence == i + 1U,
@@ -416,8 +416,8 @@ int main() {
               "state model rejects an out-of-range raw volume command");
         check(state_emulator.state().master_volume_step ==
                   before_invalid.master_volume_step &&
-              state_emulator.journal().size() == 12U &&
-              state_emulator.journal().back().sequence == 12U,
+              state_emulator.journal().size() == 17U &&
+              state_emulator.journal().back().sequence == 17U,
               "rejected transition is atomic and is not journaled");
 
         Emulator unknown_command_emulator;
