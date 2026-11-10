@@ -334,6 +334,48 @@ int main() {
               "reset restarts register-journal sequence numbering");
         state_emulator.reset();
 
+        Emulator startup_emulator;
+        startup_emulator.apply_recovered_initialization_sequence();
+        const std::array<std::uint8_t, 8> startup_bytes{{
+            0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
+        }};
+        check(startup_emulator.state().initialization_sequence_applied &&
+              startup_emulator.state().master_volume_step == 0U &&
+              startup_emulator.state().master_volume_register_value == 0x3FU &&
+              startup_emulator.state().master_volume_percentage == 100U,
+              "startup model restores recovered initial master-volume state");
+        check(startup_emulator.state().channel_level_indices ==
+                  std::array<std::uint8_t, 4>{{15, 15, 15, 15}} &&
+              startup_emulator.state().speaker_register_bytes ==
+                  std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}},
+              "startup model restores neutral four-channel output registers");
+        check(startup_emulator.register_journal().size() == 17U,
+              "event_callback initialization writes 8 bytes twice plus one control-byte rewrite");
+        for (std::size_t i = 0; i < startup_bytes.size(); ++i) {
+            check(startup_emulator.register_journal()[i].command_byte == startup_bytes[i] &&
+                  startup_emulator.register_journal()[i].source ==
+                      RegisterWriteSource::InitializationSequence,
+                  "first initialization pass matches recovered byte order");
+            check(startup_emulator.register_journal()[i + 8U].command_byte == startup_bytes[i],
+                  "second initialization pass repeats the recovered byte order");
+        }
+        check(startup_emulator.register_journal().back().command_byte == 0x47 &&
+              startup_emulator.register_journal().back().sequence == 17U,
+              "initialization ends by rewriting the 0x47 control byte");
+        check(*startup_emulator.state().command_page_cache[0x3] == 0x3F &&
+              *startup_emulator.state().command_page_cache[0xC] == 0xC0 &&
+              *startup_emulator.state().command_page_cache[0xE] == 0xE0 &&
+              *startup_emulator.state().command_page_cache[0x8] == 0x80 &&
+              *startup_emulator.state().command_page_cache[0xA] == 0xA0 &&
+              *startup_emulator.state().command_page_cache[0x4] == 0x47 &&
+              *startup_emulator.state().command_page_cache[0x6] == 0x6F &&
+              *startup_emulator.state().command_page_cache[0x7] == 0x7F,
+              "startup image populates all eight observed command pages");
+        startup_emulator.reset();
+        check(!startup_emulator.state().initialization_sequence_applied &&
+              startup_emulator.register_journal().empty(),
+              "reset clears recovered startup image and write history");
+
         std::cout << "All CD3313 driver-command tests passed\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
