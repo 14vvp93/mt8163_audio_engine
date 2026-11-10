@@ -76,7 +76,7 @@ These are protocol status/command identifiers in the driver, not Linux ioctl req
 
 ## Minimum size-field thresholds recovered from `cmd_len_list`
 
-DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: command ID followed by the minimum accepted value of the command header's 14-bit size field. These values are **not proven payload byte lengths**. The dispatcher compares the extracted size field against these thresholds.
+DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: command ID followed by the minimum accepted value of the command header's 14-bit size field. These values are **not proven payload byte lengths**. The outer ioctl size field is multiplied by four to obtain the number of bytes copied from userspace. The dispatcher compares that same word-count field against these minimum thresholds.
 
 | Command | Minimum size-field value |
 |---:|---:|
@@ -134,13 +134,13 @@ The corrected analysis run successfully disassembled the module as ARM (`elf32-l
 
 - `cmd_write()` parses the userspace write buffer as an unsigned decimal integer with `kstrtouint()`, truncates it to one byte, and sends that single byte with `i2c_master_send()`. It also updates a cached register byte selected using the high nibble. This path is a raw one-byte register write interface, not the framed multi-byte command protocol.
 - `cd3313_write_reg()` sends exactly one byte per call using `i2c_master_send()`, then updates the driver's cached register image.
-- `cmd_ioctl()` extracts the outer Linux ioctl direction from bits 30–31, request number from bits 8–15, and encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy. Separately, `event_callback()` reads the first 32-bit word of that queued buffer as an inner command header and extracts its command ID from bits 8–15 and size field from bits 16–29. Do not confuse the outer ioctl request with this inner driver-command header.
+- `cmd_ioctl()` extracts the outer Linux ioctl direction from bits 30–31, request number from bits 8–15, and encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy. `cmd_ioctl()` prepends the original ioctl request word to the queued event object. `event_callback()` reads that same word and extracts the command ID from bits 8–15 and size field from bits 16–29; it is not a second nested header.
 - The read-direction path accepts request number `0xF0` and copies an 8-byte object from driver state back to userspace. Other read request numbers return an error.
 - For write requests with command byte `0x55` or `0x5C`, the ioctl path waits 30 ms after posting the event. This is a driver timing behavior, not a payload semantic.
 - `set_master_volume()` changes the hardware volume register incrementally, one step per I²C write, with a delay between steps. It uses a 0–63 internal attenuation scale and applies a separate percentage-derived adjustment. The exact user-facing mapping still needs correlation with the constant volume table and call sites.
 - `set_master_mute()` manipulates a bit in a software mute mask and controls GPIO 393 (`0x189`) through `gpiod_set_raw_value()`. This indicates master mute includes an external GPIO/amplifier-enable path, not only an I²C register write.
 
-The queued command buffer has a 32-bit inner header followed by command data. The handler reads command arguments as 32-bit values at offsets +4, +8, +12, and +16. The precise meaning of every argument is documented with confidence labels in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The complete outer ioctl magic/type contract and exact encoded-size units still need to be recovered before implementing hardware writes in the emulator.
+The command buffer queued to the event worker starts with the original 32-bit ioctl request word, followed by the user payload copied by `cmd_ioctl()`. The worker reads the command ID and size field from that prepended word; arguments are 32-bit values at offsets +4, +8, +12, and +16. The precise meaning of every argument is documented with confidence labels in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The outer direction and size units are now established: direction 1 is write, direction 2 is read, and the size field counts 32-bit words (copied bytes = size × 4, capped at 256). The exact ioctl magic/type convention used by vendor callers remains to be correlated.
 
 ## Important implementation consequence
 
@@ -152,7 +152,7 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 
 ## Remaining reverse-engineering work
 
-1. Recover the exact outer ioctl magic/type contract and the meaning/unit of its encoded-size field; the inner 32-bit command header and argument offsets are now established.
+1. Recover the exact ioctl magic/type convention used by vendor callers. The request word layout, direction values, size units, and argument offsets are now established.
 2. Decode the 41-byte volume curve and the speaker/equalizer arrays.
 3. Map each status command to the register writes performed by its handler.
 4. Reconstruct channel numbering and channel-to-chip mapping.
@@ -163,6 +163,6 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 
 The initial x86 objdump attempt failed. The workflow was corrected to install multiarch binutils and run `objdump -m arm -drwC`. The latest run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) completed successfully; `disassembly-relocations.txt` is a valid ARM disassembly report and its command exit status is 0.
 
-## Detailed command dispatcher map
+### Potential bounds issue found in the original driver\n\nThe `0x15` balance handler reads four 32-bit values at offsets +4, +8, +12, and +16, but the recovered `cmd_len_list` minimum for `0x15` is only 2 words (8 copied payload bytes). If a caller supplies exactly the minimum, the handler appears to read beyond the copied payload. This is a static-analysis warning, not proof of an exploitable bug; callers may always pass a larger size. The emulator validates the actual copied payload length but does not emulate unsafe out-of-bounds reads.\n\n## Detailed command dispatcher map
 
 A source-line-correlated reconstruction of the command handlers, observed 32-bit argument offsets, mute/volume behavior, and unresolved fields is maintained in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The corresponding analysis artifact is from workflow run [42799777270](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799777270); all generated report commands completed with exit code 0.
