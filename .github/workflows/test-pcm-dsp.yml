@@ -13,9 +13,9 @@ on:
 
 jobs:
   host-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: cmake -S pcm-dsp -B build/pcm-dsp -DPCM_DSP_BUILD_TESTS=ON
       - name: Build
