@@ -208,6 +208,50 @@ int main() {
               *state_emulator.state().command_page_cache[0x6] == 0x6B,
               "register journal preserves the previous cached byte on overwrite");
 
+        Emulator selector_emulator;
+        selector_emulator.apply_recovered_initialization_sequence();
+        constexpr std::array<std::uint8_t, 7> expected_selector_codes{{
+            2, 1, 0, 3, 0, 2, 3
+        }};
+        for (std::uint32_t channel = 0; channel < expected_selector_codes.size(); ++channel) {
+            check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                      make_input_channel_command(static_cast<std::int32_t>(channel))))),
+                  "input selector accepts each recovered channel ID");
+            check(selector_emulator.state().input_selector_code ==
+                      expected_selector_codes[channel] &&
+                  selector_emulator.state().control_register_value.has_value() &&
+                  ((*selector_emulator.state().control_register_value & 0x03U) ==
+                      expected_selector_codes[channel]),
+                  "input channel maps to the recovered two-bit control field");
+        }
+        check(selector_emulator.register_journal().back().source ==
+                  RegisterWriteSource::InputSelectorControl,
+              "input selector register update has its own journal source");
+        check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                  make_input_channel_command(-1)))) &&
+              selector_emulator.state().input_selector_code == 3U,
+              "default channel sentinel selects selector code 3");
+        check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                  make_input_channel_command(5)))) &&
+              selector_emulator.state().input_selector_code == 2U,
+              "channel 5 selector code is restored before mixing");
+        check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                  make_input_mixing_command(true)))) &&
+              selector_emulator.state().active_input_channel == 1U &&
+              selector_emulator.state().input_selector_code == 1U,
+              "mixing mode switches selector to channel 1");
+        check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                  make_input_channel_command(2)))) &&
+              selector_emulator.state().current_input_channel == 2U &&
+              selector_emulator.state().active_input_channel == 1U &&
+              selector_emulator.state().input_selector_code == 1U,
+              "channel selection during mixing is remembered without switching active selector");
+        check(static_cast<bool>(selector_emulator.write(encode_driver_command(
+                  make_input_mixing_command(false)))) &&
+              selector_emulator.state().active_input_channel == 2U &&
+              selector_emulator.state().input_selector_code == 0U,
+              "leaving mixing restores remembered channel selector");
+
         const auto make_two_word_command = [](std::uint8_t id,
                                                std::uint32_t first,
                                                std::uint32_t second) {
