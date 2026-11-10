@@ -1,5 +1,7 @@
 name: Test CD3313 protocol emulator
 
+# Covers the ioctl model and the /dev/audiomux character-device read/write model.
+
 on:
   push:
     branches: [main]
