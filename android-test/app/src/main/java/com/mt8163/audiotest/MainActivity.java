@@ -32,6 +32,12 @@ public final class MainActivity extends Activity {
     private TextView eqChannelTitle;
     private NativeDsp dsp;
     private TextView status;
+    private TextView bassStatus;
+    private boolean bassManagementEnabled = false;
+    private float crossoverHz = 100.0f;
+    private int crossoverOrder = 4;
+    private float subGainDb = 0.0f;
+    private boolean subPhaseInverted = false;
     private boolean dspEnabled = true;
     private volatile boolean profilePumpRunning;
     private Thread profilePump;
