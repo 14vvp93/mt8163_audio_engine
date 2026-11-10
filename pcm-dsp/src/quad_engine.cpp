@@ -195,6 +195,9 @@ bool QuadEngine::process(const float* input, float* output,
             const auto coefficients = make_filter(
                 sample_rate, channel_parameters.bands[band]);
             target.coefficients[channel][band] = coefficients;
+            const BiquadCoefficients identity{};
+            target.filter_enabled[channel][band] =
+                !same_coefficients(coefficients, identity);
             if (!same_coefficients(coefficients,
                                    active.coefficients[channel][band])) {
                 transition = true;
@@ -238,20 +241,26 @@ bool QuadEngine::process(const float* input, float* output,
                 float old_value = sample * active.gains[channel];
                 float new_value = sample * target.gains[channel];
                 for (std::size_t band = 0; band < kQuadEqBandCount; ++band) {
-                    old_value = run_biquad(old_value,
-                        active.coefficients[channel][band],
-                        active.states[channel][band]);
-                    new_value = run_biquad(new_value,
-                        target.coefficients[channel][band],
-                        target.states[channel][band]);
+                    if (active.filter_enabled[channel][band]) {
+                        old_value = run_biquad(old_value,
+                            active.coefficients[channel][band],
+                            active.states[channel][band]);
+                    }
+                    if (target.filter_enabled[channel][band]) {
+                        new_value = run_biquad(new_value,
+                            target.coefficients[channel][band],
+                            target.states[channel][band]);
+                    }
                 }
                 processed = old_value + (new_value - old_value) * mix;
             } else {
                 processed *= active.gains[channel];
                 for (std::size_t band = 0; band < kQuadEqBandCount; ++band) {
-                    processed = run_biquad(processed,
-                        active.coefficients[channel][band],
-                        active.states[channel][band]);
+                    if (active.filter_enabled[channel][band]) {
+                        processed = run_biquad(processed,
+                            active.coefficients[channel][band],
+                            active.states[channel][band]);
+                    }
                 }
             }
 
