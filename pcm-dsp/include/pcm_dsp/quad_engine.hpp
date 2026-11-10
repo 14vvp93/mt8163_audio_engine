@@ -4,6 +4,7 @@
 #include "pcm_dsp/time_alignment.hpp"
 #include "pcm_dsp/crossover.hpp"
 #include "pcm_dsp/multiband_dynamics.hpp"
+#include "pcm_dsp/enhancement.hpp"
 
 #include <array>
 #include <cstddef>
@@ -62,6 +63,7 @@ public:
     bool configure(std::uint32_t sample_rate_hz);
     bool configure_routing(const QuadOutputRoutingParameters& parameters);
     bool configure_dynamics(const MultibandDynamicsParameters& parameters);
+    bool configure_enhancements(const EnhancementParameters& parameters);
     void reset();
 
     bool process(const float* input,
@@ -116,6 +118,8 @@ private:
     float sub_limiter_envelope_{0.0F};
     MultibandDynamicsParameters dynamics_parameters_{};
     MultibandDynamicsProcessor dynamics_{};
+    EnhancementParameters enhancement_parameters_{};
+    QuadEnhancementProcessor enhancements_{};
 };
 
 } // namespace pcm_dsp
