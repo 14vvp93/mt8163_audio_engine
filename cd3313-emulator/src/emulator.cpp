@@ -475,7 +475,11 @@ void Emulator::apply_recovered_probe_setup() {
     state_.master_volume_percentage = 100U;
     state_.acc_on = true;
     state_.master_mute_reason_mask |= (1U << 31U);
-    update_master_mute_gpio(state_, true);
+    const bool gpio393 = update_master_mute_gpio(state_, true);
+    input_transition_journal_.push_back(InputTransitionEvent{
+        next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
+        state_.active_input_channel, gpio393 ? 1U : 0U, 0U
+    });
 }
 
 bool Emulator::apply_recovered_system_mute_event(std::uint32_t event) {
