@@ -8,7 +8,9 @@
 namespace cd3313 {
 struct EmulatorState {
     std::optional<std::uint32_t> master_volume_step;
+    std::optional<std::uint8_t> master_volume_register_value;
     std::uint32_t master_mute_reason_mask{0};
+    bool initialization_sequence_applied{false};
     std::optional<std::uint32_t> master_volume_percentage;
     std::optional<std::uint32_t> volume_percentage_opaque_arg1;
     std::optional<std::array<std::uint8_t, 4>> channel_level_indices;
@@ -37,6 +39,7 @@ struct EmulatorEvent {
 };
 
 enum class RegisterWriteSource {
+    InitializationSequence,
     IoctlFourChannelCommand,
     RawCommandByte
 };
@@ -55,6 +58,8 @@ public:
     // Models the separate cmd_write() path, which accepts a raw decimal byte;
     // this is deliberately not parsed as an ioctl frame.
     void write_raw_command_byte(std::uint8_t command_byte);
+    // Replays the exact byte order recovered from event_callback(event=0).
+    void apply_recovered_initialization_sequence();
     const std::optional<DriverCommand>& last_command() const { return last_command_; }
     std::uint64_t accepted_commands() const { return accepted_commands_; }
     std::uint64_t rejected_commands() const { return rejected_commands_; }
