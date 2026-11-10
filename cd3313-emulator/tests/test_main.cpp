@@ -110,16 +110,21 @@ int main() {
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_volume_command(23)))),
               "state emulator accepts master volume");
-        check(state_emulator.state().master_volume_step == 23U,
-              "master volume state is updated");
+        check(state_emulator.state().master_volume_step == 23U &&
+              state_emulator.state().master_volume_register_value == 0x11U &&
+              state_emulator.register_journal().size() == 1U,
+              "master volume step maps through the recovered 41-entry register table");
         const DriverCommand percentage_command{
             0x12, 2, {80, 0, 0, 0, 0xAA, 0xBB, 0xCC, 0xDD}};
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(percentage_command))),
               "master-volume percentage command is accepted");
         check(state_emulator.state().master_volume_percentage == 80U &&
-              state_emulator.state().volume_percentage_opaque_arg1 == 0xDDCCBBAAU,
-              "volume percentage is modeled while its unknown second word is preserved");
+              state_emulator.state().volume_percentage_opaque_arg1 == 0xDDCCBBAAU &&
+              state_emulator.state().master_volume_register_value == 0x17U &&
+              state_emulator.register_journal().size() == 7U &&
+              state_emulator.register_journal().back().command_byte == 0x17U,
+              "volume percentage adds the recovered attenuation offset and ramps register bytes");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_mute_command(true, 4)))),
               "first mute reason is accepted");
@@ -159,19 +164,19 @@ int main() {
               *channel_state.command_page_cache[0xF] == 0xFF,
               "command-page cache tracks the four confirmed speaker command bytes");
         check(!channel_state.command_page_cache[0x0].has_value() &&
-              state_emulator.register_journal().size() == 4U,
+              state_emulator.register_journal().size() == 11U,
               "unobserved command pages remain unknown and four writes are journaled");
-        check(state_emulator.register_journal()[0].sequence == 1U &&
-              state_emulator.register_journal()[0].source ==
+        check(state_emulator.register_journal()[7].sequence == 8U &&
+              state_emulator.register_journal()[7].source ==
                   RegisterWriteSource::IoctlFourChannelCommand &&
-              state_emulator.register_journal()[0].command_byte == 0x80,
+              state_emulator.register_journal()[7].command_byte == 0x80,
               "first speaker write has a deterministic journal record");
 
         state_emulator.write_raw_command_byte(0x6A);
         check(state_emulator.state().command_page_cache[0x6].has_value() &&
               *state_emulator.state().command_page_cache[0x6] == 0x6A,
               "raw command-byte path updates the matching command page");
-        check(state_emulator.register_journal().size() == 5U &&
+        check(state_emulator.register_journal().size() == 12U &&
               state_emulator.register_journal().back().source ==
                   RegisterWriteSource::RawCommandByte &&
               !state_emulator.register_journal().back().previous_command_byte.has_value(),
