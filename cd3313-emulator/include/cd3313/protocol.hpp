@@ -44,4 +44,13 @@ struct ParseResult {
 // Unsafe short payloads are rejected even if the driver's own minimum-size table accepts them.
 ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
+
+// Typed builders for commands whose argument layout and range are recovered
+// from the driver. These build emulator frames; they do not perform I/O.
+DriverCommand make_master_volume_command(std::uint32_t step);
+DriverCommand make_master_mute_command(bool mute, std::uint32_t reason);
+DriverCommand make_four_channel_level_command(std::uint8_t front_left,
+                                              std::uint8_t front_right,
+                                              std::uint8_t rear_left,
+                                              std::uint8_t rear_right);
 } // namespace cd3313
