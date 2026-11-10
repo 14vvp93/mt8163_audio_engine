@@ -47,6 +47,14 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 
 // Typed builders for commands whose argument layout and range are recovered
 // from the driver. These build emulator frames; they do not perform I/O.
+DriverCommand make_input_channel_command(std::int32_t channel);
+DriverCommand make_input_gain_command(std::uint32_t channel, std::uint32_t gain,
+                                      std::uint32_t opaque_word = 0);
+DriverCommand make_input_mute_command(std::int32_t channel, bool mute,
+                                      std::uint32_t reason);
+DriverCommand make_input_mixing_command(bool enabled,
+                                        std::uint32_t opaque_word0 = 0,
+                                        std::uint32_t opaque_word1 = 0);
 DriverCommand make_master_volume_command(std::uint32_t step);
 DriverCommand make_master_mute_command(bool mute, std::uint32_t reason);
 DriverCommand make_four_channel_level_command(std::uint8_t front_left,
