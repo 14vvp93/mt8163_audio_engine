@@ -108,10 +108,18 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
 void ProfiledQuadEngine::process_chunk(const float* input, float* output,
                                       std::size_t frames, float* sub_output) {
     if (transition_target_.load(std::memory_order_relaxed) < 0) {
-        const int pending = pending_slot_.exchange(-1, std::memory_order_acq_rel);
-        if (pending >= 0) {
-            transition_position_ = 0U;
-            transition_target_.store(pending, std::memory_order_release);
+        const int pending_candidate = pending_slot_.load(std::memory_order_acquire);
+        const bool pending_needs_sub = pending_candidate >= 0 &&
+            profiles_[static_cast<std::size_t>(pending_candidate)]
+                .routing.bass_management_enabled;
+        // A profile requiring a subwoofer buffer must remain queued until the
+        // caller supplies that buffer; never start a half-configured transition.
+        if (pending_candidate >= 0 && (!pending_needs_sub || sub_output != nullptr)) {
+            const int pending = pending_slot_.exchange(-1, std::memory_order_acq_rel);
+            if (pending >= 0) {
+                transition_position_ = 0U;
+                transition_target_.store(pending, std::memory_order_release);
+            }
         }
     }
 
