@@ -180,12 +180,8 @@ int main() {
                   encode_driver_command(make_master_mute_command(true, 24)))) &&
               state_emulator.state().gpio_393_level == true,
               "master mute reason 24 independently forces GPIO 393 high");
-        check(static_cast<bool>(state_emulator.write(
-                  encode_driver_command(make_master_mute_command(false, 24)))) &&
-              state_emulator.state().gpio_393_level == false,
-              "clearing reason 24 releases GPIO 393 when ACC is on and HFP is inactive");
-
         check(state_emulator.apply_recovered_system_mute_event(3U) &&
+              (state_emulator.state().master_mute_reason_mask & (1U << 24U)) == 0U &&
               state_emulator.state().gpio_393_level == false,
               "system notifier event 3 clears reason 24 and recomputes GPIO 393");
         check(state_emulator.apply_recovered_system_mute_event(2U) &&
@@ -515,6 +511,10 @@ int main() {
 
         Emulator input_emulator;
         input_emulator.apply_recovered_initialization_sequence();
+        check(static_cast<bool>(input_emulator.write(
+                  encode_driver_command(make_master_mute_command(true, 2)))) &&
+              input_emulator.state().acc_on,
+              "input mute fixture enables the recovered ACC latch");
         const DriverCommand input_gain_command{
             0x03, 3, {
                 2, 0, 0, 0, 3, 0, 0, 0,
@@ -550,8 +550,9 @@ int main() {
                   encode_driver_command(mute_input_one))) &&
               input_emulator.state().input_mute_reason_masks[1] == (1U << 16U) &&
               input_emulator.state().hfp_active &&
+              input_emulator.state().gpio_393_level == false &&
               (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
-              "input mute tracks per-channel reason bits, HFP state, and active-channel master mute");
+              "HFP suppresses the ordinary GPIO 393 mute request while ACC is on");
         const DriverCommand add_input_mute_reason{
             0x04, 3, {1, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0}};
         check(static_cast<bool>(input_emulator.write(
@@ -563,8 +564,9 @@ int main() {
                   encode_driver_command(clear_hfp_mute))) &&
               !input_emulator.state().hfp_active &&
               input_emulator.state().input_mute_reason_masks[1] == (1U << 3U) &&
+              input_emulator.state().gpio_393_level == true &&
               (input_emulator.state().master_mute_reason_mask & (1U << 31U)) != 0U,
-              "clearing HFP mute preserves another active input-mute reason");
+              "clearing HFP restores GPIO 393 mute when another input-mute reason remains");
         const DriverCommand clear_last_input_mute{
             0x04, 3, {1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0}};
         check(static_cast<bool>(input_emulator.write(
