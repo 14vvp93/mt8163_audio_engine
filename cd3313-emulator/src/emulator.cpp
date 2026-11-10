@@ -362,6 +362,19 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
         state_.current_volume_register_value = state_.master_volume_register_value;
     }
     if (result.command->id == 0x11) {
+        const std::uint32_t mute = read_le32(result.command->payload, 0);
+        const std::uint32_t reason = read_le32(result.command->payload, 4);
+        if (mute != 0U && reason == 24U) {
+            // event_callback() removes event 3 and reposts it for 1000 ms later.
+            event_queue_requests_.push_back(EventQueueRequest{
+                next_event_queue_sequence_++, EventQueueRequestSource::MasterMuteReason24,
+                EventQueueRequestKind::RemoveQueuedEvent, 3U, 0U
+            });
+            event_queue_requests_.push_back(EventQueueRequest{
+                next_event_queue_sequence_++, EventQueueRequestSource::MasterMuteReason24,
+                EventQueueRequestKind::PostDelayedEvent, 3U, 1000U
+            });
+        }
         const bool gpio393 = state_.gpio_393_level.value_or(false);
         input_transition_journal_.push_back(InputTransitionEvent{
             next_input_transition_sequence_++, InputTransitionKind::Gpio393Write,
@@ -598,11 +611,13 @@ void Emulator::reset() {
     next_input_transition_sequence_ = 1;
     next_shutdown_sequence_ = 1;
     next_wakeup_sequence_ = 1;
+    next_event_queue_sequence_ = 1;
     state_ = EmulatorState{};
     journal_.clear();
     register_journal_.clear();
     input_transition_journal_.clear();
     shutdown_journal_.clear();
     wakeup_journal_.clear();
+    event_queue_requests_.clear();
 }
 } // namespace cd3313
