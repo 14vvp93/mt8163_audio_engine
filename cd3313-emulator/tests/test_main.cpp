@@ -153,6 +153,11 @@ int main() {
         check(static_cast<bool>(parse_driver_command(
                   {0x00, 0xA3, 0x01, 0x40, 1, 0, 0, 0})),
               "special 0xA3 dispatcher branch");
+        check(parse_driver_command({0x00, 0x56, 0x00, 0x40}).error ==
+                  ParseError::SizeFieldTooSmall &&
+              parse_driver_command({0x00, 0xA3, 0x00, 0x40}).error ==
+                  ParseError::SizeFieldTooSmall,
+              "special 0x56 and 0xA3 reject zero-word frames instead of modeling stale slab data");
 
 
         Emulator state_emulator;
