@@ -13,41 +13,52 @@ void check(bool condition, const char* message) {
 int main() {
     using namespace cd3313;
     try {
-        check(known_write_commands().size() == 12, "expected 12 recovered command-length pairs");
+        check(known_write_commands().size() == 12,
+              "expected 12 recovered command/size-field pairs");
+        check(known_write_commands()[1].id == 0x03 &&
+              known_write_commands()[1].minimum_size_field == 3,
+              "0x03 minimum size field");
 
-        const auto ok = parse_write_packet({0x10, 0x28});
-        check(static_cast<bool>(ok), "0x10 packet should parse");
-        check(ok.packet->payload.size() == 1 && ok.packet->payload[0] == 0x28,
-              "payload must be preserved");
+        const DriverCommand volume{0x10, 1, {0x28, 0x00, 0x00, 0x00}};
+        const auto encoded = encode_driver_command(volume);
+        check(encoded == std::vector<std::uint8_t>(
+                  {0x00, 0x10, 0x01, 0x00, 0x28, 0x00, 0x00, 0x00}),
+              "driver command header encoding");
 
-        check(parse_write_packet({}).error == ParseError::EmptyPacket, "empty packet");
-        check(parse_write_packet({0x7F, 0x00}).error == ParseError::UnknownCommand,
-              "unknown command");
-        check(parse_write_packet({0x10}).error == ParseError::InvalidLength,
-              "short payload");
-        check(parse_write_packet({0x10, 0x01, 0x02}).error == ParseError::InvalidLength,
-              "long payload");
+        const auto parsed = parse_driver_command(encoded);
+        check(static_cast<bool>(parsed), "0x10 driver command should parse");
+        check(parsed.command->id == 0x10 && parsed.command->size_field == 1,
+              "command ID and size field extraction");
+        check(parsed.command->payload == volume.payload,
+              "opaque argument bytes must be preserved");
 
-        const Packet packet{0x55, {0x02, 0x7F}};
-        check(encode_write_packet(packet) == std::vector<std::uint8_t>({0x55, 0x02, 0x7F}),
-              "packet encode round trip");
-
-        bool threw = false;
-        try { (void)encode_write_packet(Packet{0x55, {0x01}}); }
-        catch (const std::invalid_argument&) { threw = true; }
-        check(threw, "encoder must reject malformed packet");
+        check(parse_driver_command({}).error == ParseError::TruncatedHeader,
+              "empty frame is a truncated header");
+        check(parse_driver_command({0x00, 0x10, 0x01}).error ==
+                  ParseError::TruncatedHeader, "short header");
+        check(parse_driver_command({0x00, 0x7F, 0x01, 0x00}).error ==
+                  ParseError::UnknownCommand, "unknown command");
+        check(parse_driver_command({0x00, 0x03, 0x02, 0x00}).error ==
+                  ParseError::SizeFieldTooSmall, "size field below minimum");
+        check(static_cast<bool>(parse_driver_command({0x00, 0x56, 0x00, 0x00})),
+              "special 0x56 dispatcher branch remains recognized");
+        check(static_cast<bool>(parse_driver_command({0x00, 0xA3, 0x00, 0x00})),
+              "special 0xA3 dispatcher branch remains recognized");
 
         Emulator emulator;
-        check(static_cast<bool>(emulator.write({0x03, 1, 2, 3})), "emulator accepts valid packet");
-        check(!emulator.write({0x03, 1}), "emulator rejects malformed packet");
-        check(emulator.accepted_packets() == 1, "accepted counter");
-        check(emulator.rejected_packets() == 1, "rejected counter");
-        check(emulator.last_packet()->command == 0x03, "last valid packet retained");
+        check(static_cast<bool>(emulator.write(encoded)),
+              "emulator accepts a valid driver command");
+        check(!emulator.write({0x00, 0x03, 0x02, 0x00}),
+              "emulator rejects a size-field violation");
+        check(emulator.accepted_commands() == 1, "accepted command counter");
+        check(emulator.rejected_commands() == 1, "rejected command counter");
+        check(emulator.last_command()->id == 0x10,
+              "last valid command retained");
         emulator.reset();
-        check(!emulator.last_packet() && emulator.accepted_packets() == 0,
+        check(!emulator.last_command() && emulator.accepted_commands() == 0,
               "reset clears emulator state");
 
-        std::cout << "All CD3313 protocol tests passed\n";
+        std::cout << "All CD3313 driver-command tests passed\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "TEST FAILURE: " << error.what() << '\n';
