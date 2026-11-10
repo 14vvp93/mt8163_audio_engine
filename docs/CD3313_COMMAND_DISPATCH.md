@@ -147,12 +147,12 @@ The journal and state are useful for deterministic sequence tests and future ada
 
 ## Partial command-page register image emulator
 
-The host emulator now maintains a 16-entry cache indexed by the upper nibble of each observed command byte. This models the driver's recovered cache lookup pattern; it is intentionally named a **command-page cache** rather than a complete silicon register map.
+The host emulator maintains a 16-entry diagnostic command-page view and a separate 8-entry reg_bufs_cache that mirrors the driver's actual cache. TAB.33841 maps each command-byte high nibble to the 8-slot cache. This is a software cache model, not a complete silicon register map.
 
 - The recovered 0x15 four-channel command updates four observed command bytes using the confirmed channel prefixes and 16-entry attenuation table.
 - The driver's separate raw cmd_write() interface is represented by Emulator::write_raw_command_byte(). It is not parsed as an ioctl frame.
-- Each observed byte produces a register journal event with a monotonic sequence, source (ioctl four-channel command or raw command byte), page, current byte, and previous cached byte.
-- Unobserved pages remain unset. Reset clears the synthetic observation cache.
+- Each observed byte produces a register journal event with a monotonic sequence, source, command page, TAB.33841 cache slot, current byte, and previous values in both cache views.
+- Unobserved pages and cache slots remain unset. Reset clears both synthetic cache views.
 - The initialization callback is known to iterate and transmit a register image, but its complete byte sequence has not yet been reconstructed from the available analysis. The emulator therefore does not invent a startup image or claim a full physical register map.
 
 This is an offline observation model only. It does not call /dev/audiomux, issue I2C writes, or read hardware state.
@@ -262,3 +262,6 @@ The helper implementations and opaque handler structures are not present in cd33
 The focused analysis also flags two static bounds-audit items without claiming exploitability:
 1. Command 0x15 reads four 32-bit speaker arguments although its minimum size-field threshold is two words.
 2. cmd_ioctl() prepends a 4-byte header to a payload that may be copied up to 256 bytes into a 256-byte slab object. __check_object_size() is called before usercopy; exact behavior must be checked against the target kernel's hardened-usercopy implementation.
+
+
+The follow-up table analysis now confirms that TAB.33841 is the command-page-to-reg_bufs-slot mapping and that CSWTCH.194 is the six-entry input selector map. The emulator now mirrors the actual eight-slot reg_bufs cache in addition to retaining the 16-page diagnostic view. Its tests cover every TAB.33841 mapping and the aliasing of different command pages onto the same cache slot.
