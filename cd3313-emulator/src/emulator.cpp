@@ -227,6 +227,88 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
 }
 } // namespace
 
+void Emulator::record_input_switch(std::uint32_t channel,
+                                     std::uint32_t delay_ms) {
+    const auto record_event = [this, channel](InputTransitionKind kind,
+                                              std::uint32_t value,
+                                              std::uint32_t delay) {
+        input_transition_journal_.push_back(InputTransitionEvent{
+            next_input_transition_sequence_++, kind, channel, value, delay
+        });
+    };
+    const auto record_delay = [&record_event, delay_ms]() {
+        if (delay_ms != 0U)
+            record_event(InputTransitionKind::Delay, 0U, delay_ms);
+    };
+    const auto write_attenuation = [this, &record_event, channel](
+                                       std::uint8_t value) {
+        record_command_byte(value, RegisterWriteSource::InputSwitchAttenuation);
+        state_.current_volume_register_value = value;
+        record_event(InputTransitionKind::AttenuationWrite, value, 0U);
+    };
+
+    std::uint8_t current = state_.current_volume_register_value.value_or(
+        state_.command_page_cache[0x03].has_value()
+            ? static_cast<std::uint8_t>(*state_.command_page_cache[0x03] & 0x3FU)
+            : 0x3FU);
+
+    // set_input_channel() first ramps the output attenuation toward 0x3F
+    // in three-code increments, sleeping for the caller-provided interval.
+    while (current < 0x3FU) {
+        const unsigned next = static_cast<unsigned>(current) + 3U;
+        current = static_cast<std::uint8_t>(next > 0x3FU ? 0x3FU : next);
+        write_attenuation(current);
+        record_delay();
+    }
+    // The driver writes the terminal 0x3F byte even when it was already there.
+    write_attenuation(0x3FU);
+    record_delay();
+
+    if (state_.control_register_value.has_value()) {
+        record_command_byte(*state_.control_register_value,
+                            RegisterWriteSource::InputSelectorControl);
+        record_event(InputTransitionKind::SelectorWrite,
+                     *state_.control_register_value, 0U);
+    } else {
+        record_event(InputTransitionKind::SelectorWrite,
+                     state_.input_selector_code.value_or(0U), 0U);
+    }
+
+    const std::uint32_t gpio396 = state_.input_gpio_396_level.value_or(false) ? 1U : 0U;
+    const std::uint32_t gpio398 = state_.input_gpio_398_level.value_or(false) ? 1U : 0U;
+    record_event(InputTransitionKind::Gpio396Write, gpio396, 0U);
+    record_event(InputTransitionKind::Gpio398Write, gpio398, 0U);
+    const bool channel_muted = state_.input_mute_reason_masks[channel] != 0U;
+    const bool master_reason31 = (state_.master_mute_reason_mask & (1U << 31U)) != 0U;
+    record_event(InputTransitionKind::MasterMuteReason31,
+                 master_reason31 ? 1U : 0U, 0U);
+    record_delay();
+
+    // The original routine intentionally leaves attenuation at 0x3F for a
+    // muted input unless HFP is active. Otherwise it restores the user volume.
+    if (channel_muted && !state_.hfp_active) {
+        record_delay();
+        write_attenuation(0x3FU);
+        return;
+    }
+
+    const std::uint32_t step = state_.master_volume_step.value_or(0U);
+    const std::uint32_t percentage =
+        state_.master_volume_percentage.value_or(100U);
+    const std::uint8_t target =
+        calculate_master_volume_register(step, percentage);
+    current = 0x3FU;
+    while (current > target) {
+        current = static_cast<std::uint8_t>(
+            current > static_cast<unsigned>(target) + 3U
+                ? current - 3U : target);
+        write_attenuation(current);
+        record_delay();
+    }
+    // The driver performs a final register write after the stepped ramp.
+    write_attenuation(target);
+}
+
 ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
     ParseResult result = parse_driver_command(bytes);
     if (!result) {
@@ -256,6 +338,10 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
         } else {
             record_command_byte(target, RegisterWriteSource::MasterVolumeTransition);
         }
+    }
+    if ((result.command->id == 0x10 || result.command->id == 0x12) &&
+        state_.master_volume_register_value.has_value()) {
+        state_.current_volume_register_value = state_.master_volume_register_value;
     }
     if (result.command->id == 0x55 && state_.bass_register_value.has_value()) {
         const std::uint8_t target = *state_.bass_boost_target;
@@ -289,13 +375,18 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
                                 RegisterWriteSource::TrebleTransition);
         }
     }
-    if ((result.command->id == 0x01 || result.command->id == 0x20) &&
-        before.control_register_value.has_value() &&
-        state_.control_register_value.has_value() &&
-        before.control_register_value != state_.control_register_value) {
-        record_command_byte(*state_.control_register_value,
-                            RegisterWriteSource::InputSelectorControl);
+    bool perform_input_switch = false;
+    std::uint32_t input_switch_delay_ms = 0U;
+    if (result.command->id == 0x01 && !before.mixing_mode) {
+        perform_input_switch = true;
+        input_switch_delay_ms = 8U;
+    } else if (result.command->id == 0x20) {
+        const bool requested_mixing = read_le32(result.command->payload, 0) != 0U;
+        perform_input_switch = requested_mixing || before.mixing_mode;
+        input_switch_delay_ms = requested_mixing ? 0U : 8U;
     }
+    if (perform_input_switch)
+        record_input_switch(state_.active_input_channel, input_switch_delay_ms);
     if (result.command->id == 0x03 &&
         before.control_register_value.has_value() &&
         state_.control_register_value.has_value() &&
@@ -341,6 +432,7 @@ void Emulator::apply_recovered_probe_setup() {
     record_command_byte(0x3F, RegisterWriteSource::ProbeGuardWrite);
     state_.master_volume_step = 0U;
     state_.master_volume_register_value = 0x3FU;
+    state_.current_volume_register_value = 0x3FU;
     state_.master_volume_percentage = 100U;
     state_.master_mute_reason_mask |= (1U << 31U);
 }
@@ -360,6 +452,7 @@ void Emulator::apply_recovered_initialization_sequence() {
     state_.bass_register_value = 0x6FU;
     state_.treble_register_value = 0x7FU;
     state_.control_register_value = 0x47U;
+    state_.current_volume_register_value = 0x3FU;
     state_.loudness_enabled = false;
     state_.initialization_sequence_applied = true;
 }
@@ -370,8 +463,10 @@ void Emulator::reset() {
     rejected_commands_ = 0;
     next_sequence_ = 1;
     next_register_sequence_ = 1;
+    next_input_transition_sequence_ = 1;
     state_ = EmulatorState{};
     journal_.clear();
     register_journal_.clear();
+    input_transition_journal_.clear();
 }
 } // namespace cd3313
