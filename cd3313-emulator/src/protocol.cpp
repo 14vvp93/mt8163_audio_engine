@@ -3,6 +3,23 @@
 #include <stdexcept>
 
 namespace cd3313 {
+namespace {
+constexpr std::size_t kMaxCopiedPayloadBytes = 256U;
+
+std::size_t copied_payload_size(std::uint16_t size_field) {
+    const std::size_t requested = static_cast<std::size_t>(size_field) * 4U;
+    return std::min(requested, kMaxCopiedPayloadBytes);
+}
+
+std::uint16_t minimum_size_words(std::uint8_t id) {
+    if (id == 0x56 || id == 0xA3) return 1;
+    const auto& commands = known_write_commands();
+    const auto it = std::find_if(commands.begin(), commands.end(),
+        [&](const CommandSpec& spec) { return spec.id == id; });
+    return it == commands.end() ? 0 : it->minimum_size_words;
+}
+} // namespace
+
 const std::vector<CommandSpec>& known_write_commands() {
     static const std::vector<CommandSpec> commands{
         {0x01, 1}, {0x03, 3}, {0x04, 3}, {0x10, 1},
@@ -28,15 +45,19 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
         (static_cast<std::uint32_t>(bytes[2]) << 16U) |
         (static_cast<std::uint32_t>(bytes[3]) << 24U);
 
+    const auto direction = static_cast<std::uint8_t>((header >> 30U) & 0x03U);
+    if (direction != 1U) return {{}, ParseError::UnsupportedDirection};
+
     const auto id = static_cast<std::uint8_t>((header >> 8U) & 0xFFU);
     const auto size_field = static_cast<std::uint16_t>((header >> 16U) & 0x3FFFU);
     if (!is_dispatch_command(id)) return {{}, ParseError::UnknownCommand};
 
-    const auto& specs = known_write_commands();
-    const auto it = std::find_if(specs.begin(), specs.end(),
-        [&](const CommandSpec& spec) { return spec.id == id; });
-    if (it != specs.end() && size_field < it->minimum_size_field)
+    if (size_field < minimum_size_words(id))
         return {{}, ParseError::SizeFieldTooSmall};
+
+    const std::size_t expected = copied_payload_size(size_field);
+    if (bytes.size() - 4U != expected)
+        return {{}, ParseError::PayloadSizeMismatch};
 
     DriverCommand command;
     command.id = id;
@@ -48,14 +69,17 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
     if (!is_dispatch_command(command.id))
         throw std::invalid_argument("unknown CD3313 driver command");
-
-    const auto& specs = known_write_commands();
-    const auto it = std::find_if(specs.begin(), specs.end(),
-        [&](const CommandSpec& spec) { return spec.id == command.id; });
-    if (it != specs.end() && command.size_field < it->minimum_size_field)
+    if (command.size_field > 0x3FFFU)
+        throw std::invalid_argument("CD3313 size field exceeds 14 bits");
+    if (command.size_field < minimum_size_words(command.id))
         throw std::invalid_argument("CD3313 size field below recovered minimum");
 
+    const std::size_t expected = copied_payload_size(command.size_field);
+    if (command.payload.size() != expected)
+        throw std::invalid_argument("payload size does not match ioctl size field");
+
     const std::uint32_t header =
+        (1U << 30U) |
         (static_cast<std::uint32_t>(command.id) << 8U) |
         ((static_cast<std::uint32_t>(command.size_field) & 0x3FFFU) << 16U);
 
