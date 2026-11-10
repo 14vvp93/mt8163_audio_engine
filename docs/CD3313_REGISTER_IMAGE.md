@@ -125,3 +125,17 @@ The routine constructs the control byte from the existing byte masked with `0xE4
 
 
 The input-routing helper also drives two GPIO outputs after writing the selector: GPIO 396 is set to `0` for channel 2 and `1` for all other channels; GPIO 398 is set to `0` for channel 0 and `1` for all other channels. The emulator records these raw output levels only. The signal names, board wiring, and active electrical polarity are not established by this disassembly.
+
+## Input-switch transition timeline
+
+The host emulator now records the ordered operations performed by set_input_channel():
+
+- master attenuation ramp to 0x3F, using three-code increments;
+- terminal 0x3F write and caller-specified delay;
+- input selector/control-byte write;
+- raw GPIO 396 and GPIO 398 output requests;
+- master mute reason-31 update;
+- post-mute delay;
+- either a muted hold at 0x3F, or a three-code restoration ramp to the calculated master-volume target.
+
+The normal selector path uses an 8 ms delay; the mixing-enable path selects channel 1 with delay 0. The model stores current_volume_register_value independently from the desired master-volume target. input_transition_journal() exposes the ordered operations, including explicit delay markers. These values are a static control-flow reconstruction and nominal requested delays, not hardware measurements.
