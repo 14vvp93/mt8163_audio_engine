@@ -44,3 +44,16 @@ The Float32 API expects normalized samples. When limiting is enabled, each chann
 ## Host tests
 
 The host workflow builds the library with CMake and runs tests for stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling.
+
+
+## Four-channel utility modules
+
+### Time alignment
+
+\`QuadTimeAlignment\` provides independent FL/FR/RL/RR delays from 0 to 20 ms at 44.1/48 kHz. It uses fixed-size ring buffers, performs no allocation or locking in process(), and crossfades delay-tap changes over one block.
+
+### Linkwitz-Riley crossover
+
+\`LinkwitzRileyCrossover\` is a mono splitter; instantiate one per channel. It supports 12, 24, 36 and 48 dB/octave Linkwitz-Riley alignments built from cascaded Butterworth sections. The high branch polarity is corrected for odd prototype order. The branches are tested for a flat summed response at the crossover frequency.
+
+Both modules are standalone building blocks at this stage; the QuadEngine pipeline integration is a subsequent step.
