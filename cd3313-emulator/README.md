@@ -22,6 +22,8 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 ## Current scope
 
 Implemented:
+- four-channel Balance/Fader percentage-to-hardware-level mapping;
+- CD3313 speaker register-byte encoder for FL/FR/RL/RR;
 - little-endian ioctl request-word parsing/encoding;
 - write-direction validation;
 - command ID and 14-bit size-field extraction;
@@ -31,6 +33,7 @@ Implemented:
 - counters and last-command state.
 
 Not implemented yet:
+- userspace `/dev/audiomux` controller and confirmed ioctl ABI;
 - complete CD3313 register/state simulation;
 - full argument validation and command semantics;
 - readback request `0xF0` response modeling;
