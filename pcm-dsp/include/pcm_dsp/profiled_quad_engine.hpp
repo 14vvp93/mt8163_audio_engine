@@ -41,7 +41,7 @@ private:
     std::atomic<int> pending_slot_{-1};
     std::uint32_t sample_rate_hz_{0};
 
-    int transition_target_{-1};
+    std::atomic<int> transition_target_{-1};
     std::uint64_t transition_position_{0};
     std::uint64_t transition_total_{0};
     std::array<float, kProfileTransitionMaxFrames * kOutputChannelCount>
