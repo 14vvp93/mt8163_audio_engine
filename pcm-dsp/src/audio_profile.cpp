@@ -109,7 +109,14 @@ bool validate_audio_profile(const AudioProfile& profile,
         return false;
     }
 
-    const auto& enhancement = profile.enhancements;\n    if (!finite_in_range(enhancement.bass_amount, 0.0F, 1.0F) ||\n        !finite_in_range(enhancement.bass_frequency_hz, 40.0F, 160.0F) ||\n        !finite_in_range(enhancement.clarity_amount, 0.0F, 1.0F) ||\n        !finite_in_range(enhancement.clarity_frequency_hz, 1500.0F,\n                         static_cast<float>(sample_rate_hz) * 0.45F)) {\n        return false;\n    }\n\n    return valid_dynamics(profile.dynamics, sample_rate_hz);
+    const auto& enhancement = profile.enhancements;
+    if (!finite_in_range(enhancement.bass_amount, 0.0F, 1.0F) ||
+        !finite_in_range(enhancement.bass_frequency_hz, 40.0F, 160.0F) ||
+        !finite_in_range(enhancement.clarity_amount, 0.0F, 1.0F) ||
+        !finite_in_range(enhancement.clarity_frequency_hz, 1500.0F,
+                         static_cast<float>(sample_rate_hz) * 0.45F)) {
+        return false;
+    }\n\n    return valid_dynamics(profile.dynamics, sample_rate_hz);
 }
 
 } // namespace pcm_dsp
