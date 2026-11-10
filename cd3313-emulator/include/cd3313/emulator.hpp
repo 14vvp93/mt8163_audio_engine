@@ -33,6 +33,8 @@ struct EmulatorState {
     bool mixing_mode{false};
     bool hfp_active{false};
     std::array<std::uint8_t, 7> input_gain{};
+    // Two-bit selector recovered from set_input_channel() and its .rodata table.
+    std::optional<std::uint8_t> input_selector_code;
     std::array<std::uint32_t, 7> input_mute_reason_masks{};
     // Requested GPIO state only; physical routing is not inferred.
     std::optional<bool> subwoofer_gpio_enabled;
@@ -56,6 +58,7 @@ enum class RegisterWriteSource {
     TrebleTransition,
     LoudnessControl,
     InputGainControl,
+    InputSelectorControl,
     IoctlFourChannelCommand,
     RawCommandByte
 };
