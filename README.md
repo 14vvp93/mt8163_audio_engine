@@ -40,7 +40,7 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 ## Current status
 
 - CD3313 ARM32 module statically analyzed.
-- Initial CD3313 command emulator and CI tests implemented.
+- CD3313 host-side command/state emulator implemented with deterministic state transitions, a before/after event journal, and recovered speaker-register mapping; no device I/O is performed by the emulator.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
 - PCM16 stereo core and four-channel Float32 DSP foundation implemented; latest four-channel CI result and Android integration remain to be verified.
