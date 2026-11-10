@@ -53,6 +53,13 @@ public final class NativeDsp implements AutoCloseable {
                 && nativeApplyQuadProfile(nativeHandle, packedProfile);
     }
 
+    /** Atomically applies 32 peaking-EQ gains (-18..+18 dB) to one output channel. */
+    public synchronized boolean applyChannelEq(int channel, float[] gainsDb) {
+        return nativeHandle != 0L && channel >= 0 && channel < OUTPUT_CHANNELS
+                && gainsDb != null && gainsDb.length == EQ_BANDS_PER_CHANNEL
+                && nativeApplyChannelEq(nativeHandle, channel, gainsDb);
+    }
+
     /** Balance: -1=left, +1=right. Fader: -1=front, +1=rear. */
     public synchronized boolean applyBalanceFader(float balance, float fader) {
         return nativeHandle != 0L && nativeApplyBalanceFader(nativeHandle, balance, fader);
@@ -107,6 +114,6 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeSetEnabled(long handle, boolean enabled);
     private static native boolean nativeSetChannelGainDb(long handle, int channel, float gainDb);
     private static native boolean nativeApplyQuadProfile(long handle, float[] packedProfile);
-    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);
+    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);\n    private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
