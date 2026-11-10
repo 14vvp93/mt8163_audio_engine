@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace cd3313 {
@@ -50,6 +51,10 @@ struct EmulatorState {
     std::optional<bool> subwoofer_gpio_enabled;
     bool master_muted() const { return master_mute_reason_mask != 0U; }
 };
+
+// Formats the same cached-state text report exposed by the driver's read().
+// Returns nullopt until the probe cache and master-volume state are available.
+std::optional<std::string> format_driver_read_report(const EmulatorState& state);
 
 struct EmulatorEvent {
     std::uint64_t sequence{};
