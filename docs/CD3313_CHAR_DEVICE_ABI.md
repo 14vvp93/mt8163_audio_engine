@@ -9,6 +9,15 @@ Recovered from the ARM32 cd3313.ko artifact in focused analysis workflow run [42
 - Device path convention: /dev/audiomux
 - The read/write paths are static disassembly findings. No live device-node access has been performed.
 
+### Independent MT8163 device-tree corroboration
+
+A separate public MT8163 device tree also loads cd3313.ko and configures /dev/audiomux as mode 0664, owner root, group system:
+- [init.mt8163.rc](https://github.com/Tec4Sho/android_device_alps_tb8163p3_bsp/blob/dae4caeb433746ee84e42443ea1b904f3b590a59/recovery/root/init.mt8163.rc)
+- [ueventd.rc](https://github.com/Tec4Sho/android_device_alps_tb8163p3_bsp/blob/dae4caeb433746ee84e42443ea1b904f3b590a59/recovery/root/ueventd.rc)
+
+This corroborates the device-node name and a plausible system-group permission model on another MT8163 board. It is not proof of the permissions or init sequence on the user's exact head unit.
+
+
 The character device exposes three distinct interfaces: read(), write(), and ioctl(). The ioctl request framing is documented separately in [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md).
 
 ## 1. read(): formatted software-state report
