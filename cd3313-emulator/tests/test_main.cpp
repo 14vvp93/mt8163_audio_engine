@@ -247,11 +247,11 @@ int main() {
 
         Emulator unknown_command_emulator;
         check(static_cast<bool>(unknown_command_emulator.write(
-                  encode_driver_command(DriverCommand{0x01, 1, {0, 0, 0, 0}}))),
+                  encode_driver_command(DriverCommand{0xF0, 1, {0, 0, 0, 0}}))),
               "recognized command with unresolved semantics is retained");
         check(unknown_command_emulator.journal().size() == 1U &&
               !unknown_command_emulator.journal().front().modeled &&
-              unknown_command_emulator.journal().front().command.id == 0x01,
+              unknown_command_emulator.journal().front().command.id == 0xF0,
               "unresolved semantics remain visible as an unmodeled journal event");
 
         state_emulator.reset();
