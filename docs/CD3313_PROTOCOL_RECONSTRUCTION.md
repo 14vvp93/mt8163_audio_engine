@@ -112,13 +112,16 @@ The driver's diagnostic strings explicitly describe the following index masks:
 
 These are confirmed software-side readback index classifications. They should not yet be treated as a full datasheet register address map.
 
-## Recovered data objects
+## Recovered data objects and exact bytes
 
-DWARF and ELF section layout identify:
+DWARF and ELF section layout identify these constant arrays. The byte sequences below are read directly from `.rodata` at the symbol offsets:
 
-- `cd3313_voltable_40`: 41-byte constant array, source line 124, `.rodata` offset 0x28.
-- `cd3313_speaker`: 16-byte constant array, source line 176, `.rodata` offset 0x7C.
-- `cd3313_equalizer`: 15-byte constant array, source line 195, `.rodata` offset 0x8C.
+- `cd3313_voltable_40`: 41 bytes, source line 124, offset `0x28`:
+  `3F 2A 26 25 24 23 22 21 20 1F 1E 1D 1C 1B 1A 19 18 17 16 15 14 13 12 11 10 0F 0E 0D 0C 0B 0A 09 08 07 06 05 04 03 02 01 00`
+- `cd3313_speaker`: 16 bytes, source line 176, offset `0x7C`:
+  `1F 1C 1A 18 16 14 12 10 0E 0C 0A 08 06 04 02 00`
+- `cd3313_equalizer`: 15 bytes, source line 195, offset `0x8C`:
+  `00 01 02 03 04 05 06 07 0E 0D 0C 0B 0A 09 08`
 - `reg_bufs`: 8-entry array, source line 62.
 - `channel_gain`: 7-entry array, source line 77.
 - `channel_mute`, `master_mute`, `master_volume`, `volume_percentage`, `loudness_gain`, `bassboost_gain`, `master_channel`, and `cur_channel` are present as driver state.
@@ -142,6 +145,6 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 5. Determine which commands are used by the vendor userspace service and audio HAL.
 6. Add a host-side emulator and protocol unit tests before any device-side validation.
 
-## Disassembly caveat
+## Disassembly note
 
-The workflow generated ELF, symbols, relocations, DWARF, strings, and section-byte reports successfully. The `disassembly-relocations.txt` command returned exit code 1, so this report does not claim to contain a complete disassembly. A compatible ARM-capable objdump invocation/toolchain is still needed for that part.
+The first workflow run used the host x86 objdump and could not disassemble ARM. The workflow has now been corrected to install and invoke `arm-linux-gnueabi-objdump`; its next run will produce the ARM disassembly report if the toolchain accepts the module.
