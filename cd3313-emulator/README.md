@@ -68,3 +68,8 @@ This is an offline static model. Delays are nominal driver arguments, not measur
 ### Master mute and GPIO 393
 
 The recovered `set_master_mute()` path updates a reason bitmask and computes GPIO 393's requested raw level as `(mute && !hfp_active) || reason24_is_set || !acc_on`. Command `0x11` with reason 2 updates the ACC latch. The probe initializes ACC on before startup mute. System notifier events 2 and 3 clear reasons 30 and 24 respectively. The emulator exposes these notifier operations and records GPIO 393 writes separately from aggregate mute state. It also journals each active-channel input-mute GPIO write, including writes where the computed raw level does not change. Raw GPIO polarity is modeled; board-level signal meaning is not inferred.
+
+
+### Recovered shutdown sequence
+
+The ARM32 `dsp_shutdown()` disassembly confirms a distinct shutdown path. It marks the device shutdown flag, sets master-mute reason 30, and writes GPIO 393 using `!hfp_active || !acc_on || reason24_is_set`. This is not the ordinary `set_master_mute()` expression: while HFP is active, GPIO can remain low only if ACC is on and reason 24 is clear. The function then requests removal of queued event IDs 0 and 1, in that order, and sends a final `0x3F` byte over I2C. The emulator records this ordered sequence and the final command-page write. Event-removal entries represent driver requests, not proof that a queued callback was physically cancelled. All behavior remains an offline static model.
