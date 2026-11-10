@@ -13,9 +13,9 @@ on:
 
 jobs:
   host-benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure release benchmark
         run: cmake -S pcm-dsp -B build -DCMAKE_BUILD_TYPE=Release -DPCM_DSP_BUILD_TESTS=OFF -DPCM_DSP_BUILD_BENCHMARKS=ON
       - name: Build
@@ -23,7 +23,7 @@ jobs:
       - name: Run benchmark
         run: ./build/pcm_dsp_benchmark | tee pcm-dsp-host-benchmark.txt
       - name: Upload benchmark report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pcm-dsp-host-benchmark
           path: pcm-dsp-host-benchmark.txt
