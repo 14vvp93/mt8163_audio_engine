@@ -168,7 +168,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         else state.master_mute_reason_mask &= ~mask;
         // event_callback treats master-mute reason 2 as the ACC state latch.
         if (reason == 2U) state.acc_on = mute == 0U;
-        update_master_mute_gpio(state, mute != 0U);
+        update_master_mute_gpio(state);
         return true;
     }
     case 0x12: {
@@ -360,7 +360,7 @@ void Emulator::record_input_switch(std::uint32_t channel,
         (state_.master_mute_reason_mask & (1U << 31U)) != 0U;
     record_event(InputTransitionKind::MasterMuteReason31,
                  master_reason31 ? 1U : 0U, 0U);
-    const bool gpio393 = update_master_mute_gpio(state_, channel_muted);
+    const bool gpio393 = update_master_mute_gpio(state_);
     record_event(InputTransitionKind::Gpio393Write, gpio393 ? 1U : 0U, 0U);
     record_delay();
 
