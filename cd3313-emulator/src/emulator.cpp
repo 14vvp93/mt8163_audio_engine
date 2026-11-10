@@ -31,6 +31,21 @@ constexpr std::array<std::uint8_t, 41> kMasterVolumeCodes{{
     0x00
 }};
 
+constexpr std::array<std::uint8_t, 15> kBassTrebleCodes{{
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08
+}};
+
+std::uint32_t bass_treble_target(std::uint32_t argument) {
+    const std::uint32_t decremented = argument == 0U ? 0U : argument - 1U;
+    return (std::min(decremented, 14U) / 2U) + 3U;
+}
+
+std::uint8_t decode_bass_treble_index(std::uint8_t register_byte) {
+    const std::uint8_t nibble = static_cast<std::uint8_t>(register_byte & 0x0FU);
+    return nibble > 7U ? static_cast<std::uint8_t>(22U - nibble) : nibble;
+}
+
 std::uint8_t calculate_master_volume_register(std::uint32_t step,
                                               std::uint32_t percentage) {
     const std::uint32_t bounded_percentage = std::min(percentage, 100U);
@@ -92,7 +107,10 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
     }
     case 0x55: {
         state.bass_boost_opaque_arg0 = read_le32(payload, 0);
-        state.bass_boost_target = std::min(read_le32(payload, 4), 14U);
+        const std::uint32_t target = bass_treble_target(read_le32(payload, 4));
+        state.bass_boost_target = target;
+        state.bass_register_value = static_cast<std::uint8_t>(
+            0x60U | kBassTrebleCodes[target]);
         return true;
     }
     case 0x56:
@@ -100,7 +118,10 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         return true;
     case 0x5C: {
         state.treble_opaque_arg0 = read_le32(payload, 0);
-        state.treble_target = std::min(read_le32(payload, 4), 14U);
+        const std::uint32_t target = bass_treble_target(read_le32(payload, 4));
+        state.treble_target = target;
+        state.treble_register_value = static_cast<std::uint8_t>(
+            0x70U | kBassTrebleCodes[target]);
         return true;
     }
     case 0xA3:
@@ -144,6 +165,38 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
             }
         } else {
             record_command_byte(target, RegisterWriteSource::MasterVolumeTransition);
+        }
+    }
+    if (result.command->id == 0x55 && state_.bass_register_value.has_value()) {
+        const std::uint8_t target = *state_.bass_boost_target;
+        if (before.bass_register_value.has_value()) {
+            std::uint8_t current = decode_bass_treble_index(*before.bass_register_value);
+            while (current != target) {
+                current = static_cast<std::uint8_t>(
+                    current < target ? current + 1U : current - 1U);
+                record_command_byte(static_cast<std::uint8_t>(
+                    0x60U | kBassTrebleCodes[current]),
+                    RegisterWriteSource::BassTransition);
+            }
+        } else {
+            record_command_byte(*state_.bass_register_value,
+                                RegisterWriteSource::BassTransition);
+        }
+    }
+    if (result.command->id == 0x5C && state_.treble_register_value.has_value()) {
+        const std::uint8_t target = *state_.treble_target;
+        if (before.treble_register_value.has_value()) {
+            std::uint8_t current = decode_bass_treble_index(*before.treble_register_value);
+            while (current != target) {
+                current = static_cast<std::uint8_t>(
+                    current < target ? current + 1U : current - 1U);
+                record_command_byte(static_cast<std::uint8_t>(
+                    0x70U | kBassTrebleCodes[current]),
+                    RegisterWriteSource::TrebleTransition);
+            }
+        } else {
+            record_command_byte(*state_.treble_register_value,
+                                RegisterWriteSource::TrebleTransition);
         }
     }
     if (result.command->id == 0x15 && state_.speaker_register_bytes.has_value()) {
@@ -193,6 +246,8 @@ void Emulator::apply_recovered_initialization_sequence() {
     state_.speaker_register_bytes = std::array<std::uint8_t, 4>{{
         0x80, 0xA0, 0xC0, 0xE0
     }};
+    state_.bass_register_value = 0x6FU;
+    state_.treble_register_value = 0x7FU;
     state_.initialization_sequence_applied = true;
 }
 
