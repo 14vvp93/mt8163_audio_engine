@@ -227,9 +227,57 @@ int main() {
                   selector_emulator.state().input_gpio_398_level == (channel != 0U),
                   "input channel reproduces the two recovered raw GPIO output levels");
         }
-        check(selector_emulator.register_journal().back().source ==
+        check(selector_emulator.register_journal().size() > 18U &&
+              selector_emulator.register_journal()[18].source ==
                   RegisterWriteSource::InputSelectorControl,
-              "input selector register update has its own journal source");
+              "input selector byte is journaled between attenuation writes");
+        const auto& first_switch = selector_emulator.input_transition_journal();
+        check(first_switch.size() >= 8U &&
+              first_switch[0].kind == InputTransitionKind::AttenuationWrite &&
+              first_switch[0].value == 0x3FU &&
+              first_switch[1].kind == InputTransitionKind::Delay &&
+              first_switch[1].delay_ms == 8U &&
+              first_switch[2].kind == InputTransitionKind::SelectorWrite &&
+              first_switch[3].kind == InputTransitionKind::Gpio396Write &&
+              first_switch[4].kind == InputTransitionKind::Gpio398Write &&
+              first_switch[5].kind == InputTransitionKind::MasterMuteReason31 &&
+              first_switch[6].kind == InputTransitionKind::Delay &&
+              first_switch[7].kind == InputTransitionKind::AttenuationWrite,
+              "input switch journal preserves the recovered attenuation-selector-GPIO-mute order");
+
+        Emulator ramp_emulator;
+        ramp_emulator.apply_recovered_initialization_sequence();
+        check(static_cast<bool>(ramp_emulator.write(encode_driver_command(
+                  make_master_volume_command(23)))),
+              "input switch ramp fixture sets a non-muted user volume");
+        check(ramp_emulator.state().current_volume_register_value == 0x11U,
+              "current hardware volume is tracked separately from requested volume");
+        check(static_cast<bool>(ramp_emulator.write(encode_driver_command(
+                  make_input_channel_command(2)))),
+              "input switch runs with a non-default volume");
+        const auto& ramp_events = ramp_emulator.input_transition_journal();
+        check(ramp_events.front().kind == InputTransitionKind::AttenuationWrite &&
+              ramp_events.front().value == 0x14U &&
+              ramp_events.front().delay_ms == 0U,
+              "input switch starts the three-code attenuation ramp from the actual volume");
+        check(ramp_events.back().kind == InputTransitionKind::AttenuationWrite &&
+              ramp_events.back().value == 0x11U &&
+              ramp_emulator.state().current_volume_register_value == 0x11U,
+              "input switch restores the requested volume after selector and GPIO changes");
+
+        Emulator muted_switch_emulator;
+        muted_switch_emulator.apply_recovered_initialization_sequence();
+        check(static_cast<bool>(muted_switch_emulator.write(encode_driver_command(
+                  make_input_mute_command(3, true, 4)))),
+              "muted input fixture accepts an independent mute reason");
+        check(static_cast<bool>(muted_switch_emulator.write(encode_driver_command(
+                  make_input_channel_command(3)))),
+              "switching to a muted input is accepted");
+        check(muted_switch_emulator.state().current_volume_register_value == 0x3FU &&
+              muted_switch_emulator.input_transition_journal().back().kind ==
+                  InputTransitionKind::AttenuationWrite &&
+              muted_switch_emulator.input_transition_journal().back().value == 0x3FU,
+              "a muted non-HFP input remains at maximum attenuation");
         check(static_cast<bool>(selector_emulator.write(encode_driver_command(
                   make_input_channel_command(-1)))) &&
               selector_emulator.state().input_selector_code == 3U,
