@@ -193,3 +193,5 @@ The command dispatcher calls this helper with an 8 ms delay for ordinary channel
 The emulator records the ordered sequence as InputTransitionEvent entries (attenuation writes, selector write, GPIO writes, master-mute reason-31 state, and explicit delay events). It separately tracks the current volume command byte so a transition starts from the last modeled output level rather than merely from the requested target. The timeline is a deterministic offline reconstruction: it records requested operations and nominal sleep intervals, not measured I²C latency or physical GPIO readback.
 
 The hfp_active exception is modeled exactly as the disassembly's branch condition: an input mute does not keep the volume attenuation forced at 0x3F while HFP is active. This does not imply that master mute reason 31 is cleared; mute reasons remain independent.
+
+The GPIO 393 output inside set_master_mute() is intentionally not synthesized by this transition journal. Its raw level also depends on the complete master-mute mask, hfp_active, and acc_on state; this model records the reason-31 state but does not claim a complete GPIO 393 electrical model.
