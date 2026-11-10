@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -14,6 +15,9 @@ struct CommandSpec {
 };
 
 const std::vector<CommandSpec>& known_write_commands();
+
+// Static 8-byte payload returned by the driver's read-direction ioctl ID 0xF0.
+std::array<std::uint8_t, 8> read_device_identifier_payload();
 bool is_dispatch_command(std::uint8_t id);
 
 struct DriverCommand {
