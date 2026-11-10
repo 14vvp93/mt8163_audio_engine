@@ -223,6 +223,9 @@ int main() {
                   ((*selector_emulator.state().control_register_value & 0x03U) ==
                       expected_selector_codes[channel]),
                   "input channel maps to the recovered two-bit control field");
+            check(selector_emulator.state().input_gpio_396_level == (channel != 2U) &&
+                  selector_emulator.state().input_gpio_398_level == (channel != 0U),
+                  "input channel reproduces the two recovered raw GPIO output levels");
         }
         check(selector_emulator.register_journal().back().source ==
                   RegisterWriteSource::InputSelectorControl,
