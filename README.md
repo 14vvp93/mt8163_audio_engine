@@ -15,7 +15,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### PCM DSP core
 
-The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It currently includes 10 configurable biquad bands (peaking, low/high shelf, high-pass and low-pass), preamp, balance, limiter, bit-exact bypass and block-smoothed filter coefficient transitions. Its host CMake build and tests passed in [GitHub Actions](https://github.com/14march93/mt8163_audio_engine/actions/runs/42801853494). This is not yet connected to the Android audio path.
+The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16 stereo engine remains available. A new four-channel Float32 foundation now supports interleaved FL/FR/RL/RR, 32 biquad slots per channel, independent channel gain/EQ, per-channel peak limiting, bit-exact bypass and dual-bank output crossfades for parameter changes. The four-channel core is host-buildable and has dedicated tests; the latest run is not yet verified. Neither core is connected to the Android audio path.
 
 ## Reverse-engineering documents
 
@@ -31,7 +31,7 @@ The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It 
 ## Development constraints
 
 - Target platform: MT8163, Android 9, ARM 32-bit.
-- Initial PCM target: PCM16 stereo at 44.1/48 kHz, subject to runtime negotiation.
+- DSP foundations: PCM16 stereo compatibility core and four-channel Float32 FL/FR/RL/RR core at 44.1/48 kHz, subject to runtime negotiation.
 - Keep Bluetooth SCO, voice calls, microphone capture and other non-music paths bypassed until explicitly mapped.
 - Do not assume every policy-declared route is active on every head unit.
 - Do not guess vendor ioctl structures, ACF/HCF parameter layouts, or NVRAM formats.
@@ -43,5 +43,5 @@ The initial independent PCM16 stereo DSP library is in [pcm-dsp/](pcm-dsp/). It 
 - Initial CD3313 command emulator and CI tests implemented.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
-- Initial PCM DSP core implemented and host tests passed; Android integration is not implemented yet.
+- PCM16 stereo core and four-channel Float32 DSP foundation implemented; latest four-channel CI result and Android integration remain to be verified.
 - HEQ APK decompiled and analyzed: useful filter/control concepts documented, but its external DSP protocols are chip-specific and not compatible with CD3313.
