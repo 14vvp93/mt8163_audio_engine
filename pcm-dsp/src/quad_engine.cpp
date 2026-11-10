@@ -26,6 +26,7 @@ bool QuadEngine::configure(std::uint32_t sample_rate_hz) {
         reset();
         if (!time_alignment_.configure(sample_rate_hz)) return false;
         if (!dynamics_.configure(sample_rate_hz_, dynamics_parameters_)) return false;
+        if (!enhancements_.configure(sample_rate_hz_, enhancement_parameters_)) return false;
         if (routing_.enabled && routing_.bass_management_enabled &&
             !configure_routing(routing_)) return false;
     }
@@ -79,6 +80,7 @@ void QuadEngine::reset() {
     sub_limiter_envelope_ = 0.0F;
     time_alignment_.reset();
     dynamics_.reset();
+    enhancements_.reset();
     for (auto& crossover : crossovers_) crossover.reset();
 }
 
@@ -314,6 +316,7 @@ bool QuadEngine::process(const float* input, float* output,
         }
     }
 
+    enhancements_.process(output, frames);
     if (!dynamics_.process(output, output, frames)) return false;
 
     std::array<float, kOutputChannelCount> delays{};
