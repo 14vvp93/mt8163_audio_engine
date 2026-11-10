@@ -61,3 +61,10 @@ The host workflow builds the library with CMake and runs tests for stereo behavi
 \`LinkwitzRileyCrossover\` is a mono splitter; instantiate one per channel. It supports 12, 24, 36 and 48 dB/octave Linkwitz-Riley alignments built from cascaded Butterworth sections. The high branch polarity is corrected for odd prototype order. The branches are tested for a flat summed response at the crossover frequency.
 
 The crossover is integrated into the optional QuadEngine bass-management stage. The output matrix is applied after crossover splitting and before the final output limiters. Configure routing outside the real-time process callback with `configure_routing()`. When bass management is enabled, pass a separate mono `sub_output` buffer to `process()`; the call fails rather than silently discarding low-frequency content if that buffer is missing. The default routing remains disabled and therefore preserves the four-channel signal path.
+
+
+## Android JNI bring-up bridge
+
+Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
+
+The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from a verified native AudioFlinger/HAL integration point, preserving the stock routing and bypassing calls, microphone, and Bluetooth SCO until those paths are separately mapped.
