@@ -1,0 +1,61 @@
+name: Extract files.zip
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/unpack-files.yml"
+      - "files.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify archive
+        run: |
+          test -f files.zip || { echo "::error::files.zip was not found in the repository root"; exit 1; }
+          unzip -t files.zip
+
+      - name: Extract archive safely
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path("files.zip")
+          destination = Path("extracted-files").resolve()
+          destination.mkdir(parents=True, exist_ok=True)
+
+          with ZipFile(archive) as zf:
+              for item in zf.infolist():
+                  target = (destination / item.filename).resolve()
+                  if target != destination and destination not in target.parents:
+                      raise SystemExit(f"Unsafe archive path: {item.filename}")
+                  if item.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with zf.open(item) as source, target.open("wb") as output:
+                          output.write(source.read())
+
+          files = [p for p in destination.rglob("*") if p.is_file()]
+          print(f"Extracted {len(files)} files")
+          for path in sorted(files):
+              print(f"{path.relative_to(destination)}\t{path.stat().st_size} bytes")
+          PY
+
+      - name: Upload extracted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-files
+          path: extracted-files/
+          if-no-files-found: error
+          retention-days: 7
