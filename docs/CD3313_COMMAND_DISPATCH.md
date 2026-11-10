@@ -176,3 +176,20 @@ The bass/treble lookup and transition path is now documented in [CD3313_REGISTER
 
 
 Command `0x56` now has a register-level model for the recovered active-low loudness bit: a nonzero argument clears bit 2 of the `0x47` control byte (enabled, `0x43`), and zero sets it (disabled, `0x47`). Repeated requests for the current state do not emit a redundant write. Other control-byte bits remain opaque.
+
+### Reconstructed input-switch transition sequence
+
+The set_input_channel(channel, delay) disassembly now supports a deterministic ordered transition model:
+
+1. Read the cached master-volume command byte and ramp its low six bits toward 0x3F in increments of three. Each intermediate I²C write is followed by msleep(delay).
+2. Write the terminal 0x3F attenuation byte and wait once more.
+3. Build and write the input control byte: preserve bits 2 and 5..7, place the active channel gain in bits 3..4, and the selector in bits 0..1.
+4. Write GPIO 396, then GPIO 398, using the recovered per-channel raw levels.
+5. Call set_master_mute(channel_mute[channel] != 0, 31) and wait.
+6. If the selected channel has any input-mute reason and hfp_active is false, wait once more and leave attenuation at 0x3F. Otherwise, calculate the target from master_volume, volume_percentage, and the recovered volume table; ramp down from 0x3F in three-code increments, waiting after each intermediate write, then perform the final target write.
+
+The command dispatcher calls this helper with an 8 ms delay for ordinary channel selection and when leaving mixing mode. Enabling mixing selects channel 1 with a zero delay. A channel-selection command received while mixing is active only updates the remembered channel and does not run the helper.
+
+The emulator records the ordered sequence as InputTransitionEvent entries (attenuation writes, selector write, GPIO writes, master-mute reason-31 state, and explicit delay events). It separately tracks the current volume command byte so a transition starts from the last modeled output level rather than merely from the requested target. The timeline is a deterministic offline reconstruction: it records requested operations and nominal sleep intervals, not measured I²C latency or physical GPIO readback.
+
+The hfp_active exception is modeled exactly as the disassembly's branch condition: an input mute does not keep the volume attenuation forced at 0x3F while HFP is active. This does not imply that master mute reason 31 is cleared; mute reasons remain independent.
