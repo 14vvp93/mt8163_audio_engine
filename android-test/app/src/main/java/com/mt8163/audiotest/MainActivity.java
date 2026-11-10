@@ -177,6 +177,66 @@ public final class MainActivity extends Activity {
             root.addView(eqBandBars[band]);
         }
 
+        TextView bassTitle = text("SUBWOOFER / BASS MANAGEMENT", 18, Color.WHITE);
+        bassTitle.setPadding(0, dp(22), 0, dp(8));
+        root.addView(bassTitle);
+        bassStatus = text("Bass management · OFF", 14, Color.CYAN);
+        root.addView(bassStatus);
+        Button bassToggle = button("BASS MANAGEMENT: OFF");
+        bassToggle.setOnClickListener(v -> {
+            bassManagementEnabled = !bassManagementEnabled;
+            applyBassManagement();
+            bassToggle.setText(bassManagementEnabled
+                    ? "BASS MANAGEMENT: ON" : "BASS MANAGEMENT: OFF");
+        });
+        root.addView(bassToggle);
+
+        TextView crossoverLabel = text("Crossover · 80 Hz", 14, Color.WHITE);
+        root.addView(crossoverLabel);
+        SeekBar crossoverBar = new SeekBar(this);
+        crossoverBar.setMax(360);
+        crossoverBar.setProgress(60);
+        crossoverBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                crossoverHz = 40.0f + value;
+                crossoverLabel.setText(String.format(Locale.US, "Crossover · %.0f Hz", crossoverHz));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyBassManagement(); }
+        });
+        root.addView(crossoverBar);
+
+        TextView orderLabel = text("Linkwitz–Riley · 24 dB/oct", 14, Color.WHITE);
+        root.addView(orderLabel);
+        LinearLayout orderPicker = new LinearLayout(this);
+        orderPicker.setOrientation(LinearLayout.HORIZONTAL);
+        int[] orders = {2, 4, 6, 8};
+        for (int order : orders) {
+            Button orderButton = button((order * 6) + " dB");
+            orderButton.setOnClickListener(v -> {
+                crossoverOrder = order;
+                orderLabel.setText("Linkwitz–Riley · " + (order * 6) + " dB/oct");
+                applyBassManagement();
+            });
+            orderPicker.addView(orderButton, new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        }
+        root.addView(orderPicker);
+
+        TextView subGainLabel = text("Subwoofer level · 0.0 dB", 14, Color.WHITE);
+        root.addView(subGainLabel);
+        SeekBar subGainBar = new SeekBar(this);
+        subGainBar.setMax(360);
+        subGainBar.setProgress(240);
+        subGainBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                subGainDb = (value - 240) / 10.0f;
+                subGainLabel.setText(String.format(Locale.US, "Subwoofer level · %.1f dB", subGainDb));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyBassManagement(); }
+        });
+        root.addView(subGainBar);
+
         Button run = button("RUN PCM TEST · 512 FRAMES");
         run.setOnClickListener(v -> runPcmTest());
         root.addView(run);
@@ -185,6 +245,20 @@ public final class MainActivity extends Activity {
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
         setContentView(new ScrollView(this) {{ setFillViewport(true); addView(root); }});
+    }
+
+    private void applyBassManagement() {
+        if (dsp == null) return;
+        if (dsp.configureBassManagement(bassManagementEnabled, crossoverHz,
+                crossoverOrder, subGainDb)) {
+            bassStatus.setText(String.format(Locale.US,
+                    "Bass management · %s · %.0f Hz · %d dB/oct · Sub %.1f dB",
+                    bassManagementEnabled ? "ON" : "OFF", crossoverHz,
+                    crossoverOrder * 6, subGainDb));
+            status.setText("Bass management profile applied · 50 ms crossfade");
+        } else {
+            status.setText("DSP busy · wait for the current profile transition");
+        }
     }
 
     private void selectEqChannel(int channel) {
