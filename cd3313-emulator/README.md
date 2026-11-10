@@ -17,7 +17,7 @@ The dispatcher has two additional branches, `0x56` and `0xA3`, that are not in t
 
 ## Separate raw register interface
 
-The driver's `cmd_write()` path is different: it parses hexadecimal text with base 16, truncates the parsed integer to one byte, and sends that byte over I²C. The emulator represents it through `write_raw_command_byte()` and records it with a distinct journal source; it is not parsed as an ioctl frame.
+The driver's `cmd_write()` path is different: it parses hexadecimal text with base 16, truncates the parsed integer to one byte, and sends that byte over I²C. The emulator exposes `write_raw_command_text()` for the hexadecimal text path and `write_raw_command_byte()` for already-parsed bytes. The text model preserves the original-count return, 12-byte copy limit, and persistent file offset; it safely rejects a full unterminated 12-byte buffer instead of reproducing the driver's possible stack over-read. Raw writes are not ioctl frames.
 
 ## Implemented
 
@@ -29,14 +29,17 @@ The driver's `cmd_write()` path is different: it parses hexadecimal text with ba
 - Recovered 41-entry master-volume lookup table and stepped register-byte ramp.
 - Recovered 15-byte bass/treble lookup table and stepped register-byte ramps; first command argument remains opaque.
 - Active-low loudness control bit and recovered input selector/gain fields in the `0x47` control byte.
-- Requested DSP power and subwoofer GPIO states; recovered input-routing GPIO 396/398 output levels without claiming physical GPIO readback.
+- Requested DSP power and subwoofer GPIO states; command 0xF1 now invokes the recovered shutdown/wakeup sequence, and command 0xA3 models active-low GPIO 409.
+- Recovered input-routing GPIO 396/398 output levels without claiming physical GPIO readback.
+- Driver-visible input channel labels RADIO/ARM/AUX/EXBT/AUX2/DAB/NONE and their CD3313 selector-source mapping.
+- Static ioctl read identifier payload and formatted cmd_read() software-state report, including the eight cached register bytes.
 - Recovered probe guard write and event-0 initialization sequence.
 - Diagnostic 16-page command-byte view plus an exact 8-slot reg_bufs cache mirror selected through TAB.33841.
 - Deterministic command event journal with before/after state snapshots.
 - Register-write journal with sequence, source, command page, reg_bufs slot, byte, and previous values in both cache views.
 - Recovered reason-24 mute timer request: remove queued event 3, then request event 3 after 1000 ms; queue internals and actual callback timing remain external.
 - Four-channel Balance/Fader mapping, speaker register-byte encoder, and independent rear-level compensation (implemented by front attenuation, since the chip cannot boost).
-- Host unit tests for command encoding, bounds, state transitions, startup sequence, volume ramps, bass/treble ramps, loudness bit transitions, and journal reset.
+- Host unit tests for command encoding, bounds, state transitions, startup sequence, volume ramps, bass/treble ramps, loudness bit transitions, raw hexadecimal writes, read-report formatting, F1 shutdown/wakeup, and journal reset.
 
 ## Not implemented / not yet verified
 
