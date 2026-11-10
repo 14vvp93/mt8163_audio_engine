@@ -20,8 +20,10 @@ struct EmulatorState {
     std::array<std::optional<std::uint8_t>, 16> command_page_cache{};
     std::optional<std::uint32_t> bass_boost_target;
     std::optional<std::uint32_t> bass_boost_opaque_arg0;
+    std::optional<std::uint8_t> bass_register_value;
     std::optional<std::uint32_t> treble_target;
     std::optional<std::uint32_t> treble_opaque_arg0;
+    std::optional<std::uint8_t> treble_register_value;
     std::optional<bool> loudness_enabled;
     std::optional<bool> dsp_awake;
     // Requested GPIO state only; physical routing is not inferred.
@@ -42,6 +44,8 @@ enum class RegisterWriteSource {
     ProbeGuardWrite,
     InitializationSequence,
     MasterVolumeTransition,
+    BassTransition,
+    TrebleTransition,
     IoctlFourChannelCommand,
     RawCommandByte
 };
