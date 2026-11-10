@@ -63,6 +63,11 @@ int main() {
         };
         check(static_cast<bool>(parse_driver_command(fader_frame)),
               "0x15 accepts four complete 32-bit channel arguments");
+        auto invalid_fader_frame = fader_frame;
+        invalid_fader_frame[4] = 16;
+        check(parse_driver_command(invalid_fader_frame).error ==
+                  ParseError::InvalidArgumentValue,
+              "0x15 rejects an index outside the 16-entry speaker table");
         check(parse_driver_command({0x00, 0x10, 0x01, 0x40, 0x28, 0, 0}).error ==
                   ParseError::PayloadSizeMismatch, "truncated payload");
         check(static_cast<bool>(parse_driver_command(
