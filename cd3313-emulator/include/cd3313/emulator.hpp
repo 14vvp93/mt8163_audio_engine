@@ -39,6 +39,7 @@ struct EmulatorEvent {
 };
 
 enum class RegisterWriteSource {
+    ProbeGuardWrite,
     InitializationSequence,
     IoctlFourChannelCommand,
     RawCommandByte
@@ -58,6 +59,8 @@ public:
     // Models the separate cmd_write() path, which accepts a raw decimal byte;
     // this is deliberately not parsed as an ioctl frame.
     void write_raw_command_byte(std::uint8_t command_byte);
+    // Models the successful 0x3F probe guard write and startup mute reason 31.
+    void apply_recovered_probe_setup();
     // Replays the exact byte order recovered from event_callback(event=0).
     void apply_recovered_initialization_sequence();
     const std::optional<DriverCommand>& last_command() const { return last_command_; }
