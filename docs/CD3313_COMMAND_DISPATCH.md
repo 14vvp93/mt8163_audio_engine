@@ -36,6 +36,7 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 | `0xA3` | Subwoofer GPIO control | Boolean value at +4 is converted to 0/1 and written to GPIO 409 (`0x199`). This is a special dispatcher branch, not one of the 12 entries in `cmd_len_list`. | High |
 | `0xF0` | Static identifier read / write no-op | In read direction, cmd_ioctl() copies the static 8-byte .rodata identifier cd3313\\0\\0. In write direction, the callback has no recovered state mutation; the command is not a confirmed setter. | High for the read bytes and observed write-path no-op |
 | `0xF1` | DSP power control | Boolean value at +4 selects wake-up or shutdown. Nonzero enters the wake-up path; zero calls `dsp_shutdown()`. | High |
+| `0xF0` (write direction) | Reserved / no recovered state action | Separate from the read-direction 8-byte device identifier. The callback logs a length error for size 0 and otherwise frees/drops the object without a state mutation. | Medium |
 
 ### Input routing, gain, and mute reconstruction
 
