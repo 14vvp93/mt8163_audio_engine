@@ -34,6 +34,7 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 - Partial 16-page command-byte cache matching the driver's upper-nibble cache lookup.
 - Deterministic command event journal with before/after state snapshots.
 - Register-write journal with sequence, source, page, byte, and previous cached value.
+- Recovered reason-24 mute timer request: remove queued event 3, then request event 3 after 1000 ms; queue internals and actual callback timing remain external.
 - Four-channel Balance/Fader mapping, speaker register-byte encoder, and independent rear-level compensation (implemented by front attenuation, since the chip cannot boost).
 - Host unit tests for command encoding, bounds, state transitions, startup sequence, volume ramps, bass/treble ramps, loudness bit transitions, and journal reset.
 
@@ -67,7 +68,7 @@ This is an offline static model. Delays are nominal driver arguments, not measur
 
 ### Master mute and GPIO 393
 
-The recovered `set_master_mute()` path updates a reason bitmask and computes GPIO 393's requested raw level as `(mute && !hfp_active) || reason24_is_set || !acc_on`. Command `0x11` with reason 2 updates the ACC latch. The probe initializes ACC on before startup mute. System notifier events 2 and 3 clear reasons 30 and 24 respectively. The emulator exposes these notifier operations and records GPIO 393 writes separately from aggregate mute state. It also journals each active-channel input-mute GPIO write, including writes where the computed raw level does not change. Raw GPIO polarity is modeled; board-level signal meaning is not inferred.
+The recovered `set_master_mute()` path updates a reason bitmask and computes GPIO 393's requested raw level as `(mute && !hfp_active) || reason24_is_set || !acc_on`. Command `0x11` with reason 2 updates the ACC latch. Asserting reason 24 through command `0x11` also requests removal of queued event 3 followed by a delayed event-3 post at 1000 ms; event 3 clears reason 24. The probe initializes ACC on before startup mute. System notifier events 2 and 3 clear reasons 30 and 24 respectively. The emulator exposes these notifier operations and records GPIO 393 writes separately from aggregate mute state. It also journals each active-channel input-mute GPIO write, including writes where the computed raw level does not change. Raw GPIO polarity is modeled; board-level signal meaning is not inferred.
 
 
 ### Recovered shutdown sequence
