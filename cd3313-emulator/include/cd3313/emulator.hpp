@@ -136,12 +136,25 @@ struct RegisterWriteEvent {
     std::optional<std::uint8_t> previous_cache_slot_byte;
 };
 
+struct RawWriteTextResult {
+    std::size_t reported_count{};
+    std::size_t copied_count{};
+    std::size_t new_file_position{};
+    bool parsed{};
+    bool unterminated_buffer{};
+    std::optional<std::uint8_t> command_byte;
+};
+
 class Emulator {
 public:
     ParseResult write(const std::vector<std::uint8_t>& bytes);
     // Models the separate cmd_write() path, which accepts a raw decimal byte;
     // this is deliberately not parsed as an ioctl frame.
     void write_raw_command_byte(std::uint8_t command_byte);
+    // Models cmd_write()'s hexadecimal text input and persistent file offset.
+    // Full 12-byte inputs are rejected safely rather than reproducing its possible over-read.
+    RawWriteTextResult write_raw_command_text(std::string_view text,
+                                              std::size_t file_position = 0U);
     // Models the successful 0x3F probe guard write and startup mute reason 31.
     void apply_recovered_probe_setup();
     // Replays the exact byte order recovered from event_callback(event=0).
