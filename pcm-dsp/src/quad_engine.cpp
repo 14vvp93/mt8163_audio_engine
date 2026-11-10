@@ -25,7 +25,33 @@ bool QuadEngine::configure(std::uint32_t sample_rate_hz) {
         sample_rate_hz_ = sample_rate_hz;
         reset();
         if (!time_alignment_.configure(sample_rate_hz)) return false;
+        if (routing_.enabled && routing_.bass_management_enabled &&
+            !configure_routing(routing_)) return false;
     }
+    return true;
+}
+
+bool QuadEngine::configure_routing(
+        const QuadOutputRoutingParameters& parameters) {
+    if (!std::isfinite(parameters.sub_gain_db) ||
+        parameters.sub_gain_db < -24.0F ||
+        parameters.sub_gain_db > 12.0F) return false;
+    for (const float coefficient : parameters.matrix) {
+        if (!std::isfinite(coefficient) || std::fabs(coefficient) > 2.0F) {
+            return false;
+        }
+    }
+    if (parameters.bass_management_enabled && !parameters.enabled) return false;
+    if (parameters.bass_management_enabled) {
+        if (sample_rate_hz_ == 0U) return false;
+        for (auto& crossover : crossovers_) {
+            if (!crossover.configure(sample_rate_hz_,
+                    parameters.crossover_frequency_hz,
+                    parameters.crossover_order)) return false;
+        }
+    }
+    routing_ = parameters;
+    sub_limiter_envelope_ = 0.0F;
     return true;
 }
 
@@ -41,7 +67,9 @@ void QuadEngine::reset() {
     }
     active_bank_ = 0U;
     limiter_envelope_.fill(0.0F);
+    sub_limiter_envelope_ = 0.0F;
     time_alignment_.reset();
+    for (auto& crossover : crossovers_) crossover.reset();
 }
 
 float QuadEngine::db_to_gain(float db) {
@@ -161,8 +189,10 @@ float QuadEngine::run_biquad(float input,
 
 bool QuadEngine::process(const float* input, float* output,
                          std::size_t frames,
-                         const QuadParameters& parameters) {
-    if (sample_rate_hz_ == 0U || input == nullptr || output == nullptr) {
+                         const QuadParameters& parameters,
+                         float* sub_output) {
+    if (sample_rate_hz_ == 0U || input == nullptr || output == nullptr ||
+        (routing_.bass_management_enabled && sub_output == nullptr)) {
         return false;
     }
     if (frames == 0U) return true;
@@ -277,6 +307,45 @@ bool QuadEngine::process(const float* input, float* output,
     }
     if (!time_alignment_.process(output, output, frames, delays)) return false;
 
+    // Keep the mono low-frequency bus separate until the hardware route is verified.
+    if (routing_.enabled) {
+        const float sub_gain = db_to_gain(routing_.sub_gain_db);
+        for (std::size_t frame = 0; frame < frames; ++frame) {
+            std::array<float, kOutputChannelCount> source{};
+            std::array<float, kOutputChannelCount> main{};
+            for (std::size_t channel = 0; channel < kOutputChannelCount; ++channel) {
+                source[channel] = output[frame * kOutputChannelCount + channel];
+            }
+            float sub_sample = 0.0F;
+            if (routing_.bass_management_enabled) {
+                for (std::size_t channel = 0; channel < kOutputChannelCount; ++channel) {
+                    float low = 0.0F;
+                    float high = 0.0F;
+                    crossovers_[channel].process(source[channel], low, high);
+                    main[channel] = high;
+                    sub_sample += low * 0.25F;
+                }
+                sub_sample *= sub_gain;
+            } else {
+                main = source;
+            }
+            for (std::size_t out_channel = 0; out_channel < kOutputChannelCount; ++out_channel) {
+                float mixed = 0.0F;
+                for (std::size_t in_channel = 0; in_channel < kOutputChannelCount; ++in_channel) {
+                    mixed += routing_.matrix[out_channel * kOutputChannelCount + in_channel] *
+                             main[in_channel];
+                }
+                output[frame * kOutputChannelCount + out_channel] =
+                    std::isfinite(mixed) ? mixed : 0.0F;
+            }
+            if (sub_output != nullptr) {
+                sub_output[frame] = std::isfinite(sub_sample) ? sub_sample : 0.0F;
+            }
+        }
+    } else if (sub_output != nullptr) {
+        std::fill(sub_output, sub_output + frames, 0.0F);
+    }
+
     for (std::size_t frame = 0; frame < frames; ++frame) {
         for (std::size_t channel = 0; channel < kOutputChannelCount; ++channel) {
             const std::size_t index = frame * kOutputChannelCount + channel;
@@ -296,6 +365,24 @@ bool QuadEngine::process(const float* input, float* output,
                 processed = clamp(processed, -1.0F, 1.0F);
             }
             output[index] = processed;
+        }
+        if (routing_.bass_management_enabled && sub_output != nullptr) {
+            float sub_sample = sub_output[frame];
+            if (parameters.limiter_enabled) {
+                const float peak = std::fabs(sub_sample);
+                const float coefficient = peak > sub_limiter_envelope_
+                    ? attack_coeff : release_coeff;
+                sub_limiter_envelope_ =
+                    coefficient * sub_limiter_envelope_ +
+                    (1.0F - coefficient) * peak;
+                if (sub_limiter_envelope_ > threshold) {
+                    sub_sample *= threshold / sub_limiter_envelope_;
+                }
+                sub_sample = clamp(sub_sample, -threshold, threshold);
+            } else {
+                sub_sample = clamp(sub_sample, -1.0F, 1.0F);
+            }
+            sub_output[frame] = sub_sample;
         }
     }
 
