@@ -107,6 +107,75 @@ int main() {
         check(engine.process(tone.data(), filtered.data(), 2048U, transition),
               "updated filter coefficients transition across block");
 
+
+        // Four-channel Float32 engine: bit-exact bypass and independent gains.
+        pcm_dsp::QuadEngine quad;
+        check(!quad.configure(32000U), "quad rejects unsupported sample rate");
+        check(quad.configure(48000U), "quad accepts 48 kHz");
+        const std::vector<float> quad_input{
+            0.10F, 0.10F, 0.10F, 0.10F,
+            -0.20F, -0.20F, -0.20F, -0.20F
+        };
+        std::vector<float> quad_output(quad_input.size(), 0.0F);
+        pcm_dsp::QuadParameters quad_parameters;
+        check(quad.process(quad_input.data(), quad_output.data(), 2U,
+                           quad_parameters), "quad bypass succeeds");
+        check(quad_output == quad_input, "quad bypass is bit-exact");
+
+        quad_parameters.enabled = true;
+        quad_parameters.limiter_enabled = false;
+        quad_parameters.channels[0].gain_db = 6.0F;
+        quad_parameters.channels[1].gain_db = 0.0F;
+        quad_parameters.channels[2].gain_db = -6.0F;
+        quad_parameters.channels[3].gain_db = 0.0F;
+        check(quad.process(quad_input.data(), quad_output.data(), 2U,
+                           quad_parameters), "quad channel gains process");
+        check(quad_output[0] > quad_output[1], "front-left gain is independent");
+        check(quad_output[2] == quad_output[1], "front-right remains unchanged");
+        check(quad_output[4] < quad_output[5], "rear-left attenuation is independent");
+        check(quad_output[6] == quad_output[5], "rear-right remains unchanged");
+
+        // Exercise all 32 slots and abrupt extreme parameter changes.
+        std::vector<float> stress_input(4096U * 4U);
+        std::vector<float> stress_output(stress_input.size());
+        for (std::size_t i = 0; i < 4096U; ++i) {
+            const float value = 0.2F * std::sin(
+                2.0F * 3.14159265358979323846F * 997.0F *
+                static_cast<float>(i) / 48000.0F);
+            for (std::size_t channel = 0; channel < 4U; ++channel) {
+                stress_input[i * 4U + channel] = value;
+            }
+        }
+        quad.reset();
+        pcm_dsp::QuadParameters stress_parameters;
+        stress_parameters.enabled = true;
+        stress_parameters.limiter_enabled = true;
+        for (std::size_t band = 0; band < pcm_dsp::kQuadEqBandCount; ++band) {
+            auto& eq = stress_parameters.channels[0].bands[band];
+            eq.enabled = true;
+            eq.type = (band % 5U == 0U) ? FilterType::LowShelf
+                    : (band % 5U == 1U) ? FilterType::HighShelf
+                    : (band % 5U == 2U) ? FilterType::HighPass
+                    : (band % 5U == 3U) ? FilterType::LowPass
+                                        : FilterType::Peaking;
+            eq.frequency_hz = 20.0F * std::pow(
+                1000.0F, static_cast<float>(band) / 31.0F);
+            eq.gain_db = (band % 2U == 0U) ? 12.0F : -12.0F;
+            eq.q = 0.707F;
+        }
+        for (int pass = 0; pass < 12; ++pass) {
+            stress_parameters.channels[0].bands[pass].gain_db =
+                (pass % 2 == 0) ? 18.0F : -18.0F;
+            check(quad.process(stress_input.data(), stress_output.data(),
+                               4096U, stress_parameters),
+                  "quad stress transition succeeds");
+            for (const float sample : stress_output) {
+                check(std::isfinite(sample), "quad output is finite");
+                check(std::fabs(sample) <= 0.981F,
+                      "quad limiter respects ceiling");
+            }
+        }
+
         std::cout << "All PCM DSP tests passed\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
