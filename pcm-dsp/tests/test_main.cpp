@@ -1,4 +1,7 @@
 #include "pcm_dsp/engine.hpp"
+#include "pcm_dsp/quad_engine.hpp"
+#include "pcm_dsp/time_alignment.hpp"
+#include "pcm_dsp/crossover.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -174,6 +177,57 @@ int main() {
                 check(std::fabs(sample) <= 0.981F,
                       "quad limiter respects ceiling");
             }
+        }
+
+
+        // Four-channel delay: after the transition block, an impulse on FR
+        // must emerge exactly 48 samples later at 48 kHz (1.0 ms).
+        pcm_dsp::QuadTimeAlignment alignment;
+        check(!alignment.configure(32000U), "time alignment rejects unsupported rate");
+        check(alignment.configure(48000U), "time alignment accepts 48 kHz");
+        std::array<float, 4> delays{{0.0F, 1.0F, 0.0F, 0.0F}};
+        std::vector<float> silence(64U * 4U, 0.0F);
+        std::vector<float> aligned(64U * 4U, 0.0F);
+        check(alignment.process(silence.data(), aligned.data(), 64U, delays),
+              "time alignment settles delay change");
+        std::vector<float> impulse(64U * 4U, 0.0F);
+        impulse[0] = 1.0F; impulse[1] = 1.0F;
+        impulse[2] = 1.0F; impulse[3] = 1.0F;
+        check(alignment.process(impulse.data(), aligned.data(), 64U, delays),
+              "time alignment processes impulse");
+        check(aligned[0] == 1.0F, "FL zero delay is immediate");
+        check(aligned[1] == 0.0F, "FR delayed output has no immediate impulse");
+        check(aligned[48U * 4U + 1U] > 0.99F,
+              "FR 1 ms delay equals 48 samples");
+        check(aligned[2] == 1.0F && aligned[3] == 1.0F,
+              "rear channels remain independently undelayed");
+
+        // Verify Linkwitz-Riley branches sum to unity after settling.
+        for (const auto order : {
+                pcm_dsp::LinkwitzRileyOrder::Db12,
+                pcm_dsp::LinkwitzRileyOrder::Db24,
+                pcm_dsp::LinkwitzRileyOrder::Db36,
+                pcm_dsp::LinkwitzRileyOrder::Db48}) {
+            pcm_dsp::LinkwitzRileyCrossover crossover;
+            check(crossover.configure(48000U, 1000.0F, order),
+                  "Linkwitz-Riley crossover configures");
+            double square_sum = 0.0;
+            constexpr std::size_t count = 48000U;
+            for (std::size_t i = 0; i < count; ++i) {
+                const float sample = std::sin(
+                    2.0F * 3.14159265358979323846F * 1000.0F *
+                    static_cast<float>(i) / 48000.0F);
+                float low = 0.0F;
+                float high = 0.0F;
+                crossover.process(sample, low, high);
+                if (i >= 24000U) {
+                    const double sum = static_cast<double>(low + high);
+                    square_sum += sum * sum;
+                }
+            }
+            const double rms = std::sqrt(square_sum / 24000.0);
+            check(std::fabs(rms - 0.70710678) < 0.015,
+                  "crossover branches sum flat at crossover frequency");
         }
 
         std::cout << "All PCM DSP tests passed\n";
