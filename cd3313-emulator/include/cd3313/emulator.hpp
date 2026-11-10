@@ -27,6 +27,13 @@ struct EmulatorState {
     std::optional<bool> loudness_enabled;
     std::optional<std::uint8_t> control_register_value;
     std::optional<bool> dsp_awake;
+    // Recovered input-routing state. Channel IDs 0..6; driver sentinel -1 maps to 6.
+    std::uint32_t current_input_channel{6U};
+    std::uint32_t active_input_channel{6U};
+    bool mixing_mode{false};
+    bool hfp_active{false};
+    std::array<std::uint8_t, 7> input_gain{};
+    std::array<std::uint32_t, 7> input_mute_reason_masks{};
     // Requested GPIO state only; physical routing is not inferred.
     std::optional<bool> subwoofer_gpio_enabled;
     bool master_muted() const { return master_mute_reason_mask != 0U; }
@@ -48,6 +55,7 @@ enum class RegisterWriteSource {
     BassTransition,
     TrebleTransition,
     LoudnessControl,
+    InputGainControl,
     IoctlFourChannelCommand,
     RawCommandByte
 };
