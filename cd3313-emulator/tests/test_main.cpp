@@ -44,6 +44,28 @@ int main() {
                    0x0F, 0, 0, 0, 0x0E, 0, 0, 0,
                    0x0D, 0, 0, 0, 0x0C, 0, 0, 0}),
               "typed four-channel level builder encodes FL/FR/RL/RR indices");
+        check(encode_driver_command(make_input_channel_command(-1)) ==
+                  std::vector<std::uint8_t>(
+                      {0x00, 0x01, 0x01, 0x40, 0xFF, 0xFF, 0xFF, 0xFF}),
+              "typed input-channel builder encodes the -1 default-channel sentinel");
+        check(encode_driver_command(make_input_gain_command(2, 3, 0x12345678U)) ==
+                  std::vector<std::uint8_t>(
+                      {0x00, 0x03, 0x03, 0x40,
+                       0x02, 0, 0, 0, 0x03, 0, 0, 0,
+                       0x78, 0x56, 0x34, 0x12}),
+              "typed input-gain builder preserves the opaque third word");
+        check(encode_driver_command(make_input_mute_command(1, true, 16)) ==
+                  std::vector<std::uint8_t>(
+                      {0x00, 0x04, 0x03, 0x40,
+                       0x01, 0, 0, 0, 0x01, 0, 0, 0, 0x10, 0, 0, 0}),
+              "typed input-mute builder encodes channel, mute, and reason");
+        check(encode_driver_command(make_input_mixing_command(
+                  true, 0xAABBCCDDU, 0x11223344U)) ==
+                  std::vector<std::uint8_t>(
+                      {0x00, 0x20, 0x03, 0x40,
+                       0x01, 0, 0, 0, 0xDD, 0xCC, 0xBB, 0xAA,
+                       0x44, 0x33, 0x22, 0x11}),
+              "typed mixing builder retains the two opaque trailing words");
         bool rejected_volume = false;
         try { (void)make_master_volume_command(41); }
         catch (const std::invalid_argument&) { rejected_volume = true; }
