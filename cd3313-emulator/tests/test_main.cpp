@@ -201,14 +201,16 @@ int main() {
         check(static_cast<bool>(state_emulator.write(
                   make_two_word_command(0x55, 0x12345678U, 18U))),
               "bass command is accepted");
-        check(state_emulator.state().bass_boost_target == 14U &&
-              state_emulator.state().bass_boost_opaque_arg0 == 0x12345678U,
+        check(state_emulator.state().bass_boost_target == 10U &&
+              state_emulator.state().bass_boost_opaque_arg0 == 0x12345678U &&
+              state_emulator.state().bass_register_value == 0x6CU,
               "bass target is bounded and opaque first argument is preserved");
         check(static_cast<bool>(state_emulator.write(
                   make_two_word_command(0x5C, 0x87654321U, 7U))),
               "treble command is accepted");
-        check(state_emulator.state().treble_target == 7U &&
-              state_emulator.state().treble_opaque_arg0 == 0x87654321U,
+        check(state_emulator.state().treble_target == 6U &&
+              state_emulator.state().treble_opaque_arg0 == 0x87654321U &&
+              state_emulator.state().treble_register_value == 0x76U,
               "treble target and opaque first argument are retained");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(DriverCommand{0x56, 1, {1, 0, 0, 0}}))),
@@ -359,7 +361,9 @@ int main() {
         check(startup_emulator.state().channel_level_indices ==
                   std::array<std::uint8_t, 4>{{15, 15, 15, 15}} &&
               startup_emulator.state().speaker_register_bytes ==
-                  std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}},
+                  std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}} &&
+              startup_emulator.state().bass_register_value == 0x6FU &&
+              startup_emulator.state().treble_register_value == 0x7FU,
               "startup model restores neutral four-channel output registers");
         check(startup_emulator.register_journal().size() == 18U,
               "probe guard plus event_callback's 8 bytes twice and final control-byte rewrite are journaled");
@@ -387,6 +391,28 @@ int main() {
         check(!startup_emulator.state().initialization_sequence_applied &&
               startup_emulator.register_journal().empty(),
               "reset clears recovered startup image and write history");
+
+        Emulator effects_emulator;
+        effects_emulator.apply_recovered_probe_setup();
+        effects_emulator.apply_recovered_initialization_sequence();
+        check(static_cast<bool>(effects_emulator.write(
+                  make_two_word_command(0x55, 0x12345678U, 18U))),
+              "initialized bass transition is accepted");
+        check(effects_emulator.state().bass_boost_target == 10U &&
+              effects_emulator.state().bass_register_value == 0x6CU &&
+              effects_emulator.register_journal().size() == 21U &&
+              effects_emulator.register_journal()[18].command_byte == 0x6E &&
+              effects_emulator.register_journal()[19].command_byte == 0x6D &&
+              effects_emulator.register_journal()[20].command_byte == 0x6C,
+              "bass transition walks the recovered equalizer table from index 7 to 10");
+        check(static_cast<bool>(effects_emulator.write(
+                  make_two_word_command(0x5C, 0x87654321U, 7U))),
+              "initialized treble transition is accepted");
+        check(effects_emulator.state().treble_target == 6U &&
+              effects_emulator.state().treble_register_value == 0x76U &&
+              effects_emulator.register_journal().size() == 22U &&
+              effects_emulator.register_journal().back().command_byte == 0x76U,
+              "treble transition walks the recovered equalizer table to index 6");
 
         std::cout << "All CD3313 driver-command tests passed\n";
         return EXIT_SUCCESS;
