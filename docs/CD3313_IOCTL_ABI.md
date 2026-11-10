@@ -85,7 +85,11 @@ Thus this read request returns a static cd3313 identifier string, not a live DSP
 
 ## 4. Event-queue API declarations recovered from DWARF
 
-The module's DWARF contains external declarations for the imported queue API:
+The module's DWARF contains external declarations for the imported queue API. The raw DWARF line table resolves the declaration file to the vendor build-tree path:
+
+/work2/publisher26/publish_work/MT8163/kernel-4.9/include/linux/handler_thread.h
+
+The header itself and its implementation are not present in the current repository artifacts. The declarations recovered from DWARF are:
 
 - post_event_delayed(handler*, u32 event_id, void* data, u32 delay_ms) — returns an integer.
 - remove_event(handler*, u32 event_id) — returns an integer.
