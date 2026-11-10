@@ -38,10 +38,24 @@ jobs:
           nm -anC cd3313.ko > cd3313-ioctl-analysis/symbols.txt
           readelf -h cd3313.ko > cd3313-ioctl-analysis/elf-header.txt
           readelf --debug-dump=info cd3313.ko > cd3313-ioctl-analysis/dwarf-info.txt
+          arm-linux-gnueabi-readelf --debug-dump=decodedline cd3313.ko > cd3313-ioctl-analysis/dwarf-lines.txt
+          arm-linux-gnueabi-objdump --dwarf=decodedline cd3313.ko > cd3313-ioctl-analysis/disassembly-lines.txt
           arm-linux-gnueabi-objdump -drwC cd3313.ko > cd3313-ioctl-analysis/full-disassembly.txt
-          for symbol in cmd_ioctl cmd_read cmd_write event_callback do_cmd_write set_balance set_master_volume set_master_mute; do
+          for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown; do
             arm-linux-gnueabi-objdump -drwC --disassemble="$symbol" cd3313.ko > "cd3313-ioctl-analysis/$symbol.txt" 2>&1 || true
           done
+          {
+            for symbol in cmd_ioctl cmd_read cmd_write event_callback set_master_mute set_master_volume.part.0 cd3313_write_reg.constprop.4 set_input_channel dsp_shutdown; do
+              address="$(nm -an cd3313.ko | awk -v name="$symbol" '$3 == name { print "0x" $1; exit }')"
+              if [ -n "$address" ]; then
+                printf '%s (%s): ' "$symbol" "$address"
+                arm-linux-gnueabi-addr2line -e cd3313.ko -f -C "$address" | tr '\n' ' '
+                printf '\n'
+              else
+                printf '%s: symbol not present (inlined or optimized out)\n' "$symbol"
+              fi
+            done
+          } > cd3313-ioctl-analysis/address-to-source.txt
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -52,7 +66,7 @@ jobs:
           for line in symbols:
               if any(re.search(r"\b" + re.escape(name) + r"\b", line) for name in wanted):
                   rows.append(line)
-          (root / "target-symbols.txt").write_text("\\n".join(rows) + ("\\n" if rows else ""))
+          (root / "target-symbols.txt").write_text("\n".join(rows) + ("\n" if rows else ""))
           PY
           {
             echo "# Focused CD3313 ioctl analysis"
