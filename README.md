@@ -8,7 +8,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### Planned components
 
-1. **CD3313 control layer** — validated userspace ABI for the existing `/dev/audiomux` driver and its I²C register interface.
+1. **CD3313 control layer** — reconstructed read/write/ioctl ABI for the existing `/dev/audiomux` driver and its I²C register interface; exact vendor framework transport still needs confirmation.
 2. **PCM DSP core** — independent C++ processing library with format-aware input/output, explicit bypass, controlled latency, and host-side tests.
 3. **Android integration adapter** — integration at a verified AudioFlinger/HAL processing point; no global hook until call/SCO bypass and routing are understood.
 4. **Control API/UI** — separate controls for EQ, bass/treble, loudness, balance and profiles, with safe state persistence. The CD3313 reverse engineering also confirms a four-argument FL/FR/RL/RR control path, which is the hardware basis for separate L/R balance and Front/Rear fader. A host-side rear-level compensation trim is modeled as front-pair attenuation (the chip cannot provide positive gain); hardware routing and factory levels remain to be verified.
@@ -20,7 +20,10 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 ## Reverse-engineering documents
 
 - [CD3313 kernel protocol](docs/CD3313_PROTOCOL_RECONSTRUCTION.md)
+- [CD3313 character-device read/write ABI](docs/CD3313_CHAR_DEVICE_ABI.md)
+- [CD3313 ioctl and event-queue ABI](docs/CD3313_IOCTL_ABI.md)
 - [CD3313 command dispatch map](docs/CD3313_COMMAND_DISPATCH.md)
+- [CD3313 register image and datasheet correlation](docs/CD3313_REGISTER_IMAGE.md)
 - [CD3313 userspace-client scan](docs/CD3313_USERSPACE_CLIENT_SCAN.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
@@ -40,8 +43,8 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 ## Current status
 
 - CD3313 ARM32 module statically analyzed.
-- CD3313 host-side command/state emulator implemented with deterministic state transitions, a before/after event journal, and recovered speaker-register mapping; no device I/O is performed by the emulator.
+- CD3313 host-side command/state emulator models deterministic state transitions, the exact 8-slot reg_bufs cache, the 16-page diagnostic view, the read identifier, speaker codes, input selectors, and event-queue requests; no device I/O is performed by the emulator.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
 - PCM16 stereo core and four-channel Float32 DSP foundation implemented; latest four-channel CI result and Android integration remain to be verified.
-- HEQ APK decompiled and analyzed: useful filter/control concepts documented, but its external DSP protocols are chip-specific and not compatible with CD3313.
+- HEQ APK decompiled and analyzed: it explicitly recognizes CD3313 through a hidden android.audio.AudioEffect ASP API. Its framework/native transport is not included in the APK; the other external-DSP adapters remain chip-specific.
