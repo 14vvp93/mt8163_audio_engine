@@ -422,6 +422,16 @@ ParseResult Emulator::write(const std::vector<std::uint8_t>& bytes) {
         state_.master_volume_register_value.has_value()) {
         state_.current_volume_register_value = state_.master_volume_register_value;
     }
+    if (result.command->id == 0xF1) {
+        const bool requested_awake = read_le32(result.command->payload, 0) != 0U;
+        if (!requested_awake) {
+            apply_recovered_shutdown();
+        } else if (state_.shutdown_started) {
+            // command 0xF1 uses the same wakeup routine as PM event codes 0/1.
+            (void)apply_recovered_pm_event(16U, 0U);
+        }
+        state_.dsp_awake = !state_.shutdown_started;
+    }
     if (result.command->id == 0x11) {
         const std::uint32_t mute = read_le32(result.command->payload, 0);
         const std::uint32_t reason = read_le32(result.command->payload, 4);
@@ -660,6 +670,7 @@ bool Emulator::apply_recovered_system_mute_event(std::uint32_t event) {
 void Emulator::apply_recovered_shutdown() {
     // dsp_shutdown() marks shutdown in progress before changing mute state.
     state_.shutdown_started = true;
+    state_.dsp_awake = false;
     state_.master_mute_reason_mask |= (1U << 30U);
 
     // Unlike set_master_mute(), shutdown computes GPIO 393 directly:
@@ -709,6 +720,7 @@ int Emulator::apply_recovered_pm_event(std::uint32_t action,
     const std::uint8_t restored =
         calculate_master_volume_register(step, percentage);
     state_.shutdown_started = false;
+    state_.dsp_awake = true;
     state_.current_volume_register_value = restored;
     state_.master_volume_register_value = restored;
     state_.command_page_cache[(restored >> 4U) & 0x0FU] = restored;
