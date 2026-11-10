@@ -19,7 +19,7 @@ The probe initializes eight cached command bytes:
 | 3 | `0xE0` | Rear-right output at neutral attenuation |
 | 4 | `0x80` | Front-left output at neutral attenuation |
 | 5 | `0xA0` | Front-right output at neutral attenuation |
-| 6 | `0x47` | Control byte; full bitfield semantics are not all resolved |
+| 6 | `0x47` | Control byte; bit 2 is the active-low loudness control (set = disabled, clear = enabled); other bits remain unresolved |
 | 7 | `0x6F` | Bass-control byte; full scale semantics are not all resolved |
 | 8 | `0x7F` | Treble-control byte; full scale semantics are not all resolved |
 
@@ -62,6 +62,10 @@ For commands `0x55` (bass) and `0x5C` (treble), the second argument is decrement
 The resulting transition index is 3..10. The first argument remains opaque because its meaning is not established. The current index is recovered from the current register byte's low nibble: values 0..7 map directly, while values 8..15 map to `22 - nibble`. Each transition step writes `0x60 | cd3313_equalizer[index]` for bass or `0x70 | cd3313_equalizer[index]` for treble, with a 20 ms delay in the driver. The emulator records the byte ramp when the previous register byte is known; otherwise it records only the final target byte.
 
 The startup bytes `0x6F` and `0x7F` are preserved as the initial bass and treble register values. The table and transition mapping are reconstructed from the disassembly; the first command argument and higher-level UI scale remain unresolved.
+
+## Loudness control bit
+
+Command `0x56` updates bit 2 of the cached control byte at offset +17. A nonzero argument enables loudness by clearing bit 2; zero disables it by setting bit 2. From the recovered startup byte `0x47`, enabling produces `0x43` and disabling restores `0x47`. The handler emits no redundant I2C write when the requested state is already active. The emulator models this bit while leaving the remaining control-byte bits uninterpreted.
 
 ## Command-page cache and write journal
 
