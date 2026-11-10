@@ -52,6 +52,21 @@ jobs:
               print(f"{path.relative_to(destination)}\t{path.stat().st_size} bytes")
           PY
 
+      - name: Inventory kernel modules and event-queue symbols
+        run: |
+          mkdir -p extracted-files/_analysis
+          report="extracted-files/_analysis/module-symbol-inventory.txt"
+          : > "$report"
+          while IFS= read -r -d '' module; do
+            {
+              echo "### $module"
+              file "$module"
+              strings -a "$module" | grep -Ei 'handler_thread|post_event_delayed|remove_event|handler_create|audiomux|cd3313' || true
+              echo
+            } >> "$report"
+          done < <(find extracted-files -type f -name '*.ko' -print0)
+          cat "$report"
+
       - name: Upload extracted files
         uses: actions/upload-artifact@v5
         with:
