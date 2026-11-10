@@ -25,6 +25,17 @@ The text/source match report was empty. The binary string report contained gener
 
 The archive also contains `audiocmdservice_atci`. Its previously analyzed strings and imports point to the MediaTek ACF/HCF/BES audio-parameter path; this scan did not find a `/dev/audiomux` or CD3313 reference in it. Do not treat that service as the CD3313 ioctl client.
 
+## Extracted audio HAL archive follow-up
+
+The second safe extraction of files.zip is recorded in [workflow run 42885005088](https://github.com/14march93/mt8163_audio_engine/actions/runs/42885005088). It produced 36 files: audio policy/configuration XML, audio.primary.mt8163.so, MediaTek HIDL audio HAL libraries/services, audiocmdservice_atci, and related audio libraries. It contained no kernel .ko modules and no Android framework JAR.
+
+A targeted strings scan of the supplied binaries found:
+- audio.primary.mt8163.so: generic MediaTek audio/HAL ioctl strings and normal device paths, but no audiomux or cd3313 strings.
+- android.hardware.audio@4.0-impl-mediatek.so and vendor.mediatek.hardware.audio@4.1.so: no audiomux or cd3313 strings.
+- audiocmdservice_atci: /dev/vndbinder, but no audiomux or cd3313 strings.
+
+These are negative string-scan results on stripped binaries, not proof that no indirect ioctl or binder path exists. They do show that the supplied audio HAL archive does not expose an obvious direct CD3313 client. The missing android.audio.AudioEffect framework implementation remains the most useful next artifact to obtain.
+
 ## HEQ APK follow-up: high-level CD3313 caller found
 
 A separate full JADX analysis of HEQ.apk found explicit CD3313 support:
