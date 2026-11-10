@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -64,10 +63,17 @@ public final class MainActivity extends Activity {
                     float db = (value - 240) / 10.0f;
                     gainLabels[channel].setText(CHANNEL_NAMES[channel] + " · " +
                             String.format(Locale.US, "%.1f dB", db));
-                    if (dsp != null) dsp.setChannelGainDb(channel, db);
                 }
                 @Override public void onStartTrackingTouch(SeekBar bar) {}
-                @Override public void onStopTrackingTouch(SeekBar bar) {}
+                @Override public void onStopTrackingTouch(SeekBar bar) {
+                    if (dsp == null) return;
+                    float db = (bar.getProgress() - 240) / 10.0f;
+                    if (dsp.setChannelGainDb(channel, db)) {
+                        status.setText("Profile applied · 50 ms crossfade");
+                    } else {
+                        status.setText("DSP busy · wait for the current profile transition");
+                    }
+                }
             });
             root.addView(gainBars[i]);
         }
@@ -77,9 +83,10 @@ public final class MainActivity extends Activity {
             dspEnabled = !dspEnabled;
             if (dsp != null && dsp.setEnabled(dspEnabled)) {
                 toggle.setText(dspEnabled ? "DSP: ON" : "DSP: OFF");
+                status.setText("Profile applied · 50 ms crossfade");
             } else {
                 dspEnabled = !dspEnabled;
-                Toast.makeText(this, "DSP unavailable", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "DSP busy or unavailable", Toast.LENGTH_SHORT).show();
             }
         });
         root.addView(toggle);
