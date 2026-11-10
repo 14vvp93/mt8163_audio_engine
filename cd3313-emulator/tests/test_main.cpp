@@ -335,6 +335,13 @@ int main() {
         state_emulator.reset();
 
         Emulator startup_emulator;
+        startup_emulator.apply_recovered_probe_setup();
+        check(startup_emulator.state().master_mute_reason_mask == (1U << 31U) &&
+              startup_emulator.register_journal().size() == 1U &&
+              startup_emulator.register_journal().front().command_byte == 0x3FU &&
+              startup_emulator.register_journal().front().source ==
+                  RegisterWriteSource::ProbeGuardWrite,
+              "probe setup records the initial 0x3F guard write and startup mute reason");
         startup_emulator.apply_recovered_initialization_sequence();
         const std::array<std::uint8_t, 8> startup_bytes{{
             0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
@@ -349,18 +356,18 @@ int main() {
               startup_emulator.state().speaker_register_bytes ==
                   std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}},
               "startup model restores neutral four-channel output registers");
-        check(startup_emulator.register_journal().size() == 17U,
-              "event_callback initialization writes 8 bytes twice plus one control-byte rewrite");
+        check(startup_emulator.register_journal().size() == 18U,
+              "probe guard plus event_callback's 8 bytes twice and final control-byte rewrite are journaled");
         for (std::size_t i = 0; i < startup_bytes.size(); ++i) {
-            check(startup_emulator.register_journal()[i].command_byte == startup_bytes[i] &&
-                  startup_emulator.register_journal()[i].source ==
+            check(startup_emulator.register_journal()[i + 1U].command_byte == startup_bytes[i] &&
+                  startup_emulator.register_journal()[i + 1U].source ==
                       RegisterWriteSource::InitializationSequence,
                   "first initialization pass matches recovered byte order");
-            check(startup_emulator.register_journal()[i + 8U].command_byte == startup_bytes[i],
+            check(startup_emulator.register_journal()[i + 9U].command_byte == startup_bytes[i],
                   "second initialization pass repeats the recovered byte order");
         }
         check(startup_emulator.register_journal().back().command_byte == 0x47 &&
-              startup_emulator.register_journal().back().sequence == 17U,
+              startup_emulator.register_journal().back().sequence == 18U,
               "initialization ends by rewriting the 0x47 control byte");
         check(*startup_emulator.state().command_page_cache[0x3] == 0x3F &&
               *startup_emulator.state().command_page_cache[0xC] == 0xC0 &&
