@@ -88,7 +88,7 @@ This confirms that the command path is asynchronous: the userspace-facing ioctl/
 
 ## Open questions before implementing full emulator semantics
 
-1. Recover the exact caller-side structs and ioctl encodings, including the unit of the size field.
+1. Recover the exact caller-side structs and ioctl encodings, including the unit of the size field. The supplied `files.zip` archive scan found no CD3313 userspace client; see [the scan report](CD3313_USERSPACE_CLIENT_SCAN.md).
 2. Establish the user-facing meaning of `0x01` and the two modes selected by `0x20`.
 3. Determine the first argument of `0x55` and `0x5C` from userspace call sites.
 4. Decode the full `0xF0` behavior and any readback/status ABI.
