@@ -64,3 +64,7 @@ See [the command-dispatch reconstruction](../docs/CD3313_COMMAND_DISPATCH.md), [
 The emulator reconstructs the ordered set_input_channel() sequence: ramp attenuation to 0x3F in three-code increments, write the input selector, request GPIO 396/398 levels, update master mute reason 31, then restore the requested master volume unless the selected input is muted while HFP is inactive. The ordinary selector path uses the driver's 8 ms delay; mixing enable selects channel 1 with a zero delay. Inspect Emulator::input_transition_journal() for ordered attenuation, selector, GPIO, mute, and delay events.
 
 This is an offline static model. Delays are nominal driver arguments, not measured bus timings, and GPIO events are requested raw output levels rather than hardware readback.
+
+### Master mute and GPIO 393
+
+The recovered `set_master_mute()` path updates a reason bitmask and computes GPIO 393's requested raw level as `(mute && !hfp_active) || reason24_is_set || !acc_on`. Command `0x11` with reason 2 updates the ACC latch. The probe initializes ACC on before startup mute. System notifier events 2 and 3 clear reasons 30 and 24 respectively. The emulator exposes these notifier operations and records GPIO 393 writes separately from aggregate mute state. Raw GPIO polarity is modeled; board-level signal meaning is not inferred.
