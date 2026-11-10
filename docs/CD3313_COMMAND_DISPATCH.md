@@ -222,3 +222,25 @@ The `dsp_shutdown()` disassembly at `0xFF4` is a separate path from `set_master_
 5. Send the final stack-local byte `0x3F` through `i2c_master_send()`, then update the driver's cached command-page byte.
 
 The shutdown GPIO expression is recovered directly from the conditional sequence and global symbols: `hfp_active` at `.bss+0x20`, `acc_on` at `.data+0x38`, and reason 24 in `master_mute` at `.bss+0x18`. It must not be replaced with the ordinary `set_master_mute()` expression. The host model journals requested event removals and the final write; it cannot prove queue cancellation or physical GPIO/I2C behavior.
+
+
+### Reconstructed PM notifier and wakeup path
+
+The static pm_event_notify() disassembly at 0x10EC handles only notifier action 16. Other action values return success without changing state. For action 16, the event code is read from the notifier payload at offset +4:
+
+- Codes 0 and 1 enter the wakeup branch only when the driver's shutdown flag is set. Their external semantic labels are not established by the available binary, so they remain numeric event codes.
+- Codes 2, 3, and 4 call dsp_shutdown().
+- Values greater than 4 return -EINVAL (-22).
+
+The recovered dsp_wakeup.part.1() path clears the shutdown flag and recalculates the cached master-volume byte from master_volume and volume_percentage. The percentage is clamped to 0..100 for this calculation; attenuation is (100 - percentage) / 3, added to the selected entry in the 41-byte cd3313_voltable_40 table and capped at 0x3F. A zero master-volume step selects 0x3F. This updates the driver's cached byte; it is not itself an immediate I2C write.
+
+Wakeup then requests these event operations in order:
+
+1. Remove queued event 0.
+2. Post event 0 with a 50 ms delay.
+3. Remove queued event 2.
+4. Post event 2 with a 1200 ms delay.
+5. Post event 2 with a 1500 ms delay.
+
+The host emulator exposes apply_recovered_pm_event(action, event_code) and a separate wakeup journal for these requested queue operations. It intentionally records both delayed event-2 posts without assuming whether the kernel event-queue implementation keeps both, replaces one, or coalesces them. Event 2 later clears master-mute reason 30 in event_callback(). The emulator does not execute kernel workqueues, prove callback timing, or demonstrate physical wakeup behavior.
+
