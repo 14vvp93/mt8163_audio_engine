@@ -24,7 +24,27 @@ Static DEX string/class inspection identifies a fairly broad head-unit equalizer
 - DSP-specific Java adapter classes are present for `Ak7604`, `CSC37534`, `FY7604`, and `SI47925`, plus `NativeHelper` and `IEq`.
 - The DEX contains chip-specific command identifiers and settings/file-key constants such as `FY_CMD_SUB_ID_SET_EQ_EFECT`, `FY_CMD_SUB_ID_SET_PEQ_32ALL`, `FY_CMD_SUB_ID_SET_PEQ_SINGLE`, `FY_DSP_BAND_FILE`, `EXT_DSP_BAND_FILE`, and corresponding balance/delay/attenuation/surround/HLPF keys.
 
-## Relevance to MT8163 Audio Engine
+## CD3313 support discovered in the decompiled application
+
+The full JADX output contains a concrete CD3313 selection path that was not visible in the earlier string-only scan:
+
+- EqUtils defines ASP_CHIP_3313 = "cd3313".
+- EqUtils.getEqChipType() reads the Android system property ro.hw.dsp.chip.
+- EqUtils.hasAsp() returns true for either pt2348 or cd3313.
+- MainActivity uses the ASP UI path when hasAsp() is true and creates the ASP equalizer and balance fragments.
+- AspSettings obtains android.audio.AudioEffect.getInstance() and calls the vendor methods setBalance(FL, FR, RL, RR), setLoud(), setSubWoofer(), setBassBoost(), setTreble(), and setMasterVolume(left, right).
+
+This is strong evidence that HEQ was designed to support a device configured as CD3313 through a vendor Android framework API. It is not merely a generic EQ app with unrelated DSP backends.
+
+The ASP equalizer presents 12 UI bands, but AspFragment does not send 12 independent bands to the chip. It averages bands 0..5 into one bass value and bands 6..11 into one treble value, then calls setAspBassBoost() and setAspTreble(). The 12-band values are also persisted as UI state. This indicates that the CD3313 ASP path exposes coarse bass/treble hardware controls rather than a true 12-band hardware PEQ.
+
+The balance path computes four integer speaker levels in FL/FR/RL/RR order and passes them to setBalance(). This closely matches the kernel driver's 0x15 four-speaker command shape and 0..15 speaker attenuation lookup. The semantic match is strong, but the actual mapping through android.audio.AudioEffect has not yet been proven.
+
+The APK does not contain the implementation of android.audio.AudioEffect. The vendor framework class and its native/service transport are outside the decompiled APK. In particular:
+- No direct /dev/audiomux open or ioctl call appears in the HEQ Java code.
+- The framework implementation must be recovered before equating each Java method with a specific kernel command.
+- setBassBoost(value, 200) and setTreble(value, Integer.MAX_VALUE) pass two arguments; the optimized kernel 0x55/0x5C handlers use the second payload word for their transition index. The wrapper may transform or reorder values, but that behavior is not available here.
+- setMasterVolume(left, right) receives two floats, while the recovered kernel state currently exposes one volume-percentage global. Do not assume a direct one-to-one ioctl mapping.
 
 ### Useful design references
 
@@ -36,10 +56,10 @@ Static DEX string/class inspection identifies a fairly broad head-unit equalizer
 
 ### What it does not prove
 
-- No evidence from this APK alone that it supports our CD3313 driver, `/dev/audiomux`, its ioctl ABI, or our MT8163 HAL.
+- The APK explicitly supports the CD3313 chip family through the hidden android.audio.AudioEffect API. However, it does not expose the implementation or prove a direct /dev/audiomux/ioctl transport, nor does it prove compatibility with every MT8163 firmware build.
 - The identified external chip adapters target other DSP families (AK7604, CSC37534, FY7604, SI47925); they are not drop-in CD3313 drivers.
 - No native `lib/` payload was found, but that does not rule out vendor services, framework APIs, shell/root file access, or external system components.
-- Static string inspection does not reveal complete method bodies, exact file paths, wire formats, coefficient scaling, or runtime behavior. Those require DEX decompilation and targeted code-path analysis.
+- Static DEX decompilation reveals the high-level CD3313 ASP call sites, but not the hidden framework implementation, exact file paths, ioctl wire format, coefficient scaling, or runtime behavior. Those require the matching system framework/native service.
 - The APK's signing/redistribution rights and source provenance have not been established. Do not copy code or assets into our project until licensing is verified.
 
 ## Recommended next steps
