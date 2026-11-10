@@ -149,6 +149,38 @@ int main() {
                   std::array<std::uint8_t, 4>{{0x80, 0xA2, 0xC4, 0xFF}}),
               "speaker register image uses recovered prefixes and table");
 
+        check(channel_state.command_page_cache[0x9].has_value() &&
+              *channel_state.command_page_cache[0x9] == 0x9F &&
+              channel_state.command_page_cache[0xA].has_value() &&
+              *channel_state.command_page_cache[0xA] == 0xA2 &&
+              channel_state.command_page_cache[0xC].has_value() &&
+              *channel_state.command_page_cache[0xC] == 0xC4 &&
+              channel_state.command_page_cache[0xF].has_value() &&
+              *channel_state.command_page_cache[0xF] == 0xFF,
+              "command-page cache tracks the four confirmed speaker command bytes");
+        check(!channel_state.command_page_cache[0x0].has_value() &&
+              state_emulator.register_journal().size() == 4U,
+              "unobserved command pages remain unknown and four writes are journaled");
+        check(state_emulator.register_journal()[0].sequence == 1U &&
+              state_emulator.register_journal()[0].source ==
+                  RegisterWriteSource::IoctlFourChannelCommand &&
+              state_emulator.register_journal()[0].command_byte == 0x9F,
+              "first speaker write has a deterministic journal record");
+
+        state_emulator.write_raw_command_byte(0x6A);
+        check(state_emulator.state().command_page_cache[0x6].has_value() &&
+              *state_emulator.state().command_page_cache[0x6] == 0x6A,
+              "raw command-byte path updates the matching command page");
+        check(state_emulator.register_journal().size() == 5U &&
+              state_emulator.register_journal().back().source ==
+                  RegisterWriteSource::RawCommandByte &&
+              !state_emulator.register_journal().back().previous_command_byte.has_value(),
+              "raw register command is journaled separately from ioctl commands");
+        state_emulator.write_raw_command_byte(0x6B);
+        check(state_emulator.register_journal().back().previous_command_byte == 0x6A &&
+              *state_emulator.state().command_page_cache[0x6] == 0x6B,
+              "register journal preserves the previous cached byte on overwrite");
+
         const auto make_two_word_command = [](std::uint8_t id,
                                                std::uint32_t first,
                                                std::uint32_t second) {
