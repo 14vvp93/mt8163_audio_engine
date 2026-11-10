@@ -14,10 +14,14 @@ int main() {
     using namespace cd3313;
     try {
         check(known_write_commands().size() == 12,
-              "expected 12 recovered command/minimum-size pairs");
+              "expected 12 recovered command specifications");
         check(known_write_commands()[1].id == 0x03 &&
               known_write_commands()[1].minimum_size_words == 3,
               "0x03 minimum size field");
+        check(known_write_commands()[6].id == 0x15 &&
+              known_write_commands()[6].minimum_size_words == 2 &&
+              known_write_commands()[6].required_size_words == 4,
+              "0x15 retains driver minimum but requires four argument words");
 
         const DriverCommand volume{0x10, 1, {0x28, 0x00, 0x00, 0x00}};
         const auto encoded = encode_driver_command(volume);
@@ -42,7 +46,23 @@ int main() {
                   ParseError::UnknownCommand, "unknown command");
         check(parse_driver_command({0x00, 0x03, 0x02, 0x40, 0, 0, 0, 0,
                                     0, 0, 0, 0, 0, 0, 0, 0}).error ==
-                  ParseError::SizeFieldTooSmall, "size field below minimum");
+                  ParseError::SizeFieldTooSmall, "size field below driver minimum");
+        check(parse_driver_command({0x00, 0x15, 0x02, 0x40,
+                                    0, 0, 0, 0, 0, 0, 0, 0}).error ==
+                  ParseError::InsufficientArgumentData,
+              "0x15 must reject two words although the driver table accepts them");
+        check(parse_driver_command({0x00, 0x15, 0x03, 0x40,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0}).error ==
+                  ParseError::InsufficientArgumentData,
+              "0x15 must reject three words because the handler reads four arguments");
+        const std::vector<std::uint8_t> fader_frame{
+            0x00, 0x15, 0x04, 0x40,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        };
+        check(static_cast<bool>(parse_driver_command(fader_frame)),
+              "0x15 accepts four complete 32-bit channel arguments");
         check(parse_driver_command({0x00, 0x10, 0x01, 0x40, 0x28, 0, 0}).error ==
                   ParseError::PayloadSizeMismatch, "truncated payload");
         check(static_cast<bool>(parse_driver_command(
