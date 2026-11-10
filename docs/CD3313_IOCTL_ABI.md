@@ -51,6 +51,10 @@ The event_callback() branches for 0x56 (loudness) and 0xA3 (subwoofer GPIO) load
 
 This is an uninitialized-heap-data use in the callback path. It is not a confirmed privilege escalation or arbitrary memory disclosure, but it is a real malformed-request hazard. The emulator deliberately rejects 0x56 and 0xA3 frames that do not contain one complete 32-bit payload word; it does not reproduce the driver's stale-memory behavior.
 
+The 0x15 four-channel level handler has a related but separate mismatch: cmd_len_list requires only two words, and the callback checks only that the size field is greater than one before loading four 32-bit indices at offsets +4, +8, +12, and +16. A two- or three-word request therefore leaves one or two indices sourced from stale slab contents. The handler then uses each value as an offset into the 16-entry cd3313_speaker table; no complete 0..15 validation of all four values was found in this branch. Invalid indices can read beyond that table and feed an unintended low-five-bit value into the I²C register write. The emulator imposes the safe contract: four complete words, every index in 0..15.
+
+
+
 ### Command 0xF1 power transition
 
 Unlike 0x56/0xA3, command 0xF1 is present in cmd_len_list with a one-word minimum, and its callback checks the size before reading the payload. The first word is boolean-like: zero calls dsp_shutdown() unconditionally; nonzero requests wakeup and calls dsp_wakeup.part.1() only if the driver's shutdown flag is set. A nonzero request while already awake does not replay the wakeup sequence. The emulator now models this command using the recovered shutdown and wakeup journals.
