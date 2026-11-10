@@ -60,6 +60,13 @@ public final class NativeDsp implements AutoCloseable {
                 && nativeApplyChannelEq(nativeHandle, channel, gainsDb);
     }
 
+    /** Configures software bass management. LR order: 2/4/6/8 = 12/24/36/48 dB/oct. */
+    public synchronized boolean configureBassManagement(boolean enabled,
+            float crossoverHz, int order, float subGainDb) {
+        return nativeHandle != 0L && nativeConfigureBassManagement(
+                nativeHandle, enabled, crossoverHz, order, subGainDb);
+    }
+
     /** Balance: -1=left, +1=right. Fader: -1=front, +1=rear. */
     public synchronized boolean applyBalanceFader(float balance, float fader) {
         return nativeHandle != 0L && nativeApplyBalanceFader(nativeHandle, balance, fader);
@@ -114,6 +121,7 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeSetEnabled(long handle, boolean enabled);
     private static native boolean nativeSetChannelGainDb(long handle, int channel, float gainDb);
     private static native boolean nativeApplyQuadProfile(long handle, float[] packedProfile);
+    private static native boolean nativeConfigureBassManagement(long handle, boolean enabled, float crossoverHz, int order, float subGainDb);
     private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);\n    private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
