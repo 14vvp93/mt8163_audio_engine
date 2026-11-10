@@ -43,7 +43,7 @@ The driver's `cmd_write()` path is different: it parses hexadecimal text with ba
 - Userspace `/dev/audiomux` controller and fully confirmed ioctl type/magic compatibility.
 - Complete CD3313 physical register map and hardware readback.
 - Full semantics for every command; unknown fields remain opaque.
-- Exact hexadecimal text parser for raw cmd_write() input and the driver's permissive error/return behavior.
+- Exact kernel I²C transfer-failure behavior; the emulator assumes a successful one-byte transfer after safe text parsing.
 - I²C timing, electrical behavior, bus failures, and real GPIO effects.
 - Device-level verification on the MT8163 head unit.
 
