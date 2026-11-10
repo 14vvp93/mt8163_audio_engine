@@ -38,6 +38,12 @@ public final class MainActivity extends Activity {
     private int crossoverOrder = 4;
     private float subGainDb = 0.0f;
     private boolean subPhaseInverted = false;
+    private boolean bassEnhancementEnabled = false;
+    private float bassEnhancementAmount = 0.50f;
+    private float bassEnhancementFrequencyHz = 90.0f;
+    private boolean clarityEnhancementEnabled = false;
+    private float clarityEnhancementAmount = 0.30f;
+    private float clarityEnhancementFrequencyHz = 2500.0f;
     private boolean dspEnabled = true;
     private volatile boolean profilePumpRunning;
     private Thread profilePump;
@@ -257,6 +263,90 @@ public final class MainActivity extends Activity {
         });
         root.addView(phaseButton);
 
+        TextView enhancementTitle = text("PSYCHOACOUSTIC ENHANCEMENT", 18, Color.WHITE);
+        enhancementTitle.setPadding(0, dp(22), 0, dp(8));
+        root.addView(enhancementTitle);
+
+        Button bassEnhancementToggle = button("BASS ENHANCEMENT: OFF");
+        bassEnhancementToggle.setOnClickListener(v -> {
+            bassEnhancementEnabled = !bassEnhancementEnabled;
+            bassEnhancementToggle.setText(bassEnhancementEnabled
+                    ? "BASS ENHANCEMENT: ON" : "BASS ENHANCEMENT: OFF");
+            applyEnhancements();
+        });
+        root.addView(bassEnhancementToggle);
+
+        TextView bassAmountLabel = text("Bass amount · 50%", 14, Color.WHITE);
+        root.addView(bassAmountLabel);
+        SeekBar bassAmountBar = new SeekBar(this);
+        bassAmountBar.setMax(100);
+        bassAmountBar.setProgress(50);
+        bassAmountBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                bassEnhancementAmount = value / 100.0f;
+                bassAmountLabel.setText("Bass amount · " + value + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyEnhancements(); }
+        });
+        root.addView(bassAmountBar);
+
+        TextView bassFrequencyLabel = text("Bass focus · 90 Hz", 14, Color.WHITE);
+        root.addView(bassFrequencyLabel);
+        SeekBar bassFrequencyBar = new SeekBar(this);
+        bassFrequencyBar.setMax(120);
+        bassFrequencyBar.setProgress(50);
+        bassFrequencyBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                bassEnhancementFrequencyHz = 40.0f + value;
+                bassFrequencyLabel.setText(String.format(Locale.US,
+                        "Bass focus · %.0f Hz", bassEnhancementFrequencyHz));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyEnhancements(); }
+        });
+        root.addView(bassFrequencyBar);
+
+        Button clarityToggle = button("CLARITY ENHANCEMENT: OFF");
+        clarityToggle.setOnClickListener(v -> {
+            clarityEnhancementEnabled = !clarityEnhancementEnabled;
+            clarityToggle.setText(clarityEnhancementEnabled
+                    ? "CLARITY ENHANCEMENT: ON" : "CLARITY ENHANCEMENT: OFF");
+            applyEnhancements();
+        });
+        root.addView(clarityToggle);
+
+        TextView clarityAmountLabel = text("Clarity amount · 30%", 14, Color.WHITE);
+        root.addView(clarityAmountLabel);
+        SeekBar clarityAmountBar = new SeekBar(this);
+        clarityAmountBar.setMax(100);
+        clarityAmountBar.setProgress(30);
+        clarityAmountBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                clarityEnhancementAmount = value / 100.0f;
+                clarityAmountLabel.setText("Clarity amount · " + value + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyEnhancements(); }
+        });
+        root.addView(clarityAmountBar);
+
+        TextView clarityFrequencyLabel = text("Clarity focus · 2.5 kHz", 14, Color.WHITE);
+        root.addView(clarityFrequencyLabel);
+        SeekBar clarityFrequencyBar = new SeekBar(this);
+        clarityFrequencyBar.setMax(550);
+        clarityFrequencyBar.setProgress(100);
+        clarityFrequencyBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                clarityEnhancementFrequencyHz = 1500.0f + value * 10.0f;
+                clarityFrequencyLabel.setText(String.format(Locale.US,
+                        "Clarity focus · %.1f kHz", clarityEnhancementFrequencyHz / 1000.0f));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyEnhancements(); }
+        });
+        root.addView(clarityFrequencyBar);
+
         Button run = button("RUN PCM TEST · 512 FRAMES");
         run.setOnClickListener(v -> runPcmTest());
         root.addView(run);
@@ -265,6 +355,18 @@ public final class MainActivity extends Activity {
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
         setContentView(new ScrollView(this) {{ setFillViewport(true); addView(root); }});
+    }
+
+    private void applyEnhancements() {
+        if (dsp == null) return;
+        if (dsp.configureEnhancements(bassEnhancementEnabled,
+                bassEnhancementAmount, bassEnhancementFrequencyHz,
+                clarityEnhancementEnabled, clarityEnhancementAmount,
+                clarityEnhancementFrequencyHz)) {
+            status.setText("Bass / Clarity profile applied · 50 ms crossfade");
+        } else {
+            status.setText("DSP busy · wait for the current profile transition");
+        }
     }
 
     private void applyBassManagement() {
