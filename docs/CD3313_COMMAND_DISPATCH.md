@@ -151,3 +151,6 @@ The additional `dsp_probe()` disassembly identifies a successful guard write of 
 The `event_callback()` event-0 loop sends the eight cached bytes twice in that order, with the driver's per-write delays, then writes the byte at offset +17 (`0x47`) one additional time. This gives 17 writes in event 0, plus the earlier probe guard write. The emulator models the successful probe write and mute bit, then replays the 17 event-0 bytes into its command-page cache and write journal. It does not emulate I2C errors, electrical timing, or GPIO hardware.
 
 The four speaker bytes are the neutral attenuation settings: FL=`0x80`, FR=`0xA0`, RL=`0xC0`, RR=`0xE0`. The probe's master-volume state starts at step 0, with the percentage initialized to 100 and the guard register value `0x3F`. This is static reconstruction from the supplied module, not a live hardware readback.
+
+
+For the reconstructed probe guard write, exact event-0 initialization sequence, 16-page cache model, and master-volume lookup/ramp implementation, see [CD3313 Register Image Emulator](CD3313_REGISTER_IMAGE.md). The extended static-analysis artifact [run 42852859151](https://github.com/14march93/mt8163_audio_engine/actions/runs/42852859151) includes the `dsp_probe` disassembly, ELF section map, relocations, and `.rodata`/`.data` dumps used to recover these values.
