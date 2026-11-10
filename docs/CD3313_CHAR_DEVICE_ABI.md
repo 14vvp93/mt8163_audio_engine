@@ -99,6 +99,13 @@ Important observed behavior:
 - The i2c_master_send() return value is ignored.
 - The cache is updated after the send call without checking whether the I²C transfer succeeded. A failed transfer can therefore leave the software cache inconsistent with the chip.
 - The function returns the original userspace count even when hex parsing fails. It also copies no more than 12 bytes even if the caller supplied a longer buffer.
+
+### Static string-termination audit
+
+The function zeroes exactly 12 bytes and gives simple_write_to_buffer() an available size of 12, then passes that buffer to kstrtouint(). The Linux 4.9.117 implementation of simple_write_to_buffer() copies up to all 12 available bytes and does not append a NUL terminator; kstrtouint() documents that its input must be NUL-terminated. The disassembly places the stack protector immediately after this 12-byte buffer. Therefore a full 12-byte input consisting of valid hexadecimal digits can make the parser inspect beyond the local buffer while searching for its terminator. This is a static one-byte-or-more stack-read hazard, not evidence of a write or a demonstrated exploitable leak. The vendor kernel's exact helper implementations should be checked before making a security-impact claim.
+
+References: [Linux 4.9.117 simple_write_to_buffer()](https://github.com/gregkh/linux/blob/v4.9.117/fs/libfs.c) and [Linux 4.9.117 kstrtouint()/kstrtoull()](https://github.com/gregkh/linux/blob/v4.9.117/lib/kstrtox.c).
+
 - The raw write path does not run the high-level command dispatcher or its argument validation.
 
 The emulator's write_raw_command_byte() models the one-byte command/cache behavior. It does not yet model the permissive text parser or the driver's error-reporting quirks.
