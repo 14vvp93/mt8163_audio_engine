@@ -35,6 +35,8 @@ struct EmulatorState {
     std::array<std::uint8_t, 7> input_gain{};
     // Two-bit selector recovered from set_input_channel() and its .rodata table.
     std::optional<std::uint8_t> input_selector_code;
+    // Current physical-volume command byte tracked separately from the requested target.
+    std::optional<std::uint8_t> current_volume_register_value;
     // Raw output levels requested by set_input_channel(); not physical GPIO readback.
     std::optional<bool> input_gpio_396_level;
     std::optional<bool> input_gpio_398_level;
@@ -51,6 +53,23 @@ struct EmulatorEvent {
     DriverCommand command;
     EmulatorState before;
     EmulatorState after;
+};
+
+enum class InputTransitionKind {
+    AttenuationWrite,
+    SelectorWrite,
+    Gpio396Write,
+    Gpio398Write,
+    MasterMuteReason31,
+    Delay
+};
+
+struct InputTransitionEvent {
+    std::uint64_t sequence{};
+    InputTransitionKind kind{};
+    std::uint32_t channel{};
+    std::uint32_t value{};
+    std::uint32_t delay_ms{};
 };
 
 enum class RegisterWriteSource {
@@ -92,17 +111,23 @@ public:
     const std::vector<RegisterWriteEvent>& register_journal() const {
         return register_journal_;
     }
+    const std::vector<InputTransitionEvent>& input_transition_journal() const {
+        return input_transition_journal_;
+    }
     void reset();
 
 private:
     void record_command_byte(std::uint8_t command_byte, RegisterWriteSource source);
+    void record_input_switch(std::uint32_t channel, std::uint32_t delay_ms);
     std::optional<DriverCommand> last_command_;
     std::uint64_t accepted_commands_{0};
     std::uint64_t rejected_commands_{0};
     std::uint64_t next_sequence_{1};
     std::uint64_t next_register_sequence_{1};
+    std::uint64_t next_input_transition_sequence_{1};
     EmulatorState state_{};
     std::vector<EmulatorEvent> journal_;
     std::vector<RegisterWriteEvent> register_journal_;
+    std::vector<InputTransitionEvent> input_transition_journal_;
 };
 } // namespace cd3313
