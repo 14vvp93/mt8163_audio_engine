@@ -497,6 +497,36 @@ bool Emulator::apply_recovered_system_mute_event(std::uint32_t event) {
     return true;
 }
 
+void Emulator::apply_recovered_shutdown() {
+    // dsp_shutdown() marks shutdown in progress before changing mute state.
+    state_.shutdown_started = true;
+    state_.master_mute_reason_mask |= (1U << 30U);
+
+    // Unlike set_master_mute(), shutdown computes GPIO 393 directly:
+    // (!hfp_active || !acc_on || reason24_is_set).
+    const bool gpio393 = !state_.hfp_active || !state_.acc_on ||
+                         (state_.master_mute_reason_mask & (1U << 24U)) != 0U;
+    state_.gpio_393_level = gpio393;
+    shutdown_journal_.push_back(ShutdownEvent{
+        next_shutdown_sequence_++, ShutdownEventKind::Gpio393Write,
+        gpio393 ? 1U : 0U
+    });
+
+    // The driver requests removal of event IDs 0 and 1, in this order.
+    shutdown_journal_.push_back(ShutdownEvent{
+        next_shutdown_sequence_++, ShutdownEventKind::RemoveQueuedEvent, 0U
+    });
+    shutdown_journal_.push_back(ShutdownEvent{
+        next_shutdown_sequence_++, ShutdownEventKind::RemoveQueuedEvent, 1U
+    });
+
+    // dsp_shutdown() sends its stack-local final byte (0x3F) over I2C.
+    record_command_byte(0x3FU, RegisterWriteSource::ShutdownFinalWrite);
+    shutdown_journal_.push_back(ShutdownEvent{
+        next_shutdown_sequence_++, ShutdownEventKind::FinalI2cWrite, 0x3FU
+    });
+}
+
 void Emulator::apply_recovered_initialization_sequence() {
     for (unsigned pass = 0; pass < 2U; ++pass) {
         for (const auto command_byte : kRecoveredInitializationBytes)
@@ -524,9 +554,11 @@ void Emulator::reset() {
     next_sequence_ = 1;
     next_register_sequence_ = 1;
     next_input_transition_sequence_ = 1;
+    next_shutdown_sequence_ = 1;
     state_ = EmulatorState{};
     journal_.clear();
     register_journal_.clear();
     input_transition_journal_.clear();
+    shutdown_journal_.clear();
 }
 } // namespace cd3313
