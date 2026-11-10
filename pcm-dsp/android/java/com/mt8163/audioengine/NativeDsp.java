@@ -53,6 +53,11 @@ public final class NativeDsp implements AutoCloseable {
                 && nativeApplyQuadProfile(nativeHandle, packedProfile);
     }
 
+    /** Balance: -1=left, +1=right. Fader: -1=front, +1=rear. */
+    public synchronized boolean applyBalanceFader(float balance, float fader) {
+        return nativeHandle != 0L && nativeApplyBalanceFader(nativeHandle, balance, fader);
+    }
+
     /** Creates a flat, disabled 32-band PEQ profile for each output channel. */
     public static float[] createDefaultQuadProfile() {
         float[] profile = new float[QUAD_PROFILE_FLOAT_COUNT];
@@ -102,5 +107,6 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeSetEnabled(long handle, boolean enabled);
     private static native boolean nativeSetChannelGainDb(long handle, int channel, float gainDb);
     private static native boolean nativeApplyQuadProfile(long handle, float[] packedProfile);
+    private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
