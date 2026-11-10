@@ -1,0 +1,24 @@
+name: Test PCM DSP core
+
+on:
+  push:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/test-pcm-dsp.yml"
+  pull_request:
+    paths:
+      - "pcm-dsp/**"
+      - ".github/workflows/test-pcm-dsp.yml"
+  workflow_dispatch:
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S pcm-dsp -B build/pcm-dsp -DPCM_DSP_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build/pcm-dsp --parallel
+      - name: Test
+        run: ctest --test-dir build/pcm-dsp --output-on-failure
