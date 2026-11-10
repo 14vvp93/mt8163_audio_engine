@@ -17,7 +17,7 @@ This library is an independent, host-buildable C++17 DSP core. It is not yet con
 - interleaved Float32 FL/FR/RL/RR processing;
 - 44.1 kHz and 48 kHz;
 - 32 independent biquad slots per channel (128 possible channel/filter stages);
-- per-channel gain and independent filter settings;
+- per-channel gain, independent filter settings, and integrated 0–20 ms time alignment;
 - peaking, low/high shelf, second-order HPF/LPF;
 - per-channel peak envelope and configurable limiter ceiling;
 - bit-exact Float32 bypass;
@@ -31,7 +31,7 @@ The dual-bank transition is intentionally conservative: the new filter bank star
 
 Call configure() before processing. A sample-rate change resets filter and limiter state. Unsupported rates are rejected. Parameters must remain immutable for the duration of each process call. Parameter snapshots and thread-safe handoff belong in the future Android adapter, not in the audio callback.
 
-The Float32 API expects normalized samples. When limiting is enabled, each channel is constrained to the configured ceiling. With limiting disabled, output is still hard-clamped to [-1, 1] before handing samples to a PCM sink.
+The Float32 API expects normalized samples. Per-channel delay is configured in milliseconds and is applied after EQ and before the output limiter. Delay-tap changes crossfade over one process block. When limiting is enabled, each channel is constrained to the configured ceiling. With limiting disabled, output is still hard-clamped to [-1, 1] before handing samples to a PCM sink.
 
 ## Current limits
 
