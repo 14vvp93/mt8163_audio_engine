@@ -74,11 +74,11 @@ These are protocol status/command identifiers in the driver, not Linux ioctl req
 | STATUS_WRITE_CMD_RECOVRY_STATUS | 240 | 0xF0 |
 | STATUS_WRITE_CMD_WAKE_SLEEP_CONTROL_STATUS | 241 | 0xF1 |
 
-## Command payload lengths recovered from `cmd_len_list`
+## Minimum size-field thresholds recovered from `cmd_len_list`
 
-DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: command/status byte followed by expected payload length.
+DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: command ID followed by the minimum accepted value of the command header's 14-bit size field. These values are **not proven payload byte lengths**. The dispatcher compares the extracted size field against these thresholds.
 
-| Command | Payload length |
+| Command | Minimum size-field value |
 |---:|---:|
 | 0x01 | 1 |
 | 0x03 | 3 |
@@ -93,7 +93,7 @@ DWARF preserves the exact 96-byte constant array. It is a sequence of 12 pairs: 
 | 0xF0 | 1 |
 | 0xF1 | 1 |
 
-This table is especially useful for building a safe protocol encoder/parser. Do not assume that every identifier in the read/write enums is accepted by this particular write-length table.
+This table is useful for validating the inner driver-command header. Do not assume that every identifier in the read/write enums is accepted by this particular table. The dispatcher also contains special branches for `0x56` and `0xA3`, which are not present in these 12 pairs.
 
 ## Register readback decoding documented by the driver
 
@@ -134,13 +134,13 @@ The corrected analysis run successfully disassembled the module as ARM (`elf32-l
 
 - `cmd_write()` parses the userspace write buffer as an unsigned decimal integer with `kstrtouint()`, truncates it to one byte, and sends that single byte with `i2c_master_send()`. It also updates a cached register byte selected using the high nibble. This path is a raw one-byte register write interface, not the framed multi-byte command protocol.
 - `cd3313_write_reg()` sends exactly one byte per call using `i2c_master_send()`, then updates the driver's cached register image.
-- `cmd_ioctl()` extracts the ioctl direction from bits 30–31, the request number from bits 8–15, and the encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy.
+- `cmd_ioctl()` extracts the outer Linux ioctl direction from bits 30–31, request number from bits 8–15, and encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy. Separately, `event_callback()` reads the first 32-bit word of that queued buffer as an inner command header and extracts its command ID from bits 8–15 and size field from bits 16–29. Do not confuse the outer ioctl request with this inner driver-command header.
 - The read-direction path accepts request number `0xF0` and copies an 8-byte object from driver state back to userspace. Other read request numbers return an error.
 - For write requests with command byte `0x55` or `0x5C`, the ioctl path waits 30 ms after posting the event. This is a driver timing behavior, not a payload semantic.
 - `set_master_volume()` changes the hardware volume register incrementally, one step per I²C write, with a delay between steps. It uses a 0–63 internal attenuation scale and applies a separate percentage-derived adjustment. The exact user-facing mapping still needs correlation with the constant volume table and call sites.
 - `set_master_mute()` manipulates a bit in a software mute mask and controls GPIO 393 (`0x189`) through `gpiod_set_raw_value()`. This indicates master mute includes an external GPIO/amplifier-enable path, not only an I²C register write.
 
-These findings narrow the ABI and behavior, but they do not yet identify the complete ioctl magic/type contract, every event payload structure, or all command-to-register mappings. Those must be recovered before implementing hardware writes in the emulator.
+The queued command buffer has a 32-bit inner header followed by command data. The handler reads command arguments as 32-bit values at offsets +4, +8, +12, and +16. The precise meaning of every argument is documented with confidence labels in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The complete outer ioctl magic/type contract and exact encoded-size units still need to be recovered before implementing hardware writes in the emulator.
 
 ## Important implementation consequence
 
@@ -152,7 +152,7 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 
 ## Remaining reverse-engineering work
 
-1. Recover exact command packet layout and ioctl argument semantics from `cmd_ioctl()`, `cmd_ioctl_read_process()`, `do_cmd_write()`, and `cmd_write()`.
+1. Recover the exact outer ioctl magic/type contract and the meaning/unit of its encoded-size field; the inner 32-bit command header and argument offsets are now established.
 2. Decode the 41-byte volume curve and the speaker/equalizer arrays.
 3. Map each status command to the register writes performed by its handler.
 4. Reconstruct channel numbering and channel-to-chip mapping.
