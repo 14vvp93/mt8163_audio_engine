@@ -194,4 +194,18 @@ The emulator records the ordered sequence as InputTransitionEvent entries (atten
 
 The hfp_active exception is modeled exactly as the disassembly's branch condition: an input mute does not keep the volume attenuation forced at 0x3F while HFP is active. This does not imply that master mute reason 31 is cleared; mute reasons remain independent.
 
-The GPIO 393 output inside set_master_mute() is intentionally not synthesized by this transition journal. Its raw level also depends on the complete master-mute mask, hfp_active, and acc_on state; this model records the reason-31 state but does not claim a complete GPIO 393 electrical model.
+
+
+### Master mute, ACC latch, and GPIO 393
+
+The `set_master_mute(mute, reason)` ARM32 disassembly at `0x63c` recovers the raw GPIO 393 output expression:
+
+`gpio393_raw = (mute && !hfp_active) || master_mute_reason_mask[24] || !acc_on`
+
+The function first sets or clears the requested reason bit in the 32-bit `master_mute` mask, then evaluates this expression and calls `gpiod_set_raw_value()` for GPIO 393. This is the raw electrical level requested by the driver; the board-level meaning of HIGH/LOW is not inferred.
+
+The event callback's command `0x11` path has a special case for reason 2: it copies the mute argument into the global `acc_on` latch before calling `set_master_mute()`. Therefore reason 2 is also the recovered ACC-state input. The probe path initializes `acc_on = 1` before asserting startup mute reason 31. The emulator now tracks `acc_on` and the last requested raw GPIO 393 level separately from the aggregate `master_muted()` helper.
+
+System notifier callback event 2 clears reason 30; event 3 clears reason 24. The emulator exposes `apply_recovered_system_mute_event(2|3)` for these two recovered clear operations. Unknown notifier event IDs are rejected. GPIO 393 is recalculated after each callback. The shutdown path separately recomputes the same GPIO using its own shutdown branch and is not treated as a normal `set_master_mute()` call.
+
+The transition journal now includes `Gpio393Write` after the reason-31 update. This models requested raw output levels, not physical readback or measured timing.
