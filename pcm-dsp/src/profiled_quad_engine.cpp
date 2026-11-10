@@ -8,6 +8,7 @@ namespace pcm_dsp {
 bool ProfiledQuadEngine::prepare_engine(std::size_t slot,
                                         const AudioProfile& profile) {
     QuadEngine& engine = engines_[slot];
+    engine.reset();
     if (!engine.configure(sample_rate_hz_) ||
         !engine.configure_routing(profile.routing) ||
         !engine.configure_dynamics(profile.dynamics)) {
