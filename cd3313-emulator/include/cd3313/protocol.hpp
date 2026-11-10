@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <vector>
 
 namespace cd3313 {
@@ -18,6 +19,8 @@ const std::vector<CommandSpec>& known_write_commands();
 
 // Static 8-byte payload returned by the driver's read-direction ioctl ID 0xF0.
 std::array<std::uint8_t, 8> read_device_identifier_payload();
+// Driver-visible names from the channel-name pointer table in .rodata.
+std::string_view input_channel_name(std::uint8_t channel);
 bool is_dispatch_command(std::uint8_t id);
 
 struct DriverCommand {
