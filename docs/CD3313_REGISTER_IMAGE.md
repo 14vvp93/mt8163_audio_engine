@@ -139,3 +139,15 @@ The host emulator now records the ordered operations performed by set_input_chan
 - either a muted hold at 0x3F, or a three-code restoration ramp to the calculated master-volume target.
 
 The normal selector path uses an 8 ms delay; the mixing-enable path selects channel 1 with delay 0. The model stores current_volume_register_value independently from the desired master-volume target. input_transition_journal() exposes the ordered operations, including explicit delay markers. These values are a static control-flow reconstruction and nominal requested delays, not hardware measurements.
+
+## Master mute and GPIO 393 reconstruction
+
+The ARM32 `set_master_mute(mute, reason)` function updates the 32-bit master mute reason mask and then writes GPIO 393 using this recovered raw-level expression:
+
+`(mute && !hfp_active) || reason24_is_set || !acc_on`
+
+Only reason bit 24 is independently tested from the aggregate mask in this expression. The ordinary `mute` argument is gated by HFP state; ACC-off forces the raw GPIO high regardless of that argument. This is distinct from `master_muted()`, which reports whether any reason bit is set.
+
+The event callback's `0x11` handler special-cases reason 2 by assigning its boolean mute argument to `acc_on`, then calls `set_master_mute()`. The probe path sets `acc_on` true before asserting startup reason 31. System notifier event 2 clears reason 30; event 3 clears reason 24. The host emulator models these exact state transitions and records GPIO 393 raw-level requests as `Gpio393Write` journal entries.
+
+GPIO 393's physical signal name and board-level active polarity remain unknown. The emulator records raw HIGH/LOW requests only; it does not drive hardware.
