@@ -9,7 +9,7 @@ This document records behavior recovered from the ARM32 disassembly and DWARF li
 - Kernel target: ARM32, Linux 4.9.117+
 - Source path embedded in DWARF: `drivers/misc/cd3313/cd3313.c`
 - Dispatcher: `do_cmd_write()`, inlined into `event_callback()`
-- The latest analysis workflow emits `dwarf-lines.txt`, `disassembly-lines.txt`, and `address-to-source.txt` to preserve source-line correlation.
+- The analysis workflow emits `dwarf-lines.txt`, `disassembly-lines.txt`, and `address-to-source.txt` to preserve source-line correlation.
 
 The event object begins with the original 32-bit ioctl request word. The dispatcher extracts:
 - direction from bits 30..31 (1 = write, 2 = read);
@@ -28,7 +28,7 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 | `0x10` | Set master volume step | One 32-bit value at +4; accepted range is 0..40. Calls the incremental master-volume routine. | High |
 | `0x11` | Set master mute reason | `mute` at +4 and mute-reason/bit index at +8. Calls `set_master_mute(mute, reason)`; mute state is maintained as a bitmask. | High |
 | `0x12` | Set master-volume percentage | One 32-bit value at +4; accepted range is 1..100. Stores the percentage and reapplies the current master-volume step. | High |
-| `0x15` | Set four-channel balance/gain values | Four 32-bit values at +4/+8/+12/+16, corresponding to FL, FR, RL, RR. Each is converted into the corresponding register field. | High |
+| `0x15` | Set four-channel balance/gain values | Four 32-bit values at +4/+8/+12/+16, corresponding to FL, FR, RL, RR. The inlined `set_balance(fl, fr, rl, rr)` converts each value into a separate register field. | High |
 | `0x20` | Switch the active input path/mode | One value at +4. The false/zero path clears the mode and calls `set_input_channel(8, 8)`; the true/nonzero path sets the mode and calls `set_input_channel(1, 0)`. | Medium: calls and state transition are clear; names for the two modes are not. |
 | `0x55` | Bass-boost adjustment | Two-word command accepted by the dispatcher. The second word at +8 is converted to a bounded 0..14 transition target; writes use the bass register prefix `0x60` and the driver's lookup table. The first word's purpose is not established from this optimized path. | Medium |
 | `0x56` | Loudness enable/state | One value at +4 controls the driver's loudness state. The handler updates state value 0/4 and the loudness control bit in the register image. | High |
@@ -36,6 +36,22 @@ For write requests, `cmd_ioctl()` copies `size_field * 4` bytes from userspace, 
 | `0xA3` | Subwoofer GPIO control | Boolean value at +4 is converted to 0/1 and written to GPIO 409 (`0x199`). This is a special dispatcher branch, not one of the 12 entries in `cmd_len_list`. | High |
 | `0xF0` | Unresolved/special | The write dispatcher has a branch, but no meaningful state update was recovered. Do not treat it as a confirmed setter. | Low |
 | `0xF1` | DSP power control | Boolean value at +4 selects wake-up or shutdown. Nonzero enters the wake-up path; zero calls `dsp_shutdown()`. | High |
+
+### Four-channel control: Balance and Front/Rear Fader
+
+The DWARF record identifies the inlined helper as `set_balance(fl, fr, rl, rr)` (source line 232). The correlated disassembly shows four separate argument-dependent register-field updates at source lines 237–265. The command handler obtains the four 32-bit arguments from offsets +4, +8, +12, and +16. This is direct evidence that the driver has a four-channel output-level control path, not merely a stereo L/R control.
+
+This gives us the hardware-level basis for two independent UI controls:
+- **Balance L/R:** apply a coordinated level difference between FL and FR, and the same difference between RL and RR.
+- **Fader Front/Rear:** apply a coordinated level difference between the front pair (FL/FR) and rear pair (RL/RR).
+
+The command's recovered driver minimum is only 2 words, despite the handler reading four 32-bit arguments. That mismatch is preserved in the documentation. The host-side protocol parser now distinguishes the driver's minimum from the safe argument size and rejects command `0x15` unless all four words are present. Do not send this command to hardware until the vendor caller's exact value scale, argument order, ioctl encoding, and register mapping are confirmed.
+
+What is not yet proven:
+- whether larger values mean more attenuation or more gain;
+- the user-facing range and center point;
+- the exact conversion table for each of the four channel values;
+- whether all four output channels are physically connected on this head unit.
 
 ### Notes on the mute model
 
@@ -54,10 +70,6 @@ The volume routine changes the hardware register incrementally, one step per I²
 ### Notes on bass and treble
 
 The `0x55` and `0x5C` handlers use different register prefixes (`0x60` and `0x70`) and a shared lookup-table style conversion. They perform a stepped transition with approximately 20 ms sleeps between writes. The exact user-visible scale and the meaning of the first argument remain open questions.
-
-## Potential bounds issue in command 0x15
-
-The balance handler reads four 32-bit arguments at offsets +4, +8, +12, and +16. However, the recovered minimum size threshold for `0x15` is only 2 words (8 bytes). A caller passing exactly that minimum would cause the handler to read beyond the copied payload. The original vendor caller may always pass a larger size; this is a static-analysis warning that should be checked before reproducing the ABI. The host parser validates the actual copied payload size and does not emulate out-of-bounds reads.
 
 ## Internal event callback behavior
 
@@ -83,5 +95,6 @@ This confirms that the command path is asynchronous: the userspace-facing ioctl/
 3. Determine the first argument of `0x55` and `0x5C` from userspace call sites.
 4. Decode the full `0xF0` behavior and any readback/status ABI.
 5. Correlate every register prefix and lookup table with the CD3313 datasheet or verified bus traces.
+6. Recover the four-channel level scale and verify the physical FL/FR/RL/RR speaker mapping before issuing `0x15` from a userspace controller.
 
 Until these are resolved, the emulator must preserve unknown fields and mark unverified semantics explicitly rather than inventing behavior.
