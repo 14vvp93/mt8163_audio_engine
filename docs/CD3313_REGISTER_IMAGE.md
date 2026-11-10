@@ -212,17 +212,17 @@ The six 32-bit entries at .rodata + 0x64 are:
 
 set_input_channel() indexes this table for channel IDs 0..5 and masks the result to two bits. Channel 6 bypasses the table and uses selector code 3. This yields the complete mapping:
 
-| Driver channel | Selector bits 1..0 |
-|---:|---:|
-| 0 | 2 |
-| 1 | 1 |
-| 2 | 0 |
-| 3 | 3 |
-| 4 | 0 |
-| 5 | 2 |
-| 6 / sentinel -1 | 3 |
+| Driver channel | Driver label | Selector bits 1..0 | CD3313 input |
+|---:|---|---:|---|
+| 0 | RADIO | 2 | Source 3 |
+| 1 | ARM | 1 | Source 2 |
+| 2 | AUX | 0 | Source 1 |
+| 3 | EXBT | 3 | Source 4 (no external pins) |
+| 4 | AUX2 | 0 | Source 1 |
+| 5 | DAB | 2 | Source 3 |
+| 6 / sentinel -1 | NONE | 3 | Source 4 (no external pins) |
 
-The table does not identify user-facing source names. AUX, radio, Bluetooth, phone, and other labels still require caller-side evidence.
+The driver labels are recovered from the channel-name pointer table used by cmd_read(). They identify software channel names, but do not prove the exact board wiring. In particular, EXBT maps to the datasheet's source-4 code, which has no external pins; its actual route may be outside the CD3313 analog input path.
 
 
 ## Datasheet correlation
