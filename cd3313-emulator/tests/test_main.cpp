@@ -814,7 +814,7 @@ int main() {
         check(effects_emulator.state().treble_target == 6U &&
               effects_emulator.state().treble_register_value == 0x76U &&
               effects_emulator.register_journal().size() == 22U &&
-              effects_emulator.register_journal().back().command_byte == 0x7CU,
+              effects_emulator.register_journal().back().command_byte == 0x76U,
               "treble transition writes the exact CD3313 lookup value for index 6");
         check(static_cast<bool>(effects_emulator.write(encode_driver_command(
                   DriverCommand{0x56, 1, {1, 0, 0, 0}}))),
