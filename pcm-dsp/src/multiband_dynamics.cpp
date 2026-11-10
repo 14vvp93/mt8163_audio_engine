@@ -6,7 +6,6 @@
 namespace pcm_dsp {
 namespace {
 constexpr float kMinimumEnvelope = 1.0e-9F;
-constexpr float kPi = 3.14159265358979323846F;
 }
 
 float MultibandDynamicsProcessor::db_to_gain(float db) {
