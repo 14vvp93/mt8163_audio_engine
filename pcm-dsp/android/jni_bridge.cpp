@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <limits>
 
 namespace {
 
@@ -67,7 +68,9 @@ Java_com_mt8163_audioengine_NativeDsp_nativeProcess(
         jfloatArray input_array, jfloatArray output_array, jint frames) {
     EngineHandle* handle = from_handle(native_handle);
     if (handle == nullptr || input_array == nullptr || output_array == nullptr ||
-        input_array == output_array || frames <= 0) {
+        input_array == output_array || frames <= 0 ||
+        frames > std::numeric_limits<jint>::max() /
+                     static_cast<jint>(pcm_dsp::kOutputChannelCount)) {
         return JNI_FALSE;
     }
 
