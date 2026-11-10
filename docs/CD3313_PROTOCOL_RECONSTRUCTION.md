@@ -162,3 +162,7 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 ## Disassembly note
 
 The initial x86 objdump attempt failed. The workflow was corrected to install multiarch binutils and run `objdump -m arm -drwC`. The latest run [42799116357](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799116357) completed successfully; `disassembly-relocations.txt` is a valid ARM disassembly report and its command exit status is 0.
+
+## Detailed command dispatcher map
+
+A source-line-correlated reconstruction of the command handlers, observed 32-bit argument offsets, mute/volume behavior, and unresolved fields is maintained in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The corresponding analysis artifact is from workflow run [42799777270](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799777270); all generated report commands completed with exit code 0.
