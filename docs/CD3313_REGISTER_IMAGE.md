@@ -4,7 +4,7 @@
 
 This document describes the host-side, evidence-bounded register-image model. It reconstructs byte writes visible in the supplied ARM32 `cd3313.ko` disassembly. It is not a complete CD3313 datasheet model, a hardware readback, or a userspace transport implementation.
 
-The driver sends one-byte I2C command values through `cd3313_write_reg()`. Its cached image is selected by the command byte's upper nibble. The emulator mirrors this as a 16-entry command-page cache and leaves unobserved pages unset.
+The driver sends one-byte I2C command values through `cd3313_write_reg()`. It selects one of eight reg_bufs cache slots using the command byte's upper nibble and the recovered TAB.33841 lookup. The emulator keeps a separate 16-entry diagnostic command-page view plus an exact 8-slot reg_bufs_cache mirror.
 
 ## Recovered probe and startup sequence
 
@@ -80,14 +80,15 @@ Command `0x56` updates bit 2 of the cached control byte at offset +17. A nonzero
 
 ## Command-page cache and write journal
 
-The cache has 16 optional entries. For each observed command byte, page = `byte >> 4`; the corresponding cache entry stores the most recent byte. It is deliberately called a command-page cache, not a physical register-address map.
+The emulator exposes two views of each write. command_page_cache has 16 optional entries indexed by byte >> 4 for diagnostics; it is not the driver's internal cache. reg_bufs_cache has eight optional entries and mirrors the driver's actual reg_bufs array using TAB.33841. The write journal records both the command page and the selected cache slot, including the previous value in each view.
 
 Each register-journal entry contains:
 - monotonic sequence number;
 - source: probe guard, event-0 initialization, master-volume transition, four-channel command, or raw command byte;
 - high-nibble page;
+- TAB.33841-selected reg_bufs cache slot;
 - command byte;
-- previous cached byte, if any.
+- previous page-view byte and previous reg_bufs slot byte, when present.
 
 The separate raw `cmd_write()` interface is represented by `Emulator::write_raw_command_byte()`; it is not parsed as an ioctl frame. The four-channel `0x15` command updates the four speaker command bytes using the recovered prefixes and 16-entry attenuation table.
 
