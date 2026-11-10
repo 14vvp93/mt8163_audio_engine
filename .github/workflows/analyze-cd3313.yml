@@ -1,6 +1,12 @@
 name: Analyze CD3313 kernel module
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/analyze-cd3313.yml"
+      - "cd3313.ko"
   workflow_dispatch:
 
 permissions:
