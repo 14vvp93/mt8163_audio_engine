@@ -1,6 +1,8 @@
 #include "cd3313/emulator.hpp"
 #include <algorithm>
 #include <array>
+#include <iomanip>
+#include <sstream>
 #include <utility>
 
 namespace cd3313 {
@@ -245,6 +247,60 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
     }
 }
 } // namespace
+
+std::optional<std::string> format_driver_read_report(const EmulatorState& state) {
+    if (!state.master_volume_step.has_value() ||
+        state.current_input_channel >= 7U ||
+        input_channel_name(static_cast<std::uint8_t>(state.current_input_channel)).empty()) {
+        return std::nullopt;
+    }
+    for (const auto& value : state.reg_bufs_cache) {
+        if (!value.has_value()) return std::nullopt;
+    }
+
+    std::ostringstream report;
+    report << "Chip CD3313\\nRead reg Data:\\n";
+    constexpr std::array<const char*, 8> labels{{
+        "index 00xx xxxx: 0x", "index 110x xxxx: 0x",
+        "index 111x xxxx: 0x", "index 100x xxxx: 0x",
+        "index 101x xxxx: 0x", "index 010x xxxx: 0x",
+        "index 0110 xxxx: 0x", "index 0111 xxxx: 0x"
+    }};
+    constexpr std::array<const char*, 8> descriptions{{
+        " (master volume)\\n", " (RL volume)\\n",
+        " (RR volume)\\n", " (FL volume)\\n",
+        " (FR volume)\\n", " (channel)\\n",
+        " (bass gain)\\n", " (treble gain)\\n"
+    }};
+    for (std::size_t i = 0; i < state.reg_bufs_cache.size(); ++i) {
+        report << labels[i] << std::hex << std::nouppercase << std::setfill('0')
+               << std::setw(2)
+               << static_cast<unsigned>(*state.reg_bufs_cache[i])
+               << descriptions[i];
+    }
+
+    report << std::dec << "master channel : "
+           << input_channel_name(static_cast<std::uint8_t>(state.current_input_channel))
+           << '(' << state.current_input_channel << ")\\n"
+           << "master volume   : " << *state.master_volume_step << "\\n"
+           << "master mute     : 0x" << std::hex << std::nouppercase
+           << state.master_mute_reason_mask << "\\n"
+           << std::dec << "mixing state    : " << (state.mixing_mode ? 1 : 0) << "\\n"
+           << "hfp activity    : " << (state.hfp_active ? 1 : 0) << "\\n"
+           << "acc activity    : " << (state.acc_on ? 1 : 0) << "\\n"
+           << "loudness on     : "
+           << (state.loudness_enabled.value_or(false) ? 4 : 0) << "\\n"
+           << "channel status:\\n";
+
+    for (std::size_t i = 0; i < state.input_gain.size(); ++i) {
+        report << "channel " << std::right << std::setw(6)
+               << input_channel_name(static_cast<std::uint8_t>(i))
+               << '(' << i << ") : mute:" << std::hex << std::nouppercase
+               << state.input_mute_reason_masks[i] << std::dec
+               << ", gain " << static_cast<unsigned>(state.input_gain[i]) << "\\n";
+    }
+    return report.str();
+}
 
 void Emulator::record_input_switch(std::uint32_t channel,
                                      std::uint32_t delay_ms) {
@@ -495,6 +551,22 @@ void Emulator::apply_recovered_probe_setup() {
     state_.current_volume_register_value = 0x3FU;
     state_.master_volume_percentage = 100U;
     state_.acc_on = true;
+    state_.current_input_channel = 6U;
+    state_.active_input_channel = 6U;
+    state_.input_selector_code = 3U;
+    state_.control_register_value = 0x47U;
+    state_.channel_level_indices = std::array<std::uint8_t, 4>{{15, 15, 15, 15}};
+    state_.speaker_register_bytes =
+        std::array<std::uint8_t, 4>{{0x80, 0xA0, 0xC0, 0xE0}};
+    state_.bass_register_value = 0x6FU;
+    state_.treble_register_value = 0x7FU;
+    state_.loudness_enabled = false;
+    state_.input_gpio_396_level = false;
+    state_.input_gpio_398_level = false;
+    state_.subwoofer_gpio_enabled = false;
+    state_.reg_bufs_cache = {{
+        0x3F, 0xC0, 0xE0, 0x80, 0xA0, 0x47, 0x6F, 0x7F
+    }};
     state_.master_mute_reason_mask |= (1U << 31U);
     const bool gpio393 = update_master_mute_gpio(state_, true);
     input_transition_journal_.push_back(InputTransitionEvent{
