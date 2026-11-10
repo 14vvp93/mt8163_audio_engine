@@ -29,7 +29,7 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 - Recovered 41-entry master-volume lookup table and stepped register-byte ramp.
 - Recovered 15-byte bass/treble lookup table and stepped register-byte ramps; first command argument remains opaque.
 - Active-low loudness control bit and recovered input selector/gain fields in the `0x47` control byte.
-- Requested DSP power and subwoofer GPIO states without claiming physical GPIO behavior.
+- Requested DSP power and subwoofer GPIO states; recovered input-routing GPIO 396/398 output levels without claiming physical GPIO readback.
 - Recovered probe guard write and event-0 initialization sequence.
 - Partial 16-page command-byte cache matching the driver's upper-nibble cache lookup.
 - Deterministic command event journal with before/after state snapshots.
