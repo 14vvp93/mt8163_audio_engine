@@ -31,9 +31,9 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 - Active-low loudness control bit and recovered input selector/gain fields in the `0x47` control byte.
 - Requested DSP power and subwoofer GPIO states; recovered input-routing GPIO 396/398 output levels without claiming physical GPIO readback.
 - Recovered probe guard write and event-0 initialization sequence.
-- Partial 16-page command-byte cache matching the driver's upper-nibble cache lookup.
+- Diagnostic 16-page command-byte view plus an exact 8-slot reg_bufs cache mirror selected through TAB.33841.
 - Deterministic command event journal with before/after state snapshots.
-- Register-write journal with sequence, source, page, byte, and previous cached value.
+- Register-write journal with sequence, source, command page, reg_bufs slot, byte, and previous values in both cache views.
 - Recovered reason-24 mute timer request: remove queued event 3, then request event 3 after 1000 ms; queue internals and actual callback timing remain external.
 - Four-channel Balance/Fader mapping, speaker register-byte encoder, and independent rear-level compensation (implemented by front attenuation, since the chip cannot boost).
 - Host unit tests for command encoding, bounds, state transitions, startup sequence, volume ramps, bass/treble ramps, loudness bit transitions, and journal reset.
