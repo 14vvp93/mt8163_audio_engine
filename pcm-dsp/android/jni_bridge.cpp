@@ -160,6 +160,44 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyQuadProfile(
     return JNI_TRUE;
 }
 
+// Applies one complete 32-band channel EQ as a single profile snapshot.
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_mt8163_audioengine_NativeDsp_nativeApplyChannelEq(
+        JNIEnv* env, jclass, jlong native_handle, jint channel,
+        jfloatArray gains_array) {
+    EngineHandle* handle = from_handle(native_handle);
+    if (handle == nullptr || gains_array == nullptr || channel < 0 ||
+        channel >= static_cast<jint>(pcm_dsp::kOutputChannelCount) ||
+        env->GetArrayLength(gains_array) !=
+            static_cast<jsize>(pcm_dsp::kQuadEqBandCount)) {
+        return JNI_FALSE;
+    }
+    std::array<jfloat, pcm_dsp::kQuadEqBandCount> gains{};
+    env->GetFloatArrayRegion(gains_array, 0,
+        static_cast<jsize>(gains.size()), gains.data());
+    if (env->ExceptionCheck()) return JNI_FALSE;
+
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    auto& bands = candidate.quad.channels[static_cast<std::size_t>(channel)].bands;
+    for (std::size_t band = 0; band < bands.size(); ++band) {
+        const float gain = gains[band];
+        if (!std::isfinite(gain) || gain < -18.0F || gain > 18.0F) {
+            return JNI_FALSE;
+        }
+        const float position = static_cast<float>(band) /
+            static_cast<float>(bands.size() - 1U);
+        bands[band].frequency_hz = 20.0F * std::pow(1000.0F, position);
+        bands[band].gain_db = gain;
+        bands[band].q = 1.0F;
+        bands[band].enabled = std::fabs(gain) >= 0.01F;
+        bands[band].type = pcm_dsp::FilterType::Peaking;
+        bands[band].shelf_slope = 1.0F;
+    }
+    if (!handle->engine.apply_profile(candidate)) return JNI_FALSE;
+    handle->profile = candidate;
+    return JNI_TRUE;
+}
+
 // Balance and fader are represented by a diagonal 4x4 output-routing matrix.
 // Center is unity; moving a control attenuates only the opposite side/row pair.
 extern "C" JNIEXPORT jboolean JNICALL
