@@ -24,6 +24,7 @@ bool QuadEngine::configure(std::uint32_t sample_rate_hz) {
     if (sample_rate_hz_ != sample_rate_hz) {
         sample_rate_hz_ = sample_rate_hz;
         reset();
+        if (!time_alignment_.configure(sample_rate_hz)) return false;
     }
     return true;
 }
@@ -40,6 +41,7 @@ void QuadEngine::reset() {
     }
     active_bank_ = 0U;
     limiter_envelope_.fill(0.0F);
+    time_alignment_.reset();
 }
 
 float QuadEngine::db_to_gain(float db) {
@@ -163,6 +165,7 @@ bool QuadEngine::process(const float* input, float* output,
     if (sample_rate_hz_ == 0U || input == nullptr || output == nullptr) {
         return false;
     }
+    if (frames == 0U) return true;
     if (!parameters.enabled) {
         if (input != output) {
             std::copy(input, input + frames * kOutputChannelCount, output);
@@ -264,7 +267,20 @@ bool QuadEngine::process(const float* input, float* output,
                 }
             }
 
-            if (!std::isfinite(processed)) processed = 0.0F;
+            output[index] = std::isfinite(processed) ? processed : 0.0F;
+        }
+    }
+
+    std::array<float, kOutputChannelCount> delays{};
+    for (std::size_t channel = 0; channel < kOutputChannelCount; ++channel) {
+        delays[channel] = parameters.channels[channel].delay_ms;
+    }
+    if (!time_alignment_.process(output, output, frames, delays)) return false;
+
+    for (std::size_t frame = 0; frame < frames; ++frame) {
+        for (std::size_t channel = 0; channel < kOutputChannelCount; ++channel) {
+            const std::size_t index = frame * kOutputChannelCount + channel;
+            float processed = output[index];
             if (parameters.limiter_enabled) {
                 const float peak = std::fabs(processed);
                 const float coefficient = peak > limiter_envelope_[channel]
