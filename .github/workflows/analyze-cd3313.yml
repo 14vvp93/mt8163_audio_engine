@@ -47,6 +47,9 @@ jobs:
           run_report symbols-readelf.txt readelf -sW cd3313.ko
           run_report relocations.txt readelf -rW cd3313.ko
           run_report dwarf-info.txt readelf --debug-dump=info cd3313.ko
+          run_report dwarf-lines.txt readelf --debug-dump=decodedline cd3313.ko
+          run_report disassembly-lines.txt objdump -m arm -dlwC cd3313.ko
+          run_report address-to-source.txt addr2line -e cd3313.ko -f -i 0x11ec 0x1200 0x1288 0x139c 0x14ac 0x14f0 0x1538 0x15fc 0x163c 0x1694 0x1788 0x1818 0x1858 0x188c
           run_report symbols-nm.txt nm -an cd3313.ko
           run_report strings.txt strings -a -n 4 -t x cd3313.ko
           run_report disassembly-relocations.txt objdump -m arm -drwC cd3313.ko
