@@ -255,6 +255,98 @@ int main() {
                   "crossover branches sum flat at crossover frequency");
         }
 
+        // Output matrix: swap front left/right while preserving rear routing.
+        quad.reset();
+        pcm_dsp::QuadOutputRoutingParameters matrix_parameters;
+        matrix_parameters.enabled = true;
+        matrix_parameters.matrix = {{
+            0.0F, 1.0F, 0.0F, 0.0F,
+            1.0F, 0.0F, 0.0F, 0.0F,
+            0.0F, 0.0F, 1.0F, 0.0F,
+            0.0F, 0.0F, 0.0F, 1.0F
+        }};
+        check(quad.configure_routing(matrix_parameters),
+              "output matrix configuration succeeds");
+        const std::vector<float> matrix_input{0.1F, 0.2F, 0.3F, 0.4F};
+        std::vector<float> matrix_output(4U);
+        pcm_dsp::QuadParameters route_process;
+        route_process.enabled = true;
+        route_process.limiter_enabled = false;
+        check(quad.process(matrix_input.data(), matrix_output.data(), 1U,
+                           route_process), "output matrix processes");
+        check(std::fabs(matrix_output[0] - 0.2F) < 0.00001F &&
+              std::fabs(matrix_output[1] - 0.1F) < 0.00001F &&
+              std::fabs(matrix_output[2] - 0.3F) < 0.00001F &&
+              std::fabs(matrix_output[3] - 0.4F) < 0.00001F,
+              "output matrix swaps only the selected channels");
+
+        // Bass management: four high-passed speaker outputs and a separate
+        // mono low-frequency bus. No physical subwoofer route is assumed.
+        quad.reset();
+        pcm_dsp::QuadOutputRoutingParameters bass_parameters;
+        bass_parameters.enabled = true;
+        bass_parameters.bass_management_enabled = true;
+        bass_parameters.crossover_frequency_hz = 200.0F;
+        bass_parameters.crossover_order = pcm_dsp::LinkwitzRileyOrder::Db24;
+        check(quad.configure_routing(bass_parameters),
+              "bass management configures");
+        constexpr std::size_t bass_frames = 48000U;
+        std::vector<float> bass_input(bass_frames * 4U);
+        std::vector<float> bass_main(bass_frames * 4U);
+        std::vector<float> bass_sub(bass_frames);
+        for (std::size_t i = 0; i < bass_frames; ++i) {
+            const float sample = 0.2F * std::sin(
+                2.0F * 3.14159265358979323846F * 40.0F *
+                static_cast<float>(i) / 48000.0F);
+            for (std::size_t channel = 0; channel < 4U; ++channel) {
+                bass_input[i * 4U + channel] = sample;
+            }
+        }
+        route_process.limiter_enabled = false;
+        check(quad.process(bass_input.data(), bass_main.data(), bass_frames,
+                           route_process, bass_sub.data()),
+              "bass management processes low-frequency signal");
+        double sub_energy = 0.0;
+        double main_energy = 0.0;
+        for (std::size_t i = bass_frames / 2U; i < bass_frames; ++i) {
+            sub_energy += static_cast<double>(bass_sub[i]) * bass_sub[i];
+            main_energy += static_cast<double>(bass_main[i * 4U]) *
+                           bass_main[i * 4U];
+        }
+        const double sub_rms = std::sqrt(sub_energy / (bass_frames / 2U));
+        const double main_rms = std::sqrt(main_energy / (bass_frames / 2U));
+        check(sub_rms > 0.12, "low-frequency energy reaches mono sub bus");
+        check(main_rms < 0.02, "low-frequency energy is removed from main outputs");
+
+        std::fill(bass_input.begin(), bass_input.end(), 0.0F);
+        for (std::size_t i = 0; i < bass_frames; ++i) {
+            const float sample = 0.2F * std::sin(
+                2.0F * 3.14159265358979323846F * 1000.0F *
+                static_cast<float>(i) / 48000.0F);
+            for (std::size_t channel = 0; channel < 4U; ++channel) {
+                bass_input[i * 4U + channel] = sample;
+            }
+        }
+        check(quad.process(bass_input.data(), bass_main.data(), bass_frames,
+                           route_process, bass_sub.data()),
+              "bass management processes high-frequency signal");
+        sub_energy = 0.0;
+        main_energy = 0.0;
+        for (std::size_t i = bass_frames / 2U; i < bass_frames; ++i) {
+            sub_energy += static_cast<double>(bass_sub[i]) * bass_sub[i];
+            main_energy += static_cast<double>(bass_main[i * 4U]) *
+                           bass_main[i * 4U];
+        }
+        const double high_sub_rms = std::sqrt(sub_energy / (bass_frames / 2U));
+        const double high_main_rms = std::sqrt(main_energy / (bass_frames / 2U));
+        check(high_sub_rms < 0.01, "high-frequency energy is rejected from sub bus");
+        check(high_main_rms > 0.12, "high-frequency energy remains on main outputs");
+
+        // Bass management must not silently discard the low bus.
+        check(!quad.process(bass_input.data(), bass_main.data(), 1U,
+                            route_process),
+              "bass management requires an explicit sub output buffer");
+
         std::cout << "All PCM DSP tests passed\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
