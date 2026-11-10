@@ -135,9 +135,9 @@ The latest corrected analysis run [42849777588](https://github.com/14march93/mt8
 - `cmd_write()` parses the userspace write buffer as an unsigned decimal integer with `kstrtouint()`, truncates it to one byte, and sends that single byte with `i2c_master_send()`. It also updates a cached register byte selected using the high nibble. This path is a raw one-byte register write interface, not the framed multi-byte command protocol.
 - `cd3313_write_reg()` sends exactly one byte per call using `i2c_master_send()`, then updates the driver's cached register image.
 - `cmd_ioctl()` extracts the outer Linux ioctl direction from bits 30–31, request number from bits 8–15, and encoded size from bits 16–29. The write-direction path copies a user buffer into a kernel allocation and posts it to the driver's event queue. Encoded size is capped at 256 bytes before allocation/copy. `cmd_ioctl()` prepends the original ioctl request word to the queued event object. `event_callback()` reads that same word and extracts the command ID from bits 8–15 and size field from bits 16–29; it is not a second nested header.
-- The read-direction path accepts request number `0xF0` and copies an 8-byte object from driver state back to userspace. Other read request numbers return an error.
+- The read-direction path accepts ID `0xF0` and copies exactly 8 bytes from the start of `.rodata`: `63 64 33 33 31 33 00 00` (`cd3313\\0\\0`). This is a static identifier string, not a live DSP status structure or hardware version readback. Other read IDs return an error. The request ID is extracted from bits 8..15; the low `_IOC_NR` byte is not inspected by the recovered dispatcher.
 - For write requests with command byte `0x55` or `0x5C`, the ioctl path waits 30 ms after posting the event. This is a driver timing behavior, not a payload semantic.
-- `set_master_volume()` changes the hardware volume register incrementally, one step per I²C write, with a delay between steps. It uses a 0–63 internal attenuation scale and applies a separate percentage-derived adjustment. The exact user-facing mapping still needs correlation with the constant volume table and call sites.
+- `set_master_volume()` changes the hardware volume register incrementally, one step per I²C write, with a delay between steps. It uses the recovered 41-entry `cd3313_voltable_40` lookup and a separate percentage-derived adjustment on a 0–63 attenuation scale. The raw register mapping is reconstructed; its acoustic dB transfer function remains unverified.
 - `set_master_mute()` manipulates a bit in a software mute mask and controls GPIO 393 (`0x189`) through `gpiod_set_raw_value()`. This indicates master mute includes an external GPIO/amplifier-enable path, not only an I²C register write.
 
 The command buffer queued to the event worker starts with the original 32-bit ioctl request word, followed by the user payload copied by `cmd_ioctl()`. The worker reads the command ID and size field from that prepended word; arguments are 32-bit values at offsets +4, +8, +12, and +16. The precise meaning of every argument is documented with confidence labels in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The outer direction and size units are now established: direction 1 is write, direction 2 is read, and the size field counts 32-bit words (copied bytes = size × 4, capped at 256). The exact ioctl magic/type convention used by vendor callers remains to be correlated.
@@ -153,7 +153,7 @@ The driver is a command/control layer for the external CD3313 DSP over I²C. It 
 ## Remaining reverse-engineering work
 
 1. Recover the exact ioctl magic/type convention used by vendor callers. The request word layout, direction values, size units, and argument offsets are now established.
-2. Decode the 41-byte volume curve and the speaker/equalizer arrays.
+2. Confirm the acoustic/dB meaning of the recovered volume, speaker, and equalizer tables using an authoritative datasheet or hardware measurements.
 3. Map each status command to the register writes performed by its handler.
 4. Reconstruct channel numbering and channel-to-chip mapping.
 5. Determine which commands are used by the vendor userspace service and audio HAL.
@@ -166,3 +166,12 @@ The initial x86 objdump attempt failed. The workflow now uses ARM cross-binutils
 ### Potential bounds issue found in the original driver\n\nThe `0x15` balance handler reads four 32-bit values at offsets +4, +8, +12, and +16, but the recovered `cmd_len_list` minimum for `0x15` is only 2 words (8 copied payload bytes). If a caller supplies exactly the minimum, the handler appears to read beyond the copied payload. This is a static-analysis warning, not proof of an exploitable bug; callers may always pass a larger size. The emulator validates the actual copied payload length but does not emulate unsafe out-of-bounds reads.\n\n## Detailed command dispatcher map
 
 A source-line-correlated reconstruction of the command handlers, observed 32-bit argument offsets, mute/volume behavior, and unresolved fields is maintained in [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The corresponding analysis artifact is from workflow run [42799777270](https://github.com/14march93/mt8163_audio_engine/actions/runs/42799777270); all generated report commands completed with exit code 0.
+
+
+## Follow-up: ioctl and event-queue ABI details
+
+The focused analysis artifact from run [42878596077](https://github.com/14march93/mt8163_audio_engine/actions/runs/42878596077) provides a more precise ABI reconstruction and corrects the earlier description of the read path. Read ID 0xF0 returns the static eight-byte identifier "cd3313\\0\\0" from .rodata, not a dynamic status object. The request ID is read from bits 8..15; the low eight bits are not inspected by the recovered handler.
+
+The imported event-queue declarations are present in DWARF, but their implementations are not linked into cd3313.ko. The driver calls post_event_delayed(handler, event_id, data, delay_ms) and remove_event(handler, event_id). Their prototypes and all observed scheduling requests are documented in [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md). Cancellation/coalescing semantics and actual callback timing remain unknown.
+
+That same analysis confirms a static length-validation concern: command 0x15 reads four 32-bit arguments although cmd_len_list permits a size-field value of 2. The emulator continues to require all four words and does not reproduce a possible out-of-bounds read. The allocation/copy path also deserves a hardened-usercopy audit because the command cache object is 256 bytes while the maximum copied payload is 256 bytes in addition to the prepended 4-byte header. This is an audit finding, not a confirmed exploitable vulnerability.
