@@ -124,4 +124,45 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
     bytes.insert(bytes.end(), command.payload.begin(), command.payload.end());
     return bytes;
 }
+DriverCommand make_master_volume_command(std::uint32_t step) {
+    if (step > 40U)
+        throw std::invalid_argument("CD3313 master volume step must be in range 0..40");
+    return {0x10, 1, {
+        static_cast<std::uint8_t>(step & 0xFFU),
+        static_cast<std::uint8_t>((step >> 8U) & 0xFFU),
+        static_cast<std::uint8_t>((step >> 16U) & 0xFFU),
+        static_cast<std::uint8_t>((step >> 24U) & 0xFFU)
+    }};
+}
+
+DriverCommand make_master_mute_command(bool mute, std::uint32_t reason) {
+    if (reason > 31U)
+        throw std::invalid_argument("CD3313 mute reason must be in range 0..31");
+    return {0x11, 2, {
+        static_cast<std::uint8_t>(mute ? 1U : 0U), 0, 0, 0,
+        static_cast<std::uint8_t>(reason & 0xFFU),
+        static_cast<std::uint8_t>((reason >> 8U) & 0xFFU),
+        static_cast<std::uint8_t>((reason >> 16U) & 0xFFU),
+        static_cast<std::uint8_t>((reason >> 24U) & 0xFFU)
+    }};
+}
+
+DriverCommand make_four_channel_level_command(std::uint8_t front_left,
+                                              std::uint8_t front_right,
+                                              std::uint8_t rear_left,
+                                              std::uint8_t rear_right) {
+    const std::uint8_t indices[]{front_left, front_right, rear_left, rear_right};
+    for (const auto index : indices) {
+        if (index > 15U)
+            throw std::invalid_argument("CD3313 speaker level index must be in range 0..15");
+    }
+    std::vector<std::uint8_t> payload;
+    payload.reserve(16U);
+    for (const auto index : indices) {
+        payload.push_back(index);
+        payload.insert(payload.end(), 3U, 0U);
+    }
+    return {0x15, 4, std::move(payload)};
+}
+
 } // namespace cd3313
