@@ -416,7 +416,8 @@ int main() {
               "state model rejects an out-of-range raw volume command");
         check(state_emulator.state().master_volume_step ==
                   before_invalid.master_volume_step &&
-              state_emulator.journal().size() == 11U,
+              state_emulator.journal().size() == 12U &&
+              state_emulator.journal().back().sequence == 12U,
               "rejected transition is atomic and is not journaled");
 
         Emulator unknown_command_emulator;
