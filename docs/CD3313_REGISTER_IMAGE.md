@@ -50,7 +50,7 @@ The CD3313-AX-BJ-24 datasheet identifies the control byte as 010 G1 G0 S2 S1 S0:
 
 The startup control byte 0x47 therefore selects source 4, input gain 0 dB, and loudness disabled. set_input_channel() changes S1S0 and G1G0 while preserving S2; command 0x56 controls S2. This is chip-level source numbering only: the actual AUX/radio/Bluetooth/phone wiring is not established.
 
-The host emulator models these state transitions and per-channel masks. The `set_input_channel()` disassembly and `.rodata` mapping recover the two-bit selector field in control-byte bits 0..1: channel IDs 0..6 map to codes `2, 1, 0, 3, 0, 2, 3`. Bits 3..4 carry the active channel's two-bit gain; bits 2 and 5..7 are preserved by this selector update. The emulator applies and journals the control-byte update when the startup control byte is known. The same routine sets raw GPIO output levels: GPIO 396 is low only for channel 2, and GPIO 398 is low only for channel 0. These are requested logic levels, not physical readback or source labels. The attenuation/mute sequence is modeled in the Input-switch transition timeline below, with nominal delays rather than measured hardware timing. Numeric channel IDs remain unlabeled; no AUX/radio/Bluetooth/phone identity is inferred.
+The host emulator models these state transitions and per-channel masks. The `set_input_channel()` disassembly and `.rodata` mapping recover the two-bit selector field in control-byte bits 0..1: channel IDs 0..6 map to codes `2, 1, 0, 3, 0, 2, 3`. Bits 3..4 carry the active channel's two-bit gain; bits 2 and 5..7 are preserved by this selector update. The emulator applies and journals the control-byte update when the startup control byte is known. The same routine sets raw GPIO output levels: GPIO 396 is low only for channel 2, and GPIO 398 is low only for channel 0. These are requested logic levels, not physical readback or source labels. The attenuation/mute sequence is modeled in the Input-switch transition timeline below, with nominal delays rather than measured hardware timing. Numeric driver channels are now mapped to CD3313 chip input numbers 1..4, but application-level source names such as AUX/radio/Bluetooth/phone remain unassigned.
 
 ## Master-volume table and transition
 
@@ -64,7 +64,12 @@ The ELF `.rodata` dump identifies `cd3313_voltable_40` at offset `0x28`, contain
 00
 ```
 
-The disassembly shows that the percentage control is clamped to 0..100 for the internal calculation, inverted, divided by three, and added to the table code. The final 6-bit target is capped at 63. The manufacturer datasheet decodes the base volume byte as B2..B0 = 10 dB steps and A2..A0 = 1.25 dB steps of attenuation; therefore code 0x3F is -78.75 dB and code 0x00 is 0 dB. The 41 base table entries correspond to these attenuation values (steps 0..40):
+The disassembly shows that the percentage control is clamped to 0..100 for the internal calculation, inverted, divided by three, and added to the table code. The final 6-bit target is capped at 63. The manufacturer datasheet decodes the base volume byte as B2..B0 = 10 dB steps and A2..A0 = 1.25 dB steps of attenuation; therefore code 0x3F is -78.75 dB and code 0x00 is 0 dB. The 41 base table entries correspond to these attenuation values in dB (steps 0..40):
+
+`-78.75, -52.5, -47.5, -46.25, -45, -43.75, -42.5, -41.25, -40, -38.75,`
+`-37.5, -36.25, -35, -33.75, -32.5, -31.25, -30, -28.75, -27.5, -26.25,`
+`-25, -23.75, -22.5, -21.25, -20, -18.75, -17.5, -16.25, -15, -13.75,`
+`-12.5, -11.25, -10, -8.75, -7.5, -6.25, -5, -3.75, -2.5, -1.25, 0 dB.`
 
 `target = min(63, table[step] + floor((100 - percentage) / 3))`
 
