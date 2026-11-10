@@ -17,7 +17,7 @@ The dispatcher has two additional branches, `0x56` and `0xA3`, that are not in t
 
 ## Separate raw register interface
 
-The driver's `cmd_write()` path is different: it parses a decimal text value, truncates it to one byte, and sends that byte over I²C. The emulator represents it through `write_raw_command_byte()` and records it with a distinct journal source; it is not parsed as an ioctl frame.
+The driver's `cmd_write()` path is different: it parses hexadecimal text with base 16, truncates the parsed integer to one byte, and sends that byte over I²C. The emulator represents it through `write_raw_command_byte()` and records it with a distinct journal source; it is not parsed as an ioctl frame.
 
 ## Implemented
 
@@ -43,7 +43,7 @@ The driver's `cmd_write()` path is different: it parses a decimal text value, tr
 - Userspace `/dev/audiomux` controller and fully confirmed ioctl type/magic compatibility.
 - Complete CD3313 physical register map and hardware readback.
 - Full semantics for every command; unknown fields remain opaque.
-- Readback request `0xF0` response modeling.
+- Exact hexadecimal text parser for raw cmd_write() input and the driver's permissive error/return behavior.
 - I²C timing, electrical behavior, bus failures, and real GPIO effects.
 - Device-level verification on the MT8163 head unit.
 
