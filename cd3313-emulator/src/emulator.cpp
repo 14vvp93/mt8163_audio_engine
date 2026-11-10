@@ -136,10 +136,18 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         const std::uint32_t reason = read_le32(payload, 8);
         if (channel > 6U || mute > 1U || reason > 31U) return false;
         const std::uint32_t mask = 1U << reason;
-        if (mute != 0U) state.input_mute_reason_masks[channel] |= mask;
-        else state.input_mute_reason_masks[channel] &= ~mask;
-        if (channel == 1U && reason == 16U)
+        // The driver treats ARM/HFP reason 16 as a mode flag, not an
+        // ordinary input-mute reason: it updates hfp_active and clears
+        // bit 16 from the channel mask for either request value.
+        const bool hfp_transition = channel == 1U && reason == 16U;
+        if (hfp_transition) {
             state.hfp_active = mute == 0U;
+            state.input_mute_reason_masks[channel] &= ~mask;
+        } else if (mute != 0U) {
+            state.input_mute_reason_masks[channel] |= mask;
+        } else {
+            state.input_mute_reason_masks[channel] &= ~mask;
+        }
         if (channel == state.active_input_channel) {
             const bool input_muted =
                 state.input_mute_reason_masks[channel] != 0U;
