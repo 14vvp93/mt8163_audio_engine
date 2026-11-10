@@ -20,6 +20,10 @@ public final class MainActivity extends Activity {
     private static final String[] CHANNEL_NAMES = {"Front Left", "Front Right", "Rear Left", "Rear Right"};
     private final TextView[] gainLabels = new TextView[CHANNELS];
     private final SeekBar[] gainBars = new SeekBar[CHANNELS];
+    private SeekBar balanceBar;
+    private SeekBar faderBar;
+    private TextView balanceLabel;
+    private TextView faderLabel;
     private NativeDsp dsp;
     private TextView status;
     private boolean dspEnabled = true;
@@ -81,6 +85,38 @@ public final class MainActivity extends Activity {
             root.addView(gainBars[i]);
         }
 
+        balanceLabel = text("Balance · Center", 15, Color.WHITE);
+        root.addView(balanceLabel);
+        balanceBar = new SeekBar(this);
+        balanceBar.setMax(200);
+        balanceBar.setProgress(100);
+        balanceBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                balanceLabel.setText("Balance · " + (value == 100 ? "Center" :
+                        (value < 100 ? String.format(Locale.US, "%.0f%% Left", 100-value) :
+                                String.format(Locale.US, "%.0f%% Right", value-100))));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyBalanceFader(); }
+        });
+        root.addView(balanceBar);
+
+        faderLabel = text("Fader · Center", 15, Color.WHITE);
+        root.addView(faderLabel);
+        faderBar = new SeekBar(this);
+        faderBar.setMax(200);
+        faderBar.setProgress(100);
+        faderBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                faderLabel.setText("Fader · " + (value == 100 ? "Center" :
+                        (value < 100 ? String.format(Locale.US, "%.0f%% Front", 100-value) :
+                                String.format(Locale.US, "%.0f%% Rear", value-100))));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) { applyBalanceFader(); }
+        });
+        root.addView(faderBar);
+
         Button toggle = button("DSP: ON");
         toggle.setOnClickListener(v -> {
             dspEnabled = !dspEnabled;
@@ -102,6 +138,17 @@ public final class MainActivity extends Activity {
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
         setContentView(root);
+    }
+
+    private void applyBalanceFader() {
+        if (dsp == null || balanceBar == null || faderBar == null) return;
+        float balance = (balanceBar.getProgress() - 100) / 100.0f;
+        float fader = (faderBar.getProgress() - 100) / 100.0f;
+        if (dsp.applyBalanceFader(balance, fader)) {
+            status.setText("Balance / Fader applied · 50 ms crossfade");
+        } else {
+            status.setText("DSP busy · wait for the current profile transition");
+        }
     }
 
     // Keeps native profile crossfades advancing while the test UI is idle.
