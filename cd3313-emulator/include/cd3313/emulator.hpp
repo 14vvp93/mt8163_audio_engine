@@ -16,9 +16,11 @@ struct EmulatorState {
     std::optional<std::uint32_t> volume_percentage_opaque_arg1;
     std::optional<std::array<std::uint8_t, 4>> channel_level_indices;
     std::optional<std::array<std::uint8_t, 4>> speaker_register_bytes;
-    // Mirrors the driver's 16-entry cache selected by the command byte's high nibble.
-    // These are cached command bytes, not a claim of a complete silicon register map.
+    // Diagnostic view indexed directly by command-byte high nibble.
+    // The actual driver cache is the separate 8-slot reg_bufs_cache below.
     std::array<std::optional<std::uint8_t>, 16> command_page_cache{};
+    // Mirrors the driver's 8-entry reg_bufs array, selected through TAB.33841.
+    std::array<std::optional<std::uint8_t>, 8> reg_bufs_cache{};
     std::optional<std::uint32_t> bass_boost_target;
     std::optional<std::uint32_t> bass_boost_opaque_arg0;
     std::optional<std::uint8_t> bass_register_value;
@@ -125,6 +127,8 @@ struct RegisterWriteEvent {
     std::uint8_t page{};
     std::uint8_t command_byte{};
     std::optional<std::uint8_t> previous_command_byte;
+    std::uint8_t cache_slot{};
+    std::optional<std::uint8_t> previous_cache_slot_byte;
 };
 
 class Emulator {
