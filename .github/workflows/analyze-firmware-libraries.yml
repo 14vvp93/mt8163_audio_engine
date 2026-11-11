@@ -91,7 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential zlib1g-dev binutils-arm-linux-gnueabi
+          sudo apt-get install -y build-essential zlib1g-dev binutils-arm-linux-gnueabi device-tree-compiler
           git clone https://github.com/anestisb/vdexExtractor.git /tmp/vdexExtractor
           git -C /tmp/vdexExtractor checkout 78f283b60ab6991fa27eeaff7d7be16409401c08
           sed -i 's/-Wall -Wextra -Werror/-Wall -Wextra -Werror -Wno-error=vla-parameter/' /tmp/vdexExtractor/src/Makefile
@@ -173,6 +173,92 @@ jobs:
         with:
           name: cd3313-current-module-analysis
           path: firmware-analysis/cd3313-current/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Extract focused board audio routing evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=firmware-analysis/board-audio-routing
+          mkdir -p "$OUT/decompiled-dtb"
+          find firmware-analysis -type f \\
+            \\( -iname '*.dts' -o -iname '*.dtsi' -o -iname '*.dtb' -o -iname '*.dtbo' \\
+               -o -iname '*.xml' -o -iname '*.conf' -o -iname '*.ini' -o -iname '*.cfg' \\
+               -o -iname '*.rc' -o -iname '*.prop' -o -iname '*.mk' \\) \\
+            ! -path '*/board-audio-routing/*' -print | sort > "$OUT/candidate-files.txt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+
+          root = Path("firmware-analysis")
+          out = Path("firmware-analysis/board-audio-routing")
+          text_ext = {".dts", ".dtsi", ".xml", ".conf", ".ini", ".cfg", ".rc", ".prop", ".mk"}
+          rx = re.compile(
+              r"FM_I2S_Playback|FM_I2S_Capture|MRGRX_PLayback|MRGRX_CAPTURE|"
+              r"FM_TUNER|AUDIO_DEVICE_IN_FM_TUNER|GPIO_Radio_DAB_SW|"
+              r"GPIO39_Aux_Aux2_SW|aud_path|i2s_pad|FM_I2S|"
+              r"GPIO.{0,32}(FM|Radio|DAB)|(?:FM|Radio|DAB).{0,32}GPIO|"
+              r"(?:FM|Radio).{0,32}I2S|I2S.{0,32}(?:FM|Radio)",
+              re.IGNORECASE,
+          )
+          match_path = out / "text-matches.txt"
+          scanned = 0
+          matches = 0
+          with match_path.open("w", errors="replace") as report:
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() not in text_ext:
+                      continue
+                  try:
+                      if path.stat().st_size > 8 * 1024 * 1024:
+                          continue
+                      raw = path.read_bytes()
+                      if b"\x00" in raw[:4096]:
+                          continue
+                      content = raw.decode("utf-8", errors="replace")
+                  except OSError:
+                      continue
+                  scanned += 1
+                  for number, line in enumerate(content.splitlines(), 1):
+                      if rx.search(line):
+                          report.write(f"{path}:{number}:{line[:1000]}\\n")
+                          matches += 1
+
+          dtb_index = 0
+          with (out / "dtb-conversion.txt").open("w") as log:
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() not in {".dtb", ".dtbo"}:
+                      continue
+                  dtb_index += 1
+                  target = out / "decompiled-dtb" / f"{dtb_index:04d}-{path.stem}.dts"
+                  result = subprocess.run(
+                      ["dtc", "-I", "dtb", "-O", "dts", "-o", str(target), str(path)],
+                      text=True, capture_output=True,
+                  )
+                  log.write(f"{path} -> {target}: exit={result.returncode}\\n")
+                  if result.stderr:
+                      log.write(result.stderr[:4000] + "\\n")
+                  if result.returncode != 0 and target.exists():
+                      target.unlink()
+          print(f"Scanned {scanned} text configuration files; found {matches} matching lines; attempted {dtb_index} DTB/DTBO conversions")
+          PY
+
+          find firmware-analysis -type f \\
+            \\( -iname '*.ko' -o -iname '*.dtb' -o -iname '*.dtbo' -o -iname '*audio*policy*' \\
+               -o -iname '*audio*platform*' -o -iname '*audio*config*' \\) \\
+            ! -path '*/board-audio-routing/*' -print | sort > "$OUT/audio-and-device-tree-binaries.txt"
+          test -s "$OUT/candidate-files.txt"
+          test -f "$OUT/text-matches.txt"
+          echo "Candidate files: $(wc -l < "$OUT/candidate-files.txt")"
+          echo "Matched lines: $(wc -l < "$OUT/text-matches.txt")"
+          echo "Decompiled DTBs: $(find "$OUT/decompiled-dtb" -type f -name '*.dts' | wc -l)"
+
+      - name: Upload focused board audio routing evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-board-audio-routing-evidence
+          path: firmware-analysis/board-audio-routing/
           if-no-files-found: error
           retention-days: 14
 
