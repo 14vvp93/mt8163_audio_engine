@@ -195,8 +195,10 @@ The Java command ID therefore correlates with the driver's bits 8..15 field.
 The Binder service special-cases command 1000 as a system-property update;
 ordinary CD3313 commands go through the native muxer.
 
-This identifies the Java/Binder interface but does not reveal the native
-ioctl request word. In particular, the low _IOC_NR byte, exact _IOC size
-value, direction bits and userspace buffer framing remain unresolved until
-the ExtAudioMuxer JNI implementation is recovered. See
+This identifies the Java/Binder interface but does not reveal whether the
+native method uses ioctl or another transport. The driver's raw write()
+interface only parses one hexadecimal byte, so ioctl is strongly expected
+for these multiword arrays. If ioctl is used, the low _IOC_NR byte, exact
+_IOC size value, direction bits and userspace buffer framing remain
+unresolved until the ExtAudioMuxer JNI implementation is recovered. See
 [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md).
