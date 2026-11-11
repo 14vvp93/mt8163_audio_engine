@@ -73,3 +73,24 @@ From the exact running firmware, collect the following files if present:
 Also record the build fingerprint and the SHA-256 of each collected binary. Do not mix libraries from a different firmware build without recording that mismatch.
 
 No device node was opened, no ioctl was sent, and no audio or hardware state was changed in this audit.
+
+
+## 2026-11-11 expanded binary/artifact scan
+
+A fresh local scan of all 325 entries in `files2-extracted.zip` was run, not just a filename-filtered `*.so` scan. The scan checked exact bridge/device strings in every archive member and separately identified ELF files by their `7F 45 4C 46` magic bytes.
+
+Results:
+
+- No ELF file contains `SendCmdAudioMux`, `ExtAudioMuxer`, `/dev/audiomux`, or `audiomux`.
+- The only ELF with generic JNI markers is `system/libem_audio_jni.so` (41,392 bytes, SHA-256 `b36141ed837908255d6e7fac6a9165b9fdcc8446f810755b619059e096911668`). It contains `JNI_OnLoad` and `registerNativeMethods`, but no CD3313 bridge/device strings. This is not evidence that it implements ExtAudioMuxer.
+- `framework/arm/boot-carservices.art` contains the literal `/dev/audiomux` and sourceinfo service labels in its ART image string area. This corroborates the framework-side class/service evidence but is not a native ELF provider.
+- `framework/boot.vdex` and `framework/boot-framework.vdex` contain generic `sourceinfo` strings; neither contains the exact native method names.
+- `boot-carservices.vdex`, `services.vdex`, and `AudioInputSource.vdex` retain the Java-side references already described above.
+
+The expanded scan confirms that the native provider is absent from this particular 325-entry archive. It does not prove the provider is absent from the complete firmware: the archive does not include `libandroid_servers.so` or the complete system/vendor native-library directories.
+
+## Updated collection tool
+
+`tools/find_cd3313_native_provider.ps1` now scans all files (subject to a configurable maximum size), detects ELF by magic rather than extension, searches both strong CD3313 markers and supporting JNI markers, and records SHA-256 and relative paths. Generic `JNI_OnLoad`/ `RegisterNatives` strings are classified as supporting evidence only. See `docs/CD3313_NATIVE_PROVIDER_SCAN.md`.
+
+No firmware binary was executed. No device node was opened, no ioctl was sent, and no audio/hardware state was changed.
