@@ -239,3 +239,23 @@ This is now directly established by the callback-table target and the BES PLT re
 4. Trace the upstream AudioMTKFilterManager::process() caller and its buffer format before designing the Android integration adapter.
 
 No stock HAL, DSP code, CD3313 command, or runtime audio routing was modified.
+
+
+## Q1.15 / Q1.31 processing branches and intermediate buffers
+
+Further analysis of callback 0xC088 and its PLT calls establishes two format-dependent routes into BLOUD_HD_Internal_Process():
+
+- The callback reads a mode/format selector from BES state offset +0x1128. The state initializer at 0xBFA8 copies this field from the fifth 32-bit word of the MtkAudioLoud parameter block (object +0x34? see field mapping below; the callback state mapping is direct, while the public semantic name is unknown).
+- When the selector is nonzero, the callback calls BLOUD_HD_Internal_Process(state, callback_workspace, input, output) directly. The produced output count is computed as the internal sample/count amount multiplied by 4.
+- When the selector is zero, it first calls Copy_Q1p15_To_Q1p31(input, callback_workspace, count). It then calls BLOUD_HD_Internal_Process(state, callback_workspace + 0x2000, callback_workspace, callback_workspace + 0x1000), and finally calls Copy_Q1p31_To_Q1p15(callback_workspace + 0x1000, output, count). The produced output count is computed as count multiplied by 2.
+
+The conversion helpers provide strong fixed-point evidence:
+
+- Copy_Q1p15_To_Q1p31 at 0x9198 reads 16-bit values and shifts them left by 16 bits into 32-bit words. The NEON path uses VSHLL with shift 16; the scalar tail uses LDRH followed by LSL #16.
+- Copy_Q1p31_To_Q1p15 at 0x9210 extracts the upper 16 bits of each 32-bit word. The NEON path uses VSHRN with shift 16; the scalar tail reads the halfword at byte offset +2. No rounding operation is visible in these conversion paths.
+
+Thus the zero-selector route is a Q1.15 input/output path with a Q1.31 intermediate processing representation. The nonzero-selector route uses a four-byte-per-count input/output representation directly. The selector is copied from the MtkAudioLoud initialization parameter block into state +0x1128; its user-facing meaning and the full set of legal values are not yet recovered.
+
+The intermediate workspace is partitioned at least at offsets 0x0000, 0x1000, and 0x2000 in the Q1.15 route. The callback's workspace allocation is 0xF000 or 0x11000 bytes, so these regions lie within the allocated block. Exact per-region capacity, alignment requirements, and any additional state-dependent use remain to be decoded.
+
+These findings do not yet prove whether the data is mono/stereo, interleaved/planar, or exactly equivalent to Android PCM16/PCM32 at the HAL boundary. Q1.15 and Q1.31 describe the internal fixed-point representation; they are not sufficient by themselves to identify the upstream PCM channel layout.
