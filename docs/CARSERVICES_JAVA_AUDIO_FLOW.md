@@ -386,3 +386,6 @@ The focused firmware inventory found no `.dts`, `.dtsi`, `.dtb`, `.dtbo`, boot i
 
 
 The `/dev/fm` owner and its nonstandard ioctl copy sizes are documented in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md). The exact paired `fmradio_drv.ko` handles `0xC004F530` as a 20-byte five-field metadata query and `0xC004F521` as a 12-byte three-field I2S setting request, despite both ioctl numbers encoding `_IOC_SIZE=4`.
+
+
+The paired MT6627 kernel implementation, exact ioctl sizes, and WMT I2S pin-control evidence are now documented in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md). Note that the kernel copies 20 bytes for `0xC004F530` and 12 bytes for `0xC004F521`, although both ioctl values encode size 4.
