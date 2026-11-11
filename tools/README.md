@@ -49,3 +49,22 @@ system files. Temporary output and the ZIP are created on the computer.
 Before sharing the ZIP, review `getprop`, `logcat_audio.txt` and the
 kernel logs for device identifiers, application names or other information
 you do not want to disclose.
+
+## Find the CD3313 JNI native bridge
+
+The Java/Binder route is known, but the native implementation of
+`ExtAudioMuxer.nativeInit()` and
+`ExtAudioMuxer.SendCmdAudioMux()` is still missing. This scanner searches
+a local extracted firmware folder for shared libraries containing the likely
+JNI registration/method strings or `/dev/audiomux`. It also includes
+`libandroid_servers.so` as a candidate even if those strings are absent.
+
+Run it against the full extracted firmware tree:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\find_cd3313_jni_candidates.ps1 -Root D:\Desktop\MT8163
+```
+
+It creates `CD3313_JNI_Candidates.zip` with a CSV report and copies of
+matching libraries. The scanner reads the firmware source folder and does not
+modify it. Review the report before sharing the ZIP.
