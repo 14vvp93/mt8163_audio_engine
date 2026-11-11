@@ -448,6 +448,38 @@ public final class MainActivity extends Activity {
     private boolean applyUiProfileSnapshot(float[] values) {
         if (values == null || values.length != NativeDsp.UI_PROFILE_FLOAT_COUNT ||
                 dsp == null) return false;
+        for (float value : values) {
+            if (Float.isNaN(value) || Float.isInfinite(value)) return false;
+        }
+        if ((values[0] != 0.0f && values[0] != 1.0f) ||
+                (values[135] != 0.0f && values[135] != 1.0f) ||
+                (values[139] != 0.0f && values[139] != 1.0f) ||
+                (values[140] != 0.0f && values[140] != 1.0f) ||
+                (values[143] != 0.0f && values[143] != 1.0f)) return false;
+        for (int ch = 0, index = 1; ch < CHANNELS; ch++) {
+            float gain = values[index++];
+            if (gain < -24.0f || gain > 12.0f) return false;
+            for (int band = 0; band < 32; band++) {
+                float db = values[index++];
+                if (db < -18.0f || db > 18.0f) return false;
+            }
+        }
+        float balance = values[133], fader = values[134];
+        int order = Math.round(values[137]);
+        if (Math.abs(balance) > 1.0f || Math.abs(fader) > 1.0f ||
+                values[136] < 40.0f || values[136] > 400.0f ||
+                values[137] != order ||
+                (order != 2 && order != 4 && order != 6 && order != 8) ||
+                values[138] < -24.0f || values[138] > 12.0f ||
+                values[141] < 0.0f || values[141] > 1.0f ||
+                values[142] < 40.0f || values[142] > 160.0f ||
+                values[144] < 0.0f || values[144] > 1.0f ||
+                values[145] < 1500.0f || values[145] > 8000.0f) return false;
+        if (!dsp.applyUiProfile(values)) {
+            status.setText("Profile could not be applied · DSP transition may still be active");
+            return false;
+        }
+
         int p = 0;
         dspEnabled = values[p++] == 1.0f;
         for (int ch = 0; ch < CHANNELS; ch++) {
@@ -502,10 +534,6 @@ public final class MainActivity extends Activity {
         phaseButton.setText(subPhaseInverted ? "SUBWOOFER PHASE: 180°" : "SUBWOOFER PHASE: 0°");
         orderLabel.setText("Linkwitz–Riley · " + (crossoverOrder * 6) + " dB/oct");
         selectEqChannel(selectedEqChannel);
-        if (!dsp.applyUiProfile(values)) {
-            status.setText("Profile queued unsuccessfully · DSP transition may still be active");
-            return false;
-        }
         status.setText("Complete profile restored · one atomic 50 ms crossfade");
         return true;
     }
