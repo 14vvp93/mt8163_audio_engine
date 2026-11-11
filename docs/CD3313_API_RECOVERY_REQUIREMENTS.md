@@ -112,9 +112,10 @@ subwoofer command IDs also match the corresponding implemented driver IDs.
 
 The remaining missing component is not the Java framework API: it is the
 native JNI implementation of ExtAudioMuxer.nativeInit() and
-ExtAudioMuxer.SendCmdAudioMux(). That code constructs the ioctl request and
-userspace buffer. The original low _IOC_NR byte and exact framing must be
-recovered from the native library before a client is implemented.
+ExtAudioMuxer.SendCmdAudioMux(). That code must reveal whether it uses ioctl
+or another transport and how it frames the payload. The original low
+_IOC_NR byte and exact request/buffer framing must be recovered before a
+client is implemented.
 
 Next files to scan from the full firmware tree:
 - /system/lib/libandroid_servers.so;
