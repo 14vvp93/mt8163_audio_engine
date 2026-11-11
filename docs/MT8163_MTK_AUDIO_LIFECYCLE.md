@@ -245,7 +245,7 @@ No stock HAL, DSP code, CD3313 command, or runtime audio routing was modified.
 
 Further analysis of callback 0xC088 and its PLT calls establishes two format-dependent routes into BLOUD_HD_Internal_Process():
 
-- The callback reads a mode/format selector from BES state offset +0x1128. The state initializer at 0xBFA8 copies this field from the fifth 32-bit word of the MtkAudioLoud parameter block (object +0x34? see field mapping below; the callback state mapping is direct, while the public semantic name is unknown).
+- The callback reads a mode/format selector from BES state offset +0x1128. The state initializer at 0xBFA8 copies this field from offset +0x08 of the MtkAudioLoud parameter block, which is object offset +0x2C (the third 32-bit word in that block). The public semantic name is unknown.
 - When the selector is nonzero, the callback calls BLOUD_HD_Internal_Process(state, callback_workspace, input, output) directly. The produced output count is computed as the internal sample/count amount multiplied by 4.
 - When the selector is zero, it first calls Copy_Q1p15_To_Q1p31(input, callback_workspace, count). It then calls BLOUD_HD_Internal_Process(state, callback_workspace + 0x2000, callback_workspace, callback_workspace + 0x1000), and finally calls Copy_Q1p31_To_Q1p15(callback_workspace + 0x1000, output, count). The produced output count is computed as count multiplied by 2.
 
