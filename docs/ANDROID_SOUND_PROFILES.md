@@ -36,13 +36,20 @@ The snapshot is applied to native code as one validated profile update, rather t
 | 148 | Mid/high crossover frequency in Hz |
 | 149–232 | Four channels × three bands; each compressor stores enabled, threshold dB, ratio, attack ms, release ms, knee dB and makeup gain dB |
 
-The compressor settings are independently selectable for FL, FR, RL and RR, with Low, Mid and High bands. The test-bench UI exposes master dynamics enable, both crossover frequencies, channel/band selection, per-band enable and threshold/ratio/attack/release/knee/makeup controls.
+The compressor settings are independently selectable for FL, FR, RL and RR, with Low, Mid and High bands. The test-bench UI exposes master dynamics enable, both crossover frequencies, channel/band selection, per-band enable and threshold/ratio/attack/release/knee/makeup controls. The native quality test exercises each of the 12 channel/band compressors in isolation and verifies that all unselected channel/band components remain unchanged.
 
 Native code rejects wrong-length arrays, non-finite values, invalid boolean encodings, out-of-range controls, invalid compressor parameters and unsupported crossover orders before queuing the profile.
 
-## Compatibility
+## Compatibility and migration
 
-The persistent JSON array is private to the app. The packed UI layout is length-guarded by UI_PROFILE_FLOAT_COUNT, not yet wrapped in a separate schema-version field. A length change causes older saved arrays to be ignored. Future layout changes should introduce an explicit versioned envelope and migration path. Existing malformed or incompatible snapshots are ignored rather than passed to native DSP.
+Saved profiles now use a versioned JSON envelope with schema version 1 and a `values` array. The JNI packed layout remains independently guarded by `UI_PROFILE_FLOAT_COUNT` (233 floats), so persistence schema and native-call layout are not conflated.
+
+The reader remains backward-compatible with the previous unwrapped JSON arrays:
+- Legacy 233-float arrays are loaded as-is.
+- Legacy 146-float arrays are migrated by preserving the original controls and appending disabled multiband dynamics with the current defaults: 250 Hz and 4 kHz crossovers; all 12 compressors disabled with -18 dB threshold, 2:1 ratio, 10 ms attack, 120 ms release, 6 dB knee and 0 dB makeup.
+- Unknown envelope versions, malformed JSON, non-finite values and unsupported array lengths are rejected before native DSP.
+
+Future incompatible persistence changes should increment the envelope version and provide an explicit migration where practical. The native 233-float profile validator remains the final validation gate.
 
 ## Validation status
 
