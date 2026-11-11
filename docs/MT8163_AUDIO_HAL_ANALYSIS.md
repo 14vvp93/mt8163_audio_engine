@@ -164,3 +164,18 @@ The stream-attribute preparation in AudioALSAStreamManager::createPlaybackHandle
 - At 0x7949C–0x794A8, it compares the stream sample-rate field at stream_attribute_t +0x28 with 48,001 and forces +0x41 to 1 for rates at or above 48,001 Hz.
 
 Therefore the +0x41 bypass condition covers at least the manager flag and high-rate streams (strictly 48,001 Hz or above in this comparison). The semantic name of the manager flag at +0xD6 is still unknown. These are exact field-flow findings; no assumption is made about all other routing or format constraints.
+
+
+### Input format and optional mono conversion before post-processing
+
+The Normal playback write pipeline's preceding helper, AudioALSAPlaybackHandlerBase::doStereoToMonoConversionIfNeed() at 0xD20AC, provides additional format evidence:
+
+- It reads stream_attribute_t +0x18 and runs only when bit 1 (mask 0x02) is set.
+- It then checks the first 32-bit stream-attribute field. For value 1, it treats the input as signed 16-bit samples, averages each adjacent stereo pair, and writes the averaged sample to both positions.
+- For value 3, it performs the same operation on 32-bit samples.
+- Other first-field values take the no-conversion path in this helper.
+- The helper does not change the byte count; it modifies the buffer in place.
+
+Because this helper runs immediately before doPostProcessing() in AudioALSAPlaybackHandlerNormal::write(), the MTK filter manager can receive either the unchanged input channel data or a mono downmix duplicated into the two channel positions, depending on stream_attribute_t +0x18. The code explicitly supports 16-bit and 32-bit sample handling in this conversion helper. It does not prove the complete format mapping for every stream or every playback handler.
+
+This further reinforces that our integration adapter must inspect the actual stream attributes and support the selected sample representation. It must not hard-code four-channel processing at this HAL point: the normal handler's observed pre-processing is pair-based stereo/mono handling. Four-channel routing remains a separate question for the hardware path and other handlers.
