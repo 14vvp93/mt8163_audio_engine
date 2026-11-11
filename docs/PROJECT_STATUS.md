@@ -75,10 +75,10 @@ The same JNI library also registers `android/carsource/McuService.sendCmdCarStat
 Its native implementation writes a fixed 40-byte command buffer to
 `/dev/carstatus`. The paired `carstatus.ko` module exposes read/write
 handlers and reports ACC, reversing, parking, headlight, and telephone-mute
-state. Its `update_mute()` routine opens `/dev/audiomux` read-only only as a
-presence check, then updates the carstatus module's mute mask and drives GPIO393 — the same
-numeric GPIO used by the CD3313 DSP shutdown/wakeup path. It does not send
-a CD3313 ioctl. This shared line is now a priority to analyze for ownership,
-polarity, and race conditions. The ACC-to-CD3313 mute-reason-2 path is
+state. Its `update_mute()` routine always updates its own mute mask, then probes
+`/dev/audiomux` read-only. If the open succeeds, it leaves GPIO393 to the
+CD3313 driver; only if the open fails does carstatus drive GPIO393 as a
+fallback. This appears to be deliberate ownership selection, not an ordinary
+concurrent-write path. It does not send a CD3313 ioctl. The ACC-to-CD3313 mute-reason-2 path is
 therefore still not established. Details:
 [CARSTATUS_MCU_SERVICE_ABI.md](CARSTATUS_MCU_SERVICE_ABI.md).
