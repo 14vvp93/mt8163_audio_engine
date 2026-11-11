@@ -297,6 +297,45 @@ jobs:
           echo "Boot/DTB image candidates: $(wc -l < "$OUT/boot-and-dtb-image-candidates.txt")"
           echo "Config matches: $(wc -l < "$OUT/config-search.txt")"
 
+      - name: Analyze FM tuner kernel modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=firmware-analysis/vendor_lib/lib/modules
+          OUT=firmware-analysis/fm-tuner-drivers
+          mkdir -p "$OUT"
+          for module in fmradio_drv qn8027 qn8035 si475x tda7708LX wmt_drv; do
+            input="$SRC/$module.ko"
+            if [ ! -f "$input" ]; then
+              echo "MISSING $input" >> "$OUT/module-inventory.txt"
+              continue
+            fi
+            mkdir -p "$OUT/$module"
+            cp "$input" "$OUT/$module/$module.ko"
+            (
+              cd "$OUT/$module"
+              sha256sum "$module.ko" > sha256.txt
+              file "$module.ko" > file.txt
+              readelf -h -n -Ws -rW "$module.ko" > elf-report.txt 2>&1 || true
+              objdump -drwC "$module.ko" > disassembly.txt 2>&1 || true
+              strings -a -t x "$module.ko" > strings.txt
+              grep -i -E 'fm|radio|tuner|i2s|ioctl|audio_info|aud_path|pad|gpio|wmt|chip|i2c|/dev/' strings.txt > focused-strings.txt || true
+            )
+            echo "FOUND $input" >> "$OUT/module-inventory.txt"
+          done
+          test -s "$OUT/module-inventory.txt"
+          find "$OUT" -maxdepth 2 -type f -printf '%p %s bytes\\n' | sort > "$OUT/file-inventory.txt"
+          echo "Analyzed modules:"
+          cat "$OUT/module-inventory.txt"
+
+      - name: Upload FM tuner driver analysis
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-fm-tuner-driver-analysis
+          path: firmware-analysis/fm-tuner-drivers/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload focused board audio routing evidence
         uses: actions/upload-artifact@v6
         with:
