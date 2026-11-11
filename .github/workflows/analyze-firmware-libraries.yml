@@ -86,6 +86,41 @@ jobs:
                   f.write(f"{name}: {count} source part(s), {size} bytes joined, {extracted} extracted files\\n")
           PY
 
+      - name: Build pinned VDEX extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential zlib1g-dev
+          git clone https://github.com/anestisb/vdexExtractor.git /tmp/vdexExtractor
+          git -C /tmp/vdexExtractor checkout 78f283b60ab6991fa27eeaff7d7be16409401c08
+          sed -i 's/-Wall -Wextra -Werror/-Wall -Wextra -Werror -Wno-error=vla-parameter/' /tmp/vdexExtractor/src/Makefile
+          cd /tmp/vdexExtractor
+          ./make.sh gcc
+          test -x bin/vdexExtractor
+
+      - name: Disassemble carservices CompactDex
+        shell: bash
+        run: |
+          set -euo pipefail
+          VDEX="$(find firmware-analysis -type f -name boot-carservices.vdex -print -quit)"
+          test -n "$VDEX"
+          mkdir -p firmware-analysis/carservices-vdex
+          cp "$VDEX" firmware-analysis/carservices-vdex/boot-carservices.vdex
+          file "$VDEX" | tee firmware-analysis/carservices-vdex/file-info.txt
+          sha256sum "$VDEX" | tee firmware-analysis/carservices-vdex/sha256.txt
+          /tmp/vdexExtractor/bin/vdexExtractor --get-api -i "$VDEX" | tee firmware-analysis/carservices-vdex/api-version.txt
+          /tmp/vdexExtractor/bin/vdexExtractor \
+            -i "$VDEX" \
+            -o firmware-analysis/carservices-vdex \
+            --dis -f \
+            -l firmware-analysis/carservices-vdex/disassembly.log
+          test -s firmware-analysis/carservices-vdex/disassembly.log
+          grep -n -E 'McuService|sendCmdCarStatus|sendAccState|sendReverseState|sendCmdAudioMux|doExtAudioEffect|mute=' \
+            firmware-analysis/carservices-vdex/disassembly.log \
+            > firmware-analysis/carservices-vdex/targeted-hits.txt || true
+          cat firmware-analysis/carservices-vdex/targeted-hits.txt
+
       - name: Inventory native libraries and search CD3313 audio symbols
         shell: bash
         run: |
