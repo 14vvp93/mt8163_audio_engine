@@ -70,3 +70,48 @@ These planes interact, but they are not interchangeable. Keep their interfaces s
 3. Decode the FM radio input-path arguments and relate them to driver command `0x04`.
 4. Continue matching the native Audio HAL and audio policy routing to the Java service layer.
 5. Keep all real-device control writes disabled until the complete payload and ioctl ABI is proven.
+
+
+## Detailed ACC transition handling
+
+The CarStatusService disassembly resolves the ACC transition timing and several state guards.
+
+### Input and event handling
+
+- The kernel uevent observer removes any pending status-read message (what=4) and schedules a fresh read after 10 ms.
+- The boot-completed receiver starts observing DEVPATH=/devices/platform/carstatus, then requests an immediate status read and schedules additional startup work. The status read is therefore not dependent on a future ACC edge.
+- readStatus() opens /dev/carstatus, reads up to 128 bytes, parses the acc field, and calls setAccStatus(value) only when the parsed value is non-negative.
+- setAccStatus() ignores calls before boot completion and suppresses duplicate values using mReadacc. The first valid value is also published to the status map/file.
+- Before scheduling a new transition, it removes pending MSG_ACC_DELAYED (what=2) and MSG_GOINGTO_SLEEP (what=5) messages. It then queues MSG_ACC_DELAYED with the new ACC value in arg1, delayed by 2,500 ms. A newer input therefore replaces pending delayed transition work.
+
+### ACC OFF path
+
+When the accepted ACC value is zero, setAccStatus() immediately:
+1. Sends the MCU car-status string mute=10001.
+2. Calls ExtAudioMuxer.setMasterMute(true, 2).
+3. Removes pending MSG_ACC_UNMUTE (what=11) so a stale delayed unmute cannot undo the OFF mute.
+
+The delayed ACC handler (MSG_ACC_DELAYED, 2,500 ms) invokes onAccStatusInner(0). That method reads Settings.System key power_down_afteraccoff, with a default of 30,000 ms, and schedules MSG_GOINGTO_SLEEP (what=5) for that delay. It also publishes the ACC status and performs related service/power-management work. The actual sleep path is separate from the immediate mute.
+
+### ACC ON path
+
+When the accepted ACC value is one, the same 2,500 ms delayed transition invokes onAccStatusInner(1). The ON branch:
+- schedules message 10 after 500 ms and message 12 after 1,000 ms;
+- calls RadioService.nativeSetPower(1);
+- sends usb5v=1 through McuService.sendCmdCarStatus;
+- invokes storage mounting;
+- starts configured ACC services, including the configured com.hcn.autoeq remote-control service and link service;
+- applies board-dependent amplifier/fan handling.
+
+The delayed unmute handler checks that ACC is still ON before sending mute=10000 and calling ExtAudioMuxer.setMasterMute(false, 2). The OFF path explicitly removes this pending message. This establishes reason value 2 at both the immediate ACC-OFF mute and delayed ACC-ON unmute call sites.
+
+### Engineering implications for mt8163_tools
+
+1. Treat the kernel event as a hint to reread state, not as the state payload itself. The service's uevent callback does exactly that.
+2. Preserve an initial read after boot and after observer registration; do not rely only on edges.
+3. Debounce state changes and cancel stale delayed work when a newer value arrives. The firmware uses a 2,500 ms delayed ACC transition.
+4. Keep ACC state separate from power-off scheduling. The default delayed sleep is 30 seconds, configurable through power_down_afteraccoff.
+5. For the app, do not copy the firmware's power, USB, mute, or sleep side effects. Only consume the state and expose the required automation behavior.
+6. The firmware's sendBroadcastAsUser action is emitted from onAccStatusInner, after the 2,500 ms delay, rather than directly in the kernel uevent callback. Therefore the Android broadcast is not necessarily an immediate ACC edge notification.
+
+These timings and actions are firmware observations, not a recommendation to reproduce its power-control behavior in the utility app. Validate actual timing on the target device before changing the app's current polling fallback.
