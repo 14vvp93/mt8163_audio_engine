@@ -1,38 +1,24 @@
-# MT8163 firmware library reference
+# MT8163 audio reference files
 
-## Source archive
+Curated selection from the user-supplied firmware `lib` archive. The original archive contained 325 files; this selection retains 26 audio-related binaries (4,632,788 bytes uncompressed) plus this README.
 
-- Original archive: `lib_bf57dda0-1874-4303-acf8-5302f3787609.zip`
-- Intended repository layout: `mt8163/lib/`
-- ZIP integrity: verified (all entries pass CRC test)
-- Files: 325 (plus directory entries)
-- Expanded size: 98,891,944 bytes
-- ZIP size: 43,323,642 bytes
-- SHA-256: `f49a65f429b125ebe8c36f3f7b710f09fccd87b1fa36bb3c7009b8349a861879`
+## Selected files
 
-## Audio-related components identified
+- `hw/audio.primary.mt8163.so` — primary MT8163 audio HAL.
+- `hw/android.hardware.audio@4.0-impl-mediatek.so` — MediaTek HIDL audio implementation.
+- `hw/android.hardware.audio.effect@4.0-impl.so` — HIDL audio-effects implementation.
+- MediaTek audio/HAL support: `libaudiocompensationfilter_vendor.so`, `libaudiocomponentengine_vendor.so`, `libaudiocustparam_vendor.so`, `libaudiodcrflt_vendor.so`, `libaudioprimarydevicehalifclient.so`, `libaudiosetting.so`, `libaudiotoolkit_vendor.so`, `libaudio_param_parser-vnd.so`, `libbessound_hd_mtk_vendor.so`, `libmtklimiter_vendor.so`, `libmtkshifter_vendor.so`.
+- Audio support/dependencies: `libblisrc_vendor.so`, `libspeech_enh_lib.so`, `libladder.so`, `libaedv.so`, `libtinycompress.so`, `libtinyxml.so`, `libeffects.so`.
+- Bluetooth voice/audio: `libbluetooth_mtk_pure.so`, `libcvsd_mtk.so`, `libmsbc_mtk.so`.
+- Audio HIDL interface: `vendor.mediatek.hardware.audio@4.1.so`.
+- Voice preprocessing: `libwebrtc_audio_preprocessing.so`.
 
-| Path | Size (bytes) |
-|---|---:|
-| `lib/hw/audio.primary.mt8163.so` | 1,671,852 |
-| `lib/hw/android.hardware.audio@4.0-impl-mediatek.so` | 191,752 |
-| `lib/hw/android.hardware.audio.effect@4.0-impl.so` | 209,520 |
-| `lib/libaudiocompensationfilter_vendor.so` | 19,716 |
-| `lib/libaudiocomponentengine_vendor.so` | 40,796 |
-| `lib/libaudiocustparam_vendor.so` | 36,284 |
-| `lib/libaudiodcrflt_vendor.so` | 24,652 |
-| `lib/libaudioprimarydevicehalifclient.so` | 41,268 |
-| `lib/libaudiosetting.so` | 15,564 |
-| `lib/libaudiotoolkit_vendor.so` | 19,704 |
-| `lib/libaudio_param_parser-vnd.so` | 164,728 |
-| `lib/libbessound_hd_mtk_vendor.so` | 71,356 |
-| `lib/libmtklimiter_vendor.so` | 34,484 |
-| `lib/libmtkshifter_vendor.so` | 18,100 |
-| `lib/libwebrtc_audio_preprocessing.so` | 813,424 |
-| `lib/modules/cd3313.ko` | 188,520 |
+## Deliberately excluded
 
-The archive also contains graphics, camera, radio, DRM, Bluetooth, kernel-module and other system libraries. It is a firmware reference dump, not an installable package.
+- `modules/cd3313.ko` — already stored at `reference-materials/kernel/cd3313.ko`; no duplicate.
+- Camera, radio, graphics, DRM, and unrelated system libraries.
+- Generic Android system dependencies absent from the supplied archive (including `libtinyalsa.so` and `libmedia_helper.so`).
 
-## Repository storage note
+The curated ZIP is provided separately as `mt8163-audio-required-files.zip` (SHA-256: `434c5fbce500ec680f5fc0058b3e6135e34e0c988274c6654cc8b4cdfef97280`). It preserves the source paths under `lib/`.
 
-This file records the archive inventory and checksum. The 43.3 MB ZIP itself is not embedded in this Git commit yet; it should be added under this `mt8163/lib/` directory as a binary release asset or through Git LFS rather than expanded into ordinary Git history. Do not install, replace, or load any firmware component based only on its filename.
+These binaries are firmware reference material for offline analysis only. Do not install, replace, or load them on a device without separate compatibility and safety verification.
