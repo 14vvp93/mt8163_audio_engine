@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "dtbo.img"
-      - "recovery.img"
+      - "reference-materials/firmware-dumps/dtbo.img"
+      - "reference-materials/firmware-dumps/recovery.img"
       - "reference-materials/firmware-dumps/boot.img"
       - ".github/workflows/analyze-firmware-images.yml"
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
           report=image-analysis/REPORT.txt
           : > "$report"
 
-          for image in dtbo.img recovery.img reference-materials/firmware-dumps/boot.img; do
+          for image in reference-materials/firmware-dumps/dtbo.img reference-materials/firmware-dumps/recovery.img reference-materials/firmware-dumps/boot.img; do
             if [ -f "$image" ]; then
               {
                 echo "===== $image ====="
@@ -55,7 +55,7 @@ jobs:
           import struct
           from pathlib import Path
 
-          p = Path("dtbo.img")
+          p = Path("reference-materials/firmware-dumps/dtbo.img")
           if not p.exists():
               print("DTBO image not found")
               raise SystemExit(0)
@@ -94,10 +94,9 @@ jobs:
             } | tee -a "$report"
           done
 
-          for image in recovery.img reference-materials/firmware-dumps/boot.img; do
+          for image in reference-materials/firmware-dumps/recovery.img reference-materials/firmware-dumps/boot.img; do
             [ -f "$image" ] || continue
-            name=$(basename "$(dirname "$image")")-$(basename "$image" .img)
-            if [ "$image" = "recovery.img" ]; then name=recovery; fi
+            name=$(basename "$image" .img)
             out="image-analysis/unpacked/$name"
             mkdir -p "$out"
             {
