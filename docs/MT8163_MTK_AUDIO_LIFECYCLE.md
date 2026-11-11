@@ -155,8 +155,21 @@ The strongest match is the last slot. The component-engine `process()` call thro
 
 The first two slots also match the `open()` call sites: `+0x38` is invoked with three register arguments and `+0x3C` is invoked with three register arguments, matching the corresponding BES entry points at `0xBE40` and `0xBFA8`.
 
-This makes the correspondence between the BES callback table and `MtkAudioLoud +0x38..+0x4C` a strong binary-level identification, rather than a guess based only on adjacent fields. The exact call site that passes `this + 0x38` to `BLOUD_HD_SetHandle()` has not yet been isolated, so that final initialization edge remains to be confirmed.
+This makes the correspondence between the BES callback table and `MtkAudioLoud +0x38..+0x4C` a strong binary-level identification, rather than a guess based only on adjacent fields. The initialization edge is confirmed: `MtkAudioLoud::open()` computes `this + 0x38` and calls the `BLOUD_HD_SetHandle()` PLT entry at `0x51EE`. A separate call in `getBesSoundVer()` passes a stack-allocated six-pointer table to the same API. Thus the callback-table-to-object-field mapping is directly established.
 
 ### Integration implication
 
 The process callback is now identified as the BES table's sixth entry (`0xC088`) with high confidence. The remaining work is to recover the handle/context setup path, decode the data layout behind `this + 0x50` and `this + 0x54`, and trace the upstream `AudioMTKFilterManager::process()` caller to establish the real PCM format and routing conditions. This does not authorize replacing the stock HAL or bypassing its call/BT/microphone paths.
+
+
+## Direct BLOUD API call-site confirmation
+
+The component-engine call sites were matched to the imported BLOUD symbols through the ARM interworking veneers and PLT relocations:
+
+- In `MtkAudioLoud::open()` at `0x51EE`, the code computes `this + 0x38`, places that address in `r0`, and calls the veneer resolving to `BLOUD_HD_SetHandle`. This directly confirms that the six BES function pointers are installed into the object fields `+0x38` through `+0x4C`.
+- In `MtkAudioLoud::getBesSoundVer()` at `0x5BDE`, the same API is called with a stack-allocated table at `sp + 8`; the routine then invokes a function pointer loaded from that temporary table. This is a second independent use of the six-entry callback interface.
+- In `MtkAudioLoud::copyParam()`, calls at `0x4FD6` and `0x5054` resolve to `BLOUD_HD_Filter_Design`. Both paths pass four register arguments and check the returned status before continuing. The two call sites use separate descriptor fields from the parameter context, so the library is asked to design more than one filter record/path during parameter preparation.
+
+The previously provisional mapping is therefore confirmed at the initialization boundary: `BLOUD_HD_SetHandle(this + 0x38)` installs the exact six callbacks later used by `open()`, parameter/work-mode code, and `process()`. In particular, the process callback at `this + 0x4C` is the sixth BES entry at `0xC088`.
+
+The callback argument types and the semantic meaning of each filter-design descriptor are still not fully recovered. The next analysis target is the state/context object referenced at `this + 0x50`, the buffer/context pointer at `this + 0x54), and the relationship between those fields and the two filter-design descriptor records.
