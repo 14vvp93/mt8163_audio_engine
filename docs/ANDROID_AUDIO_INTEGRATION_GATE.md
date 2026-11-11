@@ -289,3 +289,37 @@ This is a capability boundary from the chip datasheet plus static HAL
 disassembly, not a claim that the board's complete analog wiring has been
 recovered. The live DAC-to-CD3313 input connection still needs DT/mixer/board
 evidence.
+
+
+## 13. Hidden CD3313 Java API and Binder bridge recovered
+
+The files2 archive's boot-carservices.vdex contains the custom
+android.audio.AudioEffect API, ISourceService Binder interface,
+SourceService implementation and ExtAudioMuxer wrapper. The recovered route is:
+
+android.audio.AudioEffect
+→ ISourceService.doExtAudioEffect(int, int[])
+→ SourceService.doExtAudioEffect()
+→ native ExtAudioMuxer.SendCmdAudioMux()
+→ /dev/audiomux
+→ cd3313.ko.
+
+The Java setBalance(FL, FR, RL, RR) method sends command 21 (0x15) with
+four integers in that order. This exactly matches the kernel driver's
+four-output FL/FR/RL/RR attenuation handler. The Java bass, loudness, treble,
+input-gain and subwoofer commands also match the driver's implemented command
+IDs. Command 1000 is special: the Binder service writes sys.audio.lr.balance
+and does not call the native muxer.
+
+The Java API exposes additional EQ/delay/compressor/crossover commands, but
+the recovered CD3313 driver has no write-dispatch cases for those IDs. They
+must not be advertised as working CD3313 features on this firmware.
+
+The Java/Binder route is now known. The remaining userspace gap is the native
+implementation of ExtAudioMuxer.nativeInit() and SendCmdAudioMux(), which
+builds the ioctl request and buffer framing. The low _IOC_NR byte and exact
+native request must be recovered from the registering native library before
+any live /dev/audiomux client is written.
+
+See [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md)
+and [CD3313_API_RECOVERY_REQUIREMENTS.md](CD3313_API_RECOVERY_REQUIREMENTS.md).
