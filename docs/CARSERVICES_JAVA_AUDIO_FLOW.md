@@ -134,3 +134,23 @@ A search of the complete carservices VDEX disassembly finds seven Java call site
 The VDEX proves the numeric reason arguments and call-site conditions. It does not, by itself, prove the driver's internal arbitration policy for overlapping reasons or whether every reason is treated as a strict independent mute owner. Do not model these reason values as a public stable ABI without validating the matching driver implementation and runtime behavior.
 
 This inventory accounts for all seven textual call sites in the analyzed disassembly; no other ExtAudioMuxer.setMasterMute call sites were found in this VDEX.
+
+
+## FM input-path mute arguments
+
+The complete VDEX search finds seven calls to ExtAudioMuxer.setInputPathMute(int, boolean, int). RadioService consistently uses Java input-path ID 0; this is the firmware's Java-side identifier for its radio mute path. The disassembly does not yet prove which physical CD3313 input this ID selects.
+
+| Caller | Java payload | Confirmed behavior |
+|---|---|---|
+| RadioService constructor | [0, true, 16] | Initializes the radio path muted |
+| RadioService.sendFreq | [0, true, 1], then [0, false, 1] | Mutes before retuning, then unmutes after the selected delay |
+| RadioService.onMessage (FM mute status) | [0, packet_bit_0x02, 2] | Mirrors the decoded FM mute flag; the same branch sends MCU mask mute=10001000 when true or mute=10000000 when false |
+| RadioService.scan | [0, true, 2] | Mutes the radio path before starting a scan |
+| RadioService.setMute(boolean) | [0, caller_value, 4] | Exposes a reason-4 radio-path mute wrapper |
+| SourceService.setInputPathMute(path, mute) | [path, mute, 4] | Generic Binder-facing wrapper; caller supplies path and mute state |
+
+In sendFreq(), the code waits 120 ms after muting before calling nativeSetFreq(). It then waits 600 ms when the new frequency's FM-range classification differs from the current frequency, otherwise 100 ms, before unmuting with reason 1. This is a firmware timing detail, not a safe universal delay for a new client.
+
+The FM mute-status handler decodes the relevant boolean from bit 0x02 of a radio MCU packet, calls setInputPathMute(0, decodedFlag, 2), and sends the corresponding MCU mute mask. The scan path also uses reason 2, but for a separate operation. Therefore the numeric reason alone is not enough to identify why the radio path is muted.
+
+The driver command 0x04 is known to receive the Java payload shape [inputPath, mute, reason], but the mapping from Java path ID 0 to a physical CD3313 source remains unproven. Keep that mapping explicitly unresolved until the matching cd3313.ko handler is disassembled and checked against runtime routing.
