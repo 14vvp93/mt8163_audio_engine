@@ -206,7 +206,7 @@ The selector map and channel labels from the earlier module are documented in [C
 The compact `cd3313-current-module-analysis` artifact from workflow run `43113850964` now provides a direct check against the CD3313 module paired with this firmware, rather than relying only on the earlier reconstructed build.
 
 - Current module Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
-- Current module SHA-256: `6a96207794c770d05a9ba6988f38ebac0391c1c6461cd20ed394594`.
+- Current module SHA-256: `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
 - Its `.rodata` name-pointer table contains seven entries in this exact order: `RADIO`, `ARM`, `AUX`, `EXBT`, `AUX2`, `DAB`, `NONE`.
 - Its BSS symbol `channel_mute` is 28 bytes, i.e. seven 32-bit channel mute masks. The `internal_radio` state is also present.
 - The DWARF debug information names a `channel_to_cd3313(channel)` inline helper at source line 411, but this module's symbol/disassembly output does not expose a standalone body for that helper. The exact logical-channel-to-chip-selector translation therefore remains to be recovered from the optimized code/data tables.
