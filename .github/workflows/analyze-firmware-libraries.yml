@@ -284,14 +284,14 @@ jobs:
               found.append((str(rel), target.stat().st_size))
           with (out.parent / "selected-config-files.txt").open("w") as f:
               for name, size in found:
-                  f.write(f"{name} ({size} bytes)\\n")
+                  f.write(f"{name} ({size} bytes)\n")
           print(f"Copied {len(found)} targeted audio/policy configuration files")
           PY
-          find firmware-analysis -type f \\
-            \\( -iname 'boot*.img' -o -iname 'dtbo*' -o -iname '*dtb*' -o -iname '*.img' \\
-               -o -iname 'lk.bin' -o -iname 'preloader*' \\) \\
+          find firmware-analysis -type f \
+            \( -iname 'boot*.img' -o -iname 'dtbo*' -o -iname '*dtb*' -o -iname '*.img' \
+               -o -iname 'lk.bin' -o -iname 'preloader*' \) \
             ! -path '*/board-audio-routing/*' -print | sort > "$OUT/boot-and-dtb-image-candidates.txt"
-          grep -RInI -E 'FM_I2S|MRGRX|FM_TUNER|tuner|radio|PCM|CARD|card|pcm|AudioALSADeviceParser|FM_DIRECT_CONTROL' \\
+          grep -RInI -E 'FM_I2S|MRGRX|FM_TUNER|tuner|radio|PCM|CARD|card|pcm|AudioALSADeviceParser|FM_DIRECT_CONTROL' \
             "$OUT/config-files" > "$OUT/config-search.txt" || true
           echo "Selected config files: $(wc -l < "$OUT/selected-config-files.txt")"
           echo "Boot/DTB image candidates: $(wc -l < "$OUT/boot-and-dtb-image-candidates.txt")"
