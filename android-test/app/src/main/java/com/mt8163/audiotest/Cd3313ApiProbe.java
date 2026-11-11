@@ -1,5 +1,6 @@
 package com.mt8163.audiotest;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -21,6 +22,26 @@ public final class Cd3313ApiProbe {
                 return "API class found, but getInstance() returned null. No control command was sent.";
             }
 
+            String binderStatus = "Binder reference obtained";
+            try {
+                Field serviceField = apiClass.getDeclaredField("mService");
+                serviceField.setAccessible(true);
+                Object service = serviceField.get(instance);
+                if (service == null) {
+                    binderStatus = "Binder reference is null";
+                } else {
+                    Method asBinder = service.getClass().getMethod("asBinder");
+                    Object binder = asBinder.invoke(service);
+                    Class<?> binderType = Class.forName("android.os.IBinder");
+                    Method pingBinder = binderType.getMethod("pingBinder");
+                    boolean alive = Boolean.TRUE.equals(pingBinder.invoke(binder));
+                    binderStatus = alive ? "sourceinfo Binder ping OK" : "sourceinfo Binder ping failed";
+                }
+            } catch (Throwable pingError) {
+                binderStatus = "Binder reference obtained; ping unavailable: "
+                        + pingError.getClass().getSimpleName();
+            }
+
             StringBuilder available = new StringBuilder();
             appendMethod(available, apiClass, "setBalance",
                     int.class, int.class, int.class, int.class);
@@ -31,9 +52,9 @@ public final class Cd3313ApiProbe {
             appendMethod(available, apiClass, "setSubWoofer", int.class, int.class);
 
             return "READ-ONLY PASS: android.audio.AudioEffect loaded; "
-                    + "getInstance() succeeded and returned a sourceinfo Binder reference.\n"
+                    + "getInstance() succeeded. " + binderStatus + ".\n"
                     + "Public control methods: " + available + "\n"
-                    + "No CD3313 command was sent. Native /dev/audiomux operation is not tested.";
+                    + "No CD3313 control command was sent. Native /dev/audiomux operation is not tested.";
         } catch (InvocationTargetException error) {
             Throwable cause = error.getCause() == null ? error : error.getCause();
             return "API class found, but getInstance() failed: "
