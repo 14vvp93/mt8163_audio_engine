@@ -116,6 +116,7 @@ Save-AdbText "block_partitions" "ls -la /dev/block/by-name 2>&1; cat /proc/parti
 Save-AdbText "device_tree_listing" "ls -la /sys/firmware/devicetree/base 2>&1; ls -la /proc/device-tree 2>&1; cat /sys/firmware/devicetree/base/model 2>&1; tr '\000' '\n' </sys/firmware/devicetree/base/compatible 2>/dev/null"
 Save-AdbText "audio_config_file_list" "for d in /vendor/etc /system/etc; do echo ==== $d; find $d -maxdepth 4 -type f 2>/dev/null | grep -iE 'audio|mixer|codec|i2s'; done"
 Save-AdbText "dmesg_root" "dmesg" -Root
+Save-AdbText "dmesg_user" "dmesg"
 Save-AdbText "logcat_audio" "logcat -d -t 5000 2>&1 | grep -iE 'audio|cd3313|i2s|codec|audiomux|mtk' | tail -n 3000"
 
 Pull-RemoteFile "/vendor/etc/audio_device.xml" "vendor/audio_device.xml"
@@ -124,6 +125,7 @@ Pull-RemoteFile "/vendor/etc/audio_policy_configuration.xml" "vendor/audio_polic
 Pull-RemoteFile "/vendor/etc/audio_policy.conf" "vendor/audio_policy.conf"
 Pull-RemoteFile "/vendor/etc/audio_effects.xml" "vendor/audio_effects.xml"
 Pull-RemoteFile "/vendor/etc/mixer_paths.xml" "vendor/mixer_paths.xml"
+Pull-RemoteFile "/vendor/etc/audio_param" "vendor/audio_param"
 Pull-RemoteFile "/system/etc/audio_policy.conf" "system/audio_policy.conf"
 Pull-RemoteFile "/system/etc/audio_effects.xml" "system/audio_effects.xml"
 
