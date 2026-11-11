@@ -17,6 +17,23 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16 stereo engine remains available. A new four-channel Float32 foundation now supports interleaved FL/FR/RL/RR, 32 biquad slots per channel, independent channel gain/EQ, per-channel peak limiting, bit-exact bypass and dual-bank output crossfades for parameter changes. The four-channel core is host-buildable and has dedicated tests. Recent host core, stability, and performance workflows pass; the Android test bench and DSP remain disconnected from the Android system audio path.
 
+### Verified signal boundary
+
+The recovered Normal playback path is two-channel. For any output-device
+mask containing the speaker bit `0x02`, the HAL folds L/R to mono and
+duplicates that sample into the two-channel buffer **before** the MTK/BES
+post-processing callback. The recovered callback is in the Normal handler
+only; it is not a global AudioFlinger hook.
+
+The CD3313 datasheet describes three selectable stereo analog inputs and four
+analog outputs (front-left, front-right, rear-left, rear-right), with four
+independent output attenuators. It does not expose a four-channel PCM input or
+four independent per-output PEQ banks. Therefore the current evidence supports
+a stereo/mono digital DSP plus four analog speaker-level controls, not four
+independent digital PCM channels. The four-channel Float32 engine remains a
+host/test foundation until a separate multichannel digital path is proven.
+Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
+
 ## Reverse-engineering documents
 
 - [CD3313 kernel protocol](docs/CD3313_PROTOCOL_RECONSTRUCTION.md)
@@ -27,6 +44,12 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 - [CD3313 static driver risk audit](docs/CD3313_DRIVER_RISK_AUDIT.md)
 - [CD3313 userspace-client scan](docs/CD3313_USERSPACE_CLIENT_SCAN.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
+- [MT8163 output-device dispatch audit](docs/MT8163_OUTPUT_DEVICE_DISPATCH_AUDIT.md)
+- [Normal speaker PCM format and mono-fold audit](docs/MT8163_NORMAL_SPEAKER_PCM_FORMAT.md)
+- [MTK process call-site audit](docs/MT8163_MTK_PROCESS_CALLSITE_AUDIT.md)
+- [MTK filter-manager lifecycle and route selection](docs/MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md)
+- [ATCI ACF/HCF parameter protocol](docs/AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md)
+- [Android audio integration gate](docs/ANDROID_AUDIO_INTEGRATION_GATE.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
 - [HEQ APK static analysis](docs/HEQ_APK_ANALYSIS.md)
 - [HEQ decompiled algorithm analysis](docs/HEQ_ALGORITHM_ANALYSIS.md)
