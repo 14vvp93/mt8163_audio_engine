@@ -657,3 +657,29 @@ It does not contain the named I²S playback sequences, nor definitions for `Audi
 ### Consequence
 
 The available board configuration supports the ordinary internal speaker-amplifier path and a CLASSAB speaker-class setting. It does not provide the missing SmartPA parameter unit, selected I²S port values, I²S sequence tables, mixer controls or board schematic needed to prove the serial PCM topology. The four-channel PCM integration gate remains open.
+
+
+## 17. Audio policy confirms stereo at the framework-facing primary output
+
+The extracted `vendor/audio_policy_configuration.xml` declares:
+
+- primary output profile: PCM16, 44.1/48 kHz, `AUDIO_CHANNEL_OUT_STEREO`;
+- attached and default output device: `Speaker`;
+- speaker device-port profile: PCM16, 44.1/48 kHz, stereo;
+- the primary output is routed to Speaker, wired headset/headphones, AUX digital, BT SCO, docks and FM output according to separate routes.
+
+The legacy `vendor/audio_policy.conf` also declares the primary output as stereo. It lists PCM16 and PCM32 formats and 44.1 kHz in that legacy profile, but still only `AUDIO_CHANNEL_OUT_STEREO`.
+
+This independently corroborates the reverse-engineered Normal playback handler: the ordinary framework primary speaker stream is stereo, not FL/FR/RL/RR discrete PCM. The policy describes the framework-facing stream contract; it does not exclude a later vendor-side duplication, analog distribution, or a TDM link configured below the policy layer.
+
+### Current board-topology conclusion
+
+The combined evidence now says:
+
+1. Android primary Speaker output is declared stereo.
+2. The Normal HAL playback handler also configures a two-channel ALSA output.
+3. The captured speaker path is `int_spk_amp`, with a CLASSAB speaker-class switch in `audio_device.xml`.
+4. The CD3313 driver exposes four independent speaker attenuation controls, but this remains a control plane and does not prove four PCM sample streams.
+5. No I²S sequence table, active SmartPA parameter unit, mixer_paths file, or board-level serial-audio topology was present in the 324-file archive.
+
+Therefore the proven software input for ordinary primary speaker playback is stereo. The existence and location of any later stereo-to-four-speaker distribution remain unresolved. Our DSP integration should plan for a stereo HAL adapter first, while retaining the four-channel engine as a separate processing capability until the physical channel split is demonstrated.
