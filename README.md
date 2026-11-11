@@ -8,10 +8,10 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### Planned components
 
-1. **CD3313 control layer** — reconstructed read/write/ioctl ABI for the existing `/dev/audiomux` driver and its I²C register interface; exact vendor framework transport still needs confirmation.
+1. **CD3313 control layer** — kernel command semantics, hidden Java API and Binder route are recovered; the native JNI ioctl builder and exact request word are still missing.
 2. **PCM DSP core** — independent C++ processing library with format-aware input/output, explicit bypass, controlled latency, and host-side tests.
 3. **Android integration adapter** — integration at a verified AudioFlinger/HAL processing point; no global hook until call/SCO bypass and routing are understood.
-4. **Control API/UI** — separate controls for EQ, bass/treble, loudness, balance and profiles, with safe state persistence. The CD3313 reverse engineering also confirms a four-argument FL/FR/RL/RR control path, which is the hardware basis for separate L/R balance and Front/Rear fader. A host-side rear-level compensation trim is modeled as front-pair attenuation (the chip cannot provide positive gain); hardware routing and factory levels remain to be verified.
+4. **Control API/UI** — separate digital DSP controls plus CD3313-supported source, volume, mute, bass/treble/loudness and four-output level controls. The recovered setBalance(FL,FR,RL,RR) API maps to the driver's four analog output attenuators. The chip does not provide independent per-output PEQ or delay.
 
 ### PCM DSP core
 
@@ -43,6 +43,8 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 - [CD3313 register image and datasheet correlation](docs/CD3313_REGISTER_IMAGE.md)
 - [CD3313 static driver risk audit](docs/CD3313_DRIVER_RISK_AUDIT.md)
 - [CD3313 userspace-client scan](docs/CD3313_USERSPACE_CLIENT_SCAN.md)
+- [CD3313 hidden AudioEffect API and Binder route](docs/CD3313_HIDDEN_AUDIOEFFECT_API.md)
+- [CD3313 API recovery requirements](docs/CD3313_API_RECOVERY_REQUIREMENTS.md)
 - [MT8163 primary Audio HAL](docs/MT8163_AUDIO_HAL_ANALYSIS.md)
 - [MT8163 output-device dispatch audit](docs/MT8163_OUTPUT_DEVICE_DISPATCH_AUDIT.md)
 - [Normal speaker PCM format and mono-fold audit](docs/MT8163_NORMAL_SPEAKER_PCM_FORMAT.md)
@@ -54,6 +56,7 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 - [HEQ APK static analysis](docs/HEQ_APK_ANALYSIS.md)
 - [HEQ decompiled algorithm analysis](docs/HEQ_ALGORITHM_ANALYSIS.md)
 - [PCM DSP core](pcm-dsp/README.md)
+- [ADB audio/Device Tree diagnostics collector](tools/README.md)
 
 ## Development constraints
 
@@ -71,4 +74,4 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
 - PCM16 stereo core and four-channel Float32 DSP foundation implemented; recent host core, stability, and performance CI runs pass. The Android test APK is a bring-up/test bench, not a finished end-user control app; persistent user profiles and system-audio integration are not implemented.
-- HEQ APK decompiled and analyzed: it explicitly recognizes CD3313 through a hidden android.audio.AudioEffect ASP API. Its framework/native transport is not included in the APK; the other external-DSP adapters remain chip-specific.
+- HEQ APK decompiled and analyzed: it explicitly recognizes CD3313 through the hidden android.audio.AudioEffect ASP API. The matching boot-carservices.vdex supplies the Java/Binder layer and command arrays; the native ExtAudioMuxer JNI implementation and exact ioctl request remain to be recovered.
