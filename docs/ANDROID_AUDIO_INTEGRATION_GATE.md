@@ -326,3 +326,18 @@ any live /dev/audiomux client is written.
 
 See [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md)
 and [CD3313_API_RECOVERY_REQUIREMENTS.md](CD3313_API_RECOVERY_REQUIREMENTS.md).
+
+
+### App-side integration option
+
+The app does not necessarily need to reimplement the missing JNI transport:
+the OEM AudioEffect class can call the existing sourceinfo Binder service,
+and ExtAudioMuxer JNI executes in the service process. If the app can obtain
+the Binder reference, it can call supported AudioEffect methods through
+reflection without opening /dev/audiomux itself.
+
+A read-only probe has been added to the Android Test APK. It calls
+AudioEffect.getInstance() and verifies the public method signatures, but
+sends no audio-control commands. A successful result confirms class loading
+and Binder-reference acquisition only; a controlled runtime transaction is
+still required before enabling hardware controls in the main UI.
