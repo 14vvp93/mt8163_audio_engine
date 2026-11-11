@@ -114,3 +114,42 @@ This is safer than replacing `audio.primary.mt8163.so` or injecting a global eff
 ## Related command service
 
 The separate `audiocmdservice_atci` executable is analyzed in [MTK_AUDIO_COMMAND_SERVICE.md](MTK_AUDIO_COMMAND_SERVICE.md). It bridges ATCI tuning commands to MTK's primary-device HAL client and reads/writes structured ACF filter parameters in persistent storage. It does not currently provide evidence of direct CD3313 access. Its three linked vendor libraries are not present in the supplied archive, so the filter parameter ABI remains an open dependency.
+
+
+## 7. Confirmed playback-handler post-processing call site
+
+The complete disassembly contains one direct call site to AudioALSAPlaybackHandlerBase::doPostProcessing(), from AudioALSAPlaybackHandlerNormal::write() at 0xD4744. The Normal write pipeline is ordered as follows:
+
+1. doDcRemoval() at 0xD4710;
+2. doStereoToMonoConversionIfNeed() at 0xD471C;
+3. doPostProcessing() at 0xD4744;
+4. doBliSrc() at 0xD4768;
+5. doBitConversion() at 0xD478C;
+6. pcmWrite() at 0xD47D4, after optional dump handling.
+
+This establishes the location of the MTK filter-manager processing stage in the normal playback write path: after DC removal and optional stereo-to-mono conversion, but before BLI sample-rate conversion and bit-depth conversion. The data reaching post-processing is therefore not necessarily the original AudioFlinger buffer; earlier pipeline stages may already have modified or converted it.
+
+### doPostProcessing() gates and buffer contract
+
+AudioALSAPlaybackHandlerBase::doPostProcessing() at 0xD24B0 performs these visible checks:
+
+- the filter-manager pointer at playback-handler offset +0x1E0 must be non-null;
+- stream-attribute byte at offset +0x120 must be zero;
+- stream-attribute byte at offset +0x41 must be zero;
+- the requested input byte count must fit the allocated post-processing capacity at handler offset +0x1E8.
+
+The post-processing initializer sets capacity to 0x20000 (131,072 bytes / 128 KiB) and allocates the corresponding scratch buffer, whose pointer is stored at +0x1E4. This is a maximum scratch-buffer capacity, not the size of every processed block.
+
+When the gates pass, doPostProcessing() calls AudioMTKFilterManager::start(bool), then AudioMTKFilterManager::process() with:
+
+- input pointer and input byte count from the current write pipeline;
+- scratch output pointer at handler +0x1E4;
+- scratch capacity at handler +0x1E8.
+
+It returns the selected output pointer and output byte count through its pointer arguments. The caller then passes that selected buffer into BLI SRC and bit conversion. If post-processing is skipped, the original pipeline buffer is retained. The two stream-attribute bytes are not assigned semantic names here; their exact meanings must be recovered from the stream-attribute definition/callers before deciding which streams are bypassed.
+
+### Integration implications
+
+This is currently the strongest candidate for a safe DSP integration adapter because it is an existing output-processing stage in the stock playback path and already supports a replaceable output buffer. It is not yet an authorization to patch the HAL: the actual input PCM format, channel layout, stream-type gates, and lifecycle of the filter manager still need to be proven. The call site is in AudioALSAPlaybackHandlerNormal::write(); it must not be assumed to cover every playback handler or every output route.
+
+Preserve the order of the stock pipeline and keep calls, SCO, microphones, and non-normal playback paths bypassed until their handling is independently verified. No HAL binary or runtime route was modified.
