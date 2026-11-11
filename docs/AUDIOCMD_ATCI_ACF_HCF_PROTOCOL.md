@@ -155,11 +155,18 @@ The primary HAL's
 `AudioALSAStreamManager::UpdateACFHCF(int)` at `0x7F18C` handles update
 selectors 0, 1 and 2:
 
-| Update string suffix | HAL custom-filter type loaded | Manager selector |
-|---:|---:|---:|
-| 0 | `AudioCompFltType_t(0)` | 0 |
-| 1 | `AudioCompFltType_t(1)` | 1 |
-| 2 | `AudioCompFltType_t(4)` | 4 |
+| Update string suffix | HAL custom-filter type loaded | Manager selector | Manager slot | Wrapper method | Inner `MtkAudioLoud` payload selector |
+|---:|---:|---:|---:|---|---:|
+| 0 | `AudioCompFltType_t(0)` | 0 | `+0x14` (type 0) | `setParameter2Sub()` | 8 |
+| 1 | `AudioCompFltType_t(1)` | 1 | `+0x18` (null in default init) | `setParameter2Sub()` | 8 |
+| 2 | `AudioCompFltType_t(4)` | 4 | `+0x14` (type 0) | `setParameter()` | 6 |
+
+The `AudioMTKFilter` wrappers create their inner processor with
+`newMtkAudioLoud(type)`: the default speaker filter at manager slot
+`+0x14` is type 0/mode 4, and the feature-3-dependent filter at `+0x20`
+is type 3/mode 4. The 1260-byte custom payload is forwarded to the inner
+`MtkAudioLoud` object with selector 8 for `setParameter2Sub()` or selector 6
+for `setParameter()`.
 
 This aligns service types 0, 1 and 2 with the HAL's ACF, HCF and ACF-SUB
 custom-filter IDs 0, 1 and 4 respectively.
