@@ -63,6 +63,14 @@ at `+0x14). The inspected `init(0)` path:
 - allocates the `+0x28` scratch array using constructor argument 4 as its
   byte count.
 
+The `AudioMTKFilter::init()` method creates its inner processing object
+through `newMtkAudioLoud(type)`, passing the filter object's type field at
+`+0x04). The manager's always-created slot `+0x14` is configured as
+`AudioMTKFilter` type 0, mode 4; the feature-3-dependent slot `+0x20` is
+type 3, mode 4. These numeric type/mode values are observed constructor
+arguments; their enum names are not inferred. Each wrapper stores the
+returned `MtkAudioLoud*` at its own offset `+0x1C`.
+
 The manager also has pointer slots at `+0x18` and `+0x1C`.
 The constructor zeroes the pointer region; the complete manager-method
 disassembly contains no non-null assignment to either slot (the only stores
@@ -125,6 +133,15 @@ another initialization/writer populates that slot. See
 [MT8163_ACF_HCF_CONTROL_PATH.md](MT8163_ACF_HCF_CONTROL_PATH.md).
 
 These are internal HAL parameter selectors, not Android output-device masks.
+
+At the next layer, `AudioMTKFilter::setParameter()` forwards the 1260-byte
+custom-filter payload to its inner `MtkAudioLoud` object using inner selector
+6. `AudioMTKFilter::setParameter2Sub()` forwards the same payload using
+inner selector 8. Both methods also reapply the wrapper's stored configuration
+values through inner selectors 1, 2 and 3, then finalize the update. The
+wrapper's `process()` calls the inner object's processing vtable entry with
+the byte-oriented input/output buffers.
+
 
 ## 6. Integration implications
 
