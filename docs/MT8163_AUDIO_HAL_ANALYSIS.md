@@ -153,3 +153,14 @@ It returns the selected output pointer and output byte count through its pointer
 This is currently the strongest candidate for a safe DSP integration adapter because it is an existing output-processing stage in the stock playback path and already supports a replaceable output buffer. It is not yet an authorization to patch the HAL: the actual input PCM format, channel layout, stream-type gates, and lifecycle of the filter manager still need to be proven. The call site is in AudioALSAPlaybackHandlerNormal::write(); it must not be assumed to cover every playback handler or every output route.
 
 Preserve the order of the stock pipeline and keep calls, SCO, microphones, and non-normal playback paths bypassed until their handling is independently verified. No HAL binary or runtime route was modified.
+
+
+### Provenance of the two stream-attribute bypass flags
+
+The stream-attribute preparation in AudioALSAStreamManager::createPlaybackHandler() at 0x79368 explains both byte flags checked by doPostProcessing():
+
+- At 0x79478–0x7947C, the manager calls AudioSpeechEnhanceInfo::IsAPDMNRTuningEnable() and stores the returned byte at stream_attribute_t +0x120. Thus doPostProcessing() bypasses the MTK filter manager when this A-PDM non-real-time tuning flag is enabled.
+- At 0x79480–0x7948C, it copies a manager-owned byte from manager +0xD6 into stream_attribute_t +0x41.
+- At 0x7949C–0x794A8, it compares the stream sample-rate field at stream_attribute_t +0x28 with 48,001 and forces +0x41 to 1 for rates at or above 48,001 Hz.
+
+Therefore the +0x41 bypass condition covers at least the manager flag and high-rate streams (strictly 48,001 Hz or above in this comparison). The semantic name of the manager flag at +0xD6 is still unknown. These are exact field-flow findings; no assumption is made about all other routing or format constraints.
