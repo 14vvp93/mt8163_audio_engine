@@ -387,3 +387,44 @@ This is the Normal handler's target-rate decision, not a universal rule for Voic
 The adapter must not infer the PCM sample rate at `AudioMTKFilterManager::process()` solely from the framework-requested rate in `stream_attribute_t +0x28`. It must use the actual handler-side rate and format after the Normal handler has configured its PCM path, and must preserve the later BLI SRC/bit-conversion order. The current evidence narrows the likely target rate for Normal playback but does not yet prove the exact sample representation, channel interleaving, or bytes-per-frame at the MTK filter input for every route.
 
 No HAL binary or runtime configuration was modified.
+
+
+## 12. Source PCM domain at the MTK filter-manager boundary
+
+The Normal handler's initialization routines make the processing domains explicit:
+
+### BLI SRC compares source attributes with the handler's target
+
+`AudioALSAPlaybackHandlerBase::initBliSrc()` at `0xD2958` reads:
+
+- source sample rate from `stream_attribute_t +0x28`;
+- source channel count from `stream_attribute_t +0x24`;
+- source format discriminator from `stream_attribute_t +0x00`;
+- target sample rate from playback-handler +0x38;
+- target channel count from playback-handler +0x34.
+
+If source rate and channel count already equal the handler's target values, it does not create a BLI SRC instance. Otherwise it initializes the SRC using both source and target rate/channel values. The function explicitly branches for source format values 1 and 3 before creating the SRC, consistent with the PCM16/PCM32 handling already observed in the Normal write path.
+
+For the Normal handler, open() sets target channel count at handler +0x34 to 2 and selects the target sample rate at +0x38. Therefore the source stream rate/channel count and downstream PCM target rate/channel count are separate values.
+
+### Bit conversion compares source format with the handler's PCM format
+
+`AudioALSAPlaybackHandlerBase::initBitConverter()` at `0xD2D94` compares `stream_attribute_t +0x00` with playback-handler +0x10. If they differ, it creates a bit-conversion instance using the source and target formats, source channel count and source sample rate. The Normal handler initializes its target format field +0x10 to value 4, then `transferAudioFormatToPcmFormat()` maps that format code for the ALSA PCM configuration.
+
+The Normal write pipeline calls `doBitConversion()` only after `doPostProcessing()` and `doBliSrc()`. This confirms that MTK filter-manager processing is upstream of both sample-rate conversion and the source-to-target bit-format conversion.
+
+### What the DSP sees at doPostProcessing()
+
+Combining the confirmed call order and conversion setup, the Normal handler's MTK filter-manager input is in the source stream's PCM domain:
+
+- sample representation is selected by `stream_attribute_t +0x00` (observed PCM16 value 1 and PCM32 value 3);
+- source sample rate is `stream_attribute_t +0x28`, not automatically the handler's target rate at +0x38;
+- the Normal handler's target output channel count is 2;
+- the speaker-device mono helper may replace each adjacent stereo pair with its average duplicated into both positions, but it does not change the byte count or buffer's two-position layout;
+- BLI SRC and bit conversion occur after the MTK filter-manager stage.
+
+This is now a concrete adapter contract for the Normal path: process the source PCM format/rate before the HAL's own SRC and bit conversion, and preserve the existing two-channel buffer layout. The DSP must not assume that the MTK filter input is already at the ALSA target rate or target PCM format. It also must not assume that this contract applies to Voice, BT SCO/HFP, HDMI, FM transmitter or capture handlers.
+
+### Remaining proof before any integration patch
+
+The call chain now establishes the source-vs-target rate and format boundary for Normal playback. Still to be confirmed are the exact PCM interleaving/stride at every supported source format, the complete meaning of all `stream_attribute_t` members, and the runtime handler/device selected on the user's head unit. We should next inspect the concrete PCM configuration and write buffer-size arithmetic, then compare it against the tinyalsa PCM configuration ABI. No HAL patch or runtime route change has been made.
