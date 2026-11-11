@@ -62,3 +62,9 @@ audio-setting change, or physical head-unit test has been performed.
 4. Continue tracing `carstatus.ko` and its JNI/user-space client to connect
    ACC/vehicle-state events with CD3313 mute reasons.
 5. Keep the host emulator and real-device backend separate.
+
+The same expanded artifact also includes its paired `cd3313.ko` build
+(Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256
+`6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`).
+Its ioctl framing and chip-ID response were cross-checked against the older
+driver build already used by the emulator; the relevant behavior matches.
