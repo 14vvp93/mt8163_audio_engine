@@ -22,7 +22,7 @@ cmd_ioctl() extracts these fields from the 32-bit request word:
 | 8..15 | 8 | Command/status ID |
 | 0..7 | 8 | Not inspected by the recovered dispatcher |
 
-The command ID is taken from the Linux _IOC_TYPE position, not the low _IOC_NR byte. The driver does not inspect bits 0..7 in the recovered cmd_ioctl() path. The exact userspace macro/magic convention and the values placed in those low bits remain unverified.
+The command ID is taken from the Linux _IOC_TYPE position, not the low _IOC_NR byte. The driver does not inspect bits 0..7 in the recovered cmd_ioctl() path. The native caller now confirms that it sets this low request-number byte to zero for both the write commands and the read-only chip-identification request.
 
 For clarity, the recovered word can be represented symbolically as:
 
@@ -33,7 +33,7 @@ request = (direction << 30)
         | low_nr
 ```
 
-This is a bit-field decomposition, **not** a recovered vendor macro invocation. `command_id` occupies the conventional `_IOC_TYPE` byte, while `low_nr` occupies the conventional `_IOC_NR` byte and is ignored by the observed dispatcher. Because the vendor caller is not present, neither the low byte nor a named ioctl magic constant can be supplied safely. The unusual use of the size field as a word count also means a conventional `_IOW(type, nr, struct)` guess must not be made without caller evidence.
+This is the recovered bit-field decomposition. The native bridge confirms `direction=1`, `low_nr=0`, `command_id` in the conventional `_IOC_TYPE` byte, and a word-count size field. The native request formula is documented in the Java/Binder caller correlation below; do not replace it with a conventional `_IOW(type, nr, struct)` guess.
 
 The size field is treated as a count of 32-bit words: copied bytes = size_field * 4. The write path caps the copied byte count at 256 bytes.
 
@@ -113,7 +113,7 @@ The first eight .rodata bytes are:
 
 63 64 33 33 31 33 00 00 = "cd3313\0\0".
 
-Thus this read request returns a static cd3313 identifier string, not a live DSP status structure or a hardware version readback. Other read IDs take the error branch. The read path's exact userspace ioctl macro and low-byte _IOC_NR value are not recovered.
+Thus this read request returns a static cd3313 identifier string, not a live DSP status structure or a hardware version readback. Other read IDs take the error branch. The native caller's read request is recovered exactly as `0x8080F000` (direction READ, type `0xF0`, request number `0`, encoded size `0x80`). The driver still copies only the fixed 8-byte identifier response.
 
 The same ID 0xF0 in write direction is a different callback branch. No state-changing operation was recovered there: a zero-word payload reaches the driver's length-error logger, while a nonzero-size object is freed/dropped. Do not use write-direction 0xF0 as a substitute for the read-direction identifier query.
 
