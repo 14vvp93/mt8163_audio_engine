@@ -13,7 +13,7 @@ constexpr std::size_t kChannels = 4U;
 using Audio = std::array<float, kFrames * kChannels>;
 
 bool check(bool condition, const char* message) {
-    if (!condition) std::cerr << "FAIL: " << message << '\\n';
+    if (!condition) std::cerr << "FAIL: " << message << '\n';
     return condition;
 }
 
