@@ -528,6 +528,69 @@ public final class MainActivity extends Activity {
     }
 
 
+    private float compressorValue(int control, int progress) {
+        switch (control) {
+            case 0: return progress / 10.0f - 60.0f;
+            case 1: return 1.0f + progress / 10.0f;
+            case 2: return 0.1f + progress / 10.0f;
+            case 3: return 1.0f + progress;
+            case 4: return progress / 10.0f;
+            case 5: return progress / 10.0f - 12.0f;
+            default: throw new IllegalArgumentException("Unknown compressor control");
+        }
+    }
+
+    private int compressorProgress(int control, float value) {
+        switch (control) {
+            case 0: return Math.round((value + 60.0f) * 10.0f);
+            case 1: return Math.round((value - 1.0f) * 10.0f);
+            case 2: return Math.round((value - 0.1f) * 10.0f);
+            case 3: return Math.round(value - 1.0f);
+            case 4: return Math.round(value * 10.0f);
+            case 5: return Math.round((value + 12.0f) * 10.0f);
+            default: return 0;
+        }
+    }
+
+    private void updateCompressorLabel(int control, float value) {
+        String label;
+        switch (control) {
+            case 0: label = String.format(Locale.US, "Threshold · %.1f dB", value); break;
+            case 1: label = String.format(Locale.US, "Ratio · %.1f:1", value); break;
+            case 2: label = String.format(Locale.US, "Attack · %.1f ms", value); break;
+            case 3: label = String.format(Locale.US, "Release · %.0f ms", value); break;
+            case 4: label = String.format(Locale.US, "Knee · %.1f dB", value); break;
+            case 5: label = String.format(Locale.US, "Makeup · %.1f dB", value); break;
+            default: label = "Compressor";
+        }
+        compressorLabels[control].setText(label);
+    }
+
+    private void refreshDynamicsSelection() {
+        String[] channels = {"FL", "FR", "RL", "RR"};
+        String[] bands = {"LOW", "MID", "HIGH"};
+        dynamicsToggleButton.setText(dynamicsEnabled
+                ? "MULTIBAND DYNAMICS: ON" : "MULTIBAND DYNAMICS: OFF");
+        dynamicsChannelButton.setText("CHANNEL · " + channels[selectedDynamicsChannel]);
+        dynamicsBandButton.setText("BAND · " + bands[selectedDynamicsBand]);
+        float[] selected = compressorSettings[selectedDynamicsChannel][selectedDynamicsBand];
+        compressorEnabledButton.setText(selected[0] == 1.0f
+                ? "SELECTED COMPRESSOR: ON" : "SELECTED COMPRESSOR: OFF");
+        for (int control = 0; control < compressorBars.length; control++) {
+            compressorBars[control].setProgress(compressorProgress(control, selected[control + 1]));
+            updateCompressorLabel(control, selected[control + 1]);
+        }
+    }
+
+    private void applyDynamicsProfile() {
+        if (dsp == null) return;
+        if (applyUiProfileSnapshot(createUiProfileSnapshot())) {
+            status.setText("Multiband dynamics profile applied · atomic 50 ms crossfade");
+        } else {
+            status.setText("DSP busy or invalid dynamics profile");
+        }
+    }
+
     private static final String PROFILE_PREFS = "mt8163_audio_profiles";
     private static final String PROFILE_PREFIX = "profile:";
     private static final String AUTOSAVE_KEY = "last_session";
@@ -554,6 +617,16 @@ public final class MainActivity extends Activity {
         values[p++] = clarityEnhancementEnabled ? 1.0f : 0.0f;
         values[p++] = clarityEnhancementAmount;
         values[p++] = clarityEnhancementFrequencyHz;
+        values[p++] = dynamicsEnabled ? 1.0f : 0.0f;
+        values[p++] = dynamicsLowCrossoverHz;
+        values[p++] = dynamicsHighCrossoverHz;
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            for (int band = 0; band < 3; band++) {
+                for (int parameter = 0; parameter < 7; parameter++) {
+                    values[p++] = compressorSettings[ch][band][parameter];
+                }
+            }
+        }
         if (p != values.length) throw new IllegalStateException("UI profile layout mismatch");
         return values;
     }
