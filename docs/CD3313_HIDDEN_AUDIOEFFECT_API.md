@@ -377,3 +377,18 @@ The request words implied by the native formula are:
 These are request values reconstructed from the machine instructions; they are not permission to issue the commands against hardware. The size field is a count of 32-bit words in this vendor driver ABI, not a conventional byte count.
 
 The CD3313 module's READ branch checks for type `0xF0` and copies exactly 8 bytes from its internal state to the caller. The backing state is not yet mapped to a documented chip identifier/name, so the two returned words remain opaque.
+
+
+### Chip identity response decoded
+
+The 8-byte READ response is now identified for the supplied CD3313 module. In `cmd_ioctl`, the READ/type-`0xF0` branch copies 8 bytes from the module's `.rodata` base. The first eight bytes of this exact `cd3313.ko` are:
+
+```
+63 64 33 33 31 33 00 00
+ c  d  3  3  1  3 \\0 \\0
+```
+
+Therefore `nativeInit()`'s chip probe returns the ASCII identifier `cd3313` (NUL-padded to 8 bytes) through the output buffer, while the ioctl return code is logged separately as the `%d` field in `ExtAudioMuxer chip [%d] : [%s]`. This confirms the native bridge and this kernel module agree on the chip-identification query, not merely on the device-node name.
+
+SHA-256 of the extracted `cd3313.ko` used for this cross-check:
+`6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
