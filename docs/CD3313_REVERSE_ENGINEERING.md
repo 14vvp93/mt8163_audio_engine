@@ -13,7 +13,7 @@ The repository contains `cd3313.ko` (ELF32 ARM module, 183,368 bytes). Earlier s
 - Other data tables observed include `TAB.33841` and `CSWTCH.194`.
 - Earlier analysis also reported volume, mute, channel, bass/treble/loudness/subwoofer and callback-related functions.
 
-These are static-analysis findings, not confirmation of live hardware behavior. Since the initial notes, the ioctl bit layout, command payload offsets, command-length thresholds, event scheduling calls, and the principal lookup tables have been reconstructed. The exact userspace ioctl macro, imported event-queue internals, complete physical register map, acoustic dB curves, and hardware behavior remain open. See CD3313_IOCTL_ABI.md, CD3313_COMMAND_DISPATCH.md, and CD3313_REGISTER_IMAGE.md.
+These are static-analysis findings, not confirmation of live hardware behavior. Since the initial notes, the ioctl bit layout, command payload offsets, command-length thresholds, event scheduling calls, and the principal lookup tables have been reconstructed. The native JNI ioctl request formula and caller library are now recovered. The extra-word discrepancy, imported event-queue internals, complete physical register map, acoustic dB curves, and hardware behavior remain open. See CD3313_IOCTL_ABI.md, CD3313_COMMAND_DISPATCH.md, and CD3313_REGISTER_IMAGE.md.
 
 ## Reverse-engineering work plan
 
@@ -23,7 +23,8 @@ These are static-analysis findings, not confirmation of live hardware behavior. 
 - Confirmed write framing: original 32-bit request word followed by the copied payload.
 - Recovered the 12 command-length thresholds and the observed argument layouts for implemented commands.
 - Recovered read ID 0xF0 as a static 8-byte cd3313 identifier response.
-- Remaining: exact vendor userspace ioctl macro/low _IOC_NR byte and actual client call sites.
+- Recovered: `libcarservices_jni.so` implements `nativeInit()` and `SendCmdAudioMux()`; write request is `0x40000000 | ((array_length + 1) << 16) | (command << 8)`, with `_IOC_NR=0`.
+- Remaining: explain the native one-word over-read discrepancy and validate the read-only Binder/API probe on the matching head unit.
 
 ### 2. Recover register access — partial software map reconstructed
 
