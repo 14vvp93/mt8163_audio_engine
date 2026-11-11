@@ -223,3 +223,13 @@ actual provider.
 No guessed ioctl request is permitted. The existing host emulator remains
 offline and must not be connected to the live character device until the
 native ABI is recovered.
+
+### State readback limitation
+
+The recovered AudioEffect class exposes setters for the controls listed
+above, but no matching getters for the four speaker attenuator indices.
+Therefore the app cannot safely infer the current FL/FR/RL/RR values or
+automatically restore hardware levels at startup. Any future hardware-level
+UI must start in an unknown/unapplied state and require an explicit user
+action. A locally saved value can only mean “last value this app sent”, not
+verified current chip state.
