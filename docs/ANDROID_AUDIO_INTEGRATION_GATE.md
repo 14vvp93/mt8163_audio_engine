@@ -221,3 +221,31 @@ initialization path. Service update strings 3 and 4 exist, but this HAL
 See [AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md](AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md).
 This recovers a vendor ACF/HCF control route, not a CD3313 transport or
 four-channel PCM path.
+
+
+## 11. ACF parameter payload reaches the BES processor
+
+The cross-binary call chain is now statically connected:
+
+`audiocmdservice_atci`
+→ NVRAM custom-filter block (`0x4EC` bytes)
+→ `UpdateACFHCFParameters=N`
+→ `AudioALSAStreamManager::UpdateACFHCF()`
+→ `AudioMTKFilterManager::setParameter()`
+→ `AudioMTKFilter::setParameter()` / `setParameter2Sub()`
+→ inner `MtkAudioLoud` object
+→ BES processing path.
+
+The inner object is created through `newMtkAudioLoud(type)`. The default
+speaker filter wrapper at manager slot `+0x14` uses type 0/mode 4. Its
+parameter wrapper forwards the custom payload to inner selector 8 for
+`setParameter2Sub()` (ACF update suffix 0), or selector 6 for
+`setParameter()` (ACF-SUB update suffix 2). HCF suffix 1 targets manager
+slot `+0x18`, which remains null in the default manager initialization
+recovered from this binary.
+
+This establishes a real vendor BES/MTK processing chain for the ordinary
+speaker route; it is not a CD3313 command path. The Normal handler reaches
+that chain only after its speaker-bit stereo-to-mono fold. See
+[MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md](MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md)
+and [AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md](AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md).
