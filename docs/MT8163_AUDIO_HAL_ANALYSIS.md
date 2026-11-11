@@ -179,3 +179,58 @@ The Normal playback write pipeline's preceding helper, AudioALSAPlaybackHandlerB
 Because this helper runs immediately before doPostProcessing() in AudioALSAPlaybackHandlerNormal::write(), the MTK filter manager can receive either the unchanged input channel data or a mono downmix duplicated into the two channel positions, depending on stream_attribute_t +0x18. The code explicitly supports 16-bit and 32-bit sample handling in this conversion helper. It does not prove the complete format mapping for every stream or every playback handler.
 
 This further reinforces that our integration adapter must inspect the actual stream attributes and support the selected sample representation. It must not hard-code four-channel processing at this HAL point: the normal handler's observed pre-processing is pair-based stereo/mono handling. Four-channel routing remains a separate question for the hardware path and other handlers.
+
+
+## 8. Refined stream-attribute and post-processing contract
+
+The following details were rechecked directly against the ARM disassembly of the supplied HAL Build ID f66eaf9e6ac950259f0c253be618d15a.
+
+### Stream-attribute fields consumed by this path
+
+| Offset | Directly observed use | What is safe to conclude |
+|---:|---|---|
+| +0x00 | Compared with values 1 and 3 in the in-place stereo-to-mono helper | Format/type discriminator. Values 1 and 3 select 16-bit and 32-bit sample arithmetic in this helper; do not generalize the complete enum mapping from this one function. |
+| +0x0C | Bit 2 tested in Normal handler open() | A flag bit affects a later buffer/period calculation. Its public semantic name is not recovered. |
+| +0x18 | Bit 1 tested by doStereoToMonoConversionIfNeed() | A flag controlling whether that helper averages each adjacent stereo pair and duplicates the average. |
+| +0x28 | Compared against 48,001 in createPlaybackHandler() | Sample-rate field; +0x41 is forced on for values >= 48,001 Hz. |
+| +0x41 | Tested by doPostProcessing() | Nonzero means bypass MTK post-processing. It is copied from manager +0xD6 and forced on for high sample rates. |
+| +0x120 | Tested by doPostProcessing() | Nonzero means bypass; createPlaybackHandler() fills it from AudioSpeechEnhanceInfo::IsAPDMNRTuningEnable(). |
+| +0x160 / +0x161 | Copied from manager +0xD7 / +0xD8 | Two additional one-byte manager flags; their consumers/semantics are not yet mapped. |
+| +0x170 | Set from manager +0xA1 or a derived nonzero condition | Another handler-creation flag; semantic name not yet recovered. |
+
+### Exact Normal::write() ordering
+
+The call sequence at 0xD4710–0xD47D4 is:
+
+1. doDcRemoval(input, bytes, ...)
+2. doStereoToMonoConversionIfNeed(input, bytes)
+3. doPostProcessing(input, bytes, &selected_buffer, &selected_bytes)
+4. doBliSrc(selected_buffer, selected_bytes, ...)
+5. doBitConversion(...)
+6. pcmWrite(...)
+
+The byte counts returned by the mono conversion and post-processing helpers are carried forward separately. The post-processing result is not automatically assumed to be the original buffer: on a successful nonzero result, the caller switches to the scratch buffer and the produced byte count; otherwise it retains the input pointer and original byte count.
+
+### Post-processing scratch buffer and capacity behavior
+
+initPostProcessing() at 0xD2448 writes exactly 131,072 (0x20000) to handler +0x1E8 and allocates exactly that many bytes, storing the pointer at +0x1E4. This is a per-handler scratch allocation/capacity, not a fixed PCM block size.
+
+doPostProcessing() at 0xD24B0 first checks:
+- filter manager at handler +0x1E0 is non-null;
+- stream-attribute byte +0x120 is zero;
+- stream-attribute byte +0x41 is zero;
+- input byte count is no greater than scratch capacity +0x1E8.
+
+If input bytes exceed capacity, it takes a diagnostic/error branch and bypasses processing rather than writing beyond the scratch buffer. Otherwise it calls the manager's start() and process() methods, passing input pointer/count, scratch pointer/capacity, and then returns the selected output pointer and produced byte count. The exact manager method prototypes should be taken from the recovered call ABI, not inferred from their C++ names alone.
+
+### Mono conversion arithmetic
+
+When stream-attribute +0x18 bit 1 is set:
+- Format discriminator 1: the helper loads two signed 16-bit samples, halves each with arithmetic shift, adds them, and writes the same result into both 16-bit positions.
+- Format discriminator 3: it loads two 32-bit samples, arithmetic-shifts each right by one, adds them, and writes the same result into both 32-bit positions.
+
+This is an in-place stereo-pair average with no change to the input byte count. It does not prove that every normal playback stream is stereo; it proves the helper's operation for streams whose +0x18 flag requests this conversion.
+
+### Integration guardrails
+
+For a future adapter, read the actual per-stream format and flags; validate byte count against the supplied buffer capacity; preserve the stock order relative to DC removal, SRC, and bit conversion; and bypass whenever either +0x120 or +0x41 is set. Do not assume this Normal handler path covers HDMI, FM transmitter, voice, BT SCO, compressed, or capture streams. No binary patch or routing change has been made.
