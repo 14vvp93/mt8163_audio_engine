@@ -79,3 +79,30 @@ A connection between them must be demonstrated from further binaries or source, 
 ## Next files needed to finish this branch
 
 The three imported libraries listed above are missing from the supplied archive. They are the highest-value next artifacts because they should expose the filter parameter ABI, HAL client bridge, and BES Loudness implementation.
+
+## Additional binary-level transport findings (2026-11-11)
+
+The extracted `audiocmdservice_atci` binary was rechecked from the successful `Extract files.zip` artifact (workflow run [42885005088](https://github.com/14march93/mt8163_audio_engine/actions/runs/42885005088)).
+
+Confirmed from its ELF dynamic symbol table and the matching init file:
+
+- The init service is declared as `service audio-daemon /vendor/bin/audiocmdservice_atci`, with `disabled` and `oneshot`; it is not configured as an always-running boot service.
+- Init creates the named local stream socket `atci-audio`, mode `0666`, owner/group `system`.
+- The executable obtains that socket through `android_get_control_socket`, then uses the socket-server primitives `listen`, `accept`, `select`, and receive/send functions to handle ATCI clients.
+- The executable imports `android::ProcessState::initWithDriver(char const*)` and `startThreadPool()`; its strings identify `/dev/vndbinder`. This is a vendor-Binder client path in addition to the local ATCI socket.
+- It imports `android::MTKPrimaryDevicesHalClient::getInstance()`, `android::MtkAudioLoud::getBesSoundVer()`, `getAudioCompFltCustParamFromStorage()`, and `setAudioCompFltCustParamToStorage()`.
+- It has no direct dynamic import of `ioctl()`, and the executable contains no `/dev/audiomux` or `cd3313` string.
+
+The lack of an imported `ioctl()` is not proof that no indirect ioctl can occur inside one of its shared-library dependencies. It does, however, reinforce the separation already documented: this executable is an ATCI/vendor-Binder-to-MTK-HAL parameter service, not an identified direct CD3313 device client.
+
+### Consequence for hidden API recovery
+
+The next recovery target is not just `framework.jar`. The current archive is also missing all three direct service dependencies:
+
+1. `libaudiocompensationfilter_vendor.so`
+2. `libaudiocomponentengine_vendor.so`
+3. `libaudioprimarydevicehalifclient.so`
+
+For the HEQ-facing hidden `android.audio.AudioEffect` implementation, obtain the matching framework JAR (and any companion framework/vendor JAR containing that class), plus the associated native library or Binder service implementation. The service binary alone does not reveal the Java API's method-to-command mapping or argument scaling.
+
+Do not map HEQ methods to driver commands based only on similar names or matching four-speaker argument counts. The Java wrapper, native transport, and driver payload layout must be correlated end-to-end before enabling writes.
