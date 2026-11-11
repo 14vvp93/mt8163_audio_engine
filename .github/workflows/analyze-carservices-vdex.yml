@@ -28,6 +28,8 @@ jobs:
           set -euo pipefail
           git clone https://github.com/anestisb/vdexExtractor.git /tmp/vdexExtractor
           git -C /tmp/vdexExtractor checkout 78f283b60ab6991fa27eeaff7d7be16409401c08
+          # GCC 13 diagnoses an old VLA-parameter declaration mismatch as an error.
+          sed -i 's/-Wall -Wextra -Werror/-Wall -Wextra -Werror -Wno-error=vla-parameter/' /tmp/vdexExtractor/src/Makefile
           cd /tmp/vdexExtractor
           ./make.sh gcc
           test -x bin/vdexExtractor
