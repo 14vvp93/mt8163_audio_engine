@@ -324,7 +324,7 @@ jobs:
             echo "FOUND $input" >> "$OUT/module-inventory.txt"
           done
           test -s "$OUT/module-inventory.txt"
-          find "$OUT" -maxdepth 2 -type f -printf '%p %s bytes\\n' | sort > "$OUT/file-inventory.txt"
+          find "$OUT" -maxdepth 2 -type f -printf '%p %s bytes\n' | sort > "$OUT/file-inventory.txt"
           echo "Analyzed modules:"
           cat "$OUT/module-inventory.txt"
 
