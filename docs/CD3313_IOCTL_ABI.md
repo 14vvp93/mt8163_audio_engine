@@ -239,3 +239,24 @@ misc device created by `cd3313.ko`. It remains static firmware analysis:
 no live ioctl, I²C transaction, audio change, or hardware test was performed.
 See [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md)
 for the binary-level evidence and request examples.
+
+
+### Matching module from the expanded native-provider artifact
+
+The expanded firmware-library-analysis artifact that contains
+`libcarservices_jni.so` also contains a second copy/build of
+`cd3313.ko` at `vendor_lib/lib/modules/cd3313.ko`:
+
+- Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
+- SHA-256: `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
+
+This differs from the earlier project baseline module (Build ID
+`dae15c9eb019e9388d15cb88088c202d017ebcf0`, SHA-256
+`b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb)).
+Both module builds independently show the same relevant ioctl behavior:
+size field multiplied by four, request word prepended to the queued frame,
+write payload copied after the header, read type `0xF0` returning the first
+eight `.rodata` bytes `cd3313\\0\\0`, and command IDs dispatched from
+bits 8..15. The expanded-artifact module is the direct same-archive
+cross-check for the recovered JNI provider; the older module remains the
+baseline for the existing emulator and detailed driver notes.
