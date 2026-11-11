@@ -115,3 +115,22 @@ The delayed unmute handler checks that ACC is still ON before sending mute=10000
 6. The firmware's sendBroadcastAsUser action is emitted from onAccStatusInner, after the 2,500 ms delay, rather than directly in the kernel uevent callback. Therefore the Android broadcast is not necessarily an immediate ACC edge notification.
 
 These timings and actions are firmware observations, not a recommendation to reproduce its power-control behavior in the utility app. Validate actual timing on the target device before changing the app's current polling fallback.
+
+
+## Complete setMasterMute call-site inventory
+
+A search of the complete carservices VDEX disassembly finds seven Java call sites for ExtAudioMuxer.setMasterMute(boolean, int). They group into three independent control sources:
+
+| Source method | Boolean mute value | Reason | Condition / role |
+|---|---:|---:|---|
+| CarStatusService.setAccStatus | true | 2 | Immediate ACC-OFF mute |
+| CarStatusService delayed ACC unmute handler | false | 2 | Delayed unmute only while ACC remains ON |
+| McuService.SilenceMode | true | 1 | Silence mode becomes active |
+| McuService.SilenceMode | true | 24 | Exit/transition branch applies a temporary mute |
+| McuService.SilenceMode | false | 1 | Clears the SilenceMode-owned mute in that branch |
+| SourceService.onBluetoothVoiceStatus | true | 3 | Bluetooth HFP voice-state transition |
+| SourceService.onBluetoothVoiceStatus | false | 3 | Releases the temporary Bluetooth voice mute when the path/volume logic allows it |
+
+The VDEX proves the numeric reason arguments and call-site conditions. It does not, by itself, prove the driver's internal arbitration policy for overlapping reasons or whether every reason is treated as a strict independent mute owner. Do not model these reason values as a public stable ABI without validating the matching driver implementation and runtime behavior.
+
+This inventory accounts for all seven textual call sites in the analyzed disassembly; no other ExtAudioMuxer.setMasterMute call sites were found in this VDEX.
