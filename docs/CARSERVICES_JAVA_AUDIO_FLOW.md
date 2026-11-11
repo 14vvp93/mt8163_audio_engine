@@ -212,3 +212,35 @@ The compact `cd3313-current-module-analysis` artifact from workflow run `4311385
 - The DWARF debug information names a `channel_to_cd3313(channel)` inline helper at source line 411, but this module's symbol/disassembly output does not expose a standalone body for that helper. The exact logical-channel-to-chip-selector translation therefore remains to be recovered from the optimized code/data tables.
 
 This directly confirms that the current paired driver labels logical channel index 0 as `RADIO`, which matches RadioService's Java inputPath 0. The earlier Source 3 selector mapping came from the older detailed CD3313 reconstruction; do not automatically carry that selector value across builds. For the current paired binary, the verified conclusion is `RadioService inputPath 0 → CD3313 logical channel 0 (RADIO)`; the hardware selector/pin and board-level FM wiring remain open.
+
+
+## MT8163 FM HAL mode selection and I2S metadata
+
+The focused disassembly of `vendor/audio.primary.mt8163.so` from successful workflow run `43114231310` resolves the FM mode checks more precisely.
+
+### FM-chip metadata
+
+`WCNChipController::InitAudioFMInfo()` opens the FM control node (the HAL string table contains `/dev/fm`) and issues ioctl request `0xC004F530`, identified by the adjacent HAL strings as `FM_IOCTL_GET_AUDIO_INFO`. It reads the returned FM audio-info structure, then closes the file descriptor. If opening the node fails, it retries up to 30 times with a 100 ms sleep between attempts.
+
+The controller exposes these checks over the returned structure:
+
+- `IsFMMergeInterfaceSupported()` reads `aud_path` at structure offset 12; it returns true when the value is 2, and treats value 3 as `FM_AUD_ERR`. `InitAudioFMInfo()` separately asserts that the path is not `FM_AUD_ANALOG`. This confirms a distinct merge-interface capability flag; it does not by itself identify the board wiring.
+- `IsFmChipPadSelConnSys()` reads `i2s_pad` at offset 28; value 0 returns true, value 2 is the error enum. The HAL string table names the pad choices `FM_I2S_PAD_CONN`, `FM_I2S_PAD_IO`, and `FM_I2S_PAD_ERR`.
+- `IsFmChipUseSlaveMode()` reads I2S mode at offset 20; value 1 returns true, value 2 is the error enum. The corresponding labels are `FM_I2S_MASTER`, `FM_I2S_SLAVE`, and `FM_I2S_MODE_ERR`.
+- `GetFmChipSamplingRate()` reads the rate field at offset 24 and treats enum value 3 as `FM_I2S_SR_ERR`. The HAL contains labels `FM_I2S_32K`, `FM_I2S_44K`, and `FM_I2S_48K`; the numeric-to-rate lookup still needs relocation-aware verification.
+
+### Direct connection and capture paths
+
+`AudioALSAFMController::setFmDirectConnection_l(bool, bool, unsigned int)` consults `IsFMMergeInterfaceSupported()`, resolves ALSA card and PCM indices through `AudioALSADeviceParser`, and manages a PCM handle with `pcm_open()` / `pcm_start()`. Its disable path calls `pcm_stop()` and `pcm_close()`. The HAL string table contains the device identifiers `FM_I2S_Playback` and `FM_I2S_Capture`; the precise card/PCM string pairing selected by each metadata branch is still being resolved.
+
+Separately, `AudioALSACaptureDataProviderFMRadio::open()` also consults the merge-interface flag, chooses one of two card/PCM name pairs, resolves them through the same parser, opens the stream with flag `0x10000000` (`PCM_IN`), starts it, and creates a capture thread. This is the AP-side FM capture path used by the Audio HAL. It is distinct from the CD3313 driver's logical RADIO input mute path.
+
+### Current architecture conclusion
+
+There are at least three cooperating but separate FM-related interfaces in this firmware:
+
+1. `/dev/fm` — FM tuner/chip metadata and I2S configuration ioctls handled by `WCNChipController`.
+2. ALSA PCM endpoints `FM_I2S_Playback` / `FM_I2S_Capture` — HAL direct-connection and AP capture paths.
+3. `/dev/audiomux` / CD3313 logical channel `RADIO` — the DSP input mute/source-control plane used by `RadioService`.
+
+The XML audio policy additionally declares `FM Tuner In` and routes it to output devices. Static evidence does not yet prove whether a given board configuration feeds the same physical FM signal to both the CD3313 RADIO input and the AP-side FM I2S capture path. Do not merge these paths in `mt8163_tools` until the actual board routing and runtime policy selection are verified.
