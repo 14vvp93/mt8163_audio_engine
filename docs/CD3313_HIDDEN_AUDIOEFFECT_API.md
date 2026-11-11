@@ -260,3 +260,100 @@ For 0x03 and 0x12, the Java array length alone cannot satisfy the recovered kern
 For 0x15, the inverse hazard exists: the kernel's length table accepts a two-word size field even though the handler reads four words. A safe native bridge must enforce four complete words regardless of the driver's weaker minimum.
 
 These are cross-layer facts, not evidence of the native bridge's actual behavior. Do not infer padding values, ioctl size fields, or the low request-number byte until the JNI provider is recovered. The emulator's typed builders deliberately construct safe kernel-side frames and must not be treated as a byte-for-byte reproduction of the Java arrays.
+
+
+## 7. Native JNI bridge recovered from firmware
+
+### Binary identity
+
+The firmware-library-analysis artifact contains the exact JNI provider:
+
+- Path in source archive: `lib/lib/libcarservices_jni.so`
+- ELF: 32-bit ARM, EABI5, Android 28, stripped
+- Build ID: `bf391e545edd2e482b72cd8a431d1c59`
+- Exported registration function:
+  `android::register_android_server_ExtAudioMuxer(JNIEnv*)`
+- Registration strings: `android/sourceservice/ExtAudioMuxer`,
+  `nativeInit`, `SendCmdAudioMux`, `SendCmdVideoMux`
+- The binary imports `__open_2`, `ioctl`, and `close`.
+
+This closes the previous “native JNI implementation missing” gap. The observations below are from static ARM disassembly of this exact binary, not a live device trace.
+
+### `nativeInit()`
+
+The native initializer:
+
+1. Opens `/dev/audiomux` with flags `0` (`O_RDONLY`).
+2. Zero-initializes a 128-byte stack buffer.
+3. Calls `ioctl(fd, 0x8080F000, buffer)`.
+4. Closes the file descriptor.
+5. Returns the ioctl result; if open fails, the observed return path is `-2`.
+
+The request word is `0x8080F000`: direction READ (`2`), type `0xF0`, request number `0`, encoded size `0x80`. The CD3313 driver's read-direction ioctl branch accepts type `0xF0` and copies a fixed 8-byte response to userspace. The encoded size is therefore not the actual copy length in this driver branch. The returned 8 bytes are not yet semantically decoded.
+
+### `SendCmdAudioMux(int command, int[] values)`
+
+Static disassembly establishes this sequence:
+
+1. Calls JNI `GetIntArrayElements(values, null)`.
+2. Calls JNI `GetArrayLength(values)`.
+3. Opens `/dev/audiomux` with flags `1` (`O_WRONLY`).
+4. Builds the ioctl request from the command ID and Java array length.
+5. Calls `ioctl(fd, request, int_array_elements)`.
+6. Closes the descriptor.
+7. Calls `ReleaseIntArrayElements(values, elements, JNI_ABORT)` (mode `2`).
+8. Returns the ioctl result. An open failure takes the `-1` return path.
+
+The exact request construction visible in ARM instructions is:
+
+```c
+request = 0x40000000u
+        | ((array_length + 1u) << 16)
+        | ((command & 0xffu) << 8);
+ioctl(fd, request, values);
+```
+
+In Linux `_IOC` terms this is direction `_IOC_WRITE`, type = command ID, request number = `0`, and encoded size = `array_length + 1`. The low request-number byte is zero. The native method passes the JNI array-elements pointer directly as the ioctl argument; it does not construct a separate command/payload structure in userspace.
+
+The native method also formats the integer array for diagnostic logging when its audio-muxer debug property is enabled. That logging path is separate from the ioctl payload.
+
+### Cross-check against `cd3313.ko`
+
+The recovered `cmd_ioctl` implementation independently confirms the request interpretation:
+
+- Bits 30–31 select direction.
+- Bits 16–29 are extracted as the size field and multiplied by four.
+- Bits 8–15 are extracted as the CD3313 command ID.
+- For WRITE requests, the driver stores the complete ioctl request word in its internal frame, then copies the encoded number of bytes from the userspace pointer.
+- For the READ request with type `0xF0`, the driver copies a fixed 8-byte result.
+
+This proves that the JNI bridge really does use `ioctl` on the same `/dev/audiomux` node created by the CD3313 driver. The previously uncertain final transport hop is now statically confirmed.
+
+### Important length discrepancy — do not paper over it
+
+The JNI code encodes `array_length + 1` words, while the pointer passed to the kernel is the pointer returned by `GetIntArrayElements` for a Java array containing exactly `array_length` integers. The driver's WRITE path multiplies the encoded size by four and copies all of those bytes. Consequently, the static code requests a copy of one 32-bit word more than the declared Java array length.
+
+Examples:
+
+| Command | Java array length | Encoded size field | Kernel copy size |
+|---|---:|---:|---:|
+| `0x03` input gain | 2 | 3 words | 12 bytes |
+| `0x12` volume percentage | 1 | 2 words | 8 bytes |
+| `0x15` four speaker levels | 4 | 5 words | 20 bytes |
+| `0x55` bass | 4 | 5 words | 20 bytes |
+| `0x5C` treble | 4 | 5 words | 20 bytes |
+
+This is an observed native/kernel ABI discrepancy and a potential one-word userspace over-read. It is not evidence that the extra word has a known value or meaning. Do not invent padding, append a guessed zero, or copy this framing into a new client until the extra word is explained by runtime evidence or additional vendor code. The existing emulator's safe kernel-frame builders are not a byte-for-byte JNI reproduction.
+
+### Current confidence after this finding
+
+- JNI provider library: **confirmed**.
+- Device path and open mode: **confirmed**.
+- Use of `ioctl`: **confirmed**.
+- Request direction, type field, request number and size formula: **confirmed by native disassembly**.
+- Driver interpretation of those fields: **confirmed by kernel disassembly**.
+- Extra-word discrepancy: **confirmed statically; runtime consequences unresolved**.
+- Meaning of the 8-byte `nativeInit` response: **unknown**.
+- Live hardware behavior: **not tested**.
+
+No live audio command was sent and no hardware state was changed during this analysis.
