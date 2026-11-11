@@ -1,10 +1,12 @@
 package com.mt8163.audiotest;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
@@ -14,6 +16,9 @@ import android.widget.Toast;
 import com.mt8163.audioengine.NativeDsp;
 
 import java.util.Locale;
+import java.util.Map;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 public final class MainActivity extends Activity {
     private static final int CHANNELS = 4;
@@ -22,6 +27,20 @@ public final class MainActivity extends Activity {
     private final TextView[] gainLabels = new TextView[CHANNELS];
     private final SeekBar[] gainBars = new SeekBar[CHANNELS];
     private SeekBar balanceBar;
+    private SeekBar crossoverBar;
+    private SeekBar subGainBar;
+    private SeekBar bassAmountBar;
+    private SeekBar bassFrequencyBar;
+    private SeekBar clarityAmountBar;
+    private SeekBar clarityFrequencyBar;
+    private Button dspToggleButton;
+    private Button bassToggleButton;
+    private Button bassEnhancementToggle;
+    private Button clarityToggle;
+    private Button phaseButton;
+    private TextView crossoverLabel;
+    private TextView orderLabel;
+    private TextView subGainLabel;
     private SeekBar faderBar;
     private TextView balanceLabel;
     private TextView faderLabel;
@@ -57,6 +76,7 @@ public final class MainActivity extends Activity {
             dsp = new NativeDsp(48000);
             status.setText("DSP ready · 48 kHz · 4 channels · Float32");
             startProfilePump();
+            restoreLastSession();
         } catch (Throwable error) {
             status.setText("DSP initialization failed: " + error.getMessage());
         }
@@ -75,6 +95,16 @@ public final class MainActivity extends Activity {
         status = text("Initializing native DSP…", 13, Color.CYAN);
         status.setPadding(0, dp(18), 0, dp(12));
         root.addView(status);
+
+        LinearLayout profileActions = new LinearLayout(this);
+        profileActions.setOrientation(LinearLayout.HORIZONTAL);
+        Button saveProfile = button("SAVE PROFILE");
+        saveProfile.setOnClickListener(v -> promptSaveProfile());
+        Button loadProfile = button("LOAD PROFILE");
+        loadProfile.setOnClickListener(v -> showSavedProfiles());
+        profileActions.addView(saveProfile, new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        profileActions.addView(loadProfile, new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        root.addView(profileActions);
 
         for (int i = 0; i < CHANNELS; i++) {
             final int channel = i;
@@ -135,18 +165,18 @@ public final class MainActivity extends Activity {
         });
         root.addView(faderBar);
 
-        Button toggle = button("DSP: ON");
-        toggle.setOnClickListener(v -> {
+        dspToggleButton = button("DSP: ON");
+        dspToggleButton.setOnClickListener(v -> {
             dspEnabled = !dspEnabled;
             if (dsp != null && dsp.setEnabled(dspEnabled)) {
-                toggle.setText(dspEnabled ? "DSP: ON" : "DSP: OFF");
+                dspToggleButton.setText(dspEnabled ? "DSP: ON" : "DSP: OFF");
                 status.setText("Profile applied · 50 ms crossfade");
             } else {
                 dspEnabled = !dspEnabled;
                 Toast.makeText(this, "DSP busy or unavailable", Toast.LENGTH_SHORT).show();
             }
         });
-        root.addView(toggle);
+        root.addView(dspToggleButton);
 
         TextView eqTitle = text("32-BAND PARAMETRIC EQ", 18, Color.WHITE);
         eqTitle.setPadding(0, dp(22), 0, dp(8));
@@ -200,18 +230,18 @@ public final class MainActivity extends Activity {
         root.addView(bassTitle);
         bassStatus = text("Bass management · OFF", 14, Color.CYAN);
         root.addView(bassStatus);
-        Button bassToggle = button("BASS MANAGEMENT: OFF");
-        bassToggle.setOnClickListener(v -> {
+        bassToggleButton = button("BASS MANAGEMENT: OFF");
+        bassToggleButton.setOnClickListener(v -> {
             bassManagementEnabled = !bassManagementEnabled;
             applyBassManagement();
-            bassToggle.setText(bassManagementEnabled
+            bassToggleButton.setText(bassManagementEnabled
                     ? "BASS MANAGEMENT: ON" : "BASS MANAGEMENT: OFF");
         });
-        root.addView(bassToggle);
+        root.addView(bassToggleButton);
 
-        TextView crossoverLabel = text("Crossover · 80 Hz", 14, Color.WHITE);
+        crossoverLabel = text("Crossover · 100 Hz", 14, Color.WHITE);
         root.addView(crossoverLabel);
-        SeekBar crossoverBar = new SeekBar(this);
+        crossoverBar = new SeekBar(this);
         crossoverBar.setMax(360);
         crossoverBar.setProgress(60);
         crossoverBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -224,7 +254,7 @@ public final class MainActivity extends Activity {
         });
         root.addView(crossoverBar);
 
-        TextView orderLabel = text("Linkwitz–Riley · 24 dB/oct", 14, Color.WHITE);
+        orderLabel = text("Linkwitz–Riley · 24 dB/oct", 14, Color.WHITE);
         root.addView(orderLabel);
         LinearLayout orderPicker = new LinearLayout(this);
         orderPicker.setOrientation(LinearLayout.HORIZONTAL);
@@ -240,9 +270,9 @@ public final class MainActivity extends Activity {
         }
         root.addView(orderPicker);
 
-        TextView subGainLabel = text("Subwoofer level · 0.0 dB", 14, Color.WHITE);
+        subGainLabel = text("Subwoofer level · 0.0 dB", 14, Color.WHITE);
         root.addView(subGainLabel);
-        SeekBar subGainBar = new SeekBar(this);
+        subGainBar = new SeekBar(this);
         subGainBar.setMax(360);
         subGainBar.setProgress(240);
         subGainBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -254,7 +284,7 @@ public final class MainActivity extends Activity {
             @Override public void onStopTrackingTouch(SeekBar bar) { applyBassManagement(); }
         });
         root.addView(subGainBar);
-        Button phaseButton = button("SUBWOOFER PHASE: 0°");
+        phaseButton = button("SUBWOOFER PHASE: 0°");
         phaseButton.setOnClickListener(v -> {
             subPhaseInverted = !subPhaseInverted;
             phaseButton.setText(subPhaseInverted
@@ -267,7 +297,7 @@ public final class MainActivity extends Activity {
         enhancementTitle.setPadding(0, dp(22), 0, dp(8));
         root.addView(enhancementTitle);
 
-        Button bassEnhancementToggle = button("BASS ENHANCEMENT: OFF");
+        bassEnhancementToggle = button("BASS ENHANCEMENT: OFF");
         bassEnhancementToggle.setOnClickListener(v -> {
             bassEnhancementEnabled = !bassEnhancementEnabled;
             bassEnhancementToggle.setText(bassEnhancementEnabled
@@ -278,7 +308,7 @@ public final class MainActivity extends Activity {
 
         TextView bassAmountLabel = text("Bass amount · 50%", 14, Color.WHITE);
         root.addView(bassAmountLabel);
-        SeekBar bassAmountBar = new SeekBar(this);
+        bassAmountBar = new SeekBar(this);
         bassAmountBar.setMax(100);
         bassAmountBar.setProgress(50);
         bassAmountBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -293,7 +323,7 @@ public final class MainActivity extends Activity {
 
         TextView bassFrequencyLabel = text("Bass focus · 90 Hz", 14, Color.WHITE);
         root.addView(bassFrequencyLabel);
-        SeekBar bassFrequencyBar = new SeekBar(this);
+        bassFrequencyBar = new SeekBar(this);
         bassFrequencyBar.setMax(120);
         bassFrequencyBar.setProgress(50);
         bassFrequencyBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -307,7 +337,7 @@ public final class MainActivity extends Activity {
         });
         root.addView(bassFrequencyBar);
 
-        Button clarityToggle = button("CLARITY ENHANCEMENT: OFF");
+        clarityToggle = button("CLARITY ENHANCEMENT: OFF");
         clarityToggle.setOnClickListener(v -> {
             clarityEnhancementEnabled = !clarityEnhancementEnabled;
             clarityToggle.setText(clarityEnhancementEnabled
@@ -318,7 +348,7 @@ public final class MainActivity extends Activity {
 
         TextView clarityAmountLabel = text("Clarity amount · 30%", 14, Color.WHITE);
         root.addView(clarityAmountLabel);
-        SeekBar clarityAmountBar = new SeekBar(this);
+        clarityAmountBar = new SeekBar(this);
         clarityAmountBar.setMax(100);
         clarityAmountBar.setProgress(30);
         clarityAmountBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -333,7 +363,7 @@ public final class MainActivity extends Activity {
 
         TextView clarityFrequencyLabel = text("Clarity focus · 2.5 kHz", 14, Color.WHITE);
         root.addView(clarityFrequencyLabel);
-        SeekBar clarityFrequencyBar = new SeekBar(this);
+        clarityFrequencyBar = new SeekBar(this);
         clarityFrequencyBar.setMax(550);
         clarityFrequencyBar.setProgress(100);
         clarityFrequencyBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -355,6 +385,186 @@ public final class MainActivity extends Activity {
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
         setContentView(new ScrollView(this) {{ setFillViewport(true); addView(root); }});
+    }
+
+
+    private static final String PROFILE_PREFS = "mt8163_audio_profiles";
+    private static final String PROFILE_PREFIX = "profile:";
+    private static final String AUTOSAVE_KEY = "last_session";
+    private static final String[] PROFILE_CHANNELS = {"FL", "FR", "RL", "RR"};
+
+    private float[] createUiProfileSnapshot() {
+        float[] values = new float[NativeDsp.UI_PROFILE_FLOAT_COUNT];
+        int p = 0;
+        values[p++] = dspEnabled ? 1.0f : 0.0f;
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            values[p++] = (gainBars[ch].getProgress() - 240) / 10.0f;
+            for (int band = 0; band < 32; band++) values[p++] = eqGainsDb[ch][band];
+        }
+        values[p++] = (balanceBar.getProgress() - 100) / 100.0f;
+        values[p++] = (faderBar.getProgress() - 100) / 100.0f;
+        values[p++] = bassManagementEnabled ? 1.0f : 0.0f;
+        values[p++] = crossoverHz;
+        values[p++] = crossoverOrder;
+        values[p++] = subGainDb;
+        values[p++] = subPhaseInverted ? 1.0f : 0.0f;
+        values[p++] = bassEnhancementEnabled ? 1.0f : 0.0f;
+        values[p++] = bassEnhancementAmount;
+        values[p++] = bassEnhancementFrequencyHz;
+        values[p++] = clarityEnhancementEnabled ? 1.0f : 0.0f;
+        values[p++] = clarityEnhancementAmount;
+        values[p++] = clarityEnhancementFrequencyHz;
+        if (p != values.length) throw new IllegalStateException("UI profile layout mismatch");
+        return values;
+    }
+
+    private void persistProfile(String key, float[] values) {
+        JSONArray array = new JSONArray();
+        for (float value : values) array.put(value);
+        getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE).edit()
+                .putString(key, array.toString()).apply();
+    }
+
+    private float[] readProfile(String key) throws JSONException {
+        String encoded = getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE)
+                .getString(key, null);
+        if (encoded == null) return null;
+        JSONArray array = new JSONArray(encoded);
+        if (array.length() != NativeDsp.UI_PROFILE_FLOAT_COUNT) return null;
+        float[] values = new float[array.length()];
+        for (int i = 0; i < values.length; i++) {
+            double value = array.getDouble(i);
+            if (Double.isNaN(value) || Double.isInfinite(value) ||
+                    value < -100000.0 || value > 100000.0) return null;
+            values[i] = (float) value;
+        }
+        return values;
+    }
+
+    private boolean applyUiProfileSnapshot(float[] values) {
+        if (values == null || values.length != NativeDsp.UI_PROFILE_FLOAT_COUNT ||
+                dsp == null) return false;
+        int p = 0;
+        dspEnabled = values[p++] == 1.0f;
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            float gain = values[p++];
+            if (gain < -24.0f || gain > 12.0f) return false;
+            gainBars[ch].setProgress(Math.max(0, Math.min(360,
+                    Math.round(gain * 10.0f + 240.0f))));
+            for (int band = 0; band < 32; band++) {
+                float db = values[p++];
+                if (db < -18.0f || db > 18.0f) return false;
+                eqGainsDb[ch][band] = db;
+            }
+        }
+        float balance = values[p++];
+        float fader = values[p++];
+        if (Math.abs(balance) > 1.0f || Math.abs(fader) > 1.0f) return false;
+        balanceBar.setProgress(Math.max(0, Math.min(200, Math.round(balance * 100.0f + 100.0f))));
+        faderBar.setProgress(Math.max(0, Math.min(200, Math.round(fader * 100.0f + 100.0f))));
+        bassManagementEnabled = values[p++] == 1.0f;
+        crossoverHz = values[p++];
+        crossoverOrder = Math.round(values[p++]);
+        subGainDb = values[p++];
+        subPhaseInverted = values[p++] == 1.0f;
+        bassEnhancementEnabled = values[p++] == 1.0f;
+        bassEnhancementAmount = values[p++];
+        bassEnhancementFrequencyHz = values[p++];
+        clarityEnhancementEnabled = values[p++] == 1.0f;
+        clarityEnhancementAmount = values[p++];
+        clarityEnhancementFrequencyHz = values[p++];
+
+        if (crossoverHz < 40.0f || crossoverHz > 400.0f ||
+                (crossoverOrder != 2 && crossoverOrder != 4 &&
+                 crossoverOrder != 6 && crossoverOrder != 8) ||
+                subGainDb < -24.0f || subGainDb > 12.0f ||
+                bassEnhancementAmount < 0.0f || bassEnhancementAmount > 1.0f ||
+                bassEnhancementFrequencyHz < 40.0f || bassEnhancementFrequencyHz > 160.0f ||
+                clarityEnhancementAmount < 0.0f || clarityEnhancementAmount > 1.0f ||
+                clarityEnhancementFrequencyHz < 1500.0f || clarityEnhancementFrequencyHz > 7000.0f) {
+            return false;
+        }
+
+        crossoverBar.setProgress(Math.max(0, Math.min(360, Math.round(crossoverHz - 40.0f))));
+        subGainBar.setProgress(Math.max(0, Math.min(360, Math.round(subGainDb * 10.0f + 240.0f))));
+        bassAmountBar.setProgress(Math.round(bassEnhancementAmount * 100.0f));
+        bassFrequencyBar.setProgress(Math.round(bassEnhancementFrequencyHz - 40.0f));
+        clarityAmountBar.setProgress(Math.round(clarityEnhancementAmount * 100.0f));
+        clarityFrequencyBar.setProgress(Math.round((clarityEnhancementFrequencyHz - 1500.0f) / 10.0f));
+        dspToggleButton.setText(dspEnabled ? "DSP: ON" : "DSP: OFF");
+        bassToggleButton.setText(bassManagementEnabled ? "BASS MANAGEMENT: ON" : "BASS MANAGEMENT: OFF");
+        bassEnhancementToggle.setText(bassEnhancementEnabled ? "BASS ENHANCEMENT: ON" : "BASS ENHANCEMENT: OFF");
+        clarityToggle.setText(clarityEnhancementEnabled ? "CLARITY ENHANCEMENT: ON" : "CLARITY ENHANCEMENT: OFF");
+        phaseButton.setText(subPhaseInverted ? "SUBWOOFER PHASE: 180°" : "SUBWOOFER PHASE: 0°");
+        orderLabel.setText("Linkwitz–Riley · " + (crossoverOrder * 6) + " dB/oct");
+        selectEqChannel(selectedEqChannel);
+        if (!dsp.applyUiProfile(values)) {
+            status.setText("Profile queued unsuccessfully · DSP transition may still be active");
+            return false;
+        }
+        status.setText("Complete profile restored · one atomic 50 ms crossfade");
+        return true;
+    }
+
+    private void promptSaveProfile() {
+        EditText name = new EditText(this);
+        name.setSingleLine(true);
+        name.setHint("Profile name");
+        new AlertDialog.Builder(this).setTitle("Save sound profile").setView(name)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String label = name.getText().toString().trim();
+                    if (label.isEmpty() || label.length() > 32) {
+                        Toast.makeText(this, "Enter a name (1–32 characters)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    persistProfile(PROFILE_PREFIX + label, createUiProfileSnapshot());
+                    Toast.makeText(this, "Saved: " + label, Toast.LENGTH_SHORT).show();
+                }).show();
+    }
+
+    private void showSavedProfiles() {
+        Map<String, ?> all = getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE).getAll();
+        java.util.ArrayList<String> names = new java.util.ArrayList<>();
+        for (String key : all.keySet()) {
+            if (key.startsWith(PROFILE_PREFIX)) names.add(key.substring(PROFILE_PREFIX.length()));
+        }
+        java.util.Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
+        if (names.isEmpty()) {
+            Toast.makeText(this, "No saved profiles yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Load sound profile")
+                .setItems(names.toArray(new String[0]), (dialog, which) -> {
+                    try {
+                        float[] values = readProfile(PROFILE_PREFIX + names.get(which));
+                        if (!applyUiProfileSnapshot(values)) {
+                            Toast.makeText(this, "Profile is invalid or DSP is busy", Toast.LENGTH_LONG).show();
+                        }
+                    } catch (JSONException error) {
+                        Toast.makeText(this, "Cannot read profile: " + error.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void restoreLastSession() {
+        try {
+            float[] values = readProfile(AUTOSAVE_KEY);
+            if (values != null && !applyUiProfileSnapshot(values)) {
+                status.setText("Last session found but could not be restored");
+            }
+        } catch (JSONException error) {
+            status.setText("Last session is damaged; using safe defaults");
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        if (dsp != null && gainBars[0] != null) {
+            persistProfile(AUTOSAVE_KEY, createUiProfileSnapshot());
+        }
+        super.onPause();
     }
 
     private void applyEnhancements() {
