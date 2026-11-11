@@ -782,3 +782,6 @@ Therefore the captured HAL call-site argument and the captured XML path names do
 - Obtain the live unit's resolved device-path configuration (or the exact XML loaded by `AudioALSADeviceConfigManager`) and compare it with the HAL's literal argument.
 - Until that is resolved, do not infer that `Audio_Speaker_class_Switch=CLASSAB` is necessarily applied by this particular `OpenSpeakerPath()` call.
 - No HAL patch, mixer write, GPIO change, I²S change, or live-device operation was performed.
+### Error propagation at the caller
+
+The no-match branch in `ApplyDeviceTurnonSequenceByName()` returns `-38` (`-ENOSYS`) after its error-log path. `OpenSpeakerPath()` does not propagate that result: immediately after the call it sets the return register to zero and returns success. Consequently, if the captured key/XML mismatch is present at runtime, the named mixer sequence can fail while `OpenSpeakerPath()` still reports success to its caller. This is a static control-flow conclusion; it does not prove that the mismatch occurs on the live head unit.
