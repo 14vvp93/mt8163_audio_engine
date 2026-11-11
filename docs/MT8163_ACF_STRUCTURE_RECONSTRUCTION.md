@@ -129,6 +129,18 @@ These routines establish representation conversions used by BES. They do not pro
 
 The selector-4 observation above refers to the object fields `this + 0x2C` and `this + 0x08` (without a trailing parenthesis). The selector table remains a dispatch map; selector names/meanings have not been inferred.
 
+
+## BES filter-bank consumers
+
+The exported coefficient-push helpers show that the Q formats are not merely names of offline design routines:
+
+- `Push_Coef_Q5p27_To_Single_Channel` reads five 32-bit words from a coefficient record and writes a five-word channel record. The final two words are repacked/shifted before storage, so they must not be treated as five unrelated raw values without following the producer.
+- `Push_Coef_Q2p14_To_Single_Channel` reads and writes three 32-bit words.
+- `Push_Coef_Q2p14_To_Both_Channel` writes the same three-word record to two channel destinations.
+- `Second_Order_IIR_Flt_16Bit` uses signed 64-bit multiply-accumulate instructions (`SMULL`/`SMLAL`) and adds `0x04000000` before shifting the accumulator right by 27 bits. This is consistent with a Q5.27 coefficient arithmetic path with a half-LSB rounding bias at the output stage.
+
+This narrows the numeric-format question: Q5.27 and Q2.14 are active BES coefficient paths, while Q1.15/Q1.31 helpers perform width conversion. It still does not establish a direct one-to-one mapping from any ACF byte range to a particular filter-bank record.
+
 ## Safety and next analysis
 
 No CD3313 ioctl or register write is performed by this work. These findings concern the MediaTek software ACF/BES processing stack.
