@@ -17,6 +17,7 @@ public final class NativeDsp implements AutoCloseable {
     public static final int QUAD_PROFILE_SCHEMA_VERSION = 1;
     public static final int OUTPUT_CHANNELS = 4;
     public static final int EQ_BANDS_PER_CHANNEL = 32;
+    public static final int UI_PROFILE_FLOAT_COUNT = 146;
     public static final int QUAD_PROFILE_FLOAT_COUNT =
             6 + OUTPUT_CHANNELS * (2 + EQ_BANDS_PER_CHANNEL * 6);
 
@@ -51,6 +52,13 @@ public final class NativeDsp implements AutoCloseable {
         return nativeHandle != 0L && packedProfile != null
                 && packedProfile.length == QUAD_PROFILE_FLOAT_COUNT
                 && nativeApplyQuadProfile(nativeHandle, packedProfile);
+    }
+
+    /** Atomically applies a complete UI profile in one native crossfade. */
+    public synchronized boolean applyUiProfile(float[] profile) {
+        return nativeHandle != 0L && profile != null
+                && profile.length == UI_PROFILE_FLOAT_COUNT
+                && nativeApplyUiProfile(nativeHandle, profile);
     }
 
     /** Atomically applies 32 peaking-EQ gains (-18..+18 dB) to one output channel. */
@@ -134,5 +142,6 @@ public final class NativeDsp implements AutoCloseable {
     private static native boolean nativeApplyBalanceFader(long handle, float balance, float fader);
     private static native boolean nativeConfigureEnhancements(long handle, boolean bassEnabled, float bassAmount, float bassFrequencyHz, boolean clarityEnabled, float clarityAmount, float clarityFrequencyHz);
     private static native boolean nativeApplyChannelEq(long handle, int channel, float[] gainsDb);
+    private static native boolean nativeApplyUiProfile(long handle, float[] profile);
     private static native boolean nativeProcess(long handle, float[] input, float[] output, int frames);
 }
