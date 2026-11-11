@@ -191,3 +191,33 @@ make an explicit route policy:
   stock manager bypasses them in the recovered default initialization;
 - earpiece processing depends on feature flags;
 - unsupported routes must remain bypassed until their handlers are traced.
+
+
+## 10. ATCI ACF/HCF service bridge recovered
+
+The supplied `vendor/audiocmdservice_atci` binary contains the
+`MM+EACF`/`MM+EHCF` command family and the named
+`DoCustACFHCFParam`, `DLCustAudioFLTParamToNV()`, and
+`ULCustAudioFLTParamFromNV()` functions. Its five service tuning types map
+to NVRAM IDs `[0, 1, 4, 5, 6]` for ACF, HCF, ACF-SUB, Music-DRC and
+RingTone-DRC. The payload block is 1260 bytes (`0x4EC`) and is transferred
+through Base64; the service writes it with the vendor custom-parameter storage
+API and emits `UpdateACFHCFParameters=N` through
+`MTKPrimaryDevicesHalClient`.
+
+This cross-correlates with the primary HAL's `UpdateACFHCF(int)`:
+- update suffix 0 loads custom-filter type 0 and calls manager selector 0;
+- suffix 1 loads type 1 and calls manager selector 1;
+- suffix 2 loads type 4 and calls manager selector 4.
+
+Manager selector 4 is valid and targets filter slot `+0x14` through
+`AudioMTKFilter::setParameter()`. Selector 1 targets optional slot
+`+0x18`, which remains null in the recovered default manager initialization.
+The HCF update therefore appears to be skipped in that default construction
+path; this needs confirmation against the live configuration or an alternate
+initialization path. Service update strings 3 and 4 exist, but this HAL
+`UpdateACFHCF()` function only handles suffixes 0..2.
+
+See [AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md](AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md).
+This recovers a vendor ACF/HCF control route, not a CD3313 transport or
+four-channel PCM path.
