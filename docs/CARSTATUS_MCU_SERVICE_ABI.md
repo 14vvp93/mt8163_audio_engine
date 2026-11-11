@@ -71,8 +71,10 @@ physical signal source beyond the named GPIO request strings.
 
 The carstatus `update_mute()` function opens `/dev/audiomux` with
 `O_RDONLY`, updates the carstatus module's own mute mask under a mutex,
-schedules its own delayed events, and drives its own GPIO output (GPIO 36
-in the recovered call path). It then closes the audiomux file. No ioctl or
+schedules its own delayed events, and drives GPIO 393 (`0x189`) in the recovered call path. It then closes the
+audiomux file. This is the same numeric GPIO used by the CD3313 driver's
+DSP shutdown/wakeup path, so the two modules appear to share a physical
+control line; ownership, polarity, and race behavior still need analysis. No ioctl or
 write call to `/dev/audiomux` is made by this function.
 
 Therefore this path confirms that carstatus checks for the presence of the
