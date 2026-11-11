@@ -319,3 +319,10 @@ The driver tables and bit fields are cross-checked against the manufacturer docu
 - The datasheet defines bass and treble control in 2 dB steps. The driver's transition routine currently uses lookup indices 3..10, which decode to -8, -6, -4, -2, 0, +2, +4, and +6 dB. This is the range of the recovered command path, not the chip's full ±14 dB capability.
 
 The complete raw tables, register-cache mappings, and master-volume dB list are in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md). Datasheet correlation does not prove board-level wiring or runtime behavior on the target head unit.
+
+
+## Exact paired-module selector table revalidation
+
+The current firmware-paired `cd3313.ko` (Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`; SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`) was checked directly. Its `.rodata` symbol `CSWTCH.201` contains `2, 1, 0, 3, 0, 2`; the current channel labels are `RADIO, ARM, AUX, EXBT, AUX2, DAB, NONE`. Applying the CD3313 datasheet's selector encoding confirms the same logical map documented in `CD3313_REGISTER_IMAGE.md`: channel 0 RADIO selects Source 3 (selector code 2), channel 1 ARM selects Source 2, channel 2 AUX selects Source 1, channel 3 EXBT selects Source 4 (no external pins), channel 4 AUX2 selects Source 1, channel 5 DAB selects Source 3, and channel 6/NONE selects Source 4.
+
+For this exact build, the source-switch GPIO requests are GPIO 396 LOW only for channel 2 and HIGH otherwise; GPIO 474 HIGH only for channel 0 and LOW otherwise. These are raw requested levels, not physical readback. The older-build GPIO 398 value is not applicable to this module.
