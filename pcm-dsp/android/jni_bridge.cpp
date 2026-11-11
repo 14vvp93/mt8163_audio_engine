@@ -286,6 +286,104 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyBalanceFader(
     return JNI_TRUE;
 }
 
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_mt8163_audioengine_NativeDsp_nativeApplyUiProfile(
+        JNIEnv* env, jclass, jlong native_handle, jfloatArray profile_array) {
+    EngineHandle* handle = from_handle(native_handle);
+    constexpr std::size_t kUiProfileCount = 146U;
+    if (handle == nullptr || profile_array == nullptr ||
+        env->GetArrayLength(profile_array) != static_cast<jsize>(kUiProfileCount)) {
+        return JNI_FALSE;
+    }
+
+    std::array<jfloat, kUiProfileCount> values{};
+    env->GetFloatArrayRegion(profile_array, 0,
+        static_cast<jsize>(values.size()), values.data());
+    if (env->ExceptionCheck()) return JNI_FALSE;
+
+    for (const float value : values) {
+        if (!std::isfinite(value)) return JNI_FALSE;
+    }
+    bool enabled = false, bass_management = false, phase = false;
+    bool bass_enabled = false, clarity_enabled = false;
+    if (!read_boolean(values[0], enabled) ||
+        !read_boolean(values[135], bass_management) ||
+        !read_boolean(values[139], phase) ||
+        !read_boolean(values[140], bass_enabled) ||
+        !read_boolean(values[143], clarity_enabled)) {
+        return JNI_FALSE;
+    }
+    const float balance = values[133];
+    const float fader = values[134];
+    const float crossover_hz = values[136];
+    const float order_value = values[137];
+    const float sub_gain_db = values[138];
+    if (balance < -1.0F || balance > 1.0F ||
+        fader < -1.0F || fader > 1.0F ||
+        order_value < 2.0F || order_value > 8.0F ||
+        std::floor(order_value) != order_value ||
+        (order_value != 2.0F && order_value != 4.0F &&
+         order_value != 6.0F && order_value != 8.0F)) {
+        return JNI_FALSE;
+    }
+
+    pcm_dsp::AudioProfile candidate = handle->profile;
+    candidate.quad.enabled = enabled;
+    std::size_t offset = 1U;
+    for (std::size_t channel = 0; channel < pcm_dsp::kOutputChannelCount; ++channel) {
+        auto& parameters = candidate.quad.channels[channel];
+        parameters.gain_db = values[offset++];
+        for (std::size_t band = 0; band < pcm_dsp::kQuadEqBandCount; ++band) {
+            const float gain = values[offset++];
+            if (gain < -18.0F || gain > 18.0F) return JNI_FALSE;
+            const float position = static_cast<float>(band) /
+                static_cast<float>(pcm_dsp::kQuadEqBandCount - 1U);
+            auto& eq = parameters.bands[band];
+            eq.frequency_hz = 20.0F * std::pow(1000.0F, position);
+            eq.gain_db = gain;
+            eq.q = 1.0F;
+            eq.enabled = std::fabs(gain) >= 0.01F;
+            eq.type = pcm_dsp::FilterType::Peaking;
+            eq.shelf_slope = 1.0F;
+        }
+    }
+
+    constexpr float kHalfPi = 1.57079632679489661923F;
+    const float left_gain = balance > 0.0F ? std::cos(balance * kHalfPi) : 1.0F;
+    const float right_gain = balance < 0.0F ? std::cos(-balance * kHalfPi) : 1.0F;
+    const float front_gain = fader > 0.0F ? std::cos(fader * kHalfPi) : 1.0F;
+    const float rear_gain = fader < 0.0F ? std::cos(-fader * kHalfPi) : 1.0F;
+    auto& routing = candidate.routing;
+    routing.enabled = true;
+    routing.matrix.fill(0.0F);
+    routing.matrix[0] = left_gain * front_gain;
+    routing.matrix[5] = right_gain * front_gain;
+    routing.matrix[10] = left_gain * rear_gain;
+    routing.matrix[15] = right_gain * rear_gain;
+    routing.bass_management_enabled = bass_management;
+    routing.crossover_frequency_hz = crossover_hz;
+    routing.crossover_order =
+        static_cast<pcm_dsp::LinkwitzRileyOrder>(static_cast<std::uint8_t>(order_value));
+    routing.sub_gain_db = sub_gain_db;
+    routing.sub_phase_inverted = phase;
+
+    candidate.enhancements.bass_enabled = bass_enabled;
+    candidate.enhancements.bass_amount = values[141];
+    candidate.enhancements.bass_frequency_hz = values[142];
+    candidate.enhancements.clarity_enabled = clarity_enabled;
+    candidate.enhancements.clarity_amount = values[144];
+    candidate.enhancements.clarity_frequency_hz = values[145];
+
+    if (offset != 133U || !pcm_dsp::validate_audio_profile(candidate,
+            handle->engine.sample_rate()) ||
+        !handle->engine.apply_profile(candidate)) {
+        return JNI_FALSE;
+    }
+    handle->profile = candidate;
+    return JNI_TRUE;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_mt8163_audioengine_NativeDsp_nativeProcess(
         JNIEnv* env, jclass, jlong native_handle,
