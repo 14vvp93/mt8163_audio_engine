@@ -472,3 +472,19 @@ For our Normal-path adapter, the safe current contract is:
 - preserve the HAL's selected PCM config, period parameters, low-jitter setup, and write sequence.
 
 The exact tinyalsa PCM format enum produced for target format code 4, plus every field in the complete PCM configuration and the special period branch, should be checked against the matching tinyalsa headers/source before writing a binary-compatible replacement. No HAL patch or runtime change has been made.
+
+
+### Four-channel project requirement versus the observed Normal path
+
+The user's DSP design target is four independent channels (FL/FR/RL/RR), but the inspected built-in Normal playback path configures its ALSA target for two channels and the ordinary output-device validation path accepts the stereo channel mask. For the speaker output-device bit, the HAL may additionally average the stereo pair and duplicate the mono result before MTK post-processing.
+
+Consequently, the Normal handler's MTK filter-manager boundary is **not proven to carry four independent speaker channels**. A four-channel DSP must not be attached here under the assumption that FL/FR/RL/RR already exist in the buffer.
+
+Possible downstream architectures remain open:
+- the stereo stream may be distributed to four physical speaker outputs later by a vendor mixer, CD3313, or another hardware path;
+- a separate multi-channel route may exist outside the Normal speaker path;
+- a future adapter may need a deliberately defined stereo-to-four-channel routing stage, but that must be based on the actual hardware routing and must not fabricate independent source channels.
+
+The special multichannel masks 0x3F and 0x63F are accepted only in the output-device value 0x400 path in the stream setter; that route is selected as the HDMI playback handler, not as the ordinary speaker Normal handler. This is not evidence that the built-in speaker path is six- or eight-channel.
+
+This is a key architecture gate: before connecting the existing four-channel DSP to the stock HAL, locate where the four physical outputs are separated and determine whether the CD3313 receives stereo, duplicated mono, or four discrete channels. Until then, preserve the four-channel DSP core as an offline/test capability and do not force a four-channel buffer into the Normal handler.
