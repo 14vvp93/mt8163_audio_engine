@@ -31,7 +31,7 @@ public final class Cd3313ApiProbe {
             appendMethod(available, apiClass, "setSubWoofer", int.class, int.class);
 
             return "READ-ONLY PASS: android.audio.AudioEffect loaded; "
-                    + "getInstance() succeeded, so the sourceinfo Binder service is available.\n"
+                    + "getInstance() succeeded and returned a sourceinfo Binder reference.\n"
                     + "Public control methods: " + available + "\n"
                     + "No CD3313 command was sent. Native /dev/audiomux operation is not tested.";
         } catch (InvocationTargetException error) {
