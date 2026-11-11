@@ -63,11 +63,14 @@ at `+0x14). The inspected `init(0)` path:
 - allocates the `+0x28` scratch array using constructor argument 4 as its
   byte count.
 
-The manager also has optional pointer slots at `+0x18` and `+0x1C`.
-The inspected `init()` body does not assign those two slots; the process and
-parameter methods test them for null. No other writer has yet been proven.
-Do not assume the headphone filters are initialized merely because
-`init(0)` returned success.
+The manager also has pointer slots at `+0x18` and `+0x1C`.
+The constructor zeroes the pointer region; the complete manager-method
+disassembly contains no non-null assignment to either slot (the only stores
+to those manager offsets are nulling stores in `deinit()`). The process and
+parameter methods test them for null. In the default construction path these
+two slots therefore remain null, so the headphone branch's optional filter
+calls are skipped and the manager returns zero for that branch. This conclusion
+is limited to the supplied binary and its recovered manager lifecycle.
 
 The numeric `AudioCompFltType_t` / `AudioComFltMode_t` values used to
 configure the filter objects are preserved as raw values in this audit;
@@ -89,6 +92,12 @@ The process method checks each selected filter's active state under that
 filter object's mutex before invoking its processing function. The manager's
 filter process calls are byte-count based; the wrapper treats the final
 returned value as the output byte count.
+
+The speaker-specific setters corroborate the role of slot `+0x14`:
+`setSpkOutputGain()` at `0x9E7F8` and `setSpkFilterParam()` at
+`0x9E864` both operate on the filter object at manager `+0x14`. The
+manager's parameter selector 0 also targets this slot. Slot `+0x20` is
+the feature-3-dependent second filter used by the speaker/earpiece branches.
 
 The branch order matters for combined masks: any mask containing speaker bit
 `0x02` selects the speaker branch before the headphone branch is considered.
