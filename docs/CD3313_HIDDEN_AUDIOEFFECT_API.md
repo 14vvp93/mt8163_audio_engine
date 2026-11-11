@@ -202,27 +202,24 @@ The following is now recovered:
 - /dev/audiomux device-node check;
 - the mapping of key Java commands to the CD3313 kernel dispatcher.
 
-Still required before a safe userspace client can be implemented:
-1. The native JNI implementation of ExtAudioMuxer.nativeInit() and
-   ExtAudioMuxer.SendCmdAudioMux(int,int[]).
-2. Confirmation that JNI uses ioctl rather than another transport; if ioctl,
-   recover the request word (including low _IOC_NR), direction, size
-   calculation and userspace buffer framing.
-3. Runtime confirmation that the native method opens the same
-   /dev/audiomux device created by this exact cd3313.ko.
-4. A hardware readback or controlled test of source selection, mute, master
-   volume and four-output attenuation.
+The native transport is now statically recovered from
+`libcarservices_jni.so`: it opens the same `/dev/audiomux` node, uses
+`ioctl`, and constructs the request word with direction WRITE, command ID
+in bits 8..15, low request number zero, and size field
+`Java array length + 1`. The read-only `nativeInit()` query is also
+recovered as request `0x8080F000`, returning the eight-byte `cd3313`
+identifier.
 
-The most useful next firmware files are the system-server/native libraries
-that register android.sourceservice.ExtAudioMuxer JNI methods, especially
-/system/lib/libandroid_servers.so and any library containing
-ExtAudioMuxer, SendCmdAudioMux or /dev/audiomux strings. These names are
-search targets, not an assertion that libandroid_servers.so is the
-actual provider.
+Still required before any hardware client is safe:
+1. Explain or safely contain the native one-word over-read discrepancy.
+2. Run the read-only Binder/API probe on the exact head unit and record its
+   result and firmware fingerprint.
+3. Design controlled validation of source selection, mute, master volume
+   and four-output attenuation, with a verified rollback/safe-state plan.
 
-No guessed ioctl request is permitted. The existing host emulator remains
-offline and must not be connected to the live character device until the
-native ABI is recovered.
+No guessed padding value is permitted. The host emulator intentionally
+models complete, validated payloads and does not reproduce the native
+over-read. No write ioctl or hardware test has been performed.
 
 ### State readback limitation
 
