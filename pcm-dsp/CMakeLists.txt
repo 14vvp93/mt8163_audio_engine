@@ -57,7 +57,7 @@ if(PCM_DSP_BUILD_TESTS)
 
     add_executable(pcm_dsp_enhancement_tests tests/enhancement_test.cpp)
     target_link_libraries(pcm_dsp_enhancement_tests PRIVATE mt8163_pcm_dsp)
-    target_compile_options(pcm_dsp_dsp_enhancement_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(pcm_dsp_enhancement_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_enhancement_tests COMMAND pcm_dsp_enhancement_tests)
 
     add_executable(pcm_dsp_profile_transition_tests tests/profile_transition_test.cpp)
