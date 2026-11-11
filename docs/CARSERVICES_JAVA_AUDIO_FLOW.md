@@ -383,3 +383,6 @@ Two different policy candidates exist in the supplied firmware dump:
 The vendor `audio_policy.conf` also lists `AUDIO_DEVICE_IN_FM_TUNER` in the primary module's attached input devices. The static dump does not identify which policy file the running image actually loads, so the vendor FM-enabled policy must not be treated as runtime proof until the selected path is observed.
 
 The focused firmware inventory found no `.dts`, `.dtsi`, `.dtb`, `.dtbo`, boot image, or preloader image in the extracted file set. Consequently, the GPIO-to-pad pinmux and physical board traces cannot be established from the currently supplied partition files.
+
+
+The `/dev/fm` owner and its nonstandard ioctl copy sizes are documented in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md). The exact paired `fmradio_drv.ko` handles `0xC004F530` as a 20-byte five-field metadata query and `0xC004F521` as a 12-byte three-field I2S setting request, despite both ioctl numbers encoding `_IOC_SIZE=4`.
