@@ -257,3 +257,35 @@ The adjacent manager flags are also named by their setters:
 - AudioALSAStreamManager::setBGSUlMute(bool) at 0x7B4D4 stores the inverse of its argument at manager +0xD8. createPlaybackHandler() copies it to stream_attribute_t +0x161.
 
 These two mute flags are copied into the stream attributes but are not directly tested by doPostProcessing()'s two bypass checks. Do not conflate them with the Downlink-processing bypass at +0x41. The boolean inversion in the setters is directly visible in the XOR/RSB sequence; the names above follow the exported method names.
+
+
+## 9. AudioALSAStreamOut configuration gate before stream creation
+
+The public HAL wrapper path is now connected to the stream manager:
+
+- `AudioALSAHardware::openOutputStream()` at `0xCAC58` forwards the output configuration arguments to the stream manager through its interface call.
+- The corresponding flagged overload, `AudioALSAHardware::openOutputStreamWithFlags()` at `0xD1244`, forwards the flags and the same configuration values through that manager interface.
+- `AudioALSAStreamOut::set()` at `0x8172C` receives pointers to the requested format, channel mask and sample rate, plus the output device and status/configuration arguments. It stores the accepted format at stream object +0x48, channel mask at +0x50, output device at +0x60, channel count at +0x6C, and accepted sample rate at +0x70.
+
+### Format and channel-mask validation
+
+The format validation tests the requested format value against a bit mask and accepts the values represented by bits 1, 3 and 4 in that test. The function stores the requested value in the stream object only on the accepted path. This is consistent with the HAL's PCM16/PCM32-related handling seen in the playback helper, but the complete enum mapping should still be confirmed from the exact Android audio-format definitions used by this build.
+
+For the ordinary output-device path, the channel-mask check accepts the stereo mask value 3 and computes its channel count using a population-count sequence. A special path for output device value 1024 accepts masks 0x63F or 0x3F and also computes the channel count from the mask. Do not interpret that special device value as the primary speaker route without separately resolving the Android device constant and actual route.
+
+### Sample-rate whitelist and fallback
+
+The stream setter compares the requested sample rate against an explicit list. The observed accepted values are:
+
+- 8,000; 11,025; 12,000 Hz;
+- 22,050; 24,000; 32,000 Hz;
+- 44,100; 48,000; 88,200; 96,000 Hz;
+- 176,400; 192,000 Hz.
+
+If the requested rate is not in this list, the code writes 44,100 Hz back through the sample-rate pointer and records an invalid-argument status. This is the stream-wrapper validation/fallback behavior; it is not proof that the downstream ALSA PCM device runs at that same rate, because the Normal playback handler may subsequently select a target rate and BLI SRC may convert it.
+
+### What this establishes—and what remains open
+
+We now have a confirmed configuration chain from the HAL output-stream wrapper into the stream manager, and a confirmed record of the requested/accepted format, channel mask, output device, channel count and sample rate in the stream object. This narrows the path to inspect when reconstructing `stream_attribute_t`.
+
+It does **not** yet prove the exact assignments from these `AudioALSAStreamOut` fields into every `stream_attribute_t` member, the final PCM layout at the MTK filter-manager input, or the route-specific handler selected at runtime. The next step is to trace the interface object and its stream-attribute construction/copy routine, then correlate that with the Normal handler's actual target-rate and period calculations. No HAL binary, routing, or runtime behavior was changed.
