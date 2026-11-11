@@ -32,7 +32,11 @@ Strings identify default NVRAM/custom-storage scenes:
 - `audio_musicdrc_custom_default`
 - `audio_ringtonedrc_custom_default`
 
-The library depends on `libcustom_nvram.so`, `libnvram.so`, and `libaudiocustparam_vendor.so`. It logs a size mismatch and falls back to defaults when a stored parameter structure has the wrong size. This confirms size-sensitive persistence, but the actual structure size and field layout still need to be recovered from the exact implementation or matching headers.
+**The exact size of `_AUDIO_ACF_CUSTOM_PARAM_STRUCT` is confirmed as 1260 bytes (`0x4EC`).** ARM Thumb disassembly of `getDefaultAudioCompFltParam()` loads `0x4EC` as the structure-copy size and returns that size. `getAudioCompFltCustParamFromStorage()` compares the storage record size against the same `0x4EC` value and falls back to default parameters on mismatch. The component-engine custom-parameter cache also copies/compares records using `0x4EC`.
+
+This establishes the top-level structure size, **not** its complete field offsets, nested array dimensions, coefficient formats, or enum meanings. Those still require data-flow/layout recovery.
+
+The library depends on `libcustom_nvram.so`, `libnvram.so`, and `libaudiocustparam_vendor.so`. It logs a size mismatch and falls back to defaults when a stored parameter structure has the wrong size.
 
 ### `libaudiocomponentengine_vendor.so`
 
@@ -49,6 +53,10 @@ Exported symbols expose the vendor processing objects:
 The engine imports `BLOUD_HD_Filter_Design`, `Limiter_Open/Process/Reset`, `DCR_Process` (including 24-bit variants), `Shifter_Process`, and sample-rate conversion functions. This directly ties the component engine to the BES loudness DSP, limiter, DC-removal, shifter, and SRC libraries.
 
 The BES library exports `BLOUD_HD_Internal_Process`, `BLOUD_HD_Filter_Design`, `Design_Filter_Coef`, `IIR_Filter_Bank`, `Apply_DRC`, `Generate_MBDRC_Flt_Bank_Coef`, and 16-/32-bit coefficient helpers. These are candidate native processing primitives for later comparison with our PCM DSP, but they are not evidence of a one-to-one equivalent to any particular ViPER module.
+
+### Parameter selector caution
+
+The Thumb implementation of `MtkAudioLoud::setParameter(unsigned int, void*)` contains a selector dispatch for values up to 15, with additional internal state and coefficient handling. The recovered `UpdateACFHCF()` caller uses only selectors 0, 1, and 4 for the three update paths it handles. Do not assume that all selector values are interchangeable, or that the caller's ACF/HCF type enum is identical to the engine's `setParameter` selector. The payload pointer must reference a valid 1260-byte structure for the ACF/HCF update path; no live invocation should be attempted with an invented structure.
 
 ## XML parameter parser / control plane
 
@@ -70,7 +78,7 @@ It also exports `audioSystemGetParameters` and `audioSystemSetParameters`, plus 
 
 ## Next static-analysis steps
 
-1. Recover the exact `_AUDIO_ACF_CUSTOM_PARAM_STRUCT` and nested filter-coefficient layout from matching headers, debug metadata, or data-flow analysis of `getDefaultAudioCompFltParam`, `getAudioCompFltCustParamFromStorage`, and `MtkAudioLoud::setParameter`.
+1. Recover the exact field offsets, nested arrays, and coefficient layout inside the 1260-byte `_AUDIO_ACF_CUSTOM_PARAM_STRUCT` from matching headers, debug metadata, or data-flow analysis of `getDefaultAudioCompFltParam`, `getAudioCompFltCustParamFromStorage`, and `MtkAudioLoud::setParameter`.
 2. Trace the `PlaybackACF`, `PlaybackDRC`, and `PlaybackHCF` XML documents and the parser's AudioSystem key/value dispatch to identify supported user-space controls.
 3. Map the actual `AudioMTKFilterManager` slots to concrete engine objects by inspecting construction and filter-manager setup code; do not infer slot semantics from array position or enum names.
 4. Establish the active media output PCM format and route before any integration. Keep SCO, voice, microphone, FM, USB, and HDMI paths untouched until independently mapped.
@@ -85,8 +93,9 @@ No direct CD3313 device transport, ioctl request, I2C operation, or register map
 | Finding | Confidence |
 |---|---|
 | Vendor component engine directly depends on ACF, BES, limiter, DCR, shifter, and SRC libraries | High — ELF DT_NEEDED and import symbols |
+| `_AUDIO_ACF_CUSTOM_PARAM_STRUCT` top-level size is 1260 bytes (`0x4EC`) | High — repeated immediate constant in ARM Thumb copy and size-check paths |
 | MtkAudioLoud exposes setParameter/process and lifecycle methods | High — exported symbols |
 | Parser recognizes PlaybackACF/DRC/HCF and exposes AudioSystem get/set parameters | High — exported symbols and strings |
 | BES library contains IIR, DRC, multiband coefficient-generation and processing primitives | High — exported symbols |
-| Exact ACF structure layout and XML key grammar | Not yet recovered |
+| Complete ACF structure field layout and XML key grammar | Not yet recovered |
 | Any of these libraries directly controls CD3313 | Unproven |
