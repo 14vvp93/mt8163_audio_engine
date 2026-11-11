@@ -156,3 +156,5 @@ jobs:
           path: firmware-analysis/
           if-no-files-found: error
           retention-days: 14
+
+# Manual fresh run trigger: 2026-11-11
