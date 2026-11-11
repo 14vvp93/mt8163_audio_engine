@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
     private TextView eqChannelTitle;
     private NativeDsp dsp;
     private TextView status;
+    private TextView cd3313Status;
     private TextView bassStatus;
     private boolean bassManagementEnabled = false;
     private float crossoverHz = 100.0f;
@@ -128,6 +129,14 @@ public final class MainActivity extends Activity {
         status = text("Initializing native DSP…", 13, Color.CYAN);
         status.setPadding(0, dp(18), 0, dp(12));
         root.addView(status);
+
+        TextView cd3313Title = text("CD3313 CONTROL API", 14, Color.WHITE);
+        root.addView(cd3313Title);
+        Button cd3313Probe = button("PROBE CD3313 API · READ-ONLY");
+        cd3313Status = text("Not checked · no control commands will be sent", 12, Color.GRAY);
+        cd3313Probe.setOnClickListener(v -> cd3313Status.setText(Cd3313ApiProbe.run()));
+        root.addView(cd3313Probe);
+        root.addView(cd3313Status);
 
         LinearLayout profileActions = new LinearLayout(this);
         profileActions.setOrientation(LinearLayout.HORIZONTAL);
@@ -522,7 +531,7 @@ public final class MainActivity extends Activity {
         run.setOnClickListener(v -> runPcmTest());
         root.addView(run);
 
-        TextView note = text("Test signal is generated locally. No microphone, speaker output, Bluetooth or system audio is accessed.", 12, Color.GRAY);
+        TextView note = text("PCM test signal is generated locally. CD3313 probe only resolves the OEM API and Binder reference; it sends no control commands and plays no audio.", 12, Color.GRAY);
         note.setPadding(0, dp(18), 0, 0);
         root.addView(note);
         setContentView(new ScrollView(this) {{ setFillViewport(true); addView(root); }});
