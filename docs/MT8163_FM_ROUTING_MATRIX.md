@@ -121,3 +121,31 @@ Until those are located, the firmware-level mux mapping is resolved, but the phy
 - [CD3313 register image and selector map](CD3313_REGISTER_IMAGE.md)
 - [CD3313 command dispatch](CD3313_COMMAND_DISPATCH.md)
 - [CD3313 protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
+
+
+## FM_DIRECT_CONTROL state and enable/disable call chain
+
+The exact HAL binary also resolves the previously unexplained `FM_DIRECT_CONTROL` string.
+
+- `AudioALSAStreamOut::setParameters()` (VMA `0x8289c`) constructs the AudioParameter key `FM_DIRECT_CONTROL` and calls `AudioParameter::getInt()`. If present, it removes the key, normalizes the value to boolean 0/1, and invokes the `AudioALSAFMController` virtual method at vtable offset `+0x28`.
+- The `AudioALSAFMController` vtable symbol is `0x001909f0`, size 72 bytes; the vptr starts at `0x001909f8`. Slot `+0x28` points to a small setter at `0x000afeb8`, whose body stores the boolean in object byte offset 26. Slot `+0x2c` is the named `checkFmNeedUseDirectConnectionMode()` method at `0x000ae7fc`, which returns that same byte.
+- `AudioALSAFMController::setFmEnable()` calls the getter at vtable offset `+0x2c`. When the flag is true, it asks `WCNChipController` to set the FM chip sample rate to 48,000 Hz.
+- The same `setFmEnable()` method calls `setFmDirectConnection_l()` through vtable offset `+0x34`: the enable path passes first argument 1, the disable path passes first argument 0; the second argument is 1 and the third is forwarded from the caller. This is the HAL's actual direct-PCM start/stop control path.
+- `AudioALSAStreamManager::setFmEnable()` delegates to `AudioALSAFMController::setFmEnable()` through its vtable slot `+0x0c`.
+
+This proves `FM_DIRECT_CONTROL` is an AudioParameter boolean controlling the HAL's direct-connection-mode state; it is not a CD3313 ioctl and not a Linux system property. It also proves the FM enable lifecycle invokes the direct-PCM controller. Do not infer that the parameter alone selects MRGRX versus FM_I2S: that endpoint branch is separately selected by `WCNChipController::IsFMMergeInterfaceSupported()`.
+
+## Runtime ALSA name resolution and policy-file discrepancy
+
+The exact HAL exposes `AudioALSADeviceParser`. Its constructor calls `ParseCardIndex()`, `GetAllPcmAttribute()`, and `QueryPcmDriverCapability()`. `GetCardIndexByString()` and `GetPcmIndexByString()` search runtime-populated descriptor arrays using `strcmp` and return the stored numeric index. Thus the symbolic names recovered above are exact, but the numeric card/PCM indexes are discovered at runtime and are not statically encoded in the vendor `audio_device.xml`.
+
+The extracted `vendor/audio_device.xml` contains codec mixer-control paths (speaker, receiver, microphone, headset, etc.); it contains no `FM_I2S` or `MRGRX` Card/PCM definitions. It is not the source of those four names.
+
+Two different policy candidates exist in the supplied firmware dump:
+
+- `vendor/audio_policy_configuration.xml` declares `FM Tuner In` as an attached primary input, gives it PCM16 profiles at 8/16/32/44.1/48 kHz (mono/stereo), and routes it to Speaker, Wired Headset, and Wired Headphones. It separately declares `FM Tuner Out`.
+- `system/audio_policy_configuration.xml` is a different generic policy variant: its attached devices include Built-In Back Mic but not FM Tuner In, and its routes do not include FM Tuner In.
+
+The vendor `audio_policy.conf` also lists `AUDIO_DEVICE_IN_FM_TUNER` in the primary module's attached input devices. The static dump does not identify which policy file the running image actually loads, so the vendor FM-enabled policy must not be treated as runtime proof until the selected path is observed.
+
+The focused firmware inventory found no `.dts`, `.dtsi`, `.dtb`, `.dtbo`, boot image, or preloader image in the extracted file set. Consequently, the GPIO-to-pad pinmux and physical board traces cannot be established from the currently supplied partition files.
