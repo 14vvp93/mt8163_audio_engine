@@ -179,3 +179,24 @@ dsp_remove() calls handler_destroy() and handler_thread_destroy() during teardow
 - Physical meaning of GPIO polarity and hardware response.
 
 No real /dev/audiomux calls, I²C writes, GPIO operations, or device-side experiments are performed by the host emulator.
+
+
+## Java/Binder caller correlation (new VDEX evidence)
+
+The files2 archive's boot-carservices.vdex now supplies the high-level caller
+chain: android.audio.AudioEffect → ISourceService →
+SourceService.doExtAudioEffect() → native
+ExtAudioMuxer.SendCmdAudioMux(int, int[]) → /dev/audiomux.
+
+The native method's first Java argument is the command ID and the second is
+an integer array. For example, setBalance(FL,FR,RL,RR) sends command 0x15
+with four 32-bit values, matching the driver's four speaker arguments.
+The Java command ID therefore correlates with the driver's bits 8..15 field.
+The Binder service special-cases command 1000 as a system-property update;
+ordinary CD3313 commands go through the native muxer.
+
+This identifies the Java/Binder interface but does not reveal the native
+ioctl request word. In particular, the low _IOC_NR byte, exact _IOC size
+value, direction bits and userspace buffer framing remain unresolved until
+the ExtAudioMuxer JNI implementation is recovered. See
+[CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md).
