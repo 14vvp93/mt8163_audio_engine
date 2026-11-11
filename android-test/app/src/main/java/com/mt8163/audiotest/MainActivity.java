@@ -688,6 +688,35 @@ public final class MainActivity extends Activity {
                 values[142] < 40.0f || values[142] > 160.0f ||
                 values[144] < 0.0f || values[144] > 1.0f ||
                 values[145] < 1500.0f || values[145] > 7000.0f) return false;
+
+        int dynamicsIndex = 146;
+        float dynamicsFlag = values[dynamicsIndex++];
+        float lowCrossover = values[dynamicsIndex++];
+        float highCrossover = values[dynamicsIndex++];
+        if ((dynamicsFlag != 0.0f && dynamicsFlag != 1.0f) ||
+                lowCrossover < 60.0f || lowCrossover > 1000.0f ||
+                highCrossover < 1000.0f || highCrossover > 8000.0f ||
+                highCrossover < lowCrossover * 1.5f) return false;
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            for (int band = 0; band < 3; band++) {
+                float enabled = values[dynamicsIndex++];
+                float threshold = values[dynamicsIndex++];
+                float ratio = values[dynamicsIndex++];
+                float attack = values[dynamicsIndex++];
+                float release = values[dynamicsIndex++];
+                float knee = values[dynamicsIndex++];
+                float makeup = values[dynamicsIndex++];
+                if ((enabled != 0.0f && enabled != 1.0f) ||
+                        threshold < -60.0f || threshold > 0.0f ||
+                        ratio < 1.0f || ratio > 20.0f ||
+                        attack < 0.1f || attack > 500.0f ||
+                        release < 1.0f || release > 2000.0f ||
+                        knee < 0.0f || knee > 24.0f ||
+                        makeup < -12.0f || makeup > 12.0f) return false;
+            }
+        }
+        if (dynamicsIndex != values.length) return false;
+
         if (!dsp.applyUiProfile(values)) {
             status.setText("Profile could not be applied · DSP transition may still be active");
             return false;
@@ -722,6 +751,16 @@ public final class MainActivity extends Activity {
         clarityEnhancementEnabled = values[p++] == 1.0f;
         clarityEnhancementAmount = values[p++];
         clarityEnhancementFrequencyHz = values[p++];
+        dynamicsEnabled = values[p++] == 1.0f;
+        dynamicsLowCrossoverHz = values[p++];
+        dynamicsHighCrossoverHz = values[p++];
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            for (int band = 0; band < 3; band++) {
+                for (int parameter = 0; parameter < 7; parameter++) {
+                    compressorSettings[ch][band][parameter] = values[p++];
+                }
+            }
+        }
 
         if (crossoverHz < 40.0f || crossoverHz > 400.0f ||
                 (crossoverOrder != 2 && crossoverOrder != 4 &&
@@ -740,6 +779,11 @@ public final class MainActivity extends Activity {
         bassFrequencyBar.setProgress(Math.round(bassEnhancementFrequencyHz - 40.0f));
         clarityAmountBar.setProgress(Math.round(clarityEnhancementAmount * 100.0f));
         clarityFrequencyBar.setProgress(Math.round((clarityEnhancementFrequencyHz - 1500.0f) / 10.0f));
+        dynamicsLowBar.setProgress(Math.max(0, Math.min(940,
+                Math.round(dynamicsLowCrossoverHz - 60.0f))));
+        dynamicsHighBar.setProgress(Math.max(0, Math.min(700,
+                Math.round((dynamicsHighCrossoverHz - 1000.0f) / 10.0f))));
+        refreshDynamicsSelection();
         dspToggleButton.setText(dspEnabled ? "DSP: ON" : "DSP: OFF");
         bassToggleButton.setText(bassManagementEnabled ? "BASS MANAGEMENT: ON" : "BASS MANAGEMENT: OFF");
         bassEnhancementToggle.setText(bassEnhancementEnabled ? "BASS ENHANCEMENT: ON" : "BASS ENHANCEMENT: OFF");
