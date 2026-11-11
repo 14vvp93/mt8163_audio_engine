@@ -26,10 +26,10 @@ $strongNeedles = @(
     "Java_android_sourceservice_ExtAudioMuxer",
     "android/sourceservice/ExtAudioMuxer",
     "android.sourceservice.ExtAudioMuxer",
-    "/dev/audiomux",
-    "audiomux"
+    "/dev/audiomux"
 )
 $supportNeedles = @(
+    "audiomux",
     "nativeInit",
     "JNI_OnLoad",
     "RegisterNatives",
