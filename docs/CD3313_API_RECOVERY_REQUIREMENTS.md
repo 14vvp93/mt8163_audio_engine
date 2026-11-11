@@ -125,3 +125,34 @@ Next files to scan from the full firmware tree:
 
 The library names above are search targets, not confirmed providers. Do not
 guess an ioctl request from the Java command IDs alone.
+
+
+## 5. Native transport recovered from expanded firmware archives
+
+The expanded `firmware-library-analysis` artifact now contains the provider
+that was absent from the earlier `files.zip`-only collection:
+
+`lib/lib/libcarservices_jni.so` (ELF32 ARM, Build ID
+`bf391e545edd2e482b72cd8a431d1c59`, SHA-256
+`ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`).
+
+Static disassembly confirms that it registers
+`android/sourceservice/ExtAudioMuxer`, that `nativeInit()` probes
+`/dev/audiomux` with read request `0x8080F000`, and that
+`SendCmdAudioMux(int,int[])` opens the same node write-only and uses ioctl.
+
+The write request is constructed as
+`0x40000000 | ((array_length + 1) << 16) | (command << 8)`.
+The low request-number byte is zero; the command ID is in bits 8..15; the
+size field counts 32-bit words. The native code asks the kernel to copy one
+word more than the declared Java array length. This extra word is unresolved
+and must not be replaced with a guessed constant in a hardware client.
+
+The original collection instructions above remain useful for obtaining
+matching firmware identity and the exact running unit's libraries. However,
+locating the native provider and statically recovering the request formula
+are now complete. Remaining work is to explain the extra-word discrepancy,
+run the existing read-only Binder/API probe on the exact unit, and plan
+controlled hardware validation only after the framing is safe. See
+[CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md) and
+[CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md).
