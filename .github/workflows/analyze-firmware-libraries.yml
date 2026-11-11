@@ -91,7 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential zlib1g-dev
+          sudo apt-get install -y build-essential zlib1g-dev binutils-arm-linux-gnueabi
           git clone https://github.com/anestisb/vdexExtractor.git /tmp/vdexExtractor
           git -C /tmp/vdexExtractor checkout 78f283b60ab6991fa27eeaff7d7be16409401c08
           sed -i 's/-Wall -Wextra -Werror/-Wall -Wextra -Werror -Wno-error=vla-parameter/' /tmp/vdexExtractor/src/Makefile
@@ -148,6 +148,33 @@ jobs:
           done
           echo "Scanned $(find firmware-analysis -type f \( -name '*.so' -o -name '*.so.*' -o -name '*.ko' \) | wc -l) native objects" >> "$report"
           cat "$report"
+
+      - name: Produce a compact report for the paired CD3313 module
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE="$(find firmware-analysis -type f -path '*/vendor_lib/lib/modules/cd3313.ko' -print -quit)"
+          test -n "$MODULE"
+          OUT=firmware-analysis/cd3313-current
+          mkdir -p "$OUT"
+          cp "$MODULE" "$OUT/cd3313.ko"
+          file "$OUT/cd3313.ko" | tee "$OUT/file-info.txt"
+          sha256sum "$OUT/cd3313.ko" | tee "$OUT/sha256.txt"
+          arm-linux-gnueabi-readelf -h -n -Ws "$OUT/cd3313.ko" > "$OUT/elf-symbols.txt"
+          arm-linux-gnueabi-objdump -drwC "$OUT/cd3313.ko" > "$OUT/disassembly.txt"
+          strings -a -t x "$OUT/cd3313.ko" > "$OUT/strings.txt"
+          grep -Ein 'channel_to_cd3313|RADIO|AUX|EXBT|DAB|set_input_channel|set_input_mute|set_master_mute|channel_mute|master_mute|gpio' \
+            "$OUT/elf-symbols.txt" "$OUT/disassembly.txt" "$OUT/strings.txt" > "$OUT/focused-hits.txt" || true
+          test -s "$OUT/disassembly.txt"
+          test -s "$OUT/focused-hits.txt"
+
+      - name: Upload compact CD3313 module analysis
+        uses: actions/upload-artifact@v6
+        with:
+          name: cd3313-current-module-analysis
+          path: firmware-analysis/cd3313-current/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload reassembled archives, extracted files and reports
         uses: actions/upload-artifact@v6
