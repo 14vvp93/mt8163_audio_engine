@@ -36,9 +36,9 @@ registered separately from `ExtAudioMuxer.SendCmdAudioMux()`.
 
 ## Kernel character-device interface
 
-`carstatus.ko` registers a misc device named `carstatus`. Its file-operations
-table contains `open`, `release`, `read`, and `write` handlers; no ioctl
-handler pointer is present in the recovered table.
+`carstatus.ko` registers a misc device named `carstatus`. Its recovered
+operations table references `cmd_read`, `cmd_write`, `cmd_open`, and
+`cmd_close`; no ioctl handler pointer is present in the table.
 
 - `cmd_read()` returns a formatted state report containing reversing,
   parking, ACC, headlight, telephone-mute, ACC/reverse counters, LCD VCOM /
