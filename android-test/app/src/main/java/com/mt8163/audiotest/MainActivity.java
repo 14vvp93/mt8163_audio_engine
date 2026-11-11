@@ -64,6 +64,23 @@ public final class MainActivity extends Activity {
     private float clarityEnhancementAmount = 0.30f;
     private float clarityEnhancementFrequencyHz = 2500.0f;
     private boolean dspEnabled = true;
+    private boolean dynamicsEnabled = false;
+    private float dynamicsLowCrossoverHz = 250.0f;
+    private float dynamicsHighCrossoverHz = 4000.0f;
+    // Compressor tuple: enabled, threshold, ratio, attack, release, knee, makeup.
+    private final float[][][] compressorSettings = new float[CHANNELS][3][7];
+    private int selectedDynamicsChannel = 0;
+    private int selectedDynamicsBand = 0;
+    private Button dynamicsToggleButton;
+    private Button dynamicsChannelButton;
+    private Button dynamicsBandButton;
+    private Button compressorEnabledButton;
+    private SeekBar dynamicsLowBar;
+    private SeekBar dynamicsHighBar;
+    private TextView dynamicsLowLabel;
+    private TextView dynamicsHighLabel;
+    private final SeekBar[] compressorBars = new SeekBar[6];
+    private final TextView[] compressorLabels = new TextView[6];
     private volatile boolean profilePumpRunning;
     private Thread profilePump;
 
@@ -71,6 +88,7 @@ public final class MainActivity extends Activity {
     public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().getDecorView().setBackgroundColor(Color.rgb(15, 17, 22));
+        initializeDynamicsDefaults();
         buildUi();
         try {
             dsp = new NativeDsp(48000);
@@ -79,6 +97,20 @@ public final class MainActivity extends Activity {
             restoreLastSession();
         } catch (Throwable error) {
             status.setText("DSP initialization failed: " + error.getMessage());
+        }
+    }
+
+    private void initializeDynamicsDefaults() {
+        for (int channel = 0; channel < CHANNELS; channel++) {
+            for (int band = 0; band < 3; band++) {
+                compressorSettings[channel][band][0] = 0.0f;
+                compressorSettings[channel][band][1] = -18.0f;
+                compressorSettings[channel][band][2] = 2.0f;
+                compressorSettings[channel][band][3] = 10.0f;
+                compressorSettings[channel][band][4] = 120.0f;
+                compressorSettings[channel][band][5] = 6.0f;
+                compressorSettings[channel][band][6] = 0.0f;
+            }
         }
     }
 
