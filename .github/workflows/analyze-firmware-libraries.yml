@@ -328,6 +328,48 @@ jobs:
           echo "Analyzed modules:"
           cat "$OUT/module-inventory.txt"
 
+      - name: Scan init scripts for FM and WMT module loading
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=firmware-analysis/board-audio-routing
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("firmware-analysis")
+          out = Path("firmware-analysis/board-audio-routing")
+          rx = re.compile(
+              r"fmradio_drv|qn8027|qn8035|si475x|tda7708LX|wmt_drv|"
+              r"insmod|modprobe|modules\.load|/dev/fm",
+              re.IGNORECASE,
+          )
+          extensions = {".rc", ".sh", ".load", ".conf", ".prop", ".xml", ".mk", ".cfg", ".txt"}
+          matches = []
+          candidates = []
+          for path in root.rglob("*"):
+              if not path.is_file() or "board-audio-routing" in path.parts:
+                  continue
+              if path.suffix.lower() not in extensions and "modules.load" not in path.name.lower():
+                  continue
+              try:
+                  if path.stat().st_size > 4 * 1024 * 1024:
+                      continue
+                  raw = path.read_bytes()
+                  if b"\x00" in raw[:4096]:
+                      continue
+                  content = raw.decode("utf-8", errors="replace")
+              except OSError:
+                  continue
+              candidates.append(str(path))
+              for n, line in enumerate(content.splitlines(), 1):
+                  if rx.search(line):
+                      matches.append(f"{path}:{n}:{line[:1000]}")
+          (out / "init-module-candidates.txt").write_text("\n".join(candidates) + ("\n" if candidates else ""))
+          (out / "module-load-references.txt").write_text("\n".join(matches) + ("\n" if matches else ""))
+          print(f"Scanned {len(candidates)} init/config text files; found {len(matches)} module-load references")
+          PY
+
       - name: Upload FM tuner driver analysis
         uses: actions/upload-artifact@v6
         with:
