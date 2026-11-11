@@ -168,8 +168,10 @@ lock-free.
 4. The standard speaker route reaches the speaker branch after the Normal
    handler's stereo-to-mono fold; see
    [MT8163_NORMAL_SPEAKER_PCM_FORMAT.md](MT8163_NORMAL_SPEAKER_PCM_FORMAT.md).
-5. This code does not establish four-channel PCM or a four-output split.
-   The CD3313/board output topology remains a separate hardware question.
+5. This HAL code does not establish four-channel PCM or the board's
+   physical connection to CD3313. The CD3313 datasheet does establish four
+   analog outputs; whether all four are wired and used on this board remains
+   a hardware/DT/mixer question. See [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md).
 
 No HAL binary, kernel module, mixer state, GPIO, I²S configuration, or live
 head-unit state was modified.
