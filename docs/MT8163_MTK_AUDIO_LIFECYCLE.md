@@ -75,18 +75,11 @@ The routine stops and returns on the first nonzero result. This is direct eviden
 
 Therefore, `+0x9B8` is not safely described as a byte count by itself. The effective chunk amount is derived from this field and the selected shift. The precise unit (frames, samples, or bytes) depends on the mode fields and callback contract, which are not yet fully named.
 
-## Callback assignment remains unresolved
+## Callback assignment — resolved by cross-binary trace
 
-A full scan of the library's direct Thumb disassembly did not find a simple store instruction writing a register directly to `[object + 0x4C]`. The process callback may be initialized indirectly, through a helper, an embedded context, or a different object alias. Do not assume the callback is the same as the setup callbacks at `+0x38) and `+0x3C).
+The initial direct-disassembly scan did not reveal a simple store to object offset +0x4C. Subsequent cross-binary analysis resolved this through BLOUD_HD_SetHandle(): MtkAudioLoud::open() passes this +0x38 to that initializer, which writes six consecutive callback pointers. The sixth pointer is 0xC088 and occupies MtkAudioLoud +0x4C. MtkAudioLoud::process() loads and invokes that field for each complete chunk.
 
-Next work should trace:
-1. all writes to the object region covering `+0x38) through `+0x58), including helper routines and pointer aliases;
-2. all call sites of `createMtkAudioLoud` and the constructor;
-3. the caller of `setWorkMode()` to name its arguments and selectors;
-4. the callback target and its buffer arithmetic;
-5. the corresponding `AudioMTKFilterManager::process()` caller and actual HAL PCM format.
-
-No kernel ioctl, CD3313 register write, HAL patch, or runtime routing modification was made.
+The callback's six-argument ABI and its call into BLOUD_HD_Internal_Process() are documented in the later sections below. The unresolved work is now the detailed PCM sample/channel format and semantic decoding of BES state fields, not callback identity.
 
 ## BES library callback-table initialization
 
@@ -130,10 +123,9 @@ The observed error paths distinguish null pointers (`-1`), an out-of-range rate 
 The BES binary contains a concrete function-table initializer and a filter-design entry point with explicit validation. This materially narrows the reverse-engineering task: the next step is to trace where the component engine allocates the table, calls `BLOUD_HD_SetHandle`, and stores or forwards the returned function pointers.
 
 It does **not** yet establish:
-- which table slot is the streaming PCM processor;
-- the complete C prototypes or semantic types for all six callbacks;
-- that `MtkAudioLoud::process()` calls `BLOUD_HD_Internal_Process()` directly;
-- the sample format, channel layout, or PCM units used by these APIs.
+- complete public C prototypes or semantic names for all six callbacks;
+- the exact sample format, channel layout, interleaving, or PCM units used by the streaming path;
+- the full semantic meaning of the internal BES state fields and parameter records.
 
 No DSP implementation, stock HAL, CD3313 command, or runtime audio route was modified during this analysis.
 
