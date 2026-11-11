@@ -231,3 +231,27 @@ The exact paired-build map, cross-checked against the CD3313-AX-BJ-24 datasheet,
 This resolves the previously open channel-numbering item for the paired module. RadioService inputPath 0 therefore maps statically to CD3313 logical channel 0 / RADIO / Source 3. This still does not prove the board-level FM tuner wire reaches Source 3.
 
 The paired build's GPIO source-switch side effects are also confirmed from `set_input_channel()`: raw GPIO 396 is requested LOW only for channel 2 and HIGH otherwise; raw GPIO 474 is requested HIGH only for channel 0 and LOW otherwise. These are requested raw levels, not physical readback. The older build's GPIO 398 observation is not applicable to this exact module.
+
+
+## Firmware-level source-switch GPIO correlation (current paired module)
+
+The current paired module's DWARF contains four source-level GPIO constants. The two input-source switches are explicitly named and have these values:
+
+- `GPIO39_Aux_Aux2_SW = 396`
+- `GPIO_Radio_DAB_SW = 474`
+
+The same module's `set_input_channel()` requests raw GPIO 396 LOW only for logical channel 2 and HIGH otherwise; it requests raw GPIO 474 HIGH only for logical channel 0 and LOW otherwise. Correlating those requests with the current channel-name table and selector lookup gives the firmware's switch matrix:
+
+| Logical channel | Label | CD3313 source | GPIO 396 (AUX/AUX2) | GPIO 474 (RADIO/DAB) |
+|---:|---|---:|---|---|
+| 0 | RADIO | 3 | HIGH | HIGH |
+| 1 | ARM | 2 | HIGH | LOW |
+| 2 | AUX | 1 | LOW | LOW |
+| 3 | EXBT | 4 (no external pins) | HIGH | LOW |
+| 4 | AUX2 | 1 | HIGH | LOW |
+| 5 | DAB | 3 | HIGH | LOW |
+| 6 / -1 | NONE | 4 (no external pins) | HIGH | LOW |
+
+This shows the driver's intended source grouping: RADIO and DAB share CD3313 Source 3 and are distinguished by GPIO 474; AUX and AUX2 share Source 1 and are distinguished by GPIO 396. ARM maps to Source 2. EXBT/NONE map to Source 4, which the datasheet says has no external pins.
+
+The table records the raw levels requested by the driver, not physical electrical readback or measured switch polarity. It strongly resolves the firmware's logical mux design but does not substitute for board-level schematic/DT pinmux evidence.
