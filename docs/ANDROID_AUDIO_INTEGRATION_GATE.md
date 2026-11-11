@@ -159,3 +159,35 @@ distributed by the external CD3313 or amplifier.
 - A stereo-only DSP mode could be considered separately, but it must preserve
   the stock speaker mono-fold behavior and must not be described as four-
   channel independent processing.
+
+## 9. Filter-manager route branches and default headphone bypass
+
+The manager's device mask is stored at `AudioMTKFilterManager +0x2C`.
+Its `process()` method branches in this order:
+- speaker bit `0x02`: speaker filter slot `+0x14`, then optional feature-3
+  slot `+0x20` and VibSpkAddTone slot `+0x24`;
+- headphone bits `0x0C`: optional slots `+0x1C` and `+0x18`;
+- earpiece bit `0x01`: feature-3/feature-2-gated slot `+0x20` and
+  VibSpkAddTone slot `+0x24`;
+- other masks: zero-byte bypass.
+
+The complete manager implementation in this supplied HAL does not assign
+non-null values to slots `+0x18` or `+0x1C`; the constructor zeroes them and
+`deinit()` only clears them. Thus the default headphone branch skips both
+optional filters and returns zero (bypass). The speaker filter at `+0x14`
+is corroborated by the speaker gain and filter-parameter setters.
+
+This means the stock MTK manager's effective processing is route-specific and
+speaker-oriented; the mere fact that the Normal handler calls
+`AudioMTKFilterManager::process()` does not mean every route is processed.
+See [MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md](MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md).
+
+### Integration consequence
+
+If a future adapter replaces or augments the manager's processing, it must
+make an explicit route policy:
+- speaker-containing masks arrive after the stock mono fold;
+- headphone-only masks retain the stereo pair at this boundary, but the
+  stock manager bypasses them in the recovered default initialization;
+- earpiece processing depends on feature flags;
+- unsupported routes must remain bypassed until their handlers are traced.
