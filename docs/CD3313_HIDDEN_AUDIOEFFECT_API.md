@@ -357,3 +357,23 @@ This is an observed native/kernel ABI discrepancy and a potential one-word users
 - Live hardware behavior: **not tested**.
 
 No live audio command was sent and no hardware state was changed during this analysis.
+
+
+### Reproducibility details and concrete request examples
+
+SHA-256 of the extracted JNI binary:
+`ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`.
+
+The request words implied by the native formula are:
+
+| Command | Array length | Native ioctl request |
+|---|---:|---:|
+| `0x03` | 2 | `0x40030300` |
+| `0x12` | 1 | `0x40021200` |
+| `0x15` | 4 | `0x40051500` |
+| `0x55` | 4 | `0x40055500` |
+| `0x5C` | 4 | `0x40055C00` |
+
+These are request values reconstructed from the machine instructions; they are not permission to issue the commands against hardware. The size field is a count of 32-bit words in this vendor driver ABI, not a conventional byte count.
+
+The CD3313 module's READ branch checks for type `0xF0` and copies exactly 8 bytes from its internal state to the caller. The backing state is not yet mapped to a documented chip identifier/name, so the two returned words remain opaque.
