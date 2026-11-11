@@ -333,3 +333,30 @@ This supersedes the earlier cross-build caution: the RADIO → Source 3 selector
 The current paired module also differs from the older reconstruction in its GPIO number for the second source-switch output. In `set_input_channel()`, it requests raw GPIO 396 low only for logical channel 2 and high otherwise; it requests raw GPIO 474 high only for logical channel 0 and low otherwise. These are driver-requested raw levels, not physical readback or proof of board signal names/polarity. Do not substitute the older module's GPIO number 398 for this current build.
 
 The CD3313 RADIO/Source 3 mapping still does not prove that the FM tuner is physically wired to Source 3 on this board, nor that the CD3313 analog RADIO input is the same physical signal as the HAL's AP-side FM I2S capture route.
+
+
+The current paired-module selector and source-switch GPIO map is consolidated in [MT8163_FM_ROUTING_MATRIX.md](MT8163_FM_ROUTING_MATRIX.md). It confirms that RadioService inputPath 0 reaches logical channel RADIO / CD3313 Source 3 and that GPIO 474 is the RADIO/DAB pair selector; the board's actual analog wire and the separate AP-side FM I2S route remain unverified.
+
+
+## Firmware-level source-switch GPIO correlation (current paired module)
+
+The current paired module's DWARF contains four source-level GPIO constants. The two input-source switches are explicitly named and have these values:
+
+- `GPIO39_Aux_Aux2_SW = 396`
+- `GPIO_Radio_DAB_SW = 474`
+
+The same module's `set_input_channel()` requests raw GPIO 396 LOW only for logical channel 2 and HIGH otherwise; it requests raw GPIO 474 HIGH only for logical channel 0 and LOW otherwise. Correlating those requests with the current channel-name table and selector lookup gives the firmware's switch matrix:
+
+| Logical channel | Label | CD3313 source | GPIO 396 (AUX/AUX2) | GPIO 474 (RADIO/DAB) |
+|---:|---|---:|---|---|
+| 0 | RADIO | 3 | HIGH | HIGH |
+| 1 | ARM | 2 | HIGH | LOW |
+| 2 | AUX | 1 | LOW | LOW |
+| 3 | EXBT | 4 (no external pins) | HIGH | LOW |
+| 4 | AUX2 | 1 | HIGH | LOW |
+| 5 | DAB | 3 | HIGH | LOW |
+| 6 / -1 | NONE | 4 (no external pins) | HIGH | LOW |
+
+This shows the driver's intended source grouping: RADIO and DAB share CD3313 Source 3 and are distinguished by GPIO 474; AUX and AUX2 share Source 1 and are distinguished by GPIO 396. ARM maps to Source 2. EXBT/NONE map to Source 4, which the datasheet says has no external pins.
+
+The table records the raw levels requested by the driver, not physical electrical readback or measured switch polarity. It strongly resolves the firmware's logical mux design but does not substitute for board-level schematic/DT pinmux evidence.
