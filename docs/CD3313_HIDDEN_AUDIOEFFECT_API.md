@@ -47,6 +47,22 @@ recovered. Because the native implementation is absent, its actual open/ioctl
 calls and the final hop into this exact driver are strongly indicated but not
 yet proven.
 
+### Service lookup and app-access boundary
+
+`AudioEffect.getInstance()` is a singleton factory. Its constructor calls
+`ServiceManager.getService("sourceinfo")`, converts the returned Binder with
+`ISourceService.Stub.asInterface()`, and stores it. If the service is absent,
+the constructor throws a RuntimeException with the message
+`can not find sourceinfo serivce`.
+
+No calls to `Context.checkCallingOrSelfPermission()`,
+`Binder.getCallingUid()` or `Binder.getCallingPid()` were found in the
+recovered SourceService or ISourceService Stub methods. No explicit Java
+permission check was identified in the doExtAudioEffect route. This does not
+prove that an ordinary third-party app can call it: hidden-API enforcement,
+service registration policy, SELinux and the native bridge still require a
+read-only runtime probe on the target unit.
+
 ## 2. AudioEffect command builders
 
 The Java methods build the following command arrays before invoking
