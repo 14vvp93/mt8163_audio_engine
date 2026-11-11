@@ -35,8 +35,11 @@ jobs:
         run: |
           SO=audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so
           arm-linux-gnueabi-readelf -h "$SO" > audio-hal-analysis/reports/primary-elf-header.txt
+          arm-linux-gnueabi-readelf -SW -l "$SO" > audio-hal-analysis/reports/primary-sections-and-segments.txt
           arm-linux-gnueabi-readelf -Ws "$SO" | c++filt > audio-hal-analysis/reports/primary-symbols-demangled.txt
           arm-linux-gnueabi-readelf -rW "$SO" > audio-hal-analysis/reports/primary-relocations.txt
+          arm-linux-gnueabi-objdump -s -j .rodata "$SO" > audio-hal-analysis/reports/primary-rodata-dump.txt
+          arm-linux-gnueabi-objdump -s -j .data.rel.ro "$SO" > audio-hal-analysis/reports/primary-data-rel-ro-dump.txt 2>/dev/null || true
           arm-linux-gnueabi-nm -D -C "$SO" > audio-hal-analysis/reports/primary-dynamic-symbols.txt
           arm-linux-gnueabi-objdump -drwC "$SO" > audio-hal-analysis/reports/primary-disassembly.txt
           strings -a -n 4 -t x "$SO" > audio-hal-analysis/reports/primary-strings.txt
