@@ -474,7 +474,7 @@ public final class MainActivity extends Activity {
                 values[141] < 0.0f || values[141] > 1.0f ||
                 values[142] < 40.0f || values[142] > 160.0f ||
                 values[144] < 0.0f || values[144] > 1.0f ||
-                values[145] < 1500.0f || values[145] > 8000.0f) return false;
+                values[145] < 1500.0f || values[145] > 7000.0f) return false;
         if (!dsp.applyUiProfile(values)) {
             status.setText("Profile could not be applied · DSP transition may still be active");
             return false;
