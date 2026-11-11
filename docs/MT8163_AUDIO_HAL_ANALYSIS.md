@@ -428,3 +428,47 @@ This is now a concrete adapter contract for the Normal path: process the source 
 ### Remaining proof before any integration patch
 
 The call chain now establishes the source-vs-target rate and format boundary for Normal playback. Still to be confirmed are the exact PCM interleaving/stride at every supported source format, the complete meaning of all `stream_attribute_t` members, and the runtime handler/device selected on the user's head unit. We should next inspect the concrete PCM configuration and write buffer-size arithmetic, then compare it against the tinyalsa PCM configuration ABI. No HAL patch or runtime route change has been made.
+
+
+## 13. Normal handler tinyalsa PCM configuration
+
+The Normal handler's `pcm_open()` call is reached through `AudioALSAPlaybackHandlerBase::openPcmDriver()` and `openPcmDriverWithFlag()`. The latter passes a pointer to handler +0x190 as the fourth argument to `pcm_open(card, device, flags, config)`. The stores in Normal::open() establish the leading fields of this PCM configuration block.
+
+### Recovered PCM configuration fields
+
+| Config offset (relative to handler +0x190) | Source/store | Meaning |
+|---:|---|---|
+| +0x00 | handler +0x34 | ALSA target channel count; Normal handler sets it to 2 |
+| +0x04 | handler +0x38 | Selected ALSA target sample rate |
+| +0x08 | handler +0x198 | Period size calculated from PCM hardware parameters |
+| +0x0C | handler +0x19C | Period count; default path sets 2, special path sets 4 |
+| +0x10 | result of transferAudioFormatToPcmFormat(handler +0x10) | Tinyalsa PCM format enum derived from handler target format code 4 |
+| +0x14 | period_size × period_count, except a special device-index case sets 0 | Start threshold |
+| +0x18 | 0 | Stop threshold |
+| +0x1C | 0 | Silence threshold |
+
+The pointer passed to `pcm_open()` is exactly handler +0x190, so the stores at handler +0x190 through +0x1AC form the PCM configuration passed to tinyalsa. The mapping above follows the standard tinyalsa `pcm_config` field order; the code's start-threshold special case is retained rather than normalized away.
+
+### Period selection
+
+Normal::open() queries the selected PCM device using `pcm_params_get(card, device, 0)`, then calls `pcm_params_get_max()` with parameter ID 13 and stores the returned maximum period value for its period calculation.
+
+- With output-flags bit 0x04 clear, the Normal handler selects period_count = 2 and derives period_size from the queried maximum and its channel/format scaling.
+- With output-flags bit 0x04 set, it enters a special branch. That branch requires manager mode 3 or the manager flag at +0xA1, then sets period_count = 4 and calculates period_size from the stream buffer attributes and target channel/format parameters. Otherwise it follows an error/bypass branch.
+- The exact public semantic name of output flag bit 0x04 is not assigned in this document; the machine code proves the bit test and branch behavior.
+
+The handler then calls `SetLowJitterMode(true, target_rate)` and opens the selected PCM device with the configuration at +0x190. The selected target rate and target format are therefore hardware-facing settings, distinct from the source stream attributes consumed by the MTK filter stage.
+
+### Interleaving and adapter boundary
+
+The speaker mono helper reads successive left/right sample positions as adjacent 16-bit or 32-bit values, averages each pair and writes the average back to both positions. This directly confirms an interleaved two-sample pair for that helper's supported formats. The normal handler's target channel count is 2, and the SRC setup compares source and target channel counts before deciding whether conversion is needed.
+
+For our Normal-path adapter, the safe current contract is:
+- consume the source buffer before SRC/bit conversion;
+- honor source format at attribute +0x00 and source rate at +0x28;
+- preserve the two-channel interleaved layout expected by the Normal path;
+- accept that the speaker route may already contain duplicated mono samples;
+- do not impose the final tinyalsa target format or target rate on the DSP input;
+- preserve the HAL's selected PCM config, period parameters, low-jitter setup, and write sequence.
+
+The exact tinyalsa PCM format enum produced for target format code 4, plus every field in the complete PCM configuration and the special period branch, should be checked against the matching tinyalsa headers/source before writing a binary-compatible replacement. No HAL patch or runtime change has been made.
