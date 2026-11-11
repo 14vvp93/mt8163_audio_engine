@@ -117,3 +117,11 @@ jobs:
           path: audio-hal-analysis/reports/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload primary HAL binary for relocation analysis
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-primary-hal-binary
+          path: audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so
+          if-no-files-found: error
+          retention-days: 14
