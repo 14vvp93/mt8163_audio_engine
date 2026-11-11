@@ -341,3 +341,12 @@ AudioEffect.getInstance() and verifies the public method signatures, but
 sends no audio-control commands. A successful result confirms class loading
 and Binder-reference acquisition only; a controlled runtime transaction is
 still required before enabling hardware controls in the main UI.
+
+### Hardware control state policy
+
+The recovered AudioEffect class exposes setters but no getter for the four
+speaker attenuation indices. A future UI must not assume the chip's current
+values, auto-apply defaults or silently restore a saved profile at launch.
+Start hardware controls as unknown/unapplied and require explicit user
+application. Saved values can represent only the last values sent by this app,
+not verified live CD3313 state.
