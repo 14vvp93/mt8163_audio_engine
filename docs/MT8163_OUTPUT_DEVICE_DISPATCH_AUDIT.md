@@ -50,6 +50,19 @@ Thus the Normal handler lifecycle is confirmed as:
 `open() -> startOutputDevice(device_mask, target_rate)` and
 `close() -> stopOutputDevice()`.
 
+
+The surrounding calls establish the order as well:
+- Normal `open()` calls `AudioALSAPlaybackHandlerBase::openPcmDriver()`
+  at `0xD3FD4` before the resource-manager `startOutputDevice()` call at
+  `0xD40AC`.
+- Normal `close()` calls `stopOutputDevice()` at `0xD42E4` before
+  `AudioALSAPlaybackHandlerBase::closePcmDriver()` at `0xD438C`.
+
+For this handler, the ALSA PCM device is therefore opened before the output
+path is activated, and the output path is stopped before the PCM device is
+closed. This is the observed HAL order, not a recommendation to reproduce
+those calls from the app-level DSP.
+
 ## 2. Start dispatch table and Android device mapping
 
 `AudioALSAHardwareResourceManager::startOutputDevice_l(unsigned int, unsigned int)`
