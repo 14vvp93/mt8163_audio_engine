@@ -164,3 +164,33 @@ The recovered copies cover through destination offset `0x407`; the top-level str
 The routine also reads configuration/state fields at object offsets `+0x9B4`, `+0x9B0`, `+0x518`, and `+0x54C`, and examines per-entry state at offsets including `+0x6C`, `+0x8C`, `+0xAC`, `+0xDC`, `+0xFC`, and `+0x11C`. These are internal engine-object offsets, not ACF structure offsets.
 
 **Limit:** this is a partial layout map, not a reconstructed C header. Do not serialize, modify, or pass a hand-built structure based only on these offsets. Next, trace the code that populates the source regions (object offsets `+0x140` through `+0x540`) and the consumers of the destination blocks to identify their types and units.
+
+
+## BES sampling-rate indices and coefficient conversion
+
+The implementation of `MtkAudioLoud::getBesLoudSamplingRateIndex(unsigned int)` compares the input rate against explicit constants and returns these exact indices:
+
+| Input sample rate | Returned BES index |
+|---:|---:|
+| 48,000 Hz | 0 |
+| 44,100 Hz | 1 |
+| 32,000 Hz | 2 |
+| 24,000 Hz | 3 |
+| 22,050 Hz | 4 |
+| 16,000 Hz | 5 |
+| 12,000 Hz | 6 |
+| 11,025 Hz | 7 |
+| 8,000 Hz | 8 |
+| Any other rate | `0xFFFFFFFF` (unsupported) |
+
+This is the set explicitly handled by this helper; it does not establish which rates the complete HAL route supports or whether another conversion stage is used upstream.
+
+The exported `convertBesLoudCoeffV4ToV5(unsigned int, _AUDIO_ACF_CUSTOM_PARAM_STRUCT_FILTER_PARAM*, BLOUD_HD_FilterCoef*)` provides additional nested-layout clues:
+
+- Rejects a null input/output pointer and returns an error when the index exceeds 8.
+- For each accepted index, addresses a source record at an index-dependent 20-byte offset.
+- Copies five 16-byte coefficient vectors from source records separated by `0xB4` bytes, and copies an adjacent 32-bit word for each record.
+- For indices up to 5, executes an additional conversion loop over source regions based around offsets `0x3A8`, `0x3B0`, and `0x168`, producing 24-byte-spaced output records.
+- Initializes several output fields/regions before conversion, including zeroing fields at offsets `0x20`, `0xEC`, and `0xF0`.
+
+This confirms a coefficient-conversion routine with bounded index and repeated records, but does not yet establish the semantic names, units, or complete C layout of the nested filter parameter and BES coefficient structures.
