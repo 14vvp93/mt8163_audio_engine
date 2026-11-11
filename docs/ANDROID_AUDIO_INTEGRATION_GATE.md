@@ -295,14 +295,17 @@ evidence.
 
 The files2 archive's boot-carservices.vdex contains the custom
 android.audio.AudioEffect API, ISourceService Binder interface,
-SourceService implementation and ExtAudioMuxer wrapper. The recovered route is:
+SourceService implementation and ExtAudioMuxer wrapper. The recovered Java route is:
 
 android.audio.AudioEffect
 → ISourceService.doExtAudioEffect(int, int[])
 → SourceService.doExtAudioEffect()
-→ native ExtAudioMuxer.SendCmdAudioMux()
-→ /dev/audiomux
-→ cd3313.ko.
+→ native ExtAudioMuxer.SendCmdAudioMux().
+
+ExtAudioMuxer checks for /dev/audiomux, and cd3313.ko registers that device
+node, so this is the strongly indicated native target. The JNI implementation
+is not yet available; its actual open/ioctl hop into this exact module remains
+to be confirmed.
 
 The Java setBalance(FL, FR, RL, RR) method sends command 21 (0x15) with
 four integers in that order. This exactly matches the kernel driver's
