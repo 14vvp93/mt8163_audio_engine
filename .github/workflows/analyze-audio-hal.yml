@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "files.zip"
+      - "reference-materials/firmware-dumps/files.zip"
       - ".github/workflows/analyze-audio-hal.yml"
   workflow_dispatch:
 
@@ -25,9 +25,9 @@ jobs:
 
       - name: Extract and identify HAL files
         run: |
-          test -s files.zip
+          test -s reference-materials/firmware-dumps/files.zip
           mkdir -p audio-hal-analysis/input audio-hal-analysis/reports
-          unzip -oq files.zip -d audio-hal-analysis/input
+          unzip -oq reference-materials/firmware-dumps/files.zip -d audio-hal-analysis/input
           find audio-hal-analysis/input -type f -print0 | sort -z | xargs -0 file > audio-hal-analysis/reports/file-types.txt
           sha256sum audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so > audio-hal-analysis/reports/audio-primary-sha256.txt
 

@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/analyze-cd3313.yml"
-      - "cd3313.ko"
+      - "reference-materials/kernel/cd3313.ko"
   workflow_dispatch:
 
 permissions:
@@ -26,9 +26,9 @@ jobs:
 
       - name: Validate module
         run: |
-          test -s cd3313.ko
-          file cd3313.ko | tee module-file.txt
-          sha256sum cd3313.ko | tee module-sha256.txt
+          test -s reference-materials/kernel/cd3313.ko
+          file reference-materials/kernel/cd3313.ko | tee module-file.txt
+          sha256sum reference-materials/kernel/cd3313.ko | tee module-sha256.txt
 
       - name: Generate static analysis reports
         run: |
@@ -42,23 +42,23 @@ jobs:
             code=$?
             printf '%s\texit=%s\n' "$name" "$code" >> cd3313-analysis/command-status.txt
           }
-          run_report elf-header.txt readelf -h cd3313.ko
-          run_report sections.txt readelf -S cd3313.ko
-          run_report symbols-readelf.txt readelf -sW cd3313.ko
-          run_report relocations.txt readelf -rW cd3313.ko
-          run_report dwarf-info.txt readelf --debug-dump=info cd3313.ko
-          run_report dwarf-lines.txt readelf --debug-dump=decodedline cd3313.ko
-          run_report disassembly-lines.txt objdump -m arm -dlwC cd3313.ko
-          run_report address-to-source.txt addr2line -e cd3313.ko -f -i 0x11ec 0x1200 0x1288 0x139c 0x14ac 0x14f0 0x1538 0x15fc 0x163c 0x1694 0x1788 0x1818 0x1858 0x188c
-          run_report symbols-nm.txt nm -an cd3313.ko
-          run_report strings.txt strings -a -n 4 -t x cd3313.ko
-          run_report disassembly-relocations.txt objdump -m arm -drwC cd3313.ko
-          run_report section-bytes.txt arm-linux-gnueabi-objdump -s cd3313.ko
+          run_report elf-header.txt readelf -h reference-materials/kernel/cd3313.ko
+          run_report sections.txt readelf -S reference-materials/kernel/cd3313.ko
+          run_report symbols-readelf.txt readelf -sW reference-materials/kernel/cd3313.ko
+          run_report relocations.txt readelf -rW reference-materials/kernel/cd3313.ko
+          run_report dwarf-info.txt readelf --debug-dump=info reference-materials/kernel/cd3313.ko
+          run_report dwarf-lines.txt readelf --debug-dump=decodedline reference-materials/kernel/cd3313.ko
+          run_report disassembly-lines.txt objdump -m arm -dlwC reference-materials/kernel/cd3313.ko
+          run_report address-to-source.txt addr2line -e reference-materials/kernel/cd3313.ko -f -i 0x11ec 0x1200 0x1288 0x139c 0x14ac 0x14f0 0x1538 0x15fc 0x163c 0x1694 0x1788 0x1818 0x1858 0x188c
+          run_report symbols-nm.txt nm -an reference-materials/kernel/cd3313.ko
+          run_report strings.txt strings -a -n 4 -t x reference-materials/kernel/cd3313.ko
+          run_report disassembly-relocations.txt objdump -m arm -drwC reference-materials/kernel/cd3313.ko
+          run_report section-bytes.txt arm-linux-gnueabi-objdump -s reference-materials/kernel/cd3313.ko
           true
           {
             echo "# CD3313 module analysis"
             echo
-            echo "Generated from repository file cd3313.ko."
+            echo "Generated from repository file reference-materials/kernel/cd3313.ko."
             echo
             echo '## Module identity'
             cat module-file.txt

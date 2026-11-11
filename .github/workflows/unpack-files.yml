@@ -1,4 +1,4 @@
-name: Extract files.zip
+name: Extract reference-materials/firmware-dumps/files.zip
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/unpack-files.yml"
-      - "files.zip"
+      - "reference-materials/firmware-dumps/files.zip"
   workflow_dispatch:
 
 permissions:
@@ -21,8 +21,8 @@ jobs:
 
       - name: Verify archive
         run: |
-          test -f files.zip || { echo "::error::files.zip was not found in the repository root"; exit 1; }
-          unzip -t files.zip
+          test -f reference-materials/firmware-dumps/files.zip || { echo "::error::reference-materials/firmware-dumps/files.zip was not found in the repository root"; exit 1; }
+          unzip -t reference-materials/firmware-dumps/files.zip
 
       - name: Extract archive safely
         run: |
@@ -30,7 +30,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          archive = Path("files.zip")
+          archive = Path("reference-materials/firmware-dumps/files.zip")
           destination = Path("extracted-files").resolve()
           destination.mkdir(parents=True, exist_ok=True)
 
