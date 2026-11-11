@@ -121,30 +121,33 @@ current live filter coefficients are read back from the PCM processing engine.
 ## 4.1 Named fields recovered inside the 1260-byte block
 
 Both the download and upload functions log the same 32-bit words from the
-parameter block. The matching `ldr.w` offsets and log labels recover these
-field names:
+parameter block. The upload routine logs directly from the 1260-byte NVRAM
+buffer, so the following are payload offsets (not offsets in the download
+record's four-byte length-prefixed envelope):
 
-| Byte offset | Field name in service log |
+| Payload byte offset | Field name in service log |
 |---:|---|
-| `0x0E4` | `bes_loudness_Sep_LR_Filter` |
-| `0x0E8` | `bes_loudness_WS_Gain_Max` |
-| `0x0EC` | `bes_loudness_WS_Gain_Min` |
-| `0x0F0` | `bes_loudness_Filter_First` |
-| `0x0F4` | `bes_loudness_Num_Bands` |
-| `0x0F8` | `bes_loudness_Flt_Bank_Order` |
-| `0x298` | `DRC_Delay` |
-| `0x4DC` | `Lim_Th` |
-| `0x4E0` | `Lim_Gn` |
-| `0x4E4` | `Lim_Const` |
-| `0x4E8` | `Lim_Delay` |
+| `0x0E0` | `bes_loudness_Sep_LR_Filter` |
+| `0x0E4` | `bes_loudness_WS_Gain_Max` |
+| `0x0E8` | `bes_loudness_WS_Gain_Min` |
+| `0x0EC` | `bes_loudness_Filter_First` |
+| `0x0F0` | `bes_loudness_Num_Bands` |
+| `0x0F4` | `bes_loudness_Flt_Bank_Order` |
+| `0x294` | `DRC_Delay` |
+| `0x4D8` | `Lim_Th` |
+| `0x4DC` | `Lim_Gn` |
+| `0x4E0` | `Lim_Const` |
+| `0x4E4` | `Lim_Delay` |
+| `0x4E8` | BES sound-version word refreshed by `getBesSoundVer()` |
 
-The service reads each value as a 32-bit word and prints it with `%d`.
-Signedness, units, valid ranges, and the meaning of the remaining bytes are
-not established. The last logged word at `0x4E8` is also the word refreshed
-from `getBesSoundVer()` in the upload/download version-handling code; the
-overlap in the recovered labels requires checking against the matching
-parameter-library structure before assigning a final semantic name to that
-word.
+The download routine's corresponding log loads are four bytes higher because
+its decoded record begins with a 32-bit `0x4EC) length prefix; it copies the
+following 1260 bytes into the NVRAM payload. The version word at payload
+offset `0x4E8` therefore does not overlap `Lim_Delay`.
+
+The service reads the named values as 32-bit words and prints them with
+`%d`. Signedness, units, valid ranges, and the meaning of the remaining
+bytes are not established.
 
 ## 5. Correlation with the primary HAL
 
