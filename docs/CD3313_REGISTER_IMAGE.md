@@ -335,3 +335,26 @@ of a four-channel PCM transport.
 Datasheet source: CD3313-AX-BJ-24, revision 2012-01-B1, sections 1, 2.2 and
 2.3. The datasheet confirms chip capabilities; it does not prove which pins
 or sources are connected on this particular head-unit board.
+
+
+## Revalidation against the exact paired firmware module
+
+The exact paired module from workflow run `43113850964` was disassembled again. Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`; SHA-256: `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
+
+Its current `.rodata` symbol `CSWTCH.201` at offset `0xb4` is a 24-byte, six-entry 32-bit selector table: `2, 1, 0, 3, 0, 2`. The current channel-name table order is `RADIO, ARM, AUX, EXBT, AUX2, DAB, NONE`. The selector table is directly consumed by the current `set_input_channel()` implementation for channel IDs 0..5; channel 6 / sentinel `-1` uses selector code 3.
+
+Using the CD3313-AX-BJ-24 datasheet's selector encoding (0 = Source 1, 1 = Source 2, 2 = Source 3, 3 = Source 4 with no external pins), the current exact-build map is:
+
+| Channel ID | Label | Selector | Chip source |
+|---:|---|---:|---|
+| 0 | RADIO | 2 | Source 3 |
+| 1 | ARM | 1 | Source 2 |
+| 2 | AUX | 0 | Source 1 |
+| 3 | EXBT | 3 | Source 4 (no external pins) |
+| 4 | AUX2 | 0 | Source 1 |
+| 5 | DAB | 2 | Source 3 |
+| 6 / -1 | NONE | 3 | Source 4 (no external pins) |
+
+Thus the current paired build independently confirms the earlier RADIO → Source 3 reconstruction. The Java/FM correlation is now exact at the static logical level: `RadioService inputPath 0 → logical channel 0 / RADIO → selector code 2 → CD3313 Source 3`. Board-level wiring is still unproven.
+
+Current-build GPIO side effects in `set_input_channel()`: raw GPIO 396 is requested LOW only for channel 2 and HIGH otherwise; raw GPIO 474 is requested HIGH only for channel 0 and LOW otherwise. These are software-requested levels, not electrical readback. The older module's GPIO 398 observation must not be reused for this paired build.
