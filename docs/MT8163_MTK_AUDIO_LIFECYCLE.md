@@ -87,3 +87,52 @@ Next work should trace:
 5. the corresponding `AudioMTKFilterManager::process()` caller and actual HAL PCM format.
 
 No kernel ioctl, CD3313 register write, HAL patch, or runtime routing modification was made.
+
+## BES library callback-table initialization
+
+A second supplied binary was inspected alongside the component engine:
+
+- `lib/libbessound_hd_mtk_vendor.so`
+- ELF32 ARM, Android 25
+- Build ID: `fd0c2beebee1feb48671e3c43e7f6ae9`
+- SHA-256: `337240ff5f598490e3848d26aa3720452c0956e57605a0f372b8070c0149520c`
+
+### BLOUD_HD_SetHandle()
+
+The exported function at `0xBDA4` initializes a six-entry function table through its first argument. It returns `-1` for a null first argument and `0` after populating the table.
+
+The six pointer slots are written at offsets:
+
+| Offset | Resolved target |
+|---:|---:|
+| `+0x00` | `0xBE40` |
+| `+0x04` | `0xBFA8` |
+| `+0x08` | `0xBE70` |
+| `+0x0C` | `0xBF7C` |
+| `+0x10` | `0xBE20` |
+| `+0x14` | `0xC088` |
+
+These are internal function entry points in the same BES library. This is a callback/function table initializer, not evidence that the table is the same object as the `MtkAudioLoud` fields at `+0x38), `+0x3C), or `+0x4C`. That relationship still needs a caller-side data-flow trace.
+
+### BLOUD_HD_Filter_Design()
+
+The exported function at `0xC1B0` performs visible argument checks before dispatching to an internal routine:
+
+- `r2` and `r3` must both be non-null.
+- The filter index in `r0` must be no greater than 5.
+- The sample-rate value in `r1` is checked against a lower bound of 8,000 and an upper bound of 191,488 (derived from the immediate comparison in the disassembly).
+- On valid arguments it dispatches through an internal PLT call and returns zero.
+
+The observed error paths distinguish null pointers (`-1`), an out-of-range rate (`-2`), and a valid-rate call with an invalid filter index (`-3`). These are machine-level return paths; their public API meanings are not documented here.
+
+### What this establishes — and what it does not
+
+The BES binary contains a concrete function-table initializer and a filter-design entry point with explicit validation. This materially narrows the reverse-engineering task: the next step is to trace where the component engine allocates the table, calls `BLOUD_HD_SetHandle`, and stores or forwards the returned function pointers.
+
+It does **not** yet establish:
+- which table slot is the streaming PCM processor;
+- the complete C prototypes or semantic types for all six callbacks;
+- that `MtkAudioLoud::process()` calls `BLOUD_HD_Internal_Process()` directly;
+- the sample format, channel layout, or PCM units used by these APIs.
+
+No DSP implementation, stock HAL, CD3313 command, or runtime audio route was modified during this analysis.
