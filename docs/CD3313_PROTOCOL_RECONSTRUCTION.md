@@ -208,3 +208,26 @@ That same analysis confirms a static length-validation concern: command 0x15 rea
 ## Datasheet correlation update
 
 The driver control-byte fields are now cross-checked against the manufacturer CD3313-AX-BJ-24 datasheet (revision 2012-01-B1): [PDF](https://datasheet4u.com/pdf/831243/CD3313.pdf). The 2-bit selector values correspond to chip input numbers 1..4; input 4 has no external pins. The 2-bit gain field represents 0, 3.75, 7.5, or 11.25 dB, and the preserved bit 2 is the active-low loudness control. This identifies chip input numbers but still does not label the board's physical sources as AUX, radio, Bluetooth, or phone. The complete mapping and decoded attenuation tables are recorded in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md).
+
+
+## Current paired firmware module: channel selector fully resolved
+
+The exact paired module was revalidated from workflow run `43113850964` rather than relying on the earlier build. Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`; SHA-256: `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
+
+The current `.rodata` table symbol `CSWTCH.201` contains six 32-bit entries `2, 1, 0, 3, 0, 2`; the channel-name pointer table is `RADIO, ARM, AUX, EXBT, AUX2, DAB, NONE`. The current `set_input_channel()` uses this table for channel IDs 0..5 and selector code 3 for channel 6 / sentinel `-1`.
+
+The exact paired-build map, cross-checked against the CD3313-AX-BJ-24 datasheet, is:
+
+| Logical channel | Label | Selector bits | Chip input |
+|---:|---|---:|---|
+| 0 | RADIO | 2 | Source 3 |
+| 1 | ARM | 1 | Source 2 |
+| 2 | AUX | 0 | Source 1 |
+| 3 | EXBT | 3 | Source 4 (no external pins) |
+| 4 | AUX2 | 0 | Source 1 |
+| 5 | DAB | 2 | Source 3 |
+| 6 / -1 | NONE | 3 | Source 4 (no external pins) |
+
+This resolves the previously open channel-numbering item for the paired module. RadioService inputPath 0 therefore maps statically to CD3313 logical channel 0 / RADIO / Source 3. This still does not prove the board-level FM tuner wire reaches Source 3.
+
+The paired build's GPIO source-switch side effects are also confirmed from `set_input_channel()`: raw GPIO 396 is requested LOW only for channel 2 and HIGH otherwise; raw GPIO 474 is requested HIGH only for channel 0 and LOW otherwise. These are requested raw levels, not physical readback. The older build's GPIO 398 observation is not applicable to this exact module.
