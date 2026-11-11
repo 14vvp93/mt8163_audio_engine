@@ -259,3 +259,8 @@ Thus the zero-selector route is a Q1.15 input/output path with a Q1.31 intermedi
 The intermediate workspace is partitioned at least at offsets 0x0000, 0x1000, and 0x2000 in the Q1.15 route. The callback's workspace allocation is 0xF000 or 0x11000 bytes, so these regions lie within the allocated block. Exact per-region capacity, alignment requirements, and any additional state-dependent use remain to be decoded.
 
 These findings do not yet prove whether the data is mono/stereo, interleaved/planar, or exactly equivalent to Android PCM16/PCM32 at the HAL boundary. Q1.15 and Q1.31 describe the internal fixed-point representation; they are not sufficient by themselves to identify the upstream PCM channel layout.
+
+
+### Source of the BES format selector
+
+The MtkAudioLoud::setParameter(unsigned int, void*) dispatch confirms that selector 4 stores its raw second argument at both object offsets +0x2C and +0x08. During open(), the parameter block begins at object +0x24; BLOUD_HD_SetHandle's state initializer copies parameter-block offset +0x08 (object +0x2C) into BES state offset +0x1128. Therefore selector 4 is the upstream setter for the state field that selects the Q1.15-conversion route versus the direct wider-format route in callback 0xC088. The legal values and caller-level semantic name for selector 4 are not yet established.
