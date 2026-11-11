@@ -142,6 +142,19 @@ values through inner selectors 1, 2 and 3, then finalize the update. The
 wrapper's `process()` calls the inner object's processing vtable entry with
 the byte-oriented input/output buffers.
 
+`AudioMTKFilter::process()` at `0x9D7D8` takes the wrapper mutex at
+`+0x24`, checks the inner object pointer at `+0x1C` and active flag at
+`+0x20`, then invokes the inner object's vtable entry at `+0x14`. It
+releases the mutex after the call and compares a global state snapshot; if
+that value changed during processing, the wrapper returns zero rather than
+the produced byte count. The meaning of that global guard is not yet
+identified.
+
+The stock vendor wrapper therefore uses a mutex around the filter call.
+Do not copy this synchronization design into the custom PCM callback: the
+project's own real-time `process()` path should remain allocation-free and
+lock-free.
+
 
 ## 6. Integration implications
 
