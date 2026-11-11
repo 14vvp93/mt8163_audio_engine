@@ -15,7 +15,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### PCM DSP core
 
-The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16 stereo engine remains available. A new four-channel Float32 foundation now supports interleaved FL/FR/RL/RR, 32 biquad slots per channel, independent channel gain/EQ, per-channel peak limiting, bit-exact bypass and dual-bank output crossfades for parameter changes. The four-channel core is host-buildable and has dedicated tests; the latest run is not yet verified. Neither core is connected to the Android audio path.
+The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16 stereo engine remains available. A new four-channel Float32 foundation now supports interleaved FL/FR/RL/RR, 32 biquad slots per channel, independent channel gain/EQ, per-channel peak limiting, bit-exact bypass and dual-bank output crossfades for parameter changes. The four-channel core is host-buildable and has dedicated tests. Recent host core, stability, and performance workflows pass; the Android test bench and DSP remain disconnected from the Android system audio path.
 
 ## Reverse-engineering documents
 
@@ -47,5 +47,5 @@ The independent C++17 DSP library is in [pcm-dsp/](pcm-dsp/). The original PCM16
 - CD3313 host-side command/state emulator models deterministic state transitions, the exact 8-slot reg_bufs cache, the 16-page diagnostic view, the read identifier, speaker codes, input selectors, and event-queue requests; no device I/O is performed by the emulator.
 - Primary MTK Audio HAL filter manager and ACF/HCF parameter paths mapped.
 - ATCI audio command service identified; dependent vendor libraries still needed to reconstruct the full ACF/HCF ABI.
-- PCM16 stereo core and four-channel Float32 DSP foundation implemented; latest four-channel CI result and Android integration remain to be verified.
+- PCM16 stereo core and four-channel Float32 DSP foundation implemented; recent host core, stability, and performance CI runs pass. The Android test APK is a bring-up/test bench, not a finished end-user control app; persistent user profiles and system-audio integration are not implemented.
 - HEQ APK decompiled and analyzed: it explicitly recognizes CD3313 through a hidden android.audio.AudioEffect ASP API. Its framework/native transport is not included in the APK; the other external-DSP adapters remain chip-specific.
