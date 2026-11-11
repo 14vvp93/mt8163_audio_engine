@@ -185,3 +185,16 @@ This resolves an important part of the mute ABI:
 - Input-path reason bits and global master-mute reason bits are separate state domains. For example, input-path reason 2 is stored in channel_mute[path], then may be reflected through global master reason 31; it is not the same storage bit as global master reason 2 used by ACC.
 
 This confirms the driver's mute arbitration mechanism but does not identify the physical source wired to logical path 0. The board-level mapping still requires DTS/pin/routing data or controlled read-only runtime observation. Do not write to /dev/audiomux or drive GPIO 393 during investigation.
+
+
+## FM-to-CD3313 logical input correlation
+
+The CD3313 driver reconstruction and the Java RadioService call sites can now be correlated at the logical channel level:
+
+- RadioService uses inputPath ID 0 for its FM mute operations (constructor, retune, MCU mute-state handling, scan, and the generic radio mute wrapper).
+- The CD3313 driver's character-device channel-name table labels logical channel 0 as RADIO.
+- The driver's selector lookup maps logical channel 0 to CD3313 chip Source 3 (selector code 2). The datasheet identifies Source 3 as one of the three externally pinned stereo inputs.
+
+Therefore the firmware's FM mute path is logically associated with CD3313 channel 0 / RADIO / chip Source 3. This is a stronger mapping than the earlier path-ID-only result. It still does not prove the board-level wire from the FM tuner to the CD3313 Source 3 pins, nor that the Android Audio Policy FM Tuner In PCM route and the CD3313 analog RADIO route are the same signal path. The primary HAL exposes a separate FM I2S path and /dev/fm tuner control plane; that route must not be conflated with the CD3313 analog input selector without board wiring or live routing evidence.
+
+The exact chip-source selector map and channel labels are documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md) and [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The Java-side FM path and payloads are documented above. This correlation is static firmware evidence only.
