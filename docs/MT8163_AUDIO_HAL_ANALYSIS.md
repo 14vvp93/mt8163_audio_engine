@@ -683,3 +683,71 @@ The combined evidence now says:
 5. No I²S sequence table, active SmartPA parameter unit, mixer_paths file, or board-level serial-audio topology was present in the 324-file archive.
 
 Therefore the proven software input for ordinary primary speaker playback is stereo. The existence and location of any later stereo-to-four-speaker distribution remain unresolved. Our DSP integration should plan for a stereo HAL adapter first, while retaining the four-channel engine as a separate processing capability until the physical channel split is demonstrated.
+
+
+## 18. Output-device lifecycle and speaker-path activation
+
+A focused caller-path pass over the primary HAL disassembly resolves the relationship between output-device selection and the speaker turn-on sequence.
+
+### setOutputDevice() is a state setter, not the hardware activation step
+
+`AudioALSAHardwareResourceManager::setOutputDevice(unsigned int, unsigned int)` at `0x73bc8`:
+- stores the first argument at resource-manager offset `+0x20`;
+- stores the second argument at offset `+0x28`;
+- checks/logs the active-device counter at `+0x34`;
+- returns without invoking a speaker sequence, I²S configuration, or mixer operation.
+
+Therefore, do not treat this method alone as the point where the speaker amplifier is powered or the output route is physically configured.
+
+### startOutputDevice() performs first-open/route transition handling
+
+`AudioALSAHardwareResourceManager::startOutputDevice(device, mode)` at `0x73ca0`:
+- acquires the resource-manager lock;
+- compares the currently stored output device at `+0x20` with the requested device;
+- when the route changes, dispatches through a callback in the hardware-resource-manager device-operation table (vtable-like function pointer at the manager's first member, offset `+0x2c` for the nonzero old-device path or `+0x24` for the initial path);
+- increments the active-device reference count at `+0x34`;
+- handles the already-active/configuration state at `+0xbc` separately before unlocking.
+
+The indirect callback means that the exact open/close path depends on the configured device-operation object. It should not be simplified to “every start calls OpenSpeakerPath”; the route-specific callback and reference count govern the transition.
+
+### OpenSpeakerPath() applies the configured speaker sequence
+
+`AudioALSAHardwareResourceManager::OpenSpeakerPath(unsigned int)` at `0x76250` has a short, direct body:
+1. Calls `SetExtDacGpioEnable(true)`.
+2. Loads the device-configuration-manager pointer from the resource manager at `+0x1c`.
+3. Calls `AudioALSADeviceConfigManager::ApplyDeviceTurnonSequenceByName(const char*)` with the speaker-path sequence name supplied by the resource-manager object.
+4. Returns success (zero).
+
+The matching `CloseSpeakerPath()` calls `ApplyDeviceTurnoffSequenceByName()` and then `SetExtDacGpioEnable(false)`, unless the resource manager's state at `+0xbc` suppresses the normal close path.
+
+This proves that the ordinary speaker path is controlled by a named device sequence plus an external-DAC GPIO gate. The actual key/value operations still depend on the board's audio-device configuration; the currently inspected `audio_device.xml` exposes `two_in_one_speaker_output` with `Audio_Speaker_class_Switch=CLASSAB` on and `RECEIVER` off, but does not define the separate I²S playback sequence strings.
+
+### SmartPA speakerOn() is a separate API path
+
+`AudioSmartPaController::speakerOn(device, rate)` at `0x9aa74`:
+- stores the requested device at controller `+0x14`;
+- conditionally calls `dspOnBoardSpeakerOn(device)` when controller byte `+0x1a8` has bit 3 set;
+- if the mixer-control name at `+0x134` is nonempty, looks up that mixer control on the mixer object at `+0x1c8` and applies an enum string;
+- if a callback pointer at `+0x04` is non-null, updates SmartPA runtime with the supplied rate and invokes that callback with the device context.
+
+The function is a SmartPA/mixer/callback control path; it does not process PCM. No direct call to `speakerOn()` or `getI2sSequence()` appears in the primary HAL's disassembled direct-call sites examined in this pass. Because these symbols are exported, this does not rule out a caller in another vendor library or a runtime indirect call.
+
+### I²S sequence construction is separate from speaker turn-on
+
+`getI2sSequence(name, direction)` at `0x9b09c`:
+- selects the stored input/output I²S port selector from controller offsets `+0x1c0` or `+0x1c4`, according to the boolean direction;
+- validates selector values 0..4;
+- converts the selector to a port string (`I2S0`, `I2S1`, `I2S2`, `I2S3`, or `I2S5`);
+- constructs a configuration key by concatenating the caller-supplied sequence name and the selected port string in direction-dependent order.
+
+Thus, the selector is a port identifier and the supplied name is a use-case prefix. This function does not itself prove which key is selected by the ordinary `int_spk_amp` path. The board's supplied `audio_device.xml` does not contain the I²S sequence table, and the captured configuration sets `MTK_AUDIO_SPEAKER_PATH=int_spk_amp`, not `smartpa`.
+
+### Updated topology conclusion
+
+The proven ordinary-speaker activation path is:
+
+`output-device state update → startOutputDevice() route/refcount handling → configured device callback → OpenSpeakerPath() → external-DAC GPIO + named turn-on sequence`
+
+The SmartPA `speakerOn()/getI2sSequence()` subsystem is a separate configurable control path and is not demonstrated as the active ordinary-speaker path for the captured `int_spk_amp` configuration.
+
+The remaining blocker is now more specific: recover the concrete resource-manager callback object/sequence-name initialization and the board's complete device configuration plus mixer controls. These are needed to identify the actual codec/DAC switch settings and any downstream serial-audio routing. No HAL patch, mixer write, GPIO change, I²S change, or live-device operation was performed.
