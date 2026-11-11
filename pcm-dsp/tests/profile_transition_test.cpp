@@ -1,6 +1,7 @@
 #include "pcm_dsp/profiled_quad_engine.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
