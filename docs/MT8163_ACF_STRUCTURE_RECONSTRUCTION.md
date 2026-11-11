@@ -104,6 +104,31 @@ The method uses a 16-entry Thumb branch table for selectors 0 through 15. Direct
 
 Do not send guessed payloads to these selectors. In particular, selector numbers are internal vendor API dispatch values, not CD3313 kernel ioctl command numbers.
 
+
+## BES fixed-point formats
+
+The companion `libbessound_hd_mtk_vendor.so` exports coefficient conversion helpers whose names and machine code expose additional numeric formats:
+
+- `Format_F64_to_Q5p27`
+- `Format_F64_to_Q2p14`
+- `Copy_Q1p31_To_Q1p15`
+- `Copy_Q1p15_To_Q1p31`
+- `Filter_Coef_32Bit`
+- `Filter_Coef_16Bit`
+
+The two `Format_F64` routines use VFP double-precision arithmetic and convert the results to 32-bit integer words before packing them into the destination coefficient structure. Their exported names identify Q5.27 and Q2.14 output formats respectively. Exact clipping/rounding and sign treatment still need to be documented from the full numeric path; the names alone are not enough to define a compatible external encoder.
+
+The Q-format width conversion helpers are more explicit:
+
+- `Copy_Q1p15_To_Q1p31` widens each 16-bit value by shifting it left 16 bits. The NEON path uses `vshll.i16 #16`; the scalar tail uses `lsl #16`.
+- `Copy_Q1p31_To_Q1p15` narrows each 32-bit value by taking the upper 16 bits. The NEON path uses `vshrn.i32 #16`; the scalar tail reads the halfword at byte offset `+2`. No rounding step is visible in either path.
+
+These routines establish representation conversions used by BES. They do not prove that the ACF payload itself stores every filter coefficient in one of these formats; the V4/V5 converter and each consumer must still be traced.
+
+## Disassembly correction
+
+The selector-4 observation above refers to the object fields `this + 0x2C` and `this + 0x08` (without a trailing parenthesis). The selector table remains a dispatch map; selector names/meanings have not been inferred.
+
 ## Safety and next analysis
 
 No CD3313 ioctl or register write is performed by this work. These findings concern the MediaTek software ACF/BES processing stack.
