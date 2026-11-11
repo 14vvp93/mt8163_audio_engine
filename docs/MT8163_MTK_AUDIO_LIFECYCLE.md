@@ -173,3 +173,18 @@ The component-engine call sites were matched to the imported BLOUD symbols throu
 The previously provisional mapping is therefore confirmed at the initialization boundary: `BLOUD_HD_SetHandle(this + 0x38)` installs the exact six callbacks later used by `open()`, parameter/work-mode code, and `process()`. In particular, the process callback at `this + 0x4C` is the sixth BES entry at `0xC088`.
 
 The callback argument types and the semantic meaning of each filter-design descriptor are still not fully recovered. The next analysis target is the state/context object referenced at `this + 0x50`, the buffer/context pointer at `this + 0x54), and the relationship between those fields and the two filter-design descriptor records.
+
+
+## BES work-buffer and state-context setup
+
+The first two callbacks also expose the buffer lifecycle in `MtkAudioLoud::open()`:
+
+1. After `BLOUD_HD_SetHandle(this + 0x38)`, `open()` invokes callback slot `+0x38` (BES target `0xBE40`) with pointers to the size fields `this + 0x18` and `this + 0x14`, plus the mode value at `this + 0x08`.
+2. The `0xBE40` routine accepts mode values 0 or 1. It writes `0x1F54` to the `+0x18` size field and writes either `0xF000` (61,440) or `0x11000` (69,632) to the `+0x14` size field, depending on mode. Other values take its error return path.
+3. `open()` allocates/resizes the buffers at `this + 0x58` and `this + 0x54` to those respective sizes, tracking capacities at `+0x20` and `+0x1C`.
+4. It then invokes callback slot `+0x3C` (BES target `0xBFA8`) with the handle-table address `this + 0x38`, the allocated `+0x58` buffer, and the parameter/context region at `this + 0x24`.
+5. The `0xBFA8` routine stores its second argument into handle offset `+0x18). Since the handle-table base is `this + 0x38`, this writes the state/context pointer to `MtkAudioLoud + 0x50`.
+
+This establishes the role of `this + 0x50` as the BES handle's state/context pointer and identifies `this + 0x58` as the allocation supplied for that state. The other allocation, `this + 0x54`, is passed as the second argument to the streaming callback at `+0x4C); its exact internal workspace semantics remain to be recovered.
+
+The callback relationship is now directly traced end-to-end through handle creation, work-buffer sizing/allocation, state initialization, and the per-chunk process call. The remaining uncertainty is primarily the internal meaning of the BES state fields and the PCM sample/channel format, not the identity of the callback table.
