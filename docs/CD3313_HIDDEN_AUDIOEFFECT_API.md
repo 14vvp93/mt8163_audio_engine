@@ -392,3 +392,10 @@ Therefore `nativeInit()`'s chip probe returns the ASCII identifier `cd3313` (NUL
 
 SHA-256 of the extracted `cd3313.ko` used for this cross-check:
 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
+
+
+### Payload-consumption cross-check in the CD3313 event handler
+
+The module's `event_callback` dispatch reads the command ID from bits 8–15 of the saved ioctl header, then reads payload words beginning at frame offset `+4`. For command `0x15`, it reads exactly four values from offsets `+4`, `+8`, `+0xC`, and `+0x10` (FL, FR, RL, RR). It does not read the fifth copied value requested by the native `array_length + 1` size field. The `0x03` handler likewise consumes its channel and gain words; the `0x12` handler consumes its percentage word.
+
+This confirms that, for these handlers, the additional copied word is not a fifth speaker level or another documented command parameter. Its source/value remains unspecified. It reinforces the decision not to emulate the vendor's one-word over-read by appending an arbitrary value.
