@@ -63,6 +63,21 @@ prove that an ordinary third-party app can call it: hidden-API enforcement,
 service registration policy, SELinux and the native bridge still require a
 read-only runtime probe on the target unit.
 
+### Integration implication
+
+If the app can obtain this Binder reference, it can call the OEM
+AudioEffect methods through reflection. The ExtAudioMuxer JNI executes in the
+system service process; the app does not need to bundle that native library
+or open /dev/audiomux itself. The missing JNI binary is therefore required
+for exact low-level ABI recovery, but may not be required for app integration.
+
+The Android Test APK now includes a read-only probe that calls
+AudioEffect.getInstance() and checks for the supported public method
+signatures. It sends no setBalance, bass, treble, mute or other control
+command. A successful probe confirms that the class loaded and a Binder
+reference was obtained; it does not yet prove that a Binder transaction or
+native device operation succeeds.
+
 ## 2. AudioEffect command builders
 
 The Java methods build the following command arrays before invoking
