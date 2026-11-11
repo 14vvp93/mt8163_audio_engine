@@ -34,7 +34,7 @@ A targeted strings scan of the supplied binaries found:
 - android.hardware.audio@4.0-impl-mediatek.so and vendor.mediatek.hardware.audio@4.1.so: no audiomux or cd3313 strings.
 - audiocmdservice_atci: /dev/vndbinder, but no audiomux or cd3313 strings.
 
-These are negative string-scan results on stripped binaries, not proof that no indirect ioctl or binder path exists. They do show that the supplied audio HAL archive does not expose an obvious direct CD3313 client. The missing android.audio.AudioEffect framework implementation remains the most useful next artifact to obtain.
+These are negative string-scan results on stripped binaries, not proof that no indirect ioctl or binder path exists. They do show that the supplied audio HAL archive does not expose an obvious direct CD3313 client. The matching Java/Binder implementation has since been recovered from boot-carservices.vdex in the files2 archive; the remaining missing layer is its native JNI transport.
 
 ## HEQ APK follow-up: high-level CD3313 caller found
 
@@ -48,7 +48,7 @@ A separate full JADX analysis of HEQ.apk found explicit CD3313 support:
 
 This resolves the earlier ambiguity: HEQ is a high-level CD3313-aware ASP client. It does not contradict the negative scan of files.zip, because the HEQ APK is a separate artifact and the Java code calls a hidden vendor framework API.
 
-The HEQ APK contains no implementation of android.audio.AudioEffect and no direct /dev/audiomux open/ioctl call. Its native/service transport is still unknown. Some Java API argument pairs also do not match the raw kernel handler's consumed words, so the hidden wrapper must be recovered before mapping methods to ioctl commands.
+The HEQ APK contains no implementation of android.audio.AudioEffect and no direct /dev/audiomux open/ioctl call. The hidden API and Binder service were subsequently recovered from boot-carservices.vdex. AudioEffect calls ISourceService.doExtAudioEffect(); SourceService forwards ordinary command IDs and integer arrays to native ExtAudioMuxer.SendCmdAudioMux(), while command 1000 writes sys.audio.lr.balance. ExtAudioMuxer checks /dev/audiomux and SourceService construction calls nativeInit(). The native JNI implementation and exact ioctl request are still missing. The Java payload shapes are now known; the driver consumes only selected words for some commands.
 
 ## Related MT8163 board lead: carstatus device and ACC source
 
@@ -75,7 +75,13 @@ It does **not** yet establish:
 - whether that process sends CD3313 command `0x11`, reason `2`;
 - that this board's wiring or module revision matches the user's head unit.
 
-The current supplied audio archive does not contain `carstatus.ko` or a framework JAR, and the previous 36-file scan was scoped to audio-related files only. The next high-value artifact is the matching `carstatus.ko` binary plus its userspace client/service, or a full vendor image from the same head-unit firmware. Until then, keep the ACC-to-CD3313 sender classified as unresolved.
+The current supplied audio archive does not contain `carstatus.ko` or a framework JAR, and the previous 36-file scan was scoped to audio-related files only. The next high-value artifacts are (1) the native library that registers ExtAudioMuxer.nativeInit() and SendCmdAudioMux(), and (2) the matching carstatus.ko plus its userspace client/service. The first closes the CD3313 ioctl path; the second may close the ACC-to-CD3313 reason-2 path. Until then, keep the ioctl framing and ACC sender classified as unresolved.
+
+## files2 boot-carservices.vdex follow-up: Java/Binder client recovered
+
+The larger files2 archive includes framework/boot-carservices.vdex and its matching OAT. The VDEX contains android.audio.AudioEffect, ISourceService (Stub/Proxy), SourceService and ExtAudioMuxer. See [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md) for the recovered command arrays and path mapping.
+
+The most important cross-check is setBalance(FL,FR,RL,RR): Java sends command 21 (0x15) with four integers, exactly matching the kernel driver's four speaker-level arguments. Bass, loudness, treble, input gain and subwoofer command IDs also match implemented driver IDs. This confirms the high-level CD3313 control API; it does not yet reveal the native ioctl framing.
 
 ## What this means for the ABI
 
@@ -85,11 +91,11 @@ The driver-side reconstruction currently indicates that the request word carries
 
 ## Next evidence to obtain
 
-1. The matching system framework JAR containing android.audio.AudioEffect and the corresponding native/service implementation used by HEQ.
-2. The vendor audio service or library that translates the HEQ ASP API calls into CD3313 commands.
-3. Any source/header files defining the ioctl macros and command structures.
+1. The native JNI library registering android.sourceservice.ExtAudioMuxer.nativeInit() and SendCmdAudioMux(); scan system/vendor shared libraries for SendCmdAudioMux, ExtAudioMuxer and /dev/audiomux.
+2. The exact ioctl request-word construction and userspace buffer framing from that native implementation.
+3. carstatus.ko and its userspace client/service to trace ACC state into CD3313 mute reason 2.
 4. If a rooted target becomes available, read-only runtime evidence such as device-node permissions, process file descriptors, and relevant app/service package inventory. Do not issue write ioctls during discovery.
 
 ## Limitations
 
-A negative string scan is not proof that no client exists on the actual head unit. The client may be outside `files.zip`, may construct the device path dynamically, or may use an indirect library call. This result only narrows the supplied files.zip archive and prevents us from incorrectly attributing unrelated HAL ioctl calls to CD3313. The separate HEQ analysis establishes an indirect high-level CD3313-aware client, but not its low-level transport.
+A negative string scan is not proof that no client exists on the actual head unit. The client may be outside files.zip, may construct the device path dynamically, or may use an indirect library call. This result only narrows the original 36-file audio archive and prevents us from incorrectly attributing unrelated HAL ioctl calls to CD3313. The subsequent files2 VDEX analysis establishes the high-level Java/Binder client and its command mapping; only the native JNI transport and exact ioctl request remain unresolved.
