@@ -399,3 +399,17 @@ SHA-256 of the extracted `cd3313.ko` used for this cross-check:
 The module's `event_callback` dispatch reads the command ID from bits 8–15 of the saved ioctl header, then reads payload words beginning at frame offset `+4`. For command `0x15`, it reads exactly four values from offsets `+4`, `+8`, `+0xC`, and `+0x10` (FL, FR, RL, RR). It does not read the fifth copied value requested by the native `array_length + 1` size field. The `0x03` handler likewise consumes its channel and gain words; the `0x12` handler consumes its percentage word.
 
 This confirms that, for these handlers, the additional copied word is not a fifth speaker level or another documented command parameter. Its source/value remains unspecified. It reinforces the decision not to emulate the vendor's one-word over-read by appending an arbitrary value.
+
+
+### Likely origin of the +1 size convention (inference, not proof)
+
+The `+1` is systematic, not specific to one command. It also makes the native
+size field meet the driver's callback thresholds for Java commands
+`0x03` (two Java values → size field 3) and `0x12` (one Java value → size
+field 2). A plausible explanation is that the vendor JNI counts the
+four-byte request header as one word in the ioctl size field. However,
+`cmd_ioctl()` independently prepends that header to its slab object and
+then copies the full encoded size from the JNI pointer. That implementation
+therefore copies one word beyond the Java array. This explanation fits the
+cross-layer arithmetic but is not proven intent; treat the extra word's
+value and origin as unknown.
