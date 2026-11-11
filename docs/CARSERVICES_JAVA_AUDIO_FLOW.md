@@ -131,7 +131,7 @@ A search of the complete carservices VDEX disassembly finds seven Java call site
 | SourceService.onBluetoothVoiceStatus | true | 3 | Bluetooth HFP voice-state transition |
 | SourceService.onBluetoothVoiceStatus | false | 3 | Releases the temporary Bluetooth voice mute when the path/volume logic allows it |
 
-The VDEX proves the numeric reason arguments and call-site conditions. It does not, by itself, prove the driver's internal arbitration policy for overlapping reasons or whether every reason is treated as a strict independent mute owner. Do not model these reason values as a public stable ABI without validating the matching driver implementation and runtime behavior.
+The VDEX proves the numeric reason arguments and call-site conditions. The matching cd3313.ko has since been disassembled and confirms that each reason is a bit index in a mute mask, with no per-reason reference counter. See the driver confirmation section below. This is firmware-specific behavior, not a public stable ABI for unrelated devices.
 
 This inventory accounts for all seven textual call sites in the analyzed disassembly; no other ExtAudioMuxer.setMasterMute call sites were found in this VDEX.
 
