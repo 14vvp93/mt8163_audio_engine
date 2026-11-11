@@ -40,6 +40,16 @@ manager's internal dispatch for the Normal playback path.
 
 This does not establish that every playback handler uses the same route path.
 
+
+The matching `AudioALSAPlaybackHandlerNormal::close()` path at `0xD4284`
+loads the same resource-manager pointer from handler `+0x08`, obtains its
+vtable entry at `+0x14`, and invokes it at `0xD42D8–0xD42E4`.
+That entry resolves to `AudioALSAHardwareResourceManager::stopOutputDevice()`.
+The manager then uses the stored selector to reach `stopOutputDevice_l()`.
+Thus the Normal handler lifecycle is confirmed as:
+`open() -> startOutputDevice(device_mask, target_rate)` and
+`close() -> stopOutputDevice()`.
+
 ## 2. Start dispatch table and Android device mapping
 
 `AudioALSAHardwareResourceManager::startOutputDevice_l(unsigned int, unsigned int)`
