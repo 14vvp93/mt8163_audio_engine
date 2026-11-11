@@ -122,3 +122,18 @@ Its string table includes `android/carsource/McuService`,
 argument semantics. A reproducible VDEX 019 disassembly workflow is being
 added to recover those Java call sites before assigning meanings to the
 mute values.
+
+
+### ACC input source versus McuService output commands
+
+The module labels the ACC input `gpio86_acc` and registers
+`acc_eint_func` as an IRQ handler through its probe path. Its
+`cmd_read()` status report includes the sampled ACC state. The write parser
+does not contain an `acc=` token; it accepts output/configuration keys such
+as `rev=`, `cvbs_out=`, `usb5v=`, `mute=`, and `avdd=`.
+
+Therefore, for this driver build, ACC is sourced from the board's GPIO86
+input/IRQ path rather than being set by a `sendCmdCarStatus("acc=...")`
+write. The VDEX strings `sendAccState` and `sendReverseState` are present,
+but their Java call sites still need disassembly before we can say what
+those methods broadcast or update.
