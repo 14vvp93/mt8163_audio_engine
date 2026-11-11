@@ -35,15 +35,17 @@ jobs:
           test -x bin/vdexExtractor
 
       - name: Download firmware analysis artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-library-analysis
+          github-token: ${{ github.token }}
+          run-id: 43089987118
+          repository: ${{ github.repository }}
+          path: /tmp/firmware-artifact
+
+      - name: Select carservices VDEX
         run: |
           set -euo pipefail
-          mkdir -p /tmp/firmware-artifact
-          gh run download 43089987118 \
-            --repo "${GITHUB_REPOSITORY}" \
-            --name firmware-library-analysis \
-            --dir /tmp/firmware-artifact
           VDEX="$(find /tmp/firmware-artifact -type f -name boot-carservices.vdex -print -quit)"
           test -n "$VDEX"
           cp "$VDEX" /tmp/boot-carservices.vdex
