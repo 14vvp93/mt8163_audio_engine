@@ -1,0 +1,123 @@
+name: Reassemble and analyze firmware library archives (retry)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/analyze-firmware-libraries-retry.yml"\n      - ".github/workflows/analyze-firmware-libraries.yml"
+      - "reference-materials/firmware-dumps/files.zip"
+      - "reference-materials/firmware-dumps/files2.zip.*"
+      - "reference-materials/firmware-dumps/lib.zip.*"
+      - "reference-materials/firmware-dumps/vendor_lib.zip.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reassemble-and-analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Reassemble split archives and extract safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import re
+
+          root = Path("reference-materials/firmware-dumps")
+          out = Path("firmware-analysis")
+          out.mkdir(exist_ok=True)
+          archives = []
+
+          if (root / "files.zip").is_file():
+              archives.append(("files", [root / "files.zip"]))
+
+          for first in sorted(root.glob("*.zip.001")):
+              stem = first.name[:-4]  # remove .001
+              parts = sorted(root.glob(stem + ".*"))
+              expected = [root / f"{stem}.{i:03d}" for i in range(1, len(parts) + 1)]
+              if parts != expected:
+                  raise SystemExit(f"Missing or unexpected split part for {stem}: {parts}")
+              archives.append((stem[:-4], parts))
+
+          if not archives:
+              raise SystemExit("No supported ZIP archives found")
+
+          inventory = []
+          for name, parts in archives:
+              joined = out / f"{name}.zip"
+              with joined.open("wb") as dst:
+                  for part in parts:
+                      print(f"Appending {part} ({part.stat().st_size} bytes)")
+                      with part.open("rb") as src:
+                          while chunk := src.read(1024 * 1024):
+                              dst.write(chunk)
+
+              target = (out / name).resolve()
+              target.mkdir(parents=True, exist_ok=True)
+              with ZipFile(joined) as zf:
+                  bad = zf.testzip()
+                  if bad:
+                      raise SystemExit(f"Corrupt member in {joined}: {bad}")
+                  for item in zf.infolist():
+                      dest = (target / item.filename).resolve()
+                      if dest != target and target not in dest.parents:
+                          raise SystemExit(f"Unsafe archive path in {joined}: {item.filename}")
+                      if item.is_dir():
+                          dest.mkdir(parents=True, exist_ok=True)
+                      else:
+                          dest.parent.mkdir(parents=True, exist_ok=True)
+                          with zf.open(item) as src, dest.open("wb") as dst:
+                              while chunk := src.read(1024 * 1024):
+                                  dst.write(chunk)
+              count = sum(1 for p in target.rglob("*") if p.is_file())
+              inventory.append((name, len(parts), joined.stat().st_size, count))
+              print(f"EXTRACTED {name}: {count} files")
+
+          with (out / "ARCHIVE_INVENTORY.txt").open("w") as f:
+              for name, count, size, extracted in inventory:
+                  f.write(f"{name}: {count} source part(s), {size} bytes joined, {extracted} extracted files\\n")
+          PY
+
+      - name: Inventory native libraries and search CD3313 audio symbols
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="firmware-analysis/NATIVE_AUDIO_SCAN.txt"
+          : > "$report"
+          echo "Firmware native-library scan" >> "$report"
+          echo "Generated: $(date -u +%FT%TZ)" >> "$report"
+          echo >> "$report"
+          find firmware-analysis -type f \\( -name '*.so' -o -name '*.so.*' -o -name '*.ko' \\) -print0 |
+          while IFS= read -r -d '' f; do
+            {
+              echo "===== $f ====="
+              file "$f" || true
+              strings -a "$f" 2>/dev/null |
+                grep -Ei 'audiomux|ExtAudioMuxer|SendCmdAudioMux|cd3313|carstatus|AudioEffect|ISourceService|SourceService|doExtAudioEffect|DLCustAudio|AudioCmdHandler|HFP|AudioTasteRunning' |
+                sort -u | head -n 300 || true
+              if file "$f" | grep -q ELF; then
+                readelf -Ws "$f" 2>/dev/null |
+                  grep -Ei 'audiomux|ExtAudioMuxer|SendCmdAudioMux|cd3313|AudioEffect|SourceService' |
+                  head -n 100 || true
+              fi
+              echo
+            } >> "$report"
+          done
+          echo "Scanned $(find firmware-analysis -type f \\( -name '*.so' -o -name '*.so.*' -o -name '*.ko' \\) | wc -l) native objects" >> "$report"
+          cat "$report"
+
+      - name: Upload reassembled archives, extracted files and reports
+        uses: actions/upload-artifact@v6
+        with:
+          name: firmware-library-analysis
+          path: firmware-analysis/
+          if-no-files-found: error
+          retention-days: 14
