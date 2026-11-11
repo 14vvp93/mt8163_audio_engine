@@ -68,3 +68,15 @@ The same expanded artifact also includes its paired `cd3313.ko` build
 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`).
 Its ioctl framing and chip-ID response were cross-checked against the older
 driver build already used by the emulator; the relevant behavior matches.
+
+## Additional vehicle-state path found
+
+The same JNI library also registers `android/carsource/McuService.sendCmdCarStatus(String)`.
+Its native implementation writes a fixed 40-byte command buffer to
+`/dev/carstatus`. The paired `carstatus.ko` module exposes read/write
+handlers and reports ACC, reversing, parking, headlight, and telephone-mute
+state. Its `update_mute()` routine opens `/dev/audiomux` read-only only as a
+presence check, then updates the carstatus module's own mute mask and GPIO36;
+it does not send a CD3313 ioctl. The ACC-to-CD3313 mute-reason-2 path is
+therefore still not established. Details:
+[CARSTATUS_MCU_SERVICE_ABI.md](CARSTATUS_MCU_SERVICE_ABI.md).
