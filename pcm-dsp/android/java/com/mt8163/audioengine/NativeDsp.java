@@ -17,7 +17,7 @@ public final class NativeDsp implements AutoCloseable {
     public static final int QUAD_PROFILE_SCHEMA_VERSION = 1;
     public static final int OUTPUT_CHANNELS = 4;
     public static final int EQ_BANDS_PER_CHANNEL = 32;
-    public static final int UI_PROFILE_FLOAT_COUNT = 146;
+    public static final int UI_PROFILE_FLOAT_COUNT = 233;
     public static final int QUAD_PROFILE_FLOAT_COUNT =
             6 + OUTPUT_CHANNELS * (2 + EQ_BANDS_PER_CHANNEL * 6);
 
