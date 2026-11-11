@@ -120,3 +120,42 @@ Keep these responsibilities distinct:
 The hidden `android.audio.AudioEffect` implementation is not included in the current archive. HEQ's Java call sites identify the high-level API, but not its native transport, argument scaling, ioctl request values, or runtime behavior. Obtain the matching framework JAR and associated native/service libraries before implementing this adapter.
 
 The source evidence and command limitations are detailed in [HEQ_APK_ANALYSIS.md](HEQ_APK_ANALYSIS.md), [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md), and [CD3313_USERSPACE_CLIENT_SCAN.md](CD3313_USERSPACE_CLIENT_SCAN.md).
+
+
+## 8. Normal speaker path: mono fold occurs before MTK post-processing
+
+The focused disassembly audit in [MT8163_NORMAL_SPEAKER_PCM_FORMAT.md](MT8163_NORMAL_SPEAKER_PCM_FORMAT.md)
+resolves the Normal handler's actual write order:
+
+`doDcRemoval -> doStereoToMonoConversionIfNeed -> doPostProcessing -> doBliSrc -> doBitConversion -> pcmWrite`.
+
+The conversion helper reads the output-device field at
+`stream_attribute_t +0x18` and tests bit `0x02`. The Normal handler route
+audit confirms that field is passed to `startOutputDevice()` unchanged and
+that `0x02` is `AUDIO_DEVICE_OUT_SPEAKER`. When this bit is present, adjacent
+stereo samples are folded to one value and duplicated (`L,R -> M,M`) before
+`AudioMTKFilterManager::process()`.
+
+This applies to the ordinary speaker mask `0x02` and to combined masks
+`0x06` and `0x0A`, because all contain the speaker bit. On these Normal
+handler routes the MTK post-processing callback cannot recover the original
+left/right difference. The Normal handler's ALSA output is also configured
+for two channels.
+
+This is stronger evidence than the framework's stereo policy declaration:
+the actual Normal-handler call order and helper operation are statically
+recovered. It still does not establish how the two-channel/mono feed is
+distributed by the external CD3313 or amplifier.
+
+### Updated gate
+
+- Do not present the existing Normal-handler MTK filter callback as a
+  four-independent-channel interface.
+- Do not assume that moving the current four-channel engine behind that
+  callback preserves stereo or creates rear channels.
+- Locate and verify the physical split point downstream (if the CD3313 or
+  another DSP derives four outputs), or find a genuinely multichannel PCM
+  path before implementing FL/FR/RL/RR integration.
+- A stereo-only DSP mode could be considered separately, but it must preserve
+  the stock speaker mono-fold behavior and must not be described as four-
+  channel independent processing.
