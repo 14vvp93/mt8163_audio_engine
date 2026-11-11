@@ -169,3 +169,19 @@ The firmware artifact also contains vendor/audio_policy_configuration.xml and ve
 This establishes a policy/HAL FM route and a separate FM-chip control interface. It does not yet establish the exact physical wiring, selected I2S pads, or whether the CD3313 Java input-path ID 0 is the same physical signal as policy device FM Tuner In. The CD3313 /dev/audiomux mute plane, the FM tuner chip /dev/fm control plane, and Android audio-policy routing must remain separate in the model until the HAL routing implementation and board configuration are fully correlated.
 
 The legacy vendor/audio_policy.conf also lists AUDIO_DEVICE_IN_FM_TUNER among primary input devices, but its surrounding global section is commented generic configuration. Prefer the XML policy for the current route description and verify the actual runtime-selected policy file on the target image before treating either file as definitive.
+
+
+## CD3313 driver confirmation: mute reasons and input-path IDs
+
+The matching vendor_lib/lib/modules/cd3313.ko was extracted from the same firmware artifact and disassembled. Its Build ID is e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56, matching the previously recorded module.
+
+This resolves an important part of the mute ABI:
+
+- Command 0x04 is dispatched by event_callback as input-path mute. The payload fields are read as input path index, mute boolean, and reason index, matching the Java call order [path, mute, reason].
+- The driver keeps a seven-entry channel_mute array (7 x 32-bit values). The supplied input path is used as an index into that per-channel mute-reason state. Therefore Java path ID 0 is confirmed as CD3313 logical input/channel index 0, not yet as a named physical connector or tuner pin.
+- For a mute request, the driver sets bit (1 << reason) in that channel's mask; for unmute it clears that bit. When the affected path is the currently selected channel, the driver propagates the effective channel mute to master mute using reserved reason 31.
+- The separate set_master_mute() function also treats its reason argument as a bit index: it sets or clears (1 << reason) in the global master_mute mask, then derives the output mute state and drives GPIO 393 (0x189). The master-mute reasons are therefore bit flags, not arbitrary descriptive integers.
+- There is no per-reason reference counter in this function: state is represented by one bit per reason. A caller that clears a reason bit clears that reason globally; callers sharing a reason must coordinate their set/clear lifecycle.
+- Input-path reason bits and global master-mute reason bits are separate state domains. For example, input-path reason 2 is stored in channel_mute[path], then may be reflected through global master reason 31; it is not the same storage bit as global master reason 2 used by ACC.
+
+This confirms the driver's mute arbitration mechanism but does not identify the physical source wired to logical path 0. The board-level mapping still requires DTS/pin/routing data or controlled read-only runtime observation. Do not write to /dev/audiomux or drive GPIO 393 during investigation.
