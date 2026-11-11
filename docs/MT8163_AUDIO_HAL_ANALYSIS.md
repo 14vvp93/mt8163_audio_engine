@@ -189,10 +189,10 @@ The following details were rechecked directly against the ARM disassembly of the
 
 | Offset | Directly observed use | What is safe to conclude |
 |---:|---|---|
-| +0x00 | Compared with values 1 and 3 in the in-place stereo-to-mono helper | Format/type discriminator. Values 1 and 3 select 16-bit and 32-bit sample arithmetic in this helper; do not generalize the complete enum mapping from this one function. |
-| +0x0C | Bit 2 tested in Normal handler open() | A flag bit affects a later buffer/period calculation. Its public semantic name is not recovered. |
-| +0x18 | Bit 1 tested by doStereoToMonoConversionIfNeed() | A flag controlling whether that helper averages each adjacent stereo pair and duplicates the average. |
-| +0x28 | Compared against 48,001 in createPlaybackHandler() | Sample-rate field; +0x41 is forced on for values >= 48,001 Hz. |
+| +0x00 | Written by AudioALSAStreamOut::set() from the requested audio format; compared with values 1 and 3 by the mono helper | audio_format_t field. Values 1 and 3 are PCM16 and PCM32 in the helper's sample arithmetic. |
+| +0x08 | Written by AudioALSAStreamOut::set() from the requested channel mask | audio_channel_mask_t field. |\n| +0x0C | Written by AudioALSAStreamOut::set() from the output-flags argument; bit 2 is tested in Normal handler open() | audio_output_flags_t field. The exact semantic name of the tested bit is not assigned here. |
+| +0x18 | Written by AudioALSAStreamOut::set() from the output-device argument; bit 1 tested by doStereoToMonoConversionIfNeed() | audio_devices_t output-device mask. The AUDIO_DEVICE_OUT_SPEAKER bit (0x02) triggers the adjacent-pair average/duplicate operation. |
+| +0x24 | Written by AudioALSAStreamOut::set() from the population count of the accepted channel mask | Channel-count field. |\n| +0x28 | Written by AudioALSAStreamOut::set() from the accepted sample rate; compared against 48,001 in createPlaybackHandler() | Sample-rate field; +0x41 is forced on for values >= 48,001 Hz. |
 | +0x41 | Tested by doPostProcessing() | Nonzero means bypass MTK post-processing. It is copied from manager +0xD6 and forced on for high sample rates. |
 | +0x120 | Tested by doPostProcessing() | Nonzero means bypass; createPlaybackHandler() fills it from AudioSpeechEnhanceInfo::IsAPDMNRTuningEnable(). |
 | +0x160 / +0x161 | Copied from manager +0xD7 / +0xD8 | Two additional one-byte manager flags; their consumers/semantics are not yet mapped. |
@@ -302,3 +302,58 @@ This connects the public `AudioALSAHardware::openOutputStream()` wrapper to the 
 The flagged hardware overload follows the same manager path while forwarding the output flags. This is an ABI-level correspondence from the disassembly; the virtual call itself remains indirect in the machine code.
 
 The setter's fields at +0x48, +0x50, +0x60, +0x6C and +0x70 therefore belong to the concrete stream object created by the manager, rather than being unrelated configuration values. The next unresolved edge is the transfer from this stream object into the per-playback `stream_attribute_t` passed to `createPlaybackHandler()`. We should follow the stream-out interface/open lifecycle and any attribute-copy helper before assigning meanings to additional offsets.
+
+
+## 10. Recovered stream_attribute_t origin, field layout and handler selection
+
+### stream_attribute_t is embedded in AudioALSAStreamOut
+
+The call at `AudioALSAStreamOut::open()` (`0x83F44–0x83F58`) is now resolved through the HAL's PLT relocation table:
+
+- `r0 = [AudioALSAStreamOut + 0x04]` supplies the `AudioALSAStreamManager*`;
+- `r1 = AudioALSAStreamOut + 0x48` supplies the `stream_attribute_t*`;
+- the call at `0x83F48` resolves to `AudioALSAStreamManager::createPlaybackHandler(stream_attribute_t*)` at `0x79368`;
+- the returned playback-handler pointer is stored at stream object +0x08, then its virtual `open()` method is invoked.
+
+Therefore the stream attributes are embedded directly at offset +0x48 in the `AudioALSAStreamOut` object. This is not an independently allocated attribute block. The earlier `AudioALSAStreamOut::set()` stores are writes into this embedded structure.
+
+### Confirmed field mapping from set() to stream_attribute_t
+
+The base address passed to `createPlaybackHandler()` is `AudioALSAStreamOut + 0x48`. Combining that with the stores in `AudioALSAStreamOut::set()` at `0x8172C` gives the following field map:
+
+| stream_attribute_t offset | Source in AudioALSAStreamOut::set() | Recovered meaning |
+|---:|---:|---|
+| +0x00 | object +0x48 | Requested/accepted `audio_format_t` |
+| +0x08 | object +0x50 | Requested/accepted `audio_channel_mask_t` |
+| +0x0C | object +0x54 | `audio_output_flags_t` passed as the final setter argument |
+| +0x18 | object +0x60 | Output `audio_devices_t` mask |
+| +0x24 | object +0x6C | Channel count calculated from the accepted channel mask |
+| +0x28 | object +0x70 | Accepted sample rate in Hz |
+
+The format values 1 and 3 are handled as 16-bit and 32-bit samples respectively by the Normal handler's mono helper. The sample-rate field is used by the already documented >=48,001 Hz post-processing bypass rule. The output-device field explains the mono-conversion gate: bit 0x02 is the speaker device bit, and the helper averages adjacent stereo samples and duplicates the result when that bit is present.
+
+This field map is based on direct stores and the exact pointer passed to `createPlaybackHandler()`; it is substantially stronger than inferring fields from offsets used in isolated helper functions. It does not yet describe every member of the full `stream_attribute_t` structure.
+
+### Playback-handler selection is route-aware
+
+The beginning of `AudioALSAStreamManager::createPlaybackHandler()` shows that handler selection is not one universal Normal handler:
+
+- It first checks the HFP controller. When the controller is active and the top byte at attribute +0x03 is zero, it constructs `AudioALSAPlaybackHandlerHfpClient`; otherwise the corresponding Bluetooth route can construct `AudioALSAPlaybackHandlerBTSCO`.
+- A manager state value of 2, or the manager flag at +0xA1, selects `AudioALSAPlaybackHandlerVoice`.
+- Otherwise it switches on the output-device mask at attribute +0x18. Common device masks including 1 and 2 take the Normal-handler constructor path.
+- The special output-device value 1024 (0x400) selects `AudioALSAPlaybackHandlerHDMI`.
+- The special output-device value 1,048,576 (0x100000) selects `AudioALSAPlaybackHandlerFMTransmitter`.
+
+The constructor targets were resolved from the HAL's PLT relocation entries, rather than guessed from allocation sizes. The exact semantic name of manager state +0x9C and flag +0xA1 still needs an independent setter/call-site trace, so the selection conditions are reported as observed numeric/state conditions.
+
+### Integration consequences
+
+We can now build a format-aware adapter contract around actual per-stream attributes instead of guessed defaults:
+
+1. Read format at +0x00, channel mask at +0x08, output flags at +0x0C, output-device mask at +0x18, channel count at +0x24 and sample rate at +0x28.
+2. Use the route-selected handler as a hard boundary: Normal, Voice, BT SCO/HFP, HDMI and FM transmitter are separate paths. Do not treat the Normal handler's post-processing call as universal coverage.
+3. Preserve the speaker-specific mono conversion before the MTK processing stage.
+4. Keep the >=48,001 Hz and A-PDM tuning bypasses intact.
+5. Do not modify the HAL binary until the remaining stream lifecycle, final PCM buffer representation, and filter-manager lifetime are mapped.
+
+No binary patch, code modification to the HAL, or runtime route change has been made.
