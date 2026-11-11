@@ -234,3 +234,15 @@ This is an in-place stereo-pair average with no change to the input byte count. 
 ### Integration guardrails
 
 For a future adapter, read the actual per-stream format and flags; validate byte count against the supplied buffer capacity; preserve the stock order relative to DC removal, SRC, and bit conversion; and bypass whenever either +0x120 or +0x41 is set. Do not assume this Normal handler path covers HDMI, FM transmitter, voice, BT SCO, compressed, or capture streams. No binary patch or routing change has been made.
+
+
+### Filter-manager start/process return ABI
+
+The ARM call sequence inside doPostProcessing() at 0xD2584–0xD25A8 resolves the manager interface more precisely:
+
+- The byte at playback-handler +0x1EC is zero-extended and passed as the second argument to AudioMTKFilterManager::start(bool).
+- The subsequent AudioMTKFilterManager::process() call receives the manager pointer, original input pointer, original input byte count, scratch output pointer, and scratch capacity (the fifth argument is passed on the stack).
+- The process() return value is tested. A zero return means the wrapper retains the original input pointer and input byte count. A nonzero return means it selects the scratch pointer and uses the returned value as the produced output byte count.
+- The wrapper writes the selected pointer and byte count to its caller's output parameters.
+
+This is stronger than merely identifying a replaceable buffer: the manager's process return is the output byte count, while the output storage is supplied by the caller. A compatible adapter must respect the supplied capacity and return a valid produced-byte count; it must not assume the manager returns an output pointer.
