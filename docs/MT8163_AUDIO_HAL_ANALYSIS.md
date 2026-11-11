@@ -339,7 +339,7 @@ This field map is based on direct stores and the exact pointer passed to `create
 The beginning of `AudioALSAStreamManager::createPlaybackHandler()` shows that handler selection is not one universal Normal handler:
 
 - It first checks the HFP controller. When the controller is active and the top byte at attribute +0x03 is zero, it constructs `AudioALSAPlaybackHandlerHfpClient`; otherwise the corresponding Bluetooth route can construct `AudioALSAPlaybackHandlerBTSCO`.
-- A manager state value of 2, or the manager flag at +0xA1, selects `AudioALSAPlaybackHandlerVoice`.
+- The manager's `audio_mode_t` field at +0x9C equal to 2 (`AUDIO_MODE_IN_CALL`), or the manager flag at +0xA1, selects `AudioALSAPlaybackHandlerVoice`.
 - Otherwise it switches on the output-device mask at attribute +0x18. Common device masks including 1 and 2 take the Normal-handler constructor path.
 - The special output-device value 1024 (0x400) selects `AudioALSAPlaybackHandlerHDMI`.
 - The special output-device value 1,048,576 (0x100000) selects `AudioALSAPlaybackHandlerFMTransmitter`.
@@ -357,3 +357,33 @@ We can now build a format-aware adapter contract around actual per-stream attrib
 5. Do not modify the HAL binary until the remaining stream lifecycle, final PCM buffer representation, and filter-manager lifetime are mapped.
 
 No binary patch, code modification to the HAL, or runtime route change has been made.
+
+
+## 11. Normal-handler target PCM rate selection
+
+The Normal playback handler does not necessarily open ALSA at the sample rate stored in `stream_attribute_t +0x28`.
+
+At the start of `AudioALSAPlaybackHandlerNormal::open()`, the HAL obtains the base primary-output rate from:
+
+`AudioALSASampleRateController::getInstance()` → `getPrimaryStreamOutSampleRate()`.
+
+The getter returns the controller's stored primary-output rate (controller object +0x04). The Normal handler then applies the same decision logic exposed by `AudioALSAPlaybackHandlerNormal::ChooseTargetSampleRate(unsigned int, unsigned int)`, using the controller rate and the stream's output-device mask. The selected value is stored in playback-handler +0x38 and is used in subsequent period/buffer calculations.
+
+The recovered decision table is:
+
+| Controller rate | Exact output-device mask | Selected Normal-handler target rate |
+|---:|---:|---:|
+| 48,001–96,000 Hz | Any mask | Keep controller rate |
+| 96,001–192,000 Hz | 0x04 or 0x08 | 192,000 Hz |
+| 96,001–192,000 Hz | Any other mask | 44,100 Hz |
+| Below 48,001 Hz or above 192,000 Hz | Any mask | 44,100 Hz |
+
+The 0x04/0x08 branch uses exact equality comparisons, not a bitwise inclusion test. The adjacent `DeviceSupportHifi(unsigned int)` helper independently returns true only for values 4 and 8, corroborating that these two exact device values are treated as the Hifi routes by this handler.
+
+This is the Normal handler's target-rate decision, not a universal rule for Voice, BT SCO/HFP, HDMI or FM transmitter handlers. It also does not replace the earlier `AudioALSAStreamOut::set()` whitelist: that whitelist validates the requested stream configuration, while this later stage chooses the Normal handler's downstream PCM target rate. BLI SRC still sits after MTK post-processing in the write pipeline.
+
+### Practical consequence for our DSP adapter
+
+The adapter must not infer the PCM sample rate at `AudioMTKFilterManager::process()` solely from the framework-requested rate in `stream_attribute_t +0x28`. It must use the actual handler-side rate and format after the Normal handler has configured its PCM path, and must preserve the later BLI SRC/bit-conversion order. The current evidence narrows the likely target rate for Normal playback but does not yet prove the exact sample representation, channel interleaving, or bytes-per-frame at the MTK filter input for every route.
+
+No HAL binary or runtime configuration was modified.
