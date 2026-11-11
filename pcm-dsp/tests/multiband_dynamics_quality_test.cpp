@@ -1,6 +1,5 @@
 #include "pcm_dsp/multiband_dynamics.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -14,7 +13,7 @@ constexpr std::size_t kChannels = 4U;
 using Audio = std::array<float, kFrames * kChannels>;
 
 bool check(bool condition, const char* message) {
-    if (!condition) std::cerr << "FAIL: " << message << '\n';
+    if (!condition) std::cerr << "FAIL: " << message << '\\n';
     return condition;
 }
 
@@ -55,48 +54,76 @@ int main() {
         }
     }
 
-    pcm_dsp::MultibandDynamicsParameters parameters;
-    parameters.enabled = true;
-    for (std::size_t channel = 0; channel < 3U; ++channel) {
-        auto& compressor = parameters.compressors[channel][channel];
-        compressor.enabled = true;
-        compressor.threshold_db = -24.0F;
-        compressor.ratio = 8.0F;
-        compressor.attack_ms = 0.5F;
-        compressor.release_ms = 100.0F;
-        compressor.knee_db = 0.0F;
-    }
+    // Establish the enabled-but-uncompressed reference, including crossover
+    // response, so every channel/band comparison uses the same signal path.
+    pcm_dsp::MultibandDynamicsParameters baseline_parameters;
+    baseline_parameters.enabled = true;
+    pcm_dsp::MultibandDynamicsProcessor baseline_processor;
+    passed &= check(baseline_processor.configure(rate, baseline_parameters),
+                    "configure uncompressed multiband reference");
+    Audio baseline{};
+    passed &= check(baseline_processor.process(input.data(), baseline.data(),
+                                               kFrames),
+                    "process uncompressed multiband reference");
 
-    pcm_dsp::MultibandDynamicsProcessor processor;
-    passed &= check(processor.configure(rate, parameters),
-                    "configure three independent channel/band compressors");
-    passed &= check(processor.process(input.data(), output.data(), kFrames),
-                    "process three-band multitone signal");
-
-    std::array<std::array<float, 3U>, 4U> amplitudes{};
+    std::array<std::array<float, 3U>, 4U> baseline_amplitudes{};
     for (std::size_t channel = 0; channel < kChannels; ++channel) {
         for (std::size_t band = 0; band < frequencies.size(); ++band) {
-            amplitudes[channel][band] = component_amplitude(
-                output, channel, frequencies[band], rate, 9600U);
+            baseline_amplitudes[channel][band] = component_amplitude(
+                baseline, channel, frequencies[band], rate, 9600U);
         }
     }
 
-    for (std::size_t channel = 0; channel < 3U; ++channel) {
-        passed &= check(amplitudes[channel][channel] <
-                            amplitudes[3U][channel] * 0.80F,
-                        "selected band compression is effective and channel-local");
-        for (std::size_t band = 0; band < frequencies.size(); ++band) {
-            if (band == channel) continue;
-            passed &= check(amplitudes[channel][band] >
-                                amplitudes[3U][band] * 0.90F,
-                            "unselected bands remain substantially unchanged");
+    // Exercise every independent compressor: FL/FR/RL/RR × Low/Mid/High.
+    // In each run exactly one compressor is enabled. Its selected component
+    // must be reduced while all other channel/band components remain intact.
+    pcm_dsp::MultibandDynamicsParameters last_parameters;
+    for (std::size_t target_channel = 0; target_channel < kChannels;
+         ++target_channel) {
+        for (std::size_t target_band = 0; target_band < frequencies.size();
+             ++target_band) {
+            pcm_dsp::MultibandDynamicsParameters parameters;
+            parameters.enabled = true;
+            auto& compressor =
+                parameters.compressors[target_channel][target_band];
+            compressor.enabled = true;
+            compressor.threshold_db = -24.0F;
+            compressor.ratio = 8.0F;
+            compressor.attack_ms = 0.5F;
+            compressor.release_ms = 100.0F;
+            compressor.knee_db = 0.0F;
+
+            pcm_dsp::MultibandDynamicsProcessor processor;
+            passed &= check(processor.configure(rate, parameters),
+                            "configure one isolated channel/band compressor");
+            passed &= check(processor.process(input.data(), output.data(),
+                                               kFrames),
+                            "process isolated channel/band compressor");
+            last_parameters = parameters;
+
+            for (std::size_t channel = 0; channel < kChannels; ++channel) {
+                for (std::size_t band = 0; band < frequencies.size(); ++band) {
+                    const float measured = component_amplitude(
+                        output, channel, frequencies[band], rate, 9600U);
+                    if (channel == target_channel && band == target_band) {
+                        passed &= check(
+                            measured < baseline_amplitudes[channel][band] * 0.80F,
+                            "selected compressor reduces its own channel/band");
+                    } else {
+                        passed &= check(
+                            measured > baseline_amplitudes[channel][band] * 0.97F,
+                            "unselected channel/bands remain unchanged");
+                    }
+                }
+            }
         }
     }
 
-    // The same configuration and input must produce identical in-place output.
+    // The same final configuration and input must produce identical in-place
+    // and out-of-place output.
     pcm_dsp::MultibandDynamicsProcessor in_place_processor;
     Audio in_place = input;
-    passed &= check(in_place_processor.configure(rate, parameters),
+    passed &= check(in_place_processor.configure(rate, last_parameters),
                     "configure in-place processor");
     passed &= check(in_place_processor.process(in_place.data(), in_place.data(),
                                                kFrames),
