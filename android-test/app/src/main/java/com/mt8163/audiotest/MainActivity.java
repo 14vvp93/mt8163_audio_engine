@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private static final int CHANNELS = 4;
@@ -631,23 +632,75 @@ public final class MainActivity extends Activity {
         return values;
     }
 
+    private static final int PROFILE_SCHEMA_VERSION = 1;
+    private static final int LEGACY_UI_PROFILE_FLOAT_COUNT = 146;
+
     private void persistProfile(String key, float[] values) {
         JSONArray array = new JSONArray();
         try {
             for (float value : values) array.put((double) value);
+            JSONObject envelope = new JSONObject();
+            envelope.put("version", PROFILE_SCHEMA_VERSION);
+            envelope.put("values", array);
+            getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE).edit()
+                    .putString(key, envelope.toString()).apply();
         } catch (JSONException error) {
             throw new IllegalStateException("Cannot serialize sound profile", error);
         }
-        getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE).edit()
-                .putString(key, array.toString()).apply();
+    }
+
+    private float[] migrateLegacyProfile(float[] legacy) {
+        if (legacy == null || legacy.length != LEGACY_UI_PROFILE_FLOAT_COUNT) {
+            return null;
+        }
+        float[] migrated = new float[NativeDsp.UI_PROFILE_FLOAT_COUNT];
+        System.arraycopy(legacy, 0, migrated, 0, legacy.length);
+        int p = LEGACY_UI_PROFILE_FLOAT_COUNT;
+        migrated[p++] = 0.0f;       // Multiband dynamics disabled.
+        migrated[p++] = 250.0f;     // Low/mid crossover.
+        migrated[p++] = 4000.0f;    // Mid/high crossover.
+        for (int channel = 0; channel < CHANNELS; channel++) {
+            for (int band = 0; band < 3; band++) {
+                migrated[p++] = 0.0f;    // Compressor disabled.
+                migrated[p++] = -18.0f;  // Threshold dB.
+                migrated[p++] = 2.0f;     // Ratio.
+                migrated[p++] = 10.0f;    // Attack ms.
+                migrated[p++] = 120.0f;   // Release ms.
+                migrated[p++] = 6.0f;     // Knee dB.
+                migrated[p++] = 0.0f;     // Makeup gain dB.
+            }
+        }
+        return p == migrated.length ? migrated : null;
     }
 
     private float[] readProfile(String key) throws JSONException {
         String encoded = getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE)
                 .getString(key, null);
         if (encoded == null) return null;
-        JSONArray array = new JSONArray(encoded);
+
+        JSONArray array;
+        String trimmed = encoded.trim();
+        if (trimmed.startsWith("{")) {
+            JSONObject envelope = new JSONObject(trimmed);
+            if (envelope.getInt("version") != PROFILE_SCHEMA_VERSION) return null;
+            array = envelope.getJSONArray("values");
+        } else {
+            // Compatibility with profiles written before the versioned envelope.
+            array = new JSONArray(trimmed);
+        }
+
+        if (array.length() == LEGACY_UI_PROFILE_FLOAT_COUNT) {
+            float[] legacy = new float[array.length()];
+            for (int i = 0; i < legacy.length; i++) {
+                double value = array.getDouble(i);
+                if (Double.isNaN(value) || Double.isInfinite(value) ||
+                        value < -100000.0 || value > 100000.0) return null;
+                legacy[i] = (float) value;
+            }
+            return migrateLegacyProfile(legacy);
+        }
         if (array.length() != NativeDsp.UI_PROFILE_FLOAT_COUNT) return null;
+
         float[] values = new float[array.length()];
         for (int i = 0; i < values.length; i++) {
             double value = array.getDouble(i);
