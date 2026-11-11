@@ -107,15 +107,24 @@ speaker-containing routes.
 ## 5. Parameter dispatch
 
 `AudioMTKFilterManager::setParameter(unsigned int, void*)` at `0x9E754`
-has a small selector table. It dispatches selectors 0, 1 and 2 to filter
-slots `+0x14`, `+0x18` and `+0x1C` through
-`AudioMTKFilter::setParameter2Sub()`; selector 3 targets slot `+0x14`
-through `AudioMTKFilter::setParameter()`. Selector 4 and out-of-range
-values reach the error/log path in this method.
+has a five-entry selector table. Direct branch-target calculation gives:
 
-This is an internal HAL selector table, not the public Android audio-device
-mask. The exact relationship between these parameter selectors and the
-ACF/HCF control callers remains a separate tracing task.
+| Selector | Manager slot | Downstream method |
+|---:|---:|---|
+| 0 | `+0x14` | `AudioMTKFilter::setParameter2Sub()` |
+| 1 | `+0x18` | `AudioMTKFilter::setParameter2Sub()` |
+| 2 | `+0x1C` | `AudioMTKFilter::setParameter2Sub()` |
+| 3 | — | error/log path |
+| 4 | `+0x14` | `AudioMTKFilter::setParameter()` |
+
+Selector 4 is valid; it is not the default/error case. This distinction is
+important because `AudioALSAStreamManager::UpdateACFHCF()` uses manager
+selectors 0, 1 and 4. The optional slot `+0x18` remains null in the default
+manager initialization recovered above, so selector 1 is skipped unless
+another initialization/writer populates that slot. See
+[MT8163_ACF_HCF_CONTROL_PATH.md](MT8163_ACF_HCF_CONTROL_PATH.md).
+
+These are internal HAL parameter selectors, not Android output-device masks.
 
 ## 6. Integration implications
 
