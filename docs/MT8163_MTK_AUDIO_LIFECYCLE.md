@@ -213,24 +213,31 @@ The parameter order is grounded in the component-engine caller and the callback'
 
 ### What the 0xC088 callback actually does
 
-The callback resolves the BES state pointer through handle offset +0x18 (which is MtkAudioLoud +0x50). It then reads internal state fields including offsets +0x04, +0x18, +0x1128, +0x112C, +0x1134, +0x1138, +0x113C, and +0x1750. These are internal BES state offsets, not public API fields; their semantic names remain unresolved.
+The callback resolves the BES state pointer through handle offset +0x18 (which is MtkAudioLoud +0x50). It validates the handle and the two counter pointers, reads the available input/output counts, and clears both counters before processing. It derives mode-dependent chunk sizes using right/left shifts and compares the available amount against the required amount held in the BES state.
 
-The callback:
-- validates the handle, input/output counter pointers, and state pointer;
-- clears the consumed/produced counters before processing;
-- derives a mode-dependent input amount using a right shift of the incoming count;
-- derives a required chunk amount from the state field at +0x18 and a mode-dependent left shift;
-- rejects or defers work when the available amount is smaller than the required amount;
-- dispatches through the BES fixed/ramped output-gain helpers (Apply_Fix_Output_Gain_Mo, Apply_Ramp_Output_Gain_Mo, and Apply_Ramp_Output_Gain_St) according to the internal mode/state;
-- updates the consumed and produced counters used by MtkAudioLoud::process().
+The callback is a real wrapper around the internal BES processor. Rechecking the PLT relocation order gives these call targets:
 
-This confirms that the +0x4C entry is the streaming callback and exposes its six-argument buffer/counter ABI. It does not yet identify the exact PCM sample format, channel count, interleaving, or the unit of the state-derived chunk amount.
+| Callback call site | PLT target | Resolved symbol | Observed role |
+|---:|---:|---|---|
+| 0xC118 | 0x2B98 | drvb_f0 | BES support/helper call; exact semantics not inferred |
+| 0xC150 | 0x2BB0 | BLOUD_HD_Internal_Process | Internal BES processing path |
+| 0xC168 | 0x2BBC | Copy_Q1p15_To_Q1p31 | 16-bit to 32-bit fixed-point buffer conversion |
+| 0xC180 | 0x2BB0 | BLOUD_HD_Internal_Process | Second internal BES processing path |
+| 0xC190 | 0x2BC8 | Copy_Q1p31_To_Q1p15 | 32-bit to 16-bit fixed-point buffer conversion |
+
+The first internal-process call at 0xC150 receives the BES state pointer, the callback workspace, the current input pointer, and the output pointer. In the alternate path, the callback prepares regions at offsets +0x1000 and +0x2000 from an intermediate buffer, calls the internal processor with those intermediate regions, then converts the result back to Q1.15 for the caller. The two paths are mode/state-dependent; the exact channel arrangement and sample format are not yet established.
+
+The callback writes separate consumed-input and produced-output counts. MtkAudioLoud::process() accumulates these values across complete chunks. Its immediate call site does not branch on the callback's integer return value, so the counters are the observable progress contract for this wrapper.
 
 ### Important distinction: BLOUD_HD_Internal_Process
 
-The BES library also exports BLOUD_HD_Internal_Process at 0x6ECC (size 4048 bytes). However, libaudiocomponentengine_vendor.so has dynamic imports for BLOUD_HD_SetHandle and BLOUD_HD_Filter_Design, but no dynamic import for BLOUD_HD_Internal_Process. The 0xC088 callback body does not contain a direct call to that exported entry point; its visible calls include the gain/ramp helpers listed above.
+BLOUD_HD_Internal_Process is exported by libbessound_hd_mtk_vendor.so at 0x6ECC (size 4048 bytes). The component-engine library does not import this symbol directly; instead, the BES callback at 0xC088 calls it through the BES library's own PLT entry at 0x2BB0. The callback contains two call sites to this function, at 0xC150 and 0xC180.
 
-Therefore, do not label 0x6ECC as the callback installed at MtkAudioLoud +0x4C, and do not assume it is called by 0xC088 without further indirect-call/data-flow evidence. The proven streaming callback target remains 0xC088.
+Therefore, the correct call chain is:
+
+MtkAudioLoud::process() -> callback at MtkAudioLoud +0x4C (BES target 0xC088) -> BLOUD_HD_Internal_Process() (BES target 0x6ECC).
+
+This is now directly established by the callback-table target and the BES PLT relocation. It is no longer merely a possible relationship. The two internal-process call sites use different buffer arrangements, so both branches must be understood before reproducing or wrapping the vendor behavior.
 
 ### Next reverse-engineering targets
 
