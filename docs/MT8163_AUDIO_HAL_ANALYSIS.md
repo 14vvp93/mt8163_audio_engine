@@ -623,3 +623,37 @@ The HAL now provides a concrete schema for the missing board configuration:
 5. Only then decide whether the normal speaker PCM stream is routed to the CD3313 directly, duplicated, or distributed elsewhere.
 
 The repository's currently committed firmware subset contains the relevant vendor libraries but not the audio-parameter XML/configuration files needed to resolve these board-specific values. No HAL, kernel, I²S or live-device state was changed.
+
+
+## 16. Board audio configuration recovered from the files2 firmware subset
+
+The extracted `files2` archive includes the board's `vendor/AudioParamOptions.xml`, `vendor/audio_param/AudioParamOptions.xml`, and `vendor/audio_device.xml`. Both AudioParamOptions copies contain the same relevant settings:
+
+| Option | Value |
+|---|---|
+| `MTK_PLATFORM` | `MT8163` |
+| `MTK_AUDIO_SPEAKER_PATH` | `int_spk_amp` |
+| `MTK_AUDIO_NUMBER_OF_MIC` | `2` |
+| `MTK_BESLOUDNESS_RUN_WITH_HAL` | `no` |
+| `MTK_AURISYS_FRAMEWORK_SUPPORT` | `no` |
+| `MTK_FM_SUPPORT` | `yes` |
+
+### Important SmartPA selection result
+
+The HAL compares the selected `MTK_AUDIO_SPEAKER_PATH` value with the literal `smartpa` and stores the comparison result as its `isSmartPAUsed` state. In this firmware subset the configured value is `int_spk_amp`, not `smartpa`. Therefore the SmartPA-specific attribute-loading branch in `initSmartPaAttribute()` is not selected by this configuration.
+
+This is stronger than merely observing that a SmartPA library is present: for this captured configuration, the HAL's speaker-path option does not select the `smartpa` audio type. It does not rule out another runtime override, a different firmware variant, or a board-specific external amplifier controlled elsewhere.
+
+### What audio_device.xml actually configures
+
+The supplied `vendor/audio_device.xml` contains these relevant paths:
+
+- `two_in_one_speaker_output`: turn-on sets `Audio_Speaker_class_Switch=CLASSAB`; turn-off sets it to `RECEIVER`.
+- `receiver_output`: controls `Voice_Amp_Switch`.
+- `headphoneSpeaker_output`: controls `Headset_Speaker_Amp_Switch`.
+
+It does not contain the named I²S playback sequences, nor definitions for `Audio_Amp_L_Switch`, `Audio_Amp_R_Switch`, `Speaker_Amp_Switch` or `Ext_Speaker_Amp_Switch`. Those names found in the HAL binary therefore cannot be assumed to be configured/active by this XML.
+
+### Consequence
+
+The available board configuration supports the ordinary internal speaker-amplifier path and a CLASSAB speaker-class setting. It does not provide the missing SmartPA parameter unit, selected I²S port values, I²S sequence tables, mixer controls or board schematic needed to prove the serial PCM topology. The four-channel PCM integration gate remains open.
