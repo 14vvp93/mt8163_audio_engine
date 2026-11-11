@@ -38,7 +38,7 @@ The scan is read-only. It does not execute any firmware binary, open `/dev/audio
 
 ## Safety gate
 
-Do not implement a direct `/dev/audiomux` client from the kernel driver's request layout alone. The exact userspace ioctl request word and framing remain unknown. The recovered driver ABI also has unsafe short-payload behavior for some commands, so any future adapter must enforce complete argument lengths and ranges before crossing the Binder/native boundary.
+Do not implement a direct `/dev/audiomux` client from the kernel driver's request layout alone. The expanded artifact has since recovered the native ioctl request word and framing; however, its `array_length + 1` size convention causes a one-word copy beyond the declared Java array. The extra word is unknown. The driver also has unsafe short-payload behavior for some commands, so any future adapter must enforce complete argument lengths and ranges before crossing the Binder/native boundary.
 
 
 ## 2026-11-11 expanded firmware artifact result — provider found
