@@ -704,7 +704,7 @@ Therefore, do not treat this method alone as the point where the speaker amplifi
 `AudioALSAHardwareResourceManager::startOutputDevice(device, mode)` at `0x73ca0`:
 - acquires the resource-manager lock;
 - compares the currently stored output device at `+0x20` with the requested device;
-- when the route changes, dispatches through a callback in the hardware-resource-manager device-operation table (vtable-like function pointer at the manager's first member, offset `+0x2c` for the nonzero old-device path or `+0x24` for the initial path);
+- when the route changes, dispatches through a virtual method in the resource manager's vtable (entry offset `+0x2c` for the nonzero old-device path or `+0x24` for the initial path);
 - increments the active-device reference count at `+0x34`;
 - handles the already-active/configuration state at `+0xbc` separately before unlocking.
 
@@ -738,7 +738,7 @@ The function is a SmartPA/mixer/callback control path; it does not process PCM. 
 - selects the stored input/output I²S port selector from controller offsets `+0x1c0` or `+0x1c4`, according to the boolean direction;
 - validates selector values 0..4;
 - converts the selector to a port string (`I2S0`, `I2S1`, `I2S2`, `I2S3`, or `I2S5`);
-- constructs a configuration key by concatenating the caller-supplied sequence name and the selected port string in direction-dependent order.
+- constructs a configuration key by concatenating the caller-supplied sequence name and selected port string. When direction is false, the key is `sequenceName + portName`; when direction is true, it is `portName + sequenceName`.
 
 Thus, the selector is a port identifier and the supplied name is a use-case prefix. This function does not itself prove which key is selected by the ordinary `int_spk_amp` path. The board's supplied `audio_device.xml` does not contain the I²S sequence table, and the captured configuration sets `MTK_AUDIO_SPEAKER_PATH=int_spk_amp`, not `smartpa`.
 
