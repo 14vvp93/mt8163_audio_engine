@@ -42,3 +42,15 @@ The primary HAL Build ID matches the HAL examined in the earlier reconstruction 
 ## Scope limitation
 
 This is a partial filesystem dump (324 files), not a complete `/system` + `/vendor` image. Absence from this archive does not prove a component is absent from the head unit.
+
+
+## Additional audio configuration findings
+
+A second pass over the extracted XML files confirms:
+
+- `vendor/AudioParamOptions.xml` and `vendor/audio_param/AudioParamOptions.xml` both select `MTK_AUDIO_SPEAKER_PATH=int_spk_amp` for platform MT8163.
+- The same options set `MTK_BESLOUDNESS_RUN_WITH_HAL=no` and `MTK_AURISYS_FRAMEWORK_SUPPORT=no`.
+- `vendor/audio_device.xml` configures the two-in-one speaker path by switching `Audio_Speaker_class_Switch` between `CLASSAB` and `RECEIVER`; it separately configures voice and headset amplifier switches.
+- No I²S playback sequence table or SmartPA parameter unit was found in this 324-file archive subset. No mixer_paths file or board-level I²S/TDM routing description is included.
+
+The configured speaker-path value is `int_spk_amp`, not `smartpa`. The HAL's `initSmartPaAttribute()` compares this option with the literal `smartpa` before loading the SmartPA-specific attribute set, so the captured configuration does not select that SmartPA attribute-loading branch. This conclusion is limited to the captured XML and does not exclude runtime overrides or a different firmware build.
