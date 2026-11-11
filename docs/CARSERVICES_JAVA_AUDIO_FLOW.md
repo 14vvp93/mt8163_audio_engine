@@ -199,3 +199,16 @@ The Java RadioService call sites and the existing CD3313 driver reconstruction c
 Thus the current best correlation is RadioService inputPath 0 → earlier CD3313 logical channel 0 / RADIO → chip Source 3. Treat the RADIO/Source 3 mapping as a strong cross-build lead, not yet a proven identity for the newer paired module. It still does not prove the board-level wire from the FM tuner to the CD3313 Source 3 pins, nor that the Android Audio Policy FM Tuner In PCM route and the CD3313 analog RADIO route are the same signal path. The primary HAL exposes a separate FM I2S path and /dev/fm tuner control plane; that route must not be conflated with the CD3313 analog input selector without board wiring or live routing evidence.
 
 The selector map and channel labels from the earlier module are documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md) and [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The Java-side FM path and payloads are documented above. This remains static firmware evidence, with the newer-module comparison open.
+
+
+## Revalidation against the exact paired CD3313 module
+
+The compact `cd3313-current-module-analysis` artifact from workflow run `43113850964` now provides a direct check against the CD3313 module paired with this firmware, rather than relying only on the earlier reconstructed build.
+
+- Current module Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
+- Current module SHA-256: `6a96207794c770d05a9ba6988f38ebac0391c1c6461cd20ed394594`.
+- Its `.rodata` name-pointer table contains seven entries in this exact order: `RADIO`, `ARM`, `AUX`, `EXBT`, `AUX2`, `DAB`, `NONE`.
+- Its BSS symbol `channel_mute` is 28 bytes, i.e. seven 32-bit channel mute masks. The `internal_radio` state is also present.
+- The DWARF debug information names a `channel_to_cd3313(channel)` inline helper at source line 411, but this module's symbol/disassembly output does not expose a standalone body for that helper. The exact logical-channel-to-chip-selector translation therefore remains to be recovered from the optimized code/data tables.
+
+This directly confirms that the current paired driver labels logical channel index 0 as `RADIO`, which matches RadioService's Java inputPath 0. The earlier Source 3 selector mapping came from the older detailed CD3313 reconstruction; do not automatically carry that selector value across builds. For the current paired binary, the verified conclusion is `RadioService inputPath 0 → CD3313 logical channel 0 (RADIO)`; the hardware selector/pin and board-level FM wiring remain open.
