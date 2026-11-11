@@ -233,3 +233,12 @@ automatically restore hardware levels at startup. Any future hardware-level
 UI must start in an unknown/unapplied state and require an explicit user
 action. A locally saved value can only mean “last value this app sent”, not
 verified current chip state.
+
+### Return values
+
+The typed AudioEffect control methods (including setBalance, setBassBoost,
+setTreble, setLoud, setSubWoofer and setInputGain) return an integer status.
+The public doExtAudioEffect(int, int[]) method also returns an integer. The
+status is propagated from the Binder service/native muxer and can be logged
+by the app; it is not a hardware readback. setMasterVolume(float,float) is
+the exception and returns void because it updates a system property.
