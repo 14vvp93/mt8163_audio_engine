@@ -317,7 +317,7 @@ jobs:
               sha256sum "$module.ko" > sha256.txt
               file "$module.ko" > file.txt
               readelf -h -n -Ws -rW "$module.ko" > elf-report.txt 2>&1 || true
-              objdump -drwC "$module.ko" > disassembly.txt 2>&1 || true
+              arm-linux-gnueabi-objdump -drwC "$module.ko" > disassembly.txt 2>&1 || true
               strings -a -t x "$module.ko" > strings.txt
               grep -i -E 'fm|radio|tuner|i2s|ioctl|audio_info|aud_path|pad|gpio|wmt|chip|i2c|/dev/' strings.txt > focused-strings.txt || true
             )
