@@ -153,8 +153,8 @@ The CD3313 datasheet describes three external stereo inputs; input 4 has no exte
 
 ## 5. Remaining work
 
-- Recover the matching system framework implementation of android.audio.AudioEffect used by HEQ; it may be the high-level caller for the ioctl interface.
-- Reconstruct exact userspace ioctl macro values and call ordering.
+- The Java/Binder API is now recovered from boot-carservices.vdex; see [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md). Recover the native JNI implementation of ExtAudioMuxer.nativeInit() and SendCmdAudioMux().
+- Reconstruct the exact userspace ioctl macro values, low _IOC_NR byte, buffer framing and call ordering from that native implementation.
 - Verify the raw write parser's behavior on the target kernel and whether the usercopy helper constrains all malformed inputs.
 - Compare the software report with a live read-only device snapshot when hardware becomes available.
 - Verify GPIO polarity and the board-level routing for RADIO, AUX, DAB, EXBT, and subwoofer.
