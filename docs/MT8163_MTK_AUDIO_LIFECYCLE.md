@@ -136,3 +136,27 @@ It does **not** yet establish:
 - the sample format, channel layout, or PCM units used by these APIs.
 
 No DSP implementation, stock HAL, CD3313 command, or runtime audio route was modified during this analysis.
+
+
+## Cross-binary callback ABI match
+
+The six-entry table created by `BLOUD_HD_SetHandle()` strongly matches the six consecutive function-pointer fields beginning at `MtkAudioLoud +0x38`. This is supported by both the exact slot layout and the argument shapes at the component-engine call sites:
+
+| MtkAudioLoud field | BES table slot | BES target | Observed use in component engine |
+|---:|---:|---:|---|
+| `+0x38` | `+0x00` | `0xBE40` | `open()` calls it with three register arguments |
+| `+0x3C` | `+0x04` | `0xBFA8` | `open()` calls it with three register arguments |
+| `+0x40` | `+0x08` | `0xBE70` | Used as a callback from parameter/work-mode paths |
+| `+0x44` | `+0x0C` | `0xBF7C` | BES helper/query entry; caller use still being traced |
+| `+0x48` | `+0x10` | `0xBE20` | BES helper entry; caller use still being traced |
+| `+0x4C` | `+0x14` | `0xC088` | `process()` calls it for every complete PCM chunk |
+
+The strongest match is the last slot. The component-engine `process()` call through `+0x4C` passes six arguments under the ARM procedure-call convention: a handle/table address, a context/buffer pointer, an input pointer, a pointer to the chunk input length, an output pointer, and a pointer to the produced output length. The BES target at `0xC088` also consumes six arguments, clears and updates the two length pointers, and dispatches processing through the handle's state. This is consistent with the streaming process interface; the exact semantic type names are still unknown.
+
+The first two slots also match the `open()` call sites: `+0x38` is invoked with three register arguments and `+0x3C` is invoked with three register arguments, matching the corresponding BES entry points at `0xBE40` and `0xBFA8`.
+
+This makes the correspondence between the BES callback table and `MtkAudioLoud +0x38..+0x4C` a strong binary-level identification, rather than a guess based only on adjacent fields. The exact call site that passes `this + 0x38` to `BLOUD_HD_SetHandle()` has not yet been isolated, so that final initialization edge remains to be confirmed.
+
+### Integration implication
+
+The process callback is now identified as the BES table's sixth entry (`0xC088`) with high confidence. The remaining work is to recover the handle/context setup path, decode the data layout behind `this + 0x50` and `this + 0x54`, and trace the upstream `AudioMTKFilterManager::process()` caller to establish the real PCM format and routing conditions. This does not authorize replacing the stock HAL or bypassing its call/BT/microphone paths.
