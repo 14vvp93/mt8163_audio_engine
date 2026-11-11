@@ -97,7 +97,7 @@ The method uses a 16-entry Thumb branch table for selectors 0 through 15. Direct
 - Selector 0 stores the supplied pointer in an object field at `this + 0x0C`.
 - Selector 2 accepts scalar values 1 or 2 and stores the accepted value at `this + 0x24`.
 - Selector 3 stores the supplied scalar at `this + 0x28`.
-- Selector 4 stores the supplied scalar at `this + 0x2C) and `this + 0x08`.
+- Selector 4 stores the supplied scalar at `this + 0x2C` and `this + 0x08`.
 - Selector 6 copies `0x4EC` bytes from the supplied pointer to `this + 0x5C`.
 - Selector 14 sets an internal field at `this + 0x9B4` to either `0x50` or zero depending on the supplied scalar.
 - Other selectors call internal helpers, dispatch callbacks, or alter mode state. Their exact public meaning is not inferred here.
