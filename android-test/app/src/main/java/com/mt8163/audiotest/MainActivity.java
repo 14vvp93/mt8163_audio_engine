@@ -457,9 +457,9 @@ public final class MainActivity extends Activity {
             }
             @Override public void onStartTrackingTouch(SeekBar bar) {}
             @Override public void onStopTrackingTouch(SeekBar bar) {
-                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f) {
+                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f + 0.001f) {
                     dynamicsHighCrossoverHz = Math.min(8000.0f,
-                            (float) Math.ceil(dynamicsLowCrossoverHz * 1.5f / 10.0f) * 10.0f);
+                            (float) Math.ceil((dynamicsLowCrossoverHz * 1.5f + 0.001f) / 10.0f) * 10.0f);
                     dynamicsHighBar.setProgress(Math.round((dynamicsHighCrossoverHz - 1000.0f) / 10.0f));
                 }
                 applyDynamicsProfile();
