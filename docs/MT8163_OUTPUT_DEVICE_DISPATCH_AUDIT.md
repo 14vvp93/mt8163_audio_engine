@@ -8,7 +8,7 @@ This audit rechecks the output-device dispatch logic in the supplied
 
 - HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
 - ELF Build ID: `f66eaf9e6ac950259f0c253be618d15a`
-- The newly uploaded `extracted-files.zip` contains the same HAL binary.
+- The uploaded `extracted-files.zip` contains the same HAL binary.
 - The supplied `audio_device.xml` SHA-256 is
   `eb3b490a033e26c00514c3a9b54f5ebf5bcc965e9839d746bc4f7a67bcaef56a`.
 
@@ -26,48 +26,77 @@ argument.
 
 The exact vtable slots read by the disassembly are:
 
-| Internal selector | Vtable byte offset | Dispatch |
+| Internal selector | Vtable byte offset | Resolved callback |
 |---:|---:|---|
-| 1 | +0xB0 | indirect callback |
-| 2 | +0xC0 | indirect callback |
+| 1 | +0xB0 | `aee_system_exception` (unresolved route semantics) |
+| 2 | +0xC0 | `OpenHeadphonePath(unsigned int)` |
 | 3 | — | default/no callback |
-| 4 | +0xB8 | indirect callback |
+| 4 | +0xB8 | `OpenReceiverPath(unsigned int)` |
 | 5 | — | default/no callback |
-| 6 | +0xC8 | indirect callback |
+| 6 | +0xC8 | `OpenSpeakerPath(unsigned int)` |
 | 7 | — | default/no callback |
-| 8 | +0xB8 | indirect callback |
+| 8 | +0xB8 | `OpenReceiverPath(unsigned int)` |
 | 9 | — | default/no callback |
-| 10 | +0xC8 | indirect callback |
+| 10 | +0xC8 | `OpenSpeakerPath(unsigned int)` |
 
 These are internal one-based selector values. They must not be equated with
 Android `audio_devices_t` bit masks without tracing the upstream conversion.
 
-## 2. Stop dispatch table
+## 2. Stop dispatch table — corrected from direct branch-target calculation
 
 `AudioALSAHardwareResourceManager::stopOutputDevice_l()` at `0x74400`
-uses a second ten-entry table and also bounds-checks the same one-based selector.
-Its observed vtable offsets are:
+uses a second ten-entry table and bounds-checks the same one-based selector.
+The branch table base is `0x74428`; calculating each target from that base
+resolves the following vtable offsets:
 
-| Internal selector | Vtable byte offset | Dispatch |
+| Internal selector | Vtable byte offset | Resolved callback |
 |---:|---:|---|
-| 1 | +0xBC | indirect callback |
-| 2 | +0xCC | indirect callback |
+| 1 | +0xB4 | `setAudioDebug(bool)` (does not form a known route-close pair) |
+| 2 | +0xC4 | `CloseHeadphonePath()` |
 | 3 | — | default/no callback |
-| 4 | +0xC4 | indirect callback |
+| 4 | +0xBC | `CloseReceiverPath()` |
 | 5 | — | default/no callback |
-| 6 | +0xB4 | indirect callback |
+| 6 | +0xCC | `CloseSpeakerPath()` |
 | 7 | — | default/no callback |
-| 8 | +0xC4 | indirect callback |
+| 8 | +0xBC | `CloseReceiverPath()` |
 | 9 | — | default/no callback |
-| 10 | +0xB4 | indirect callback |
+| 10 | +0xCC | `CloseSpeakerPath()` |
 
-The open and stop tables are not simple numeric mirrors. The semantic identity
-of every slot must be taken from the exact resource-manager vtable and its
-constructor, not guessed from adjacent slot numbers. In particular, this audit
-does not label the +0xB0/+0xB4 pair or infer which selectors represent speaker,
-headphone, or receiver routes.
+This table supersedes the earlier slot interpretation in this document.
+The corrected offsets were read directly from the four dispatch load
+instructions at `0x74454`, `0x74460`, `0x7446c`, and `0x74478`,
+after resolving the ten branch-table entries.
 
-## 3. Higher-level transition wrappers
+## 3. Vtable callback identity and open/close pairs
+
+The packed ARM relocation entries in the same ELF resolve the route callback
+block to these method symbols:
+
+| Vtable byte offset | Method |
+|---:|---|
+| +0xB0 | `aee_system_exception` |
+| +0xB4 | `AudioALSAHardwareResourceManager::setAudioDebug(bool)` |
+| +0xB8 | `OpenReceiverPath(unsigned int)` |
+| +0xBC | `CloseReceiverPath()` |
+| +0xC0 | `OpenHeadphonePath(unsigned int)` |
+| +0xC4 | `CloseHeadphonePath()` |
+| +0xC8 | `OpenSpeakerPath(unsigned int)` |
+| +0xCC | `CloseSpeakerPath()` |
+| +0xD0 | `OpenHeadphoneSpeakerPath(unsigned int)` |
+| +0xD4 | `CloseHeadphoneSpeakerPath()` |
+
+The callback signatures and the start/stop dispatch tables establish
+consistent pairs for selectors 2, 4, 6, 8 and 10:
+- 2: headphone open/close;
+- 4 and 8: receiver open/close;
+- 6 and 10: speaker open/close.
+
+Selector 1 is anomalous in the recovered tables: its start entry resolves to
+`aee_system_exception`, while its stop entry resolves to
+`setAudioDebug(bool)`. It is not assigned a physical output route here.
+Do not infer that selector 1 is a valid speaker/headphone/receiver route.
+
+## 4. Higher-level transition wrappers
 
 The disassembly shows these wrapper behaviors:
 
@@ -85,11 +114,10 @@ The disassembly shows these wrapper behaviors:
 - `CloseSpeakerPath()` calls the matching turn-off sequence and disables the
   external-DAC GPIO, subject to its state guard.
 
-The wrapper call sites and the route-operation vtable still need to be joined
-to the upstream AudioALSA stream/device conversion before assigning Android
-device names to the internal selectors.
+The selector values above are internal HAL values. The upstream conversion
+from Android output-device masks to these values is still unresolved.
 
-## 4. Exact configuration-name comparison
+## 5. Exact configuration-name comparison
 
 The supplied `audio_device.xml` is well-formed XML and defines these output
 paths:
@@ -114,14 +142,13 @@ Possible explanations include a different live XML revision, an alternate
 configuration source, or a packaging mismatch. The live configuration has not
 been inspected, so a runtime failure is not claimed.
 
-## 5. Consequences for DSP integration
+## 6. Consequences for DSP integration
 
 1. Do not change the XML names or patch the HAL based only on this static pair.
 2. Obtain the live unit's resolved device-path configuration and mixer controls.
-3. Recover the resource-manager vtable constructor and upstream mapping from
-   Android output-device masks to the internal selector values.
-4. Trace the corresponding open/stop callback pairs and confirm which route
-   actually reaches `OpenSpeakerPath()`.
+3. Trace the upstream conversion from Android output-device masks to the
+   internal selector values; the callback mapping alone does not provide it.
+4. Confirm which route actually reaches `OpenSpeakerPath()` on the live unit.
 5. Keep the DSP outside this route-control layer. The audio data path remains
    the separate PCM playback-handler path; GPIO and mixer sequences are
    hardware-control operations, not PCM processing.
