@@ -99,3 +99,31 @@ No direct CD3313 device transport, ioctl request, I2C operation, or register map
 | BES library contains IIR, DRC, multiband coefficient-generation and processing primitives | High — exported symbols |
 | Complete ACF structure field layout and XML key grammar | Not yet recovered |
 | Any of these libraries directly controls CD3313 | Unproven |
+
+
+## Recovered selector behavior in `MtkAudioLoud::setParameter`
+
+ARM Thumb disassembly of the 680-byte implementation shows a bounds-checked 16-entry `tbh` dispatch table (selectors 0 through 15). The following observations are directly visible in the machine code:
+
+| Selector | Confirmed low-level behavior | Interpretation status |
+|---:|---|---|
+| 0 | Stores the supplied second argument at object offset `+0x0C` | Pointer/state slot; payload meaning not proven |
+| 1 | Stores the argument at object offset `+0x10`, writes `0x200` at `+0x9B8`, then validates/configures a small value range | Format/configuration path; exact enum not proven |
+| 2 | Accepts values 1 or 2 and stores the value at `+0x24`; other values take an early exit | Small enumerated setting; meaning not proven |
+| 3 | Stores the supplied argument at object offset `+0x28` | Field setter; meaning not proven |
+| 4 | Stores the supplied second argument at object offset `+0x2C` | Pointer/state slot; payload meaning not proven |
+| 5 | Calls internal helpers using the state at `+0x0C` and a working area beginning at `+0x5C` | Internal parameter/configuration path; exact role not proven |
+| 6 | Calls helpers and copies exactly `0x4EC` (1260) bytes into the working area at object offset `+0x5C` | Strong ACF-structure handling candidate; exact field layout still unknown |
+| 7, 8, 10 | Share a common dispatch target that updates internal state/flags | Exact meaning not proven |
+| 9, 11, 12 | Enter callback/dispatch paths using object fields around `+0x34` and `+0x40` | Callback/control paths; exact meaning not proven |
+| 13 | Enters a helper path using the working area at `+0x5C` and additional state near `+0x9BC` | Parameter processing path; exact meaning not proven |
+| 14 | Sets the field at `+0x9B4` to either `0` or `0x50`, depending on the argument | Numeric mode/setting; exact meaning not proven |
+| 15 | Enters another helper/parameter path using the working area at `+0x5C` and state near `+0x9BC` | Parameter processing path; exact meaning not proven |
+
+**Important distinction:** the HAL's recovered `UpdateACFHCF()` caller invokes `setParameter(0, payload)`, `setParameter(1, payload)`, and `setParameter(4, payload)` for its three update cases. The 1260-byte copy is visible in selector 6, not selector 0, 1, or 4. Therefore the top-level HAL caller path and the engine's internal copy path are not yet fully reconciled. The pointers saved by selectors 0 and 4 may be consumed later by helper/callback paths. Do not call these selectors with guessed buffers, and do not reinterpret selector 6 as the proven HAL ACF update selector.
+
+The library's `.gnu_debugdata` section was also checked. It contains a small mini-ELF with unwind/runtime symbols but no useful C++ type or DWARF structure definitions, so it does not directly recover the ACF member offsets.
+
+### Next reverse-engineering target
+
+Trace the consumers of object fields `+0x0C`, `+0x2C`, `+0x5C`, `+0x9B4`, `+0x9B8`, and `+0x9BC`, then follow the function-pointer callbacks around `+0x40`. This is the shortest route to reconcile the HAL's ACF/HCF selector calls with the engine's internal parameter representation. Keep the analysis static; no runtime calls with fabricated structures.
