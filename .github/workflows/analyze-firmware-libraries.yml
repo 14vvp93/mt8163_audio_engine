@@ -254,6 +254,49 @@ jobs:
           echo "Matched lines: $(wc -l < "$OUT/text-matches.txt")"
           echo "Decompiled DTBs: $(find "$OUT/decompiled-dtb" -type f -name '*.dts' | wc -l)"
 
+      - name: Collect AudioALSADeviceParser and policy configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=firmware-analysis/board-audio-routing
+          mkdir -p "$OUT/config-files"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, shutil
+
+          root = Path("firmware-analysis")
+          out = Path("firmware-analysis/board-audio-routing/config-files")
+          wanted = {
+              "audio_device.xml", "audio_em.xml", "audio_policy_configuration.xml",
+              "audio_policy.conf", "audio_effects.xml", "AudioParamOptions.xml",
+              "audio_param_options.xml",
+          }
+          found = []
+          for path in root.rglob("*"):
+              if not path.is_file() or path.name not in wanted:
+                  continue
+              if "board-audio-routing" in path.parts:
+                  continue
+              rel = path.relative_to(root)
+              target = out / rel
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(path, target)
+              found.append((str(rel), target.stat().st_size))
+          with (out.parent / "selected-config-files.txt").open("w") as f:
+              for name, size in found:
+                  f.write(f"{name} ({size} bytes)\\n")
+          print(f"Copied {len(found)} targeted audio/policy configuration files")
+          PY
+          find firmware-analysis -type f \\
+            \\( -iname 'boot*.img' -o -iname 'dtbo*' -o -iname '*dtb*' -o -iname '*.img' \\
+               -o -iname 'lk.bin' -o -iname 'preloader*' \\) \\
+            ! -path '*/board-audio-routing/*' -print | sort > "$OUT/boot-and-dtb-image-candidates.txt"
+          grep -RInI -E 'FM_I2S|MRGRX|FM_TUNER|tuner|radio|PCM|CARD|card|pcm|AudioALSADeviceParser|FM_DIRECT_CONTROL' \\
+            "$OUT/config-files" > "$OUT/config-search.txt" || true
+          echo "Selected config files: $(wc -l < "$OUT/selected-config-files.txt")"
+          echo "Boot/DTB image candidates: $(wc -l < "$OUT/boot-and-dtb-image-candidates.txt")"
+          echo "Config matches: $(wc -l < "$OUT/config-search.txt")"
+
       - name: Upload focused board audio routing evidence
         uses: actions/upload-artifact@v6
         with:
