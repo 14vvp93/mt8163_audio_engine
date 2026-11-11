@@ -244,3 +244,54 @@ There are at least three cooperating but separate FM-related interfaces in this 
 3. `/dev/audiomux` / CD3313 logical channel `RADIO` — the DSP input mute/source-control plane used by `RadioService`.
 
 The XML audio policy additionally declares `FM Tuner In` and routes it to output devices. Static evidence does not yet prove whether a given board configuration feeds the same physical FM signal to both the CD3313 RADIO input and the AP-side FM I2S capture path. Do not merge these paths in `mt8163_tools` until the actual board routing and runtime policy selection are verified.
+
+
+## Exact FM HAL virtual table and sample-rate enum
+
+The exact primary HAL binary from successful workflow run `43114692814` was downloaded and its Android packed `.rel.dyn` section decoded (APS2 format, 2,431 relocation entries). This makes the `WCNChipController` vtable readable instead of treating the zero-filled on-disk `.data.rel.ro` bytes as actual function pointers.
+
+- HAL Build ID: `f66eaf9e6ac950259f0c253be618d15a`.
+- Vtable symbol: `_ZTVN7android17WCNChipControllerE`, VMA `0x001906c4`, size 96 bytes.
+- The vptr begins at VMA `0x001906cc`; virtual method offset `+0x1c` is conclusively `IsFMMergeInterfaceSupported()`, matching the call sites in `AudioALSAFMController::setFmDirectConnection_l()` and the FM capture provider.
+
+Resolved vtable order (offset relative to the vptr):
+
+| Offset | Method |
+|---:|---|
+| `+0x00` | `WCNChipController::~WCNChipController()` (D2) |
+| `+0x04` | `WCNChipController::~WCNChipController()` (D0) |
+| `+0x08` | `GetFmChipPowerInfo()` |
+| `+0x0c` | `SetFmChipVolume(unsigned int)` |
+| `+0x10` | `InitAudioBTInfo()` |
+| `+0x14` | `InitAudioFMInfo()` |
+| `+0x18` | `IsFmChipUseSlaveMode()` |
+| `+0x1c` | `IsFMMergeInterfaceSupported()` |
+| `+0x20` | `IsBTMergeInterfaceSupported()` |
+| `+0x24` | `IsFmChipPadSelConnSys()` |
+| `+0x28` | `GetFmChipSamplingRate()` |
+| `+0x2c` | `SetFmChipSampleRate(unsigned int)` |
+| `+0x30` | `SetBTCurrentSamplingRateNumber(unsigned int)` |
+| `+0x34` | `BTChipHWInterface()` |
+| `+0x38` | `BTUseCVSDRemoval()` |
+| `+0x3c` | `BTChipSamplingRate()` |
+| `+0x40` | `BTChipSyncFormat()` |
+| `+0x44` | `BTChipSyncLength()` |
+| `+0x48` | `BTChipSecurityHiLo()` |
+| `+0x4c` | `GetBTCurrentSamplingRateNumber()` |
+| `+0x50` | `IsCustomizedPlatformSupportFM()` |
+| `+0x54` | `IsSupportFM()` |
+
+### Numeric I2S sample-rate mapping (now resolved)
+
+The relocation-aware lookup table used by `GetFmChipSamplingRate()` contains these values, indexed by the FM audio-info structure field at offset 24:
+
+| Enum value | Label | Returned rate |
+|---:|---|---:|
+| 0 | `FM_I2S_32K` | 32,000 Hz |
+| 1 | `FM_I2S_44K` | 44,100 Hz |
+| 2 | `FM_I2S_48K` | 48,000 Hz |
+| 3 | `FM_I2S_SR_ERR` | Error path; not a valid rate |
+
+The setter independently confirms the inverse mapping: input 32,000 maps to enum 0, 44,100 maps to enum 1, and 48,000 maps to enum 2. It opens `/dev/fm` and issues ioctl `0xC004F521` for the I2S setting operation. Unknown input rates take the error path. This resolves the enum-to-rate question without relying on string ordering.
+
+The direct-connection function's merge-capability call is now also confirmed at the ABI level: the virtual call loads vtable offset `+0x1c`, which the decoded vtable resolves to `IsFMMergeInterfaceSupported()`. This does not yet identify the exact card/PCM names for each branch or establish physical board wiring; those remain separate open items.
