@@ -409,6 +409,114 @@ public final class MainActivity extends Activity {
         });
         root.addView(clarityFrequencyBar);
 
+        TextView dynamicsTitle = text("4-CHANNEL / 3-BAND DYNAMICS", 18, Color.WHITE);
+        dynamicsTitle.setPadding(0, dp(22), 0, dp(8));
+        root.addView(dynamicsTitle);
+        dynamicsToggleButton = button("MULTIBAND DYNAMICS: OFF");
+        dynamicsToggleButton.setOnClickListener(v -> {
+            dynamicsEnabled = !dynamicsEnabled;
+            dynamicsToggleButton.setText(dynamicsEnabled
+                    ? "MULTIBAND DYNAMICS: ON" : "MULTIBAND DYNAMICS: OFF");
+            applyDynamicsProfile();
+        });
+        root.addView(dynamicsToggleButton);
+
+        dynamicsLowLabel = text("Low / Mid crossover · 250 Hz", 14, Color.WHITE);
+        root.addView(dynamicsLowLabel);
+        dynamicsLowBar = new SeekBar(this);
+        dynamicsLowBar.setMax(940);
+        dynamicsLowBar.setProgress(190);
+        dynamicsLowBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                dynamicsLowCrossoverHz = 60.0f + value;
+                dynamicsLowLabel.setText(String.format(Locale.US,
+                        "Low / Mid crossover · %.0f Hz", dynamicsLowCrossoverHz));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {
+                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f) {
+                    dynamicsHighCrossoverHz = Math.min(8000.0f,
+                            (float) Math.ceil(dynamicsLowCrossoverHz * 1.5f / 10.0f) * 10.0f);
+                    dynamicsHighBar.setProgress(Math.round((dynamicsHighCrossoverHz - 1000.0f) / 10.0f));
+                }
+                applyDynamicsProfile();
+            }
+        });
+        root.addView(dynamicsLowBar);
+
+        dynamicsHighLabel = text("Mid / High crossover · 4.0 kHz", 14, Color.WHITE);
+        root.addView(dynamicsHighLabel);
+        dynamicsHighBar = new SeekBar(this);
+        dynamicsHighBar.setMax(700);
+        dynamicsHighBar.setProgress(300);
+        dynamicsHighBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                dynamicsHighCrossoverHz = 1000.0f + value * 10.0f;
+                dynamicsHighLabel.setText(String.format(Locale.US,
+                        "Mid / High crossover · %.1f kHz", dynamicsHighCrossoverHz / 1000.0f));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {
+                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f) {
+                    dynamicsHighCrossoverHz = Math.min(8000.0f,
+                            (float) Math.ceil(dynamicsLowCrossoverHz * 1.5f / 10.0f) * 10.0f);
+                    dynamicsHighBar.setProgress(Math.round((dynamicsHighCrossoverHz - 1000.0f) / 10.0f));
+                }
+                applyDynamicsProfile();
+            }
+        });
+        root.addView(dynamicsHighBar);
+
+        LinearLayout dynamicsSelectors = new LinearLayout(this);
+        dynamicsSelectors.setOrientation(LinearLayout.HORIZONTAL);
+        dynamicsChannelButton = button("CHANNEL · FL");
+        dynamicsChannelButton.setOnClickListener(v -> {
+            selectedDynamicsChannel = (selectedDynamicsChannel + 1) % CHANNELS;
+            refreshDynamicsSelection();
+        });
+        dynamicsBandButton = button("BAND · LOW");
+        dynamicsBandButton.setOnClickListener(v -> {
+            selectedDynamicsBand = (selectedDynamicsBand + 1) % 3;
+            refreshDynamicsSelection();
+        });
+        dynamicsSelectors.addView(dynamicsChannelButton,
+                new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        dynamicsSelectors.addView(dynamicsBandButton,
+                new LinearLayout.LayoutParams(0, dp(48), 1.0f));
+        root.addView(dynamicsSelectors);
+
+        compressorEnabledButton = button("SELECTED COMPRESSOR: OFF");
+        compressorEnabledButton.setOnClickListener(v -> {
+            float[] selected = compressorSettings[selectedDynamicsChannel][selectedDynamicsBand];
+            selected[0] = selected[0] == 1.0f ? 0.0f : 1.0f;
+            refreshDynamicsSelection();
+            applyDynamicsProfile();
+        });
+        root.addView(compressorEnabledButton);
+
+        String[] compressorNames = {"Threshold", "Ratio", "Attack", "Release", "Knee", "Makeup"};
+        int[] compressorMax = {600, 190, 4999, 1999, 240, 240};
+        for (int control = 0; control < compressorBars.length; control++) {
+            final int parameter = control;
+            compressorLabels[control] = text(compressorNames[control], 14, Color.WHITE);
+            root.addView(compressorLabels[control]);
+            compressorBars[control] = new SeekBar(this);
+            compressorBars[control].setMax(compressorMax[control]);
+            compressorBars[control].setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar bar, int value, boolean user) {
+                    updateCompressorLabel(parameter, compressorValue(parameter, value));
+                }
+                @Override public void onStartTrackingTouch(SeekBar bar) {}
+                @Override public void onStopTrackingTouch(SeekBar bar) {
+                    compressorSettings[selectedDynamicsChannel][selectedDynamicsBand][parameter + 1] =
+                            compressorValue(parameter, bar.getProgress());
+                    applyDynamicsProfile();
+                }
+            });
+            root.addView(compressorBars[control]);
+        }
+        refreshDynamicsSelection();
+
         Button run = button("RUN PCM TEST · 512 FRAMES");
         run.setOnClickListener(v -> runPcmTest());
         root.addView(run);
