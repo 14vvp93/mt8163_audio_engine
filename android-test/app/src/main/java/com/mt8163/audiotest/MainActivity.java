@@ -420,7 +420,11 @@ public final class MainActivity extends Activity {
 
     private void persistProfile(String key, float[] values) {
         JSONArray array = new JSONArray();
-        for (float value : values) array.put(value);
+        try {
+            for (float value : values) array.put((double) value);
+        } catch (JSONException error) {
+            throw new IllegalStateException("Cannot serialize sound profile", error);
+        }
         getSharedPreferences(PROFILE_PREFS, MODE_PRIVATE).edit()
                 .putString(key, array.toString()).apply();
     }
