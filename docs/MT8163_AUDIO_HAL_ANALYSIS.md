@@ -488,3 +488,48 @@ Possible downstream architectures remain open:
 The special multichannel masks 0x3F and 0x63F are accepted only in the output-device value 0x400 path in the stream setter; that route is selected as the HDMI playback handler, not as the ordinary speaker Normal handler. This is not evidence that the built-in speaker path is six- or eight-channel.
 
 This is a key architecture gate: before connecting the existing four-channel DSP to the stock HAL, locate where the four physical outputs are separated and determine whether the CD3313 receives stereo, duplicated mono, or four discrete channels. Until then, preserve the four-channel DSP core as an offline/test capability and do not force a four-channel buffer into the Normal handler.
+
+
+## 14. Separate the PCM signal path from speaker-control and CD3313 control paths
+
+A further pass over the primary HAL's speaker/SmartPA symbols clarifies an important architectural distinction.
+
+### HAL SmartPA and I²S configuration is a control/configuration path
+
+The HAL exports and uses a separate `AudioSmartPaController` subsystem:
+
+- `initSpkAmpType()` reads a named property/configuration value from the controller's parsed configuration object.
+- `speakerOn(device, rate)` records the requested device and rate, selects a speaker-amplifier configuration sequence, applies configuration steps, and invokes a configured callback when one is present.
+- `getI2sSequence(name, direction)` selects a sequence from controller configuration using an internal selector with values 0 through 4, then applies the selected key/value sequence.
+- The controller exposes separate getters for I²S input/output selection and I²S setup stage, as well as a SmartPA runtime state and supported-rate checks.
+- The HAL's device configuration manager exposes named turn-on/turn-off sequences such as `ApplyDeviceTurnonSequenceByName()` and `ApplyDeviceTurnoffSequenceByName()`.
+
+These functions establish a configuration/control plane for amplifier and I²S setup. They do not themselves demonstrate that PCM sample data is split into four discrete speaker channels. The strings `I2S0_PLayback`, `I2S0DL1_PLayback`, `I2S5DL1_PLayback`, and `DL1SCPSPK_PLayback` are named device/configuration sequence identifiers, not proof of four-channel PCM interleaving.
+
+### CD3313 has separate input selection and speaker-level controls
+
+The recovered CD3313 driver evidence describes two distinct functions:
+
+1. **Input source selection:** driver channel IDs RADIO, ARM, AUX, EXBT, AUX2, DAB and NONE map to CD3313 input selector codes. The datasheet identifies three externally pinned stereo inputs; input 4 has no external pins. This is an analog input-source selection/control function, not a mapping of four PCM speaker channels.
+2. **Speaker attenuation:** command 0x15 reads four 32-bit speaker-level indices in FL/FR/RL/RR order and maps each through a 16-entry attenuation table into four separate register fields. This proves four independently controlled speaker-level fields in the CD3313 control path. It does **not** prove that four independent PCM sample streams arrive at the chip or that the command is a four-channel DSP interface.
+
+Thus, the current evidence supports four separately adjustable hardware speaker levels, but not four discrete software PCM channels at the HAL's Normal post-processing boundary.
+
+### Consequence for the MT8163 Audio Engine architecture
+
+Keep these three planes separate until board-level and runtime evidence joins them:
+
+- **PCM data plane:** AudioFlinger → AudioALSAStreamOut → selected playback handler → MTK post-processing → BLI SRC/bit conversion → ALSA/I²S.
+- **Amplifier/I²S configuration plane:** AudioSmartPaController and AudioALSADeviceConfigManager configure device sequences and amplifier state.
+- **CD3313 control plane:** the kernel driver controls analog input selection, mute/switch GPIOs, subwoofer control and per-speaker attenuation registers through its own command interface.
+
+Our four-channel DSP core can still provide four independent EQ/dynamics/gain paths, but the integration must establish where each physical speaker's PCM data is actually formed. A four-value CD3313 speaker-level command is not a substitute for locating four sample streams. If the hardware only supplies stereo PCM to a stereo amplifier stage, the correct integration may be a two-channel DSP followed by hardware speaker-level control, rather than forcing a four-channel buffer into the stock HAL.
+
+### Next static-analysis targets
+
+1. Recover the exact `AudioSmartPaController::initSmartPaAttribute()` configuration keys and the code that reads the I²S sequence tables, to identify the actual I²S port/device combinations used for speaker playback.
+2. Trace the HAL call sites of `AudioSmartPaController::speakerOn()` and `AudioALSAHardwareResourceManager::setOutputDevice()` to correlate output-device changes with named turn-on sequences.
+3. Inspect the CD3313 command 0x15 register-field mapping alongside the datasheet to label the four attenuation fields without treating them as PCM channels.
+4. Locate the board's actual I²S/TDM topology or runtime mixer configuration. Only that can establish whether the CD3313 receives stereo, duplicated mono, or a multichannel serial stream.
+
+No live hardware commands, I²S changes, kernel writes, or HAL patches were performed.
