@@ -182,10 +182,10 @@ jobs:
           set -euo pipefail
           OUT=firmware-analysis/board-audio-routing
           mkdir -p "$OUT/decompiled-dtb"
-          find firmware-analysis -type f \\
-            \\( -iname '*.dts' -o -iname '*.dtsi' -o -iname '*.dtb' -o -iname '*.dtbo' \\
-               -o -iname '*.xml' -o -iname '*.conf' -o -iname '*.ini' -o -iname '*.cfg' \\
-               -o -iname '*.rc' -o -iname '*.prop' -o -iname '*.mk' \\) \\
+          find firmware-analysis -type f \
+            \( -iname '*.dts' -o -iname '*.dtsi' -o -iname '*.dtb' -o -iname '*.dtbo' \
+               -o -iname '*.xml' -o -iname '*.conf' -o -iname '*.ini' -o -iname '*.cfg' \
+               -o -iname '*.rc' -o -iname '*.prop' -o -iname '*.mk' \) \
             ! -path '*/board-audio-routing/*' -print | sort > "$OUT/candidate-files.txt"
 
           python3 - <<'PY'
@@ -222,7 +222,7 @@ jobs:
                   scanned += 1
                   for number, line in enumerate(content.splitlines(), 1):
                       if rx.search(line):
-                          report.write(f"{path}:{number}:{line[:1000]}\\n")
+                          report.write(f"{path}:{number}:{line[:1000]}\n")
                           matches += 1
 
           dtb_index = 0
@@ -236,17 +236,17 @@ jobs:
                       ["dtc", "-I", "dtb", "-O", "dts", "-o", str(target), str(path)],
                       text=True, capture_output=True,
                   )
-                  log.write(f"{path} -> {target}: exit={result.returncode}\\n")
+                  log.write(f"{path} -> {target}: exit={result.returncode}\n")
                   if result.stderr:
-                      log.write(result.stderr[:4000] + "\\n")
+                      log.write(result.stderr[:4000] + "\n")
                   if result.returncode != 0 and target.exists():
                       target.unlink()
           print(f"Scanned {scanned} text configuration files; found {matches} matching lines; attempted {dtb_index} DTB/DTBO conversions")
           PY
 
-          find firmware-analysis -type f \\
-            \\( -iname '*.ko' -o -iname '*.dtb' -o -iname '*.dtbo' -o -iname '*audio*policy*' \\
-               -o -iname '*audio*platform*' -o -iname '*audio*config*' \\) \\
+          find firmware-analysis -type f \
+            \( -iname '*.ko' -o -iname '*.dtb' -o -iname '*.dtbo' -o -iname '*audio*policy*' \
+               -o -iname '*audio*platform*' -o -iname '*audio*config*' \) \
             ! -path '*/board-audio-routing/*' -print | sort > "$OUT/audio-and-device-tree-binaries.txt"
           test -s "$OUT/candidate-files.txt"
           test -f "$OUT/text-matches.txt"
