@@ -751,3 +751,34 @@ The proven ordinary-speaker activation path is:
 The SmartPA `speakerOn()/getI2sSequence()` subsystem is a separate configurable control path and is not demonstrated as the active ordinary-speaker path for the captured `int_spk_amp` configuration.
 
 The remaining blocker is now more specific: recover the concrete resource-manager callback object/sequence-name initialization and the board's complete device configuration plus mixer controls. These are needed to identify the actual codec/DAC switch settings and any downstream serial-audio routing. No HAL patch, mixer write, GPIO change, I²S change, or live-device operation was performed.
+
+## 19. Speaker sequence key mismatch in the captured HAL/config pair
+
+A fresh disassembly of the archived primary HAL (Build ID f66eaf9e6ac950259f0c253be618d15a) exposed a configuration-key discrepancy that was not visible from the higher-level call graph alone.
+
+### Exact argument passed by OpenSpeakerPath()
+
+At AudioALSAHardwareResourceManager::OpenSpeakerPath(unsigned int) (0x76250), the call to AudioALSADeviceConfigManager::ApplyDeviceTurnonSequenceByName(const char*) passes a PC-relative pointer. Resolving the ARM literal and the ELF load-segment address mapping gives:
+
+- pointer virtual address: `0x00157274`;
+- corresponding file offset: `0x00155274`;
+- bytes at that location: `ker_output\0`.
+
+The pointer lands four bytes into the adjacent `speaker_output\0` string at file offset `0x155270`. This is not the start of `speaker_output`; the effective C string passed by this call site is the suffix `ker_output`.
+
+### The callee performs an exact name lookup
+
+The implementation of `ApplyDeviceTurnonSequenceByName()` at `0xF4628` iterates the loaded device-path entries and compares the supplied name against each entry's stored path name with `strcmp` (call site `0xF4664`). It then applies the matching path's key/value mixer controls. There is no prefix completion or normalization in this lookup loop.
+
+### Comparison with the captured board XML
+
+The supplied `vendor/audio_device.xml` defines `two_in_one_speaker_output`, `receiver_output`, and `headphoneSpeaker_output`. It defines neither `ker_output` nor `speaker_output`.
+
+Therefore the captured HAL call-site argument and the captured XML path names do not match. This is a real static-artifact discrepancy, but its runtime cause is not yet established. Plausible explanations include a different XML/configuration revision on the live unit, another loaded configuration source, or a vendor HAL/config packaging mismatch. Do not silently reinterpret `ker_output` as `two_in_one_speaker_output`.
+
+### Integration consequence / next evidence
+
+- The ordinary speaker turn-on path is known to invoke a named configuration lookup, but the captured artifacts do not yet prove which mixer controls are actually applied on the target head unit.
+- Obtain the live unit's resolved device-path configuration (or the exact XML loaded by `AudioALSADeviceConfigManager`) and compare it with the HAL's literal argument.
+- Until that is resolved, do not infer that `Audio_Speaker_class_Switch=CLASSAB` is necessarily applied by this particular `OpenSpeakerPath()` call.
+- No HAL patch, mixer write, GPIO change, I²S change, or live-device operation was performed.
