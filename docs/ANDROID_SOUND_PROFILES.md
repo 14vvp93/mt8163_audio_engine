@@ -8,11 +8,11 @@ This is a test-bench control feature. It does not route audio into Android's sys
 
 ## Persisted controls
 
-The Android snapshot stores DSP enable state; four channel gains (FL, FR, RL, RR); 32 peaking-EQ gain values per channel; Balance/Fader; software bass-management enable, crossover frequency/order, subwoofer gain and phase; Bass enhancement enable/amount/focus frequency; and Clarity enhancement enable/amount/focus frequency.
+The Android snapshot stores DSP enable state; four channel gains (FL, FR, RL, RR); 32 peaking-EQ gain values per channel; Balance/Fader; software bass-management enable, crossover frequency/order, subwoofer gain and phase; Bass enhancement enable/amount/focus frequency; Clarity enhancement enable/amount/focus frequency; multiband dynamics enable state, low/mid and mid/high crossover frequencies, and all seven compressor parameters for each of the 12 channel/band combinations.
 
 The snapshot is applied to native code as one validated profile update, rather than issuing a sequence of independent control calls. This preserves the engine's single 50 ms profile crossfade and avoids partially applied profiles.
 
-## Packed JNI layout (146 floats)
+## Packed JNI layout (233 floats)
 
 | Index | Contents |
 |---:|---|
@@ -31,8 +31,14 @@ The snapshot is applied to native code as one validated profile update, rather t
 | 143 | Clarity enhancement enabled (0 or 1) |
 | 144 | Clarity enhancement amount (0–1) |
 | 145 | Clarity focus frequency in Hz |
+| 146 | Multiband dynamics enabled (0 or 1) |
+| 147 | Low/mid crossover frequency in Hz |
+| 148 | Mid/high crossover frequency in Hz |
+| 149–232 | Four channels × three bands; each compressor stores enabled, threshold dB, ratio, attack ms, release ms, knee dB and makeup gain dB |
 
-Native code rejects wrong-length arrays, non-finite values, invalid boolean encodings, out-of-range controls and unsupported crossover orders before queuing the profile.
+The compressor settings are independently selectable for FL, FR, RL and RR, with Low, Mid and High bands. The test-bench UI exposes master dynamics enable, both crossover frequencies, channel/band selection, per-band enable and threshold/ratio/attack/release/knee/makeup controls.
+
+Native code rejects wrong-length arrays, non-finite values, invalid boolean encodings, out-of-range controls, invalid compressor parameters and unsupported crossover orders before queuing the profile.
 
 ## Compatibility
 
