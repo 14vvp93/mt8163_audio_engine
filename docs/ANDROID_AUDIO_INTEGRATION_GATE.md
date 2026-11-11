@@ -249,3 +249,43 @@ speaker route; it is not a CD3313 command path. The Normal handler reaches
 that chain only after its speaker-bit stereo-to-mono fold. See
 [MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md](MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md)
 and [AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md](AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md).
+
+
+## 12. CD3313 is stereo-analog-in / four-analog-out, not four-channel PCM
+
+The manufacturer CD3313-AX-BJ-24 datasheet confirms:
+- three selectable stereo analog inputs;
+- left/right analog processing paths for volume, bass, treble and loudness;
+- four independent analog output attenuators/mute paths;
+- analog outputs LF, RF, LR and RR on pins 25, 24, 23 and 22;
+- independent four-output attenuation/balance/loudness control, but no
+  multichannel PCM input interface and no four independent per-output PEQ
+  banks.
+
+See [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md), section
+“CD3313 signal architecture: stereo analog input, four analog outputs”.
+
+This reconciles the driver command `0x15`: it controls four real, independent
+analog speaker output levels. It does **not** represent four independent
+digital PCM channels.
+
+### Updated project architecture gate
+
+- Retain FL/FR/RL/RR as four analog output-level controls mapped to the CD3313
+  when its userspace API is recovered.
+- Treat the digital DSP input as stereo or mono according to the selected
+  Normal-handler route. The speaker-containing route is folded to mono before
+  the MTK/BES post-processing stage.
+- Apply digital PEQ, bass and clarity in the stereo/mono PCM domain before
+  the DAC/CD3313 analog input path; do not send a four-channel PCM buffer into
+  the existing two-channel Normal handler.
+- Do not claim independent front/rear PEQ or per-output delay through CD3313.
+  Those require a separate verified multichannel DSP path or additional
+  hardware.
+- Keep the four-channel engine as an offline/test capability until the actual
+  board topology proves a multichannel digital insertion point.
+
+This is a capability boundary from the chip datasheet plus static HAL
+disassembly, not a claim that the board's complete analog wiring has been
+recovered. The live DAC-to-CD3313 input connection still needs DT/mixer/board
+evidence.
