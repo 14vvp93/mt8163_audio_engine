@@ -289,3 +289,16 @@ If the requested rate is not in this list, the code writes 44,100 Hz back throug
 We now have a confirmed configuration chain from the HAL output-stream wrapper into the stream manager, and a confirmed record of the requested/accepted format, channel mask, output device, channel count and sample rate in the stream object. This narrows the path to inspect when reconstructing `stream_attribute_t`.
 
 It does **not** yet prove the exact assignments from these `AudioALSAStreamOut` fields into every `stream_attribute_t` member, the final PCM layout at the MTK filter-manager input, or the route-specific handler selected at runtime. The next step is to trace the interface object and its stream-attribute construction/copy routine, then correlate that with the Normal handler's actual target-rate and period calculations. No HAL binary, routing, or runtime behavior was changed.
+
+
+### Direct stream-manager to AudioALSAStreamOut::set() handoff
+
+The `AudioALSAStreamManager::openOutputStream()` implementation at `0x77E30` allocates and initializes a stream object, obtains its virtual table, and calls the function pointer at vtable offset `+0x5C`. The call arguments are assembled from the output device, dereferenced format/channel-mask/sample-rate/status values, and output flags. Their order and types match the exported `AudioALSAStreamOut::set(unsigned int, int*, unsigned int*, unsigned int*, int*, unsigned int)` entry at `0x8172C`.
+
+This connects the public `AudioALSAHardware::openOutputStream()` wrapper to the concrete stream setter:
+
+`AudioALSAHardware::openOutputStream()` → `AudioALSAStreamManager::openOutputStream()` → virtual stream setup at vtable +0x5C → `AudioALSAStreamOut::set()`.
+
+The flagged hardware overload follows the same manager path while forwarding the output flags. This is an ABI-level correspondence from the disassembly; the virtual call itself remains indirect in the machine code.
+
+The setter's fields at +0x48, +0x50, +0x60, +0x6C and +0x70 therefore belong to the concrete stream object created by the manager, rather than being unrelated configuration values. The next unresolved edge is the transfer from this stream object into the per-playback `stream_attribute_t` passed to `createPlaybackHandler()`. We should follow the stream-out interface/open lifecycle and any attribute-copy helper before assigning meanings to additional offsets.
