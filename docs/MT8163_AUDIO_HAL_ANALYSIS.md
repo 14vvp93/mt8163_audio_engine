@@ -758,13 +758,9 @@ A fresh disassembly of the archived primary HAL (Build ID f66eaf9e6ac950259f0c25
 
 ### Exact argument passed by OpenSpeakerPath()
 
-At AudioALSAHardwareResourceManager::OpenSpeakerPath(unsigned int) (0x76250), the call to AudioALSADeviceConfigManager::ApplyDeviceTurnonSequenceByName(const char*) passes a PC-relative pointer. Resolving the ARM literal and the ELF load-segment address mapping gives:
+At `AudioALSAHardwareResourceManager::OpenSpeakerPath(unsigned int)` (0x76250), the call to `AudioALSADeviceConfigManager::ApplyDeviceTurnonSequenceByName(const char*)` passes a PC-relative pointer. The `add r1, pc, r1` instruction is at 0x76268, so ARM's PC value is 0x76270. Adding the literal 0x000e1000 gives virtual address `0x00157270`; the ELF load-segment mapping gives file offset `0x00155270`. The bytes there are exactly `speaker_output\\0`.
 
-- pointer virtual address: `0x00157274`;
-- corresponding file offset: `0x00155274`;
-- bytes at that location: `ker_output\0`.
-
-The pointer lands four bytes into the adjacent `speaker_output\0` string at file offset `0x155270`. This is not the start of `speaker_output`; the effective C string passed by this call site is the suffix `ker_output`.
+The earlier +4-byte interpretation was an address-calculation error. The effective C string passed by this call site is `speaker_output`, not `ker_output`.
 
 ### The callee performs an exact name lookup
 
@@ -785,3 +781,36 @@ Therefore the captured HAL call-site argument and the captured XML path names do
 ### Error propagation at the caller
 
 The no-match branch in `ApplyDeviceTurnonSequenceByName()` returns `-38` (`-ENOSYS`) after its error-log path. `OpenSpeakerPath()` does not propagate that result: immediately after the call it sets the return register to zero and returns success. Consequently, if the captured key/XML mismatch is present at runtime, the named mixer sequence can fail while `OpenSpeakerPath()` still reports success to its caller. This is a static control-flow conclusion; it does not prove that the mismatch occurs on the live head unit.
+
+## 20. Route callback table decoded from the HAL vtable
+
+The ELF's packed Android relocation table was decoded to resolve the AudioALSAHardwareResourceManager vtable at 0x0018fd20. This makes the indirect dispatch in startOutputDevice_l() unambiguous.
+
+Relevant vtable slots:
+| Vtable offset | Resolved method |
+|---:|---|
+| +0xb8 | OpenReceiverPath(unsigned int) |
+| +0xc0 | OpenHeadphonePath(unsigned int) |
+| +0xc8 | OpenSpeakerPath(unsigned int) |
+| +0xd0 | OpenHeadphoneSpeakerPath(unsigned int) |
+
+The startOutputDevice_l() jump table indexes by device - 1 and dispatches:
+| Internal selector value | Vtable slot | Callback |
+|---:|---:|---|
+| 2 | +0xc0 | OpenHeadphonePath |
+| 4 | +0xb8 | OpenReceiverPath |
+| 6 | +0xc8 | OpenSpeakerPath |
+| 8 | +0xb8 | OpenReceiverPath |
+| 10 | +0xc8 | OpenSpeakerPath |
+
+Other selector values in the 1..10 range take the default/null path in this switch. These are the internal integer values consumed by this helper; the upstream conversion from Android audio_devices_t and the board's runtime route selection still need to be traced before assigning Android device names.
+
+The literal sequence names were independently resolved from the call-site PC-relative pointers:
+- OpenReceiverPath passes receiver_output, which exactly matches the captured XML.
+- OpenHeadphonePath passes headphone_output, which is not defined in the captured XML (the XML instead defines headphoneSpeaker_output).
+- OpenSpeakerPath passes speaker_output, which is not defined in the captured XML (the XML instead defines two_in_one_speaker_output).
+- OpenHeadphoneSpeakerPath passes headphoneSpeaker_output, which exactly matches the captured XML.
+
+This confirms two potential HAL/XML name mismatches at the static artifact level. The missing-path behavior and error swallowing described in section 19 apply to the headphone_output and speaker_output cases as well. The mapping does not prove that either mismatched callback is used on the live unit; it establishes exactly which internal selector values would invoke them.
+
+No hardware state was changed.
