@@ -291,7 +291,7 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_mt8163_audioengine_NativeDsp_nativeApplyUiProfile(
         JNIEnv* env, jclass, jlong native_handle, jfloatArray profile_array) {
     EngineHandle* handle = from_handle(native_handle);
-    constexpr std::size_t kUiProfileCount = 146U;
+    constexpr std::size_t kUiProfileCount = 233U;
     if (handle == nullptr || profile_array == nullptr ||
         env->GetArrayLength(profile_array) != static_cast<jsize>(kUiProfileCount)) {
         return JNI_FALSE;
@@ -375,7 +375,29 @@ Java_com_mt8163_audioengine_NativeDsp_nativeApplyUiProfile(
     candidate.enhancements.clarity_amount = values[144];
     candidate.enhancements.clarity_frequency_hz = values[145];
 
-    if (offset != 133U || !pcm_dsp::validate_audio_profile(candidate,
+    std::size_t dynamics_offset = 146U;
+    bool dynamics_enabled = false;
+    if (!read_boolean(values[dynamics_offset++], dynamics_enabled)) return JNI_FALSE;
+    candidate.dynamics.enabled = dynamics_enabled;
+    candidate.dynamics.low_crossover_hz = values[dynamics_offset++];
+    candidate.dynamics.high_crossover_hz = values[dynamics_offset++];
+    for (std::size_t channel = 0; channel < pcm_dsp::kDynamicsChannelCount; ++channel) {
+        for (std::size_t band = 0; band < pcm_dsp::kDynamicsBandCount; ++band) {
+            auto& compressor = candidate.dynamics.compressors[channel][band];
+            if (!read_boolean(values[dynamics_offset++], compressor.enabled)) {
+                return JNI_FALSE;
+            }
+            compressor.threshold_db = values[dynamics_offset++];
+            compressor.ratio = values[dynamics_offset++];
+            compressor.attack_ms = values[dynamics_offset++];
+            compressor.release_ms = values[dynamics_offset++];
+            compressor.knee_db = values[dynamics_offset++];
+            compressor.makeup_gain_db = values[dynamics_offset++];
+        }
+    }
+
+    if (offset != 133U || dynamics_offset != kUiProfileCount ||
+        !pcm_dsp::validate_audio_profile(candidate,
             handle->engine.sample_rate()) ||
         !handle->engine.apply_profile(candidate)) {
         return JNI_FALSE;
