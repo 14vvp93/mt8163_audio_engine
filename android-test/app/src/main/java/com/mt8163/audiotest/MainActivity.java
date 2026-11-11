@@ -464,9 +464,9 @@ public final class MainActivity extends Activity {
                 if (db < -18.0f || db > 18.0f) return false;
             }
         }
-        float balance = values[133], fader = values[134];
+        float preflightBalance = values[133], preflightFader = values[134];
         int order = Math.round(values[137]);
-        if (Math.abs(balance) > 1.0f || Math.abs(fader) > 1.0f ||
+        if (Math.abs(preflightBalance) > 1.0f || Math.abs(preflightFader) > 1.0f ||
                 values[136] < 40.0f || values[136] > 400.0f ||
                 values[137] != order ||
                 (order != 2 && order != 4 && order != 6 && order != 8) ||
