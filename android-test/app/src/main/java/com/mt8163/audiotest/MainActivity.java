@@ -434,9 +434,9 @@ public final class MainActivity extends Activity {
             }
             @Override public void onStartTrackingTouch(SeekBar bar) {}
             @Override public void onStopTrackingTouch(SeekBar bar) {
-                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f) {
+                if (dynamicsHighCrossoverHz < dynamicsLowCrossoverHz * 1.5f + 0.001f) {
                     dynamicsHighCrossoverHz = Math.min(8000.0f,
-                            (float) Math.ceil(dynamicsLowCrossoverHz * 1.5f / 10.0f) * 10.0f);
+                            (float) Math.ceil((dynamicsLowCrossoverHz * 1.5f + 0.001f) / 10.0f) * 10.0f);
                     dynamicsHighBar.setProgress(Math.round((dynamicsHighCrossoverHz - 1000.0f) / 10.0f));
                 }
                 applyDynamicsProfile();
@@ -696,7 +696,7 @@ public final class MainActivity extends Activity {
         if ((dynamicsFlag != 0.0f && dynamicsFlag != 1.0f) ||
                 lowCrossover < 60.0f || lowCrossover > 1000.0f ||
                 highCrossover < 1000.0f || highCrossover > 8000.0f ||
-                highCrossover < lowCrossover * 1.5f) return false;
+                highCrossover < lowCrossover * 1.5f + 0.001f) return false;
         for (int ch = 0; ch < CHANNELS; ch++) {
             for (int band = 0; band < 3; band++) {
                 float enabled = values[dynamicsIndex++];
