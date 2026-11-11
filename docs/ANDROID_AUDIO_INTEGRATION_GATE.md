@@ -95,3 +95,28 @@ The Java test wrapper serializes its methods and is not a model for the producti
 ## 6. Current decision
 
 Proceed with static call-site and buffer-layout recovery. Do not create a guessed HAL hook or claim four-channel system integration yet. The next implementation should be the smallest adapter that matches a proven native buffer contract, not a speculative replacement for the vendor audio stack.
+
+
+## 7. Newly correlated CD3313 four-speaker control path
+
+A separate static analysis of the HEQ application and `cd3313.ko` provides an important refinement to the topology model:
+
+- HEQ selects a CD3313 ASP path when the system property `ro.hw.dsp.chip` is `cd3313`.
+- Its hidden vendor `android.audio.AudioEffect` API exposes `setBalance(FL, FR, RL, RR)`, bass, treble, loudness, subwoofer, and master-volume methods.
+- The kernel driver's command `0x15` reads four 32-bit speaker-level indices in FL/FR/RL/RR order and maps each through a 16-entry attenuation table before writing four distinct register fields.
+- The driver's 16-entry speaker table is attenuation control, not evidence of four independent software PEQ channels.
+- Commands `0x55` and `0x5C` control bass and treble transition targets; their optimized handler argument semantics are only partially recovered.
+
+This gives us a credible **hardware four-speaker level-control path** to investigate separately from PCM processing. It does not establish that the HAL's `AudioMTKFilterManager::process()` callback carries four-channel PCM.
+
+### Revised integration split
+
+Keep these responsibilities distinct:
+
+1. **PCM DSP:** initially process the proven primary media PCM format at the verified MTK boundary. The current HAL policy indicates PCM16 stereo 44.1/48 kHz, but the callback's actual buffer contract must still be recovered.
+2. **CD3313 speaker controls:** expose four-channel attenuation/balance/fader only through a verified vendor framework/native transport. Do not call the kernel ABI directly until the matching framework implementation and exact ioctl encoding are recovered.
+3. **Four-channel EQ claim:** do not label the hardware balance/fader path as four independent PEQ. If the physical unit exposes only stereo PCM into the CD3313, independent FL/FR/RL/RR EQ requires a separately demonstrated four-channel PCM boundary or additional DSP hardware/software routing.
+
+The hidden `android.audio.AudioEffect` implementation is not included in the current archive. HEQ's Java call sites identify the high-level API, but not its native transport, argument scaling, ioctl request values, or runtime behavior. Obtain the matching framework JAR and associated native/service libraries before implementing this adapter.
+
+The source evidence and command limitations are detailed in [HEQ_APK_ANALYSIS.md](HEQ_APK_ANALYSIS.md), [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md), and [CD3313_USERSPACE_CLIENT_SCAN.md](CD3313_USERSPACE_CLIENT_SCAN.md).
