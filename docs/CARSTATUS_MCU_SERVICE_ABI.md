@@ -69,19 +69,28 @@ physical signal source beyond the named GPIO request strings.
 
 ## Relationship to CD3313 mute
 
-The carstatus `update_mute()` function opens `/dev/audiomux` with
-`O_RDONLY`, updates the carstatus module's own mute mask under a mutex,
-schedules its own delayed events, and drives GPIO 393 (`0x189`) in the recovered call path. It then closes the
-audiomux file. This is the same numeric GPIO used by the CD3313 driver's
-DSP shutdown/wakeup path, so the two modules appear to share a physical
-control line; ownership, polarity, and race behavior still need analysis. No ioctl or
-write call to `/dev/audiomux` is made by this function.
+The carstatus `update_mute()` function always updates its internal mute mask
+under a mutex and schedules delayed events. It then probes
+`/dev/audiomux` with `filp_open(..., O_RDONLY, 0)`:
 
-Therefore this path confirms that carstatus checks for the presence of the
-CD3313 device and coordinates a separate amplifier-mute GPIO, but it does
-**not** establish that carstatus sends CD3313 command `0x11` or mute reason
-`2`. The ACC-to-CD3313 reason-2 sender remains unresolved and must be
-traced elsewhere in the service/native stack.
+- If the open succeeds, it closes the file and returns without driving GPIO
+  393.
+- If the open fails (an `ERR_PTR` result), it falls back to computing the
+  mute output and drives GPIO 393 (`0x189`) through
+  `gpiod_direction_output_raw()`.
+
+GPIO 393 is the same numeric GPIO used by the CD3313 driver's DSP
+shutdown/wakeup path. The branch condition strongly suggests intentional
+ownership selection: when `/dev/audiomux` is available, the CD3313 driver
+owns the line; carstatus drives it only as a fallback when the audio device
+cannot be opened. This avoids the apparent concurrent GPIO writes in the
+normal configuration, although the exact electrical polarity and failure
+cases still need hardware confirmation.
+
+This path confirms device-presence coordination, but it does **not**
+establish that carstatus sends CD3313 command `0x11` or mute reason `2`.
+The ACC-to-CD3313 reason-2 sender remains unresolved and must be traced
+elsewhere in the service/native stack.
 
 ## Next evidence
 
