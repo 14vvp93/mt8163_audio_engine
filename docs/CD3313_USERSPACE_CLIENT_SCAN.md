@@ -99,3 +99,24 @@ The driver-side reconstruction currently indicates that the request word carries
 ## Limitations
 
 A negative string scan is not proof that no client exists on the actual head unit. The client may be outside files.zip, may construct the device path dynamically, or may use an indirect library call. This result only narrows the original 36-file audio archive and prevents us from incorrectly attributing unrelated HAL ioctl calls to CD3313. The subsequent files2 VDEX analysis establishes the high-level Java/Binder client and its command mapping; only the native JNI transport and exact ioctl request remain unresolved.
+
+
+## 2026-11-11 expanded firmware artifact follow-up: native client confirmed
+
+The negative findings above apply to the original 36-file audio-only archive
+and the bounded `files.zip` scan. The larger firmware-library-analysis
+artifact includes `lib/lib/libcarservices_jni.so`, which is the native
+provider for the recovered Java/Binder API.
+
+Its JNI registration identifies `android/sourceservice/ExtAudioMuxer`.
+Static ARM disassembly confirms that `SendCmdAudioMux(int,int[])` opens
+`/dev/audiomux` with `O_WRONLY` and calls `ioctl()`; `nativeInit()`
+opens it read-only and queries the `cd3313` identifier. This closes the
+previously missing userspace transport link. It does not identify a separate
+ordinary app process directly opening the node: the native call executes in
+the sourceinfo service process.
+
+The exact request formula and its extra-word discrepancy are recorded in
+[CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md). The extra copied word has no
+established value, so this is not yet authorization to implement or execute
+a direct device client. No live ioctl or hardware command has been sent.
