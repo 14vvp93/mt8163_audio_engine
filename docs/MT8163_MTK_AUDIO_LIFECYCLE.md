@@ -188,3 +188,55 @@ The first two callbacks also expose the buffer lifecycle in `MtkAudioLoud::open(
 This establishes the role of `this + 0x50` as the BES handle's state/context pointer and identifies `this + 0x58` as the allocation supplied for that state. The other allocation, `this + 0x54`, is passed as the second argument to the streaming callback at `+0x4C); its exact internal workspace semantics remain to be recovered.
 
 The callback relationship is now directly traced end-to-end through handle creation, work-buffer sizing/allocation, state initialization, and the per-chunk process call. The remaining uncertainty is primarily the internal meaning of the BES state fields and the PCM sample/channel format, not the identity of the callback table.
+
+
+## Streaming callback ABI and processing responsibilities — refined
+
+The callback at MtkAudioLoud +0x4C is the sixth function installed by BLOUD_HD_SetHandle() (libbessound_hd_mtk_vendor.so address 0xC088). The component-engine call site at 0x57D0–0x57E6 makes its six-argument ARM AAPCS layout recoverable:
+
+| Argument | Location at callback entry | Observed meaning |
+|---:|---|---|
+| 1 | r0 | BES handle/function-table base (MtkAudioLoud +0x38) |
+| 2 | r1 | Auxiliary work buffer (MtkAudioLoud +0x54) |
+| 3 | r2 | Current input chunk pointer |
+| 4 | r3 | Pointer to the input-consumed byte/count value for this callback |
+| 5 | [sp] | Current output chunk pointer |
+| 6 | [sp + 4] | Pointer to the output-produced byte/count value |
+
+A provisional ABI spelling, with neutral types, is:
+
+    int process_cb(void *handle, void *work_buffer, const void *input,
+                   uint32_t *input_consumed, void *output,
+                   uint32_t *output_produced);
+
+The parameter order is grounded in the component-engine caller and the callback's own prologue. The exact units represented by the two counters are still not fully proven; the wrapper treats them as byte/count quantities and accumulates them separately. The callback initializes both pointed-to values to zero before its work and writes updated values on return. The caller relies on these counters; the callback's integer return value is not tested at the immediate call site.
+
+### What the 0xC088 callback actually does
+
+The callback resolves the BES state pointer through handle offset +0x18 (which is MtkAudioLoud +0x50). It then reads internal state fields including offsets +0x04, +0x18, +0x1128, +0x112C, +0x1134, +0x1138, +0x113C, and +0x1750. These are internal BES state offsets, not public API fields; their semantic names remain unresolved.
+
+The callback:
+- validates the handle, input/output counter pointers, and state pointer;
+- clears the consumed/produced counters before processing;
+- derives a mode-dependent input amount using a right shift of the incoming count;
+- derives a required chunk amount from the state field at +0x18 and a mode-dependent left shift;
+- rejects or defers work when the available amount is smaller than the required amount;
+- dispatches through the BES fixed/ramped output-gain helpers (Apply_Fix_Output_Gain_Mo, Apply_Ramp_Output_Gain_Mo, and Apply_Ramp_Output_Gain_St) according to the internal mode/state;
+- updates the consumed and produced counters used by MtkAudioLoud::process().
+
+This confirms that the +0x4C entry is the streaming callback and exposes its six-argument buffer/counter ABI. It does not yet identify the exact PCM sample format, channel count, interleaving, or the unit of the state-derived chunk amount.
+
+### Important distinction: BLOUD_HD_Internal_Process
+
+The BES library also exports BLOUD_HD_Internal_Process at 0x6ECC (size 4048 bytes). However, libaudiocomponentengine_vendor.so has dynamic imports for BLOUD_HD_SetHandle and BLOUD_HD_Filter_Design, but no dynamic import for BLOUD_HD_Internal_Process. The 0xC088 callback body does not contain a direct call to that exported entry point; its visible calls include the gain/ramp helpers listed above.
+
+Therefore, do not label 0x6ECC as the callback installed at MtkAudioLoud +0x4C, and do not assume it is called by 0xC088 without further indirect-call/data-flow evidence. The proven streaming callback target remains 0xC088.
+
+### Next reverse-engineering targets
+
+1. Decode the state fields used by 0xC088, especially +0x04, +0x18, +0x1128, +0x112C, and +0x1750.
+2. Trace the producer of the state object and the parameter records consumed by the callback.
+3. Determine whether the gain/ramp helper branches operate on mono, stereo, or converted/interleaved buffers for each mode.
+4. Trace the upstream AudioMTKFilterManager::process() caller and its buffer format before designing the Android integration adapter.
+
+No stock HAL, DSP code, CD3313 command, or runtime audio routing was modified.
