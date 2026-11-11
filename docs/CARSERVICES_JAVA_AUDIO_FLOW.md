@@ -154,3 +154,18 @@ In sendFreq(), the code waits 120 ms after muting before calling nativeSetFreq()
 The FM mute-status handler decodes the relevant boolean from bit 0x02 of a radio MCU packet, calls setInputPathMute(0, decodedFlag, 2), and sends the corresponding MCU mute mask. The scan path also uses reason 2, but for a separate operation. Therefore the numeric reason alone is not enough to identify why the radio path is muted.
 
 The driver command 0x04 is known to receive the Java payload shape [inputPath, mute, reason], but the mapping from Java path ID 0 to a physical CD3313 source remains unproven. Keep that mapping explicitly unresolved until the matching cd3313.ko handler is disassembled and checked against runtime routing.
+
+
+## Audio HAL and policy cross-check (FM path)
+
+The firmware artifact also contains vendor/audio_policy_configuration.xml and vendor/audio.primary.mt8163.so. These provide a second, lower-level view of the FM route:
+
+- The active-looking primary module policy declares FM Tuner In as an attached input device. Its input profile supports PCM 16-bit at 8, 16, 32, 44.1, and 48 kHz, mono or stereo.
+- The policy routes FM Tuner In as a source to Speaker, Wired Headset, and Wired Headphones. The default output device is Speaker. FM Tuner Out is separately declared as an output sink for primary output; do not confuse FM Tuner In with FM Tuner Out.
+- The stripped primary HAL still exports symbols for AudioALSAFMController::setFmEnable, routing, setFmDirectConnection_l, setFmVolume, AudioALSACaptureHandlerFMRadio, AudioALSACaptureDataProviderFMRadio, and AudioALSAPlaybackHandlerFMTransmitter.
+- WCNChipController symbols and strings show a separate FM-chip control interface: /dev/fm and /proc/fm, with strings for FM_IOCTL_GET_AUDIO_INFO, FM_IOCTL_I2S_SETTING, and FM_IOCTL_SETVOL. The HAL also contains FM_I2S_Playback and FM_I2S_Capture modes and reads FM chip I2S pad/mode/rate information.
+- AudioALSAStreamManager exposes setFmEnable(bool, bool, bool, unsigned int) and setFmVolume(float), delegating into the dedicated FM HAL path.
+
+This establishes a policy/HAL FM route and a separate FM-chip control interface. It does not yet establish the exact physical wiring, selected I2S pads, or whether the CD3313 Java input-path ID 0 is the same physical signal as policy device FM Tuner In. The CD3313 /dev/audiomux mute plane, the FM tuner chip /dev/fm control plane, and Android audio-policy routing must remain separate in the model until the HAL routing implementation and board configuration are fully correlated.
+
+The legacy vendor/audio_policy.conf also lists AUDIO_DEVICE_IN_FM_TUNER among primary input devices, but its surrounding global section is commented generic configuration. Prefer the XML policy for the current route description and verify the actual runtime-selected policy file on the target image before treating either file as definitive.
