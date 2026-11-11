@@ -69,7 +69,7 @@ jobs:
           } > cd3313-analysis/README.md
 
       - name: Upload analysis reports
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cd3313-static-analysis
           path: cd3313-analysis/

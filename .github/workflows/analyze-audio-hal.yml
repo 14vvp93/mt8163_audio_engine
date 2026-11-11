@@ -97,7 +97,7 @@ jobs:
           PY
 
       - name: Upload reports
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: mt8163-audio-hal-analysis
           path: audio-hal-analysis/reports/

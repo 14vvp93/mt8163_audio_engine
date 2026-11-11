@@ -61,7 +61,7 @@ jobs:
           echo "Directories: $(find extracted -type d | wc -l)"
 
       - name: Upload reconstructed archive and extracted contents
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: heq-reassembled-and-extracted
           path: |

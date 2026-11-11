@@ -58,7 +58,7 @@ jobs:
           readelf -h quad_engine.cpp.o | grep -E "Class:|Machine:"
           readelf -h ../libmt8163_audio_jni.so | grep -E "Class:|Machine:"
       - name: Upload Android ARMv7 libraries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: mt8163-audio-engine-android-armv7
           path: |

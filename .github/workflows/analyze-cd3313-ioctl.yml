@@ -121,7 +121,7 @@ jobs:
           } > cd3313-ioctl-analysis/README.md
 
       - name: Upload focused analysis
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cd3313-ioctl-abi-analysis
           path: cd3313-ioctl-analysis/

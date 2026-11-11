@@ -23,7 +23,7 @@ jobs:
       - name: Run benchmark
         run: ./build/pcm_dsp_benchmark | tee pcm-dsp-host-benchmark.txt
       - name: Upload benchmark report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: pcm-dsp-host-benchmark
           path: pcm-dsp-host-benchmark.txt
