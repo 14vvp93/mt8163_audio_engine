@@ -549,3 +549,77 @@ The primary HAL string table contains distinct named configuration keys:
 These are consumed by the hardware-resource-manager configuration path (the strings are adjacent to its source-file diagnostics and device-switch handling). They show that the board configuration can independently switch left/right amplifier controls and other amplifier paths. They do not, by themselves, establish four discrete PCM streams or the physical wiring behind the keys.
 
 This complements the CD3313 command 0x15 finding: the firmware has at least two separate mechanisms relevant to speaker output—named hardware amp switches in the primary HAL and four speaker attenuation values in the CD3313 driver. Neither is a substitute for identifying the serial PCM/TDM data layout delivered to the amplifier/chip.
+
+
+## 15. SmartPA configuration keys and I²S port selector mapping
+
+A focused disassembly pass recovered the configuration vocabulary consumed by `AudioSmartPaController::initSmartPaAttribute()` and the port mapping used by `getI2sSequence()`.
+
+### SmartPA audio-type lookup
+
+The controller obtains the audio type through the vendor audio parameter parser:
+
+- audio type name: `MTK_AUDIO_SPEAKER_PATH`;
+- audio-type category: `SmartPa`;
+- the category lookup includes the wording `Speaker type,`.
+
+The controller then reads these named parameters from the selected SmartPA parameter unit:
+
+| Parameter key | Destination / observed use |
+|---|---|
+| `have_dsp` | Determines whether the selected speaker path has the DSP-related configuration; the result is logged as `attr->dspType` |
+| `chip_delay_us` | `attr->chipDelayUs` |
+| `spk_lib64_path` | `attr->spkLibPath` |
+| `supported_rate_list` | Populates the supported sample-rate list |
+| `is_alsa_codec` | `attr->is_alsa_codec` |
+| `codec_ctl_name` | `attr->codecCtlName` |
+| `is_apll_needed` | `attr->is_apll_needed` |
+| `i2s_set_stage` | `attr->i2sSetStage` |
+
+The same function also references `spk_lib_path` in its 32-bit library-path handling. It dynamically loads `libaudio_param_parser-vnd.so` and resolves the AppOps/audio-type parser entry points at runtime. This confirms that the SmartPA settings are supplied by the vendor audio-parameter XML/configuration system rather than being fully hard-coded in the HAL.
+
+The exact selected speaker-type value and the parameter values for this board are not present in the inspected shared-library archive. The keys above identify what must be extracted from the matching audio parameter configuration; they do not establish the current board values.
+
+### I²S selector values are port identifiers
+
+`AudioSmartPaController::getI2sSequence(const char*, bool)` reads one of two controller fields:
+
+- controller +0x1C0 when the direction argument is false;
+- controller +0x1C4 when the direction argument is true.
+
+The function bounds-checks the selected value to 0–4 and maps it through a switch table:
+
+| Selector | Port string |
+|---:|---|
+| 0 | `I2S0` |
+| 1 | `I2S1` |
+| 2 | `I2S2` |
+| 3 | `I2S3` |
+| 4 | `I2S5` |
+
+The boolean argument therefore selects which stored direction-specific port selector is used; it is not itself a PCM channel count. The supplied string argument is a separate sequence/configuration name. This separates two previously conflated concepts: the selected I²S port and the named configuration sequence applied for a use case.
+
+Known sequence-name strings include `I2S0_PLayback`, `I2S0DL1_PLayback`, `I2S5DL1_PLayback`, and `DL1SCPSPK_PLayback`. The string table alone does not establish which selector/port and sequence are active for the ordinary speaker route.
+
+### What speakerOn() confirms
+
+`AudioSmartPaController::speakerOn(device, sampleRate)`:
+
+- records the requested device at controller +0x14;
+- checks a controller state bit before running an additional device-related helper;
+- looks up the configured `On` value in the selected speaker configuration;
+- when a callback is configured, updates its sample-rate-dependent state and invokes the callback with the stored device context.
+
+This is consistent with a configurable amplifier/SmartPA power-on path. It remains a control/configuration operation, not a PCM buffer transformation. The exact callback implementation and the selected configuration values still need the board's parameter XML and speaker library.
+
+### Integration consequence and next evidence
+
+The HAL now provides a concrete schema for the missing board configuration:
+
+1. Identify the active `MTK_AUDIO_SPEAKER_PATH` / `SmartPa` speaker type.
+2. Read its `have_dsp`, library path, supported rates, codec control name, APLL requirement and I²S setup stage.
+3. Recover the values of the input and output selectors stored at controller +0x1C0 and +0x1C4.
+4. Match the selected I²S port to the named playback sequence and to the board's mixer/device configuration.
+5. Only then decide whether the normal speaker PCM stream is routed to the CD3313 directly, duplicated, or distributed elsewhere.
+
+The repository's currently committed firmware subset contains the relevant vendor libraries but not the audio-parameter XML/configuration files needed to resolve these board-specific values. No HAL, kernel, I²S or live-device state was changed.
