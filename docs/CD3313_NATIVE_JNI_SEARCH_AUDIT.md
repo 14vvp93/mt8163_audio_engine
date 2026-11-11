@@ -108,3 +108,46 @@ The only ELF with generic JNI registration markers, `system/libem_audio_jni.so`,
 - It has no `SendCmdAudioMux`, `ExtAudioMuxer`, `/dev/audiomux`, or `sourceinfo` string.
 
 Therefore `libem_audio_jni.so` is not the missing CD3313 JNI bridge in this firmware set. Its name and generic `JNI_OnLoad` symbol were only a false-positive candidate.
+
+
+## 2026-11-11 expanded firmware-library artifact — previous gap closed
+
+The earlier findings above remain valid for the bounded 325-entry `files2`
+archive. A separate, larger artifact was subsequently generated from all
+available split firmware archives:
+[firmware-library-analysis run 43089987118](https://github.com/14march93/mt8163_audio_engine/actions/runs/43089987118).
+The artifact includes the previously missing native provider:
+
+`lib/lib/libcarservices_jni.so`
+
+Identity:
+- ELF32 ARM, EABI5, Android 28.
+- Build ID `bf391e545edd2e482b72cd8a431d1c59`.
+- SHA-256 `ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`.
+
+The library registers `android/sourceservice/ExtAudioMuxer` and implements
+the JNI methods `nativeInit` and `SendCmdAudioMux`. It contains the
+`/dev/audiomux` string and imports `ioctl`, `__open_2`, and `close`.
+Static ARM disassembly confirms:
+
+- `nativeInit()`: opens `/dev/audiomux` read-only and sends
+  `0x8080F000`; the CD3313 driver returns the eight-byte chip ID
+  `cd3313\\0\\0`.
+- `SendCmdAudioMux(command, values)`: opens `/dev/audiomux` write-only,
+  passes the JNI int-array elements directly to `ioctl`, and closes the
+  descriptor.
+- Native request formula:
+  `0x40000000 | ((array_length + 1) << 16) | (command << 8)`.
+  This makes the low request-number byte zero and encodes the command ID in
+  bits 8..15.
+- The driver copies `(array_length + 1) * 4` bytes, one 32-bit word more
+  than the declared Java array length. The CD3313 `0x15` callback consumes
+  four speaker words and does not consume that fifth copied word. The extra
+  word's contents are unknown; do not invent a value or reproduce the
+  potentially unsafe over-read in a new client.
+
+The native-provider search is now complete for the supplied firmware
+archives. The outstanding work is to explain the one-word mismatch, test
+the read-only Binder/API probe on the exact unit, and plan a controlled
+hardware test only after a safe transaction strategy is established.
+No live ioctl or hardware change was made during this analysis.
