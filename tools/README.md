@@ -68,3 +68,16 @@ powershell -ExecutionPolicy Bypass -File .\tools\find_cd3313_jni_candidates.ps1 
 It creates `CD3313_JNI_Candidates.zip` with a CSV report and copies of
 matching libraries. The scanner reads the firmware source folder and does not
 modify it. Review the report before sharing the ZIP.
+
+
+For a broader scan that includes all file types and detects ELF binaries by
+their magic bytes (including binaries without a `.so` suffix), use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\find_cd3313_native_provider.ps1 -Root D:\Desktop\MT8163
+```
+
+This creates `CD3313_Native_Provider.zip`. It records strong CD3313 string
+matches separately from generic JNI markers, includes SHA-256 hashes, and
+does not execute firmware files. See
+`docs/CD3313_NATIVE_PROVIDER_SCAN.md` for interpretation and limitations.
