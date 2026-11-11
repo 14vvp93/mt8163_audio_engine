@@ -94,3 +94,17 @@ The expanded scan confirms that the native provider is absent from this particul
 `tools/find_cd3313_native_provider.ps1` now scans all files (subject to a configurable maximum size), detects ELF by magic rather than extension, searches both strong CD3313 markers and supporting JNI markers, and records SHA-256 and relative paths. Generic `JNI_OnLoad`/ `RegisterNatives` strings are classified as supporting evidence only. See `docs/CD3313_NATIVE_PROVIDER_SCAN.md`.
 
 No firmware binary was executed. No device node was opened, no ioctl was sent, and no audio/hardware state was changed.
+
+
+### Focused inspection of the only JNI-bearing ELF
+
+The only ELF with generic JNI registration markers, `system/libem_audio_jni.so`, was extracted and inspected with ELF metadata, dynamic symbols and ASCII strings:
+
+- ELF32, little-endian ARM, EABI5, shared object.
+- Exports `JNI_OnLoad`.
+- Imports `android::AndroidRuntime::registerNativeMethods`.
+- Its registration strings identify `com/mediatek/engineermode/audio/AudioTuningJni`, not `android/sourceservice/ExtAudioMuxer`.
+- Its native method/string inventory is EngineerMode audio tuning (for example `setAudioCommand`, `getAudioCommand`, `setAudioData`, `getAudioData`, and audio parameter parser functions).
+- It has no `SendCmdAudioMux`, `ExtAudioMuxer`, `/dev/audiomux`, or `sourceinfo` string.
+
+Therefore `libem_audio_jni.so` is not the missing CD3313 JNI bridge in this firmware set. Its name and generic `JNI_OnLoad` symbol were only a false-positive candidate.
