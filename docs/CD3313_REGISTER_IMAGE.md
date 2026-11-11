@@ -266,3 +266,21 @@ The driver labels are recovered from the channel-name pointer table used by cmd_
 ## Datasheet correlation
 
 The silicon-level bit definitions and dB values above are cross-checked against the manufacturer document **CD3313-AX-BJ-24, revision 2012-01-B1**: [CD3313 datasheet (PDF)](https://datasheet4u.com/pdf/831243/CD3313.pdf). The PDF identifies Wuxi I-CORE Electronics Co., Ltd. as the manufacturer. This datasheet confirms the chip's input selector/gain/loudness fields, four-channel output attenuation encoding, and 2 dB bass/treble steps. It does not prove the physical wiring of this particular head unit.
+
+
+## Command 0x15: exact four-byte speaker register construction
+
+A reinspection of the archived ARM32 driver disassembly confirms the byte construction in `set_balance()`, reached from command ID `0x15`. The callback reads four 32-bit indices from the command object at offsets +4, +8, +12 and +16. Each index is used to select a byte from the 16-entry `cd3313_speaker` lookup table; the selected attenuation code is masked to five bits and combined with a channel-specific prefix:
+
+| Payload word | Channel | Output byte construction | Register family |
+|---:|---|---|---|
+| 1 at +4 | FL | `0x80 | (table[index] & 0x1F)` | `0x80..0x9F` |
+| 2 at +8 | FR | `0xA0 | (table[index] & 0x1F)` | `0xA0..0xBF` |
+| 3 at +12 | RL | `0xC0 | (table[index] & 0x1F)` | `0xC0..0xDF` |
+| 4 at +16 | RR | `0xE0 | (table[index] & 0x1F)` | `0xE0..0xFF` |
+
+The four bytes are submitted as separate one-byte I²C writes through `cd3313_write_reg()`. This is a direct software-level confirmation that command `0x15` independently updates the four analog speaker attenuation fields in FL, FR, RL, RR order.
+
+The driver still has a request-length validation defect: the `cmd_len_list` threshold for `0x15` is two words, but the callback reads four. It also does not validate all four indices against the 16-entry lookup table before indexing. The safe host contract remains exactly four complete 32-bit words, each in the range 0..15. Do not send malformed requests to the device.
+
+**Important boundary:** these are four CD3313 analog attenuation registers. They do not represent four PCM input channels and do not establish whether the chip receives stereo, duplicated mono, or four discrete digital channels. The captured Android primary policy remains stereo.
