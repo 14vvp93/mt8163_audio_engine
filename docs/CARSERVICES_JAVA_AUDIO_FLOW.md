@@ -139,7 +139,7 @@ This inventory accounts for all seven textual call sites in the analyzed disasse
 
 ## FM input-path mute arguments
 
-The complete VDEX search finds seven calls to ExtAudioMuxer.setInputPathMute(int, boolean, int). RadioService consistently uses Java input-path ID 0; this is the firmware's Java-side identifier for its radio mute path. The disassembly does not yet prove which physical CD3313 input this ID selects.
+The complete VDEX search finds seven calls to ExtAudioMuxer.setInputPathMute(int, boolean, int). RadioService consistently uses Java input-path ID 0; the exact paired CD3313 module now confirms this as logical channel 0 / RADIO / Source 3. The external board wire feeding Source 3 is still not physically traced.
 
 | Caller | Java payload | Confirmed behavior |
 |---|---|---|
@@ -176,7 +176,7 @@ The matching vendor_lib/lib/modules/cd3313.ko was extracted from the same firmwa
 This resolves an important part of the mute ABI:
 
 - Command 0x04 is dispatched by event_callback as input-path mute. The payload fields are read as input path index, mute boolean, and reason index, matching the Java call order [path, mute, reason].
-- The driver keeps a seven-entry channel_mute array (7 x 32-bit values). The supplied input path is used as an index into that per-channel mute-reason state. Therefore Java path ID 0 is confirmed as CD3313 logical input/channel index 0, not yet as a named physical connector or tuner pin.
+- The driver keeps a seven-entry channel_mute array (7 x 32-bit values). The supplied input path is used as an index into that per-channel mute-reason state. Therefore Java path ID 0 is confirmed as CD3313 logical input/channel index 0 (RADIO), which the current paired selector table maps to chip Source 3. This is a logical silicon input, not a physically traced connector or tuner pin.
 - For a mute request, the driver sets bit (1 << reason) in that channel's mask; for unmute it clears that bit. When the affected path is the currently selected channel, the driver propagates the effective channel mute to master mute using reserved reason 31.
 - The separate set_master_mute() function also treats its reason argument as a bit index: it sets or clears (1 << reason) in the global master_mute mask, then derives the output mute state and drives GPIO 393 (0x189). The master-mute reasons are therefore bit flags, not arbitrary descriptive integers.
 - There is no per-reason reference counter in this function: state is represented by one bit per reason. A caller that clears a reason bit clears that reason globally; callers sharing a reason must coordinate their set/clear lifecycle.
@@ -226,7 +226,7 @@ The controller exposes these checks over the returned structure:
 
 ### Direct connection and capture paths
 
-`AudioALSAFMController::setFmDirectConnection_l(bool, bool, unsigned int)` consults `IsFMMergeInterfaceSupported()`, resolves ALSA card and PCM indices through `AudioALSADeviceParser`, and manages a PCM handle with `pcm_open()` / `pcm_start()`. Its disable path calls `pcm_stop()` and `pcm_close()`. The HAL string table contains the device identifiers `FM_I2S_Playback` and `FM_I2S_Capture`; the precise card/PCM string pairing selected by each metadata branch is still being resolved.
+`AudioALSAFMController::setFmDirectConnection_l(bool, bool, unsigned int)` consults `IsFMMergeInterfaceSupported()`, resolves ALSA card and PCM indices through `AudioALSADeviceParser`, and manages a PCM handle with `pcm_open()` / `pcm_start()`. Its disable path calls `pcm_stop()` and `pcm_close()`. The exact Card/PCM identifiers for both metadata branches are now resolved in `Exact ALSA Card/PCM names for both FM HAL branches`: merge=true selects `MRGRX_PLayback` / `MRGRX_CAPTURE`; merge=false selects `FM_I2S_Playback` / `FM_I2S_Capture`.
 
 Separately, `AudioALSACaptureDataProviderFMRadio::open()` also consults the merge-interface flag, chooses one of two card/PCM name pairs, resolves them through the same parser, opens the stream with flag `0x10000000` (`PCM_IN`), starts it, and creates a capture thread. This is the AP-side FM capture path used by the Audio HAL. It is distinct from the CD3313 driver's logical RADIO input mute path.
 
@@ -238,7 +238,7 @@ There are at least three cooperating but separate FM-related interfaces in this 
 2. ALSA PCM endpoints `FM_I2S_Playback` / `FM_I2S_Capture` — HAL direct-connection and AP capture paths.
 3. `/dev/audiomux` / CD3313 logical channel `RADIO` — the DSP input mute/source-control plane used by `RadioService`.
 
-The XML audio policy additionally declares `FM Tuner In` and routes it to output devices. Static evidence does not yet prove whether a given board configuration feeds the same physical FM signal to both the CD3313 RADIO input and the AP-side FM I2S capture path. Do not merge these paths in `mt8163_tools` until the actual board routing and runtime policy selection are verified.
+The vendor Audio Policy XML candidate declares `FM Tuner In` and routes it to outputs; the system XML candidate does not. Static evidence still does not prove whether this policy input and the CD3313 RADIO analog path carry the same physical signal. Keep the policy, AP-side FM I2S, and CD3313 analog paths separate until board wiring and the runtime-selected policy are verified.
 
 
 ## Exact FM HAL virtual table and sample-rate enum
@@ -289,7 +289,7 @@ The relocation-aware lookup table used by `GetFmChipSamplingRate()` contains the
 
 The setter independently confirms the inverse mapping: input 32,000 maps to enum 0, 44,100 maps to enum 1, and 48,000 maps to enum 2. It opens `/dev/fm` and issues ioctl `0xC004F521` for the I2S setting operation. Unknown input rates take the error path. This resolves the enum-to-rate question without relying on string ordering.
 
-The direct-connection function's merge-capability call is now also confirmed at the ABI level: the virtual call loads vtable offset `+0x1c`, which the decoded vtable resolves to `IsFMMergeInterfaceSupported()`. This does not yet identify the exact card/PCM names for each branch or establish physical board wiring; those remain separate open items.
+The direct-connection function's merge-capability call is now also confirmed at the ABI level: the virtual call loads vtable offset `+0x1c`, which the decoded vtable resolves to `IsFMMergeInterfaceSupported()`. The exact card/PCM names are resolved in the later endpoint table. Physical board wiring and runtime-selected policy remain separate open items.
 
 
 ## Exact ALSA Card/PCM names for both FM HAL branches
