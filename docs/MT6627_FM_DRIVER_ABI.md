@@ -74,9 +74,9 @@ The merge-interface result selects the exact HAL endpoints documented in [MT8163
 
 ## 5. WMT platform I2S pin control
 
-The paired firmware also contains `wmt_drv.ko`. Its `wmt_plat_i2s_ctrl()` routine checks platform `gpio_ctrl_info` fields at offsets `0x240`, `0x26c`, and `0x298`; missing values trigger diagnostics for I2S CK, I2S WS, and data-clock pins. The module also contains diagnostics stating that host I2S pins may be undefined and that when FM digital mode is not set, I2S GPIOs need not be configured.
+The paired firmware also contains `wmt_drv.ko` (Build ID `c2e5f3477920471011b2d929be212100b0d41ff8`; SHA-256 `90d31e43f4883f9e3cf707cc0ae351672afa2c57ab98d7c866b7efd0d1fb1e8b`). Its `wmt_plat_i2s_ctrl()` routine checks platform `gpio_ctrl_info` fields at offsets `0x240`, `0x26c`, and `0x298`; missing values trigger diagnostics for I2S CK, I2S WS, and data-clock pins. The module also contains diagnostics stating that host I2S pins may be undefined and that when FM digital mode is not set, I2S GPIOs need not be configured.
 
-The WMT library initialization registers `wmt_lib_set_aif()` through `wmt_plat_aif_cb_reg()`. This confirms a separate WMT audio-interface callback layer. It does not, by itself, prove the exact physical FM pin assignment or establish the complete callback path from the MT6627 setter to the board pinmux.
+The WMT library initialization registers `wmt_lib_set_aif()` through `wmt_plat_aif_cb_reg()` at callsite `0x20f24`. The `wmt_plat_i2s_ctrl()` function is an entry in the platform GPIO-control dispatch table beside `wmt_plat_pcm_ctrl()`. This confirms a separate WMT audio-interface and pin-control layer. It does not, by itself, prove the exact physical FM pin assignment or establish the complete callback path from the MT6627 setter to the board pinmux.
 
 The focused inventory of the supplied firmware tree found no `.dts`, `.dtsi`, `.dtb`, `.dtbo`, boot image, or preloader image. The actual I2S pad numbers and GPIO pinmux therefore remain unavailable from the current dump.
 
