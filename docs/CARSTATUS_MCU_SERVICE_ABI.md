@@ -104,3 +104,21 @@ elsewhere in the service/native stack.
 
 No live `/dev/carstatus` or `/dev/audiomux` operation, I²C write, GPIO
 change, or audio-setting change was performed.
+
+
+## Java-side bytecode input
+
+The expanded artifact contains `files2/files2/framework/boot-carservices.vdex`:
+
+- VDEX version: `019`.
+- Dex section version: `002` (CompactDex).
+- One Dex file; verifier-dependency section size 8 bytes.
+- File size: 343,992 bytes.
+- SHA-256: `af384924cc16755d9ffca03f713132774ad3a4f1b66734d1f4bec5671a931b58`.
+
+Its string table includes `android/carsource/McuService`,
+`sendCmdCarStatus`, `sendAccState`, `sendReverseState`, and several
+`mute=` values. String presence alone does not establish call sites or
+argument semantics. A reproducible VDEX 019 disassembly workflow is being
+added to recover those Java call sites before assigning meanings to the
+mute values.
