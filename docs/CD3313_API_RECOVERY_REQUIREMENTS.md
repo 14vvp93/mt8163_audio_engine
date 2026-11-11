@@ -89,3 +89,38 @@ Once the files are available:
 - No direct CD3313 access from the PCM audio callback.
 - Preserve the existing MTK HAL and its ACF/HCF/BES path.
 - Keep CD3313 hardware controls separate from the four-channel PCM DSP.
+
+
+## 4. Hidden framework API and Binder route recovered from boot-carservices.vdex
+
+The files2 archive includes the optimized car-services boot image. Static
+analysis of framework/boot-carservices.vdex recovers:
+
+- android.audio.AudioEffect and its method signatures;
+- ISourceService Binder interface, Stub and Proxy;
+- SourceService.doExtAudioEffect(int, int[]);
+- ExtAudioMuxer with nativeInit() and SendCmdAudioMux(int, int[]);
+- the /dev/audiomux existence check in ExtAudioMuxer;
+- the call from SourceService construction to ExtAudioMuxer.nativeInit().
+
+The command IDs and integer-array payloads are documented in
+[CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md).
+There is now an exact high-confidence match between Java setBalance(FL,FR,RL,RR)
+(command 21 / 0x15 with four integers) and the kernel driver's four-output
+speaker-level handler. The Java bass, loudness, treble, input-gain and
+subwoofer command IDs also match the corresponding implemented driver IDs.
+
+The remaining missing component is not the Java framework API: it is the
+native JNI implementation of ExtAudioMuxer.nativeInit() and
+ExtAudioMuxer.SendCmdAudioMux(). That code constructs the ioctl request and
+userspace buffer. The original low _IOC_NR byte and exact framing must be
+recovered from the native library before a client is implemented.
+
+Next files to scan from the full firmware tree:
+- /system/lib/libandroid_servers.so;
+- /system/lib64/libandroid_servers.so, if present;
+- any system/vendor native library containing ExtAudioMuxer,
+  SendCmdAudioMux, JNI registration strings or /dev/audiomux.
+
+The library names above are search targets, not confirmed providers. Do not
+guess an ioctl request from the Java command IDs alone.
