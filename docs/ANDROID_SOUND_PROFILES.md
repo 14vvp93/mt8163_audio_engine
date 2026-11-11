@@ -53,4 +53,8 @@ Future incompatible persistence changes should increment the envelope version an
 
 ## Validation status
 
-Android APK compilation (including the ARMv7 JNI/C++ build and the 233-float multiband compressor profile UI) passed in GitHub Actions run `42970321504` for commit `369435607f851230970093b8dbc28447c9e630fa`. The generated debug APK artifact is `mt8163-audio-test-debug-apk` (artifact ID `13832933213`). The DSP core tests, stability lab, performance benchmark and ARMv7 build also passed on the preceding native-profile commit `7ca471872d7b86c62de4be000ba20620fb274d1c`. These results verify compilation, packaging and the referenced CI suites only. Runtime persistence, UI behavior, DSP output and audible behavior still require installation and testing on a compatible Android 9 device.
+The latest profile-persistence implementation compiled and packaged successfully in GitHub Actions run `42971621892` for commit `43f296c4b7bae75c72e569fd244ac1498f9755ec`. The generated debug APK artifact is `mt8163-audio-test-debug-apk` (artifact ID `13832519945`, 128,419 bytes).
+
+The dynamics isolation test covering all 12 channel/band combinations passed in the DSP Core Tests run `42971494312` for commit `eec9504dca50a88d7d1c0af10246f4c2e718f510`. Stability Lab, Performance Benchmark, Android ARMv7 build and Android APK build also passed for that commit (runs `42971494310`, `42971494333`, `42971494414` and `42971494322` respectively). The separate profile-versioning and legacy-migration changes then passed Android APK compilation and packaging in run `42971621892`.
+
+These results verify compilation, packaging and the referenced CI suites only. Runtime persistence, migration behavior, UI behavior, DSP output and audible behavior still require installation and testing on a compatible Android 9 device. The ARMv7 result is a cross-build, not execution on the MT8163 head unit.
