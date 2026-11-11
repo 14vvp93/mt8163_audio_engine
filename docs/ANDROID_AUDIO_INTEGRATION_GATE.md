@@ -21,7 +21,7 @@ The primary HAL exports:
 - `AudioMTKFilter::setFilterParam(unsigned int, unsigned int, int)`
 - ACF/HCF update and preview functions.
 
-The process symbol is a candidate boundary, but its four arguments' semantic types, PCM sample format, channel count, frame count, stride, and call-site ownership are not yet fully recovered. The ACF/HCF functions are parameter-update paths; they must not be mistaken for the PCM processing callback.
+Focused disassembly now finds one direct call site to the process wrapper in the supplied primary HAL: `AudioALSAPlaybackHandlerNormal::write()` at `0xD4744`. The wrapper passes the filter manager, input pointer and byte count, scratch output pointer and scratch capacity to `AudioMTKFilterManager::process()`; the returned value is output byte count, with zero selecting the original input as a bypass. The call is byte-oriented. Source format is inherited from the stream attributes (format codes 1 and 3 are recognized by the pre-processing helper), source channel count is read from `stream_attribute_t +0x24`, and source sample rate from `+0x28`. The exact per-route source channel count, frame/stride contract, and active filter-manager configuration remain unresolved. The ACF/HCF functions are parameter-update paths; they must not be mistaken for the PCM processing callback. See [MT8163_MTK_PROCESS_CALLSITE_AUDIT.md](MT8163_MTK_PROCESS_CALLSITE_AUDIT.md).
 
 ### DSP side
 
@@ -54,9 +54,9 @@ The four-channel requirement can only be connected safely after one of these is 
 
 ## 3. Required reverse-engineering evidence before coding the HAL adapter
 
-1. Recover all call sites of `AudioMTKFilterManager::process`, not just its symbol body.
-2. Trace the producer of each input buffer and consumer of each output buffer.
-3. Identify the actual sample type (PCM16, packed PCM, Float32, or another format), channel count, frame count, interleaving, and byte lengths.
+1. The direct call-site inventory is complete for this supplied primary HAL: the only direct call to `doPostProcessing()` is in `AudioALSAPlaybackHandlerNormal::write()`. Verify this against the exact live firmware revision before relying on it.
+2. Trace the producer of the Normal handler's input buffer and consumer of its selected output buffer.
+3. Recover the per-route source channel count, interleaving/stride, frame count, and exact byte-length relationship. Format codes 1 (16-bit) and 3 (32-bit) are recognized in the mono-fold helper, but that alone is not a complete buffer-format contract.
 4. Identify whether the function runs on the primary music path, and whether it is invoked for notifications, FM, USB, HDMI, or other routes.
 5. Recover filter-manager construction/registration and the lifetime/locking rules for each filter instance.
 6. Confirm whether the output buffer is in-place, separate, or partially overlapping.
