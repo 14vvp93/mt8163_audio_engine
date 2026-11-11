@@ -72,9 +72,9 @@ The firmware therefore groups RADIO and DAB onto CD3313 Source 3, distinguished 
 
 ## 4. MT8163 FM tuner metadata and HAL PCM selection
 
-`WCNChipController::InitAudioFMInfo()` opens `/dev/fm` and issues ioctl `0xC004F530` (`FM_IOCTL_GET_AUDIO_INFO`). The returned FM audio-info structure includes:
+`WCNChipController::InitAudioFMInfo()` opens `/dev/fm` and issues ioctl `0xC004F530` (`FM_IOCTL_GET_AUDIO_INFO`). The returned FM audio-info buffer is 20 bytes (five 32-bit fields) and begins at controller-object offset 12. Thus the fields occupy object offsets 12, 16, 20, 24, and 28 respectively. It includes:
 
-| Field | Offset | Confirmed behavior |
+| Field | Offset in HAL controller object | Confirmed behavior |
 |---|---:|---|
 | `aud_path` | 12 | Value 2 means merge-interface supported; value 3 is error; analog value is rejected during init |
 | I2S mode | 20 | Value 1 selects slave-mode result; value 2 is error |
@@ -152,3 +152,6 @@ The focused firmware inventory found no `.dts`, `.dtsi`, `.dtb`, `.dtbo`, boot i
 
 
 The `/dev/fm` owner and its nonstandard ioctl copy sizes are documented in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md). The exact paired `fmradio_drv.ko` handles `0xC004F530` as a 20-byte five-field metadata query and `0xC004F521` as a 12-byte three-field I2S setting request, despite both ioctl numbers encoding `_IOC_SIZE=4`.
+
+
+The paired `wmt_drv.ko` (Build ID `c2e5f3477920471011b2d929be212100b0d41ff8`; SHA-256 `90d31e43f4883f9e3cf707cc0ae351672afa2c57ab98d7c866b7efd0d1fb1e8b`) contains a dedicated `wmt_plat_i2s_ctrl()` entry in its platform GPIO-control function table. That routine checks `gpio_ctrl_info` offsets `0x240`, `0x26c`, and `0x298`, reporting missing I2S CK, WS, or data-clock pin definitions. The actual pin values are not present in the supplied extracted tree because no DT/DTBO/boot image was found. See [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md).
