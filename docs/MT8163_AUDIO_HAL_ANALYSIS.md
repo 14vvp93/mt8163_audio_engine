@@ -246,3 +246,14 @@ The ARM call sequence inside doPostProcessing() at 0xD2584–0xD25A8 resolves th
 - The wrapper writes the selected pointer and byte count to its caller's output parameters.
 
 This is stronger than merely identifying a replaceable buffer: the manager's process return is the output byte count, while the output storage is supplied by the caller. A compatible adapter must respect the supplied capacity and return a valid produced-byte count; it must not assume the manager returns an output pointer.
+
+
+### Semantic recovery of manager flags copied into stream attributes
+
+The manager byte at +0xD6 is no longer semantically unknown. The exported method AudioALSAStreamManager::setBypassDLProcess(bool) at 0x806A4 stores its boolean argument directly into manager +0xD6. createPlaybackHandler() copies that byte into stream_attribute_t +0x41, and doPostProcessing() bypasses the MTK filter manager when +0x41 is nonzero. Thus this bypass is explicitly the manager's Downlink-processing bypass flag, with an additional independent high-rate override at >=48,001 Hz.
+
+The adjacent manager flags are also named by their setters:
+- AudioALSAStreamManager::setBGSDlMute(bool) at 0x7B47C stores the inverse of its argument at manager +0xD7. createPlaybackHandler() copies it to stream_attribute_t +0x160.
+- AudioALSAStreamManager::setBGSUlMute(bool) at 0x7B4D4 stores the inverse of its argument at manager +0xD8. createPlaybackHandler() copies it to stream_attribute_t +0x161.
+
+These two mute flags are copied into the stream attributes but are not directly tested by doPostProcessing()'s two bypass checks. Do not conflate them with the Downlink-processing bypass at +0x41. The boolean inversion in the setters is directly visible in the XOR/RSB sequence; the names above follow the exported method names.
