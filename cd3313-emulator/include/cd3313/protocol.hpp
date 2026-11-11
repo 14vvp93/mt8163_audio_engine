@@ -55,7 +55,11 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes);
 std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command);
 
 // Typed builders for commands whose argument layout and range are recovered
-// from the driver. These build emulator frames; they do not perform I/O.
+// from the driver. These build safe emulator frames; they do not perform I/O.
+// They intentionally do NOT reproduce the vendor JNI bridge's request sizing:
+// SendCmdAudioMux encodes (Java array length + 1) words and the kernel copies
+// that extra word from GetIntArrayElements(). Its value is unknown, so these
+// builders encode only explicit, validated payload words and never over-read.
 DriverCommand make_input_channel_command(std::int32_t channel);
 DriverCommand make_input_gain_command(std::uint32_t channel, std::uint32_t gain,
                                       std::uint32_t opaque_word = 0);
