@@ -533,3 +533,19 @@ Our four-channel DSP core can still provide four independent EQ/dynamics/gain pa
 4. Locate the board's actual I²S/TDM topology or runtime mixer configuration. Only that can establish whether the CD3313 receives stereo, duplicated mono, or a multichannel serial stream.
 
 No live hardware commands, I²S changes, kernel writes, or HAL patches were performed.
+
+
+### HAL board-level switch names found in the hardware resource manager
+
+The primary HAL string table contains distinct named configuration keys:
+
+- `Audio_Amp_L_Switch`
+- `Audio_Amp_R_Switch`
+- `Voice_Amp_Switch`
+- `Speaker_Amp_Switch`
+- `Ext_Speaker_Amp_Switch`
+- `Headset_Speaker_Amp_Switch`
+
+These are consumed by the hardware-resource-manager configuration path (the strings are adjacent to its source-file diagnostics and device-switch handling). They show that the board configuration can independently switch left/right amplifier controls and other amplifier paths. They do not, by themselves, establish four discrete PCM streams or the physical wiring behind the keys.
+
+This complements the CD3313 command 0x15 finding: the firmware has at least two separate mechanisms relevant to speaker output—named hardware amp switches in the primary HAL and four speaker attenuation values in the CD3313 driver. Neither is a substitute for identifying the serial PCM/TDM data layout delivered to the amplifier/chip.
