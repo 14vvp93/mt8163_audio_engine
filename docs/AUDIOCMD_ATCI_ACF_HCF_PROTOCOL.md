@@ -14,6 +14,23 @@ Analyzed file: `vendor/audiocmdservice_atci` from the supplied
 This is static binary analysis. No ATCI command was sent to a live unit and no
 NVRAM or HAL parameter was changed.
 
+## Linked vendor libraries
+
+The ELF's `DT_NEEDED` table confirms these audio-specific dependencies:
+
+- `libaudiocompensationfilter_vendor.so` — supplies the imported custom-filter
+  NVRAM read/write functions.
+- `libaudiocomponentengine_vendor.so` — part of the vendor audio component
+  stack.
+- `libaudioprimarydevicehalifclient.so` — supplies
+  `MTKPrimaryDevicesHalClient::getInstance()`, used for the HAL notification
+  path.
+
+The service also depends on `libcutils.so`, `libutils.so`,
+`libbinder.so`, and `liblog.so`. These dependencies reinforce that this
+is a vendor parameter-storage and HAL-client bridge, not a direct CD3313
+character-device client.
+
 ## 1. Recovered functions
 
 The mini-debug symbol table identifies:
