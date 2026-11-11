@@ -15,11 +15,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Download verified HEQ artifact
+      - name: Download latest successful HEQ artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download 42812564361 --repo "${GITHUB_REPOSITORY}" --name heq-reassembled-and-extracted --dir input
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow reassemble-heq.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID" && test "$RUN_ID" != "null"
+          echo "Using successful HEQ archive run: $RUN_ID"
+          gh run download "$RUN_ID" --repo "${GITHUB_REPOSITORY}" --name heq-reassembled-and-extracted --dir input
           test -s input/extracted/HEQ.apk
           sha256sum input/extracted/HEQ.apk | tee apk.sha256
 
