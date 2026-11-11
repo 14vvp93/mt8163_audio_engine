@@ -189,12 +189,13 @@ This confirms the driver's mute arbitration mechanism but does not identify the 
 
 ## FM-to-CD3313 logical input correlation
 
-The CD3313 driver reconstruction and the Java RadioService call sites can now be correlated at the logical channel level:
+The Java RadioService call sites and the existing CD3313 driver reconstruction can be correlated at the logical channel level, with an important build-identity qualification:
 
 - RadioService uses inputPath ID 0 for its FM mute operations (constructor, retune, MCU mute-state handling, scan, and the generic radio mute wrapper).
-- The CD3313 driver's character-device channel-name table labels logical channel 0 as RADIO.
-- The driver's selector lookup maps logical channel 0 to CD3313 chip Source 3 (selector code 2). The datasheet identifies Source 3 as one of the three externally pinned stereo inputs.
+- The earlier detailed CD3313 reconstruction (module SHA-256 `b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb`) records the character-device channel-name table as logical channel 0 = RADIO.
+- That same reconstructed module maps logical channel 0 to CD3313 chip Source 3 (selector code 2). The datasheet identifies Source 3 as one of the three externally pinned stereo inputs.
+- The paired `cd3313.ko` extracted from the newer firmware-library artifact is a different build (Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6988f38ebac0391c1c6461cd20ed394594` as recorded in the artifact analysis). Its matching channel-name and selector mapping has not yet been independently revalidated against that exact binary.
 
-Therefore the firmware's FM mute path is logically associated with CD3313 channel 0 / RADIO / chip Source 3. This is a stronger mapping than the earlier path-ID-only result. It still does not prove the board-level wire from the FM tuner to the CD3313 Source 3 pins, nor that the Android Audio Policy FM Tuner In PCM route and the CD3313 analog RADIO route are the same signal path. The primary HAL exposes a separate FM I2S path and /dev/fm tuner control plane; that route must not be conflated with the CD3313 analog input selector without board wiring or live routing evidence.
+Thus the current best correlation is RadioService inputPath 0 → earlier CD3313 logical channel 0 / RADIO → chip Source 3. Treat the RADIO/Source 3 mapping as a strong cross-build lead, not yet a proven identity for the newer paired module. It still does not prove the board-level wire from the FM tuner to the CD3313 Source 3 pins, nor that the Android Audio Policy FM Tuner In PCM route and the CD3313 analog RADIO route are the same signal path. The primary HAL exposes a separate FM I2S path and /dev/fm tuner control plane; that route must not be conflated with the CD3313 analog input selector without board wiring or live routing evidence.
 
-The exact chip-source selector map and channel labels are documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md) and [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The Java-side FM path and payloads are documented above. This correlation is static firmware evidence only.
+The selector map and channel labels from the earlier module are documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md) and [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The Java-side FM path and payloads are documented above. This remains static firmware evidence, with the newer-module comparison open.
