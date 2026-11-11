@@ -42,7 +42,7 @@ Native code rejects wrong-length arrays, non-finite values, invalid boolean enco
 
 ## Compatibility
 
-The persistent JSON array is private to the app. The native packed layout is explicitly versioned by UI_PROFILE_FLOAT_COUNT; any future layout change must increment the version or introduce a versioned envelope and migration path. Existing malformed or incompatible snapshots are ignored rather than passed to native DSP.
+The persistent JSON array is private to the app. The packed UI layout is length-guarded by UI_PROFILE_FLOAT_COUNT, not yet wrapped in a separate schema-version field. A length change causes older saved arrays to be ignored. Future layout changes should introduce an explicit versioned envelope and migration path. Existing malformed or incompatible snapshots are ignored rather than passed to native DSP.
 
 ## Validation status
 
