@@ -174,8 +174,9 @@ The following is now recovered:
 Still required before a safe userspace client can be implemented:
 1. The native JNI implementation of ExtAudioMuxer.nativeInit() and
    ExtAudioMuxer.SendCmdAudioMux(int,int[]).
-2. The exact ioctl request word, including the low _IOC_NR byte, direction,
-   size calculation and userspace buffer framing.
+2. Confirmation that JNI uses ioctl rather than another transport; if ioctl,
+   recover the request word (including low _IOC_NR), direction, size
+   calculation and userspace buffer framing.
 3. Runtime confirmation that the native method opens the same
    /dev/audiomux device created by this exact cd3313.ko.
 4. A hardware readback or controlled test of source selection, mute, master
