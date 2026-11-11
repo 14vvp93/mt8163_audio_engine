@@ -195,10 +195,47 @@ The Java command ID therefore correlates with the driver's bits 8..15 field.
 The Binder service special-cases command 1000 as a system-property update;
 ordinary CD3313 commands go through the native muxer.
 
-This identifies the Java/Binder interface but does not reveal whether the
-native method uses ioctl or another transport. The driver's raw write()
-interface only parses one hexadecimal byte, so ioctl is strongly expected
-for these multiword arrays. If ioctl is used, the low _IOC_NR byte, exact
-_IOC size value, direction bits and userspace buffer framing remain
-unresolved until the ExtAudioMuxer JNI implementation is recovered. See
-[CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md).
+The native transport is now recovered from
+`/system/lib/libcarservices_jni.so` in the expanded firmware-library-analysis
+artifact. The 32-bit ARM ELF has Build ID
+`bf391e545edd2e482b72cd8a431d1c59` and SHA-256
+`ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`.
+It registers `android/sourceservice/ExtAudioMuxer` and the native methods
+`nativeInit` and `SendCmdAudioMux`. It imports `ioctl`, `__open_2`, and
+`close`.
+
+`nativeInit()` opens `/dev/audiomux` read-only, issues
+`ioctl(fd, 0x8080F000, zeroed_buffer)`, and closes the descriptor. The
+CD3313 read/type-`0xF0` branch copies the eight bytes
+`63 64 33 33 31 33 00 00` (`cd3313\\0\\0`) to that buffer. The ioctl
+return status is logged separately from the returned chip identifier.
+
+`SendCmdAudioMux(command, values)` obtains the JNI integer-array elements
+and array length, opens `/dev/audiomux` write-only, issues ioctl, closes the
+descriptor, and releases the elements with `JNI_ABORT`. The exact request
+formula from ARM disassembly is:
+
+```c
+request = 0x40000000u
+        | ((array_length + 1u) << 16)
+        | ((command & 0xffu) << 8);
+ioctl(fd, request, int_array_elements);
+```
+
+Thus direction is WRITE, the command ID occupies bits 8..15, the low
+`_IOC_NR` byte is zero, and the size field is `array_length + 1` words.
+The kernel multiplies this field by four and copies that many bytes from the
+JNI array pointer. For example, Java command `0x15` has four array values,
+but the native request asks the kernel to copy five words (20 bytes). The
+CD3313 callback consumes only the four documented speaker indices at
+payload offsets +4, +8, +12, and +16 in its queued frame; the fifth copied
+word is not consumed by that handler. The native/kernel pair therefore has
+a statically confirmed one-word over-read discrepancy. Its extra word value
+is unspecified; do not guess a padding value or reproduce the unsafe copy
+in a new userspace client.
+
+This confirms the final native transport hop to the same `/dev/audiomux`
+misc device created by `cd3313.ko`. It remains static firmware analysis:
+no live ioctl, I²C transaction, audio change, or hardware test was performed.
+See [CD3313_HIDDEN_AUDIOEFFECT_API.md](CD3313_HIDDEN_AUDIOEFFECT_API.md)
+for the binary-level evidence and request examples.
