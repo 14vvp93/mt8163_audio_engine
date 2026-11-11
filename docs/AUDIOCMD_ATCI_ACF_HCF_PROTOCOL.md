@@ -5,8 +5,9 @@
 Analyzed file: `vendor/audiocmdservice_atci` from the supplied
 `extracted-files.zip`.
 
-- SHA-256: `8cfdc1f9b88d3a6a86e9a74cb52f6a5f6f48a9c17f6ef38b99e3d9b2c1f7f0c8`
+- SHA-256: `302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566`
 - ELF: ARM32, Android/Bionic, executable with Thumb-2 application code.
+- ELF Build ID: `35659649e2b65bda1dfa22379f80d86c`
 - The ELF contains a `.gnu_debugdata` mini-debug image. Its symbol table restores
   the names and ranges of the ACF/HCF handlers used below.
 
