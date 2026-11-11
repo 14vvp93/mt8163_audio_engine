@@ -127,3 +127,40 @@ The library's `.gnu_debugdata` section was also checked. It contains a small min
 ### Next reverse-engineering target
 
 Trace the consumers of object fields `+0x0C`, `+0x2C`, `+0x5C`, `+0x9B4`, `+0x9B8`, and `+0x9BC`, then follow the function-pointer callbacks around `+0x40`. This is the shortest route to reconcile the HAL's ACF/HCF selector calls with the engine's internal parameter representation. Keep the analysis static; no runtime calls with fabricated structures.
+
+
+## Partial ACF structure layout recovered from `MtkAudioLoud::copyParam()`
+
+Further ARM Thumb analysis of `copyParam()` (symbol at `0x4CF9`, size 1200 bytes) recovers a set of source-to-destination copies. The destination is reached by loading the pointer at `*(this + 0x34) + 0x0C`; the table below records the source offsets relative to the `MtkAudioLoud` object and destination offsets relative to that parameter structure.
+
+| ACF destination offset | Bytes copied | Source object offset | Operation |
+|---:|---:|---:|---|
+| `0x000` | 4 | `0x140` | 32-bit word |
+| `0x004` | 4 | `0x144` | 32-bit word |
+| `0x008` | 4 | `0x148` | 32-bit word |
+| `0x010` | 4 | `0x14C` | 32-bit word |
+| `0x014` | 4 | `0x150` | 32-bit word |
+| `0x018` | 16 | `0x160` | NEON 128-bit copy |
+| `0x024` | 16 | `0x154` | NEON 128-bit copy |
+| `0x034` | 160 (`0xA0`) | `0x170` | memory copy |
+| `0x0D4` | 160 (`0xA0`) | `0x210` | memory copy |
+| `0x174` | 16 | `0x2B0` | NEON 128-bit copy |
+| `0x184` | 16 | `0x2C0` | NEON 128-bit copy |
+| `0x194` | 16 | `0x2D0` | NEON 128-bit copy |
+| `0x1A4` | 16 | `0x2E0` | NEON 128-bit copy |
+| `0x1B4` | 4 | `0x2F0` | 32-bit word |
+| `0x1B8` | 192 (`0xC0`) | `0x2F4` | memory copy |
+| `0x278` | 192 (`0xC0`) | `0x394` | memory copy |
+| `0x338` | 192 (`0xC0`) | `0x474` | memory copy |
+| `0x3F8` | 4 | `0x534` | 32-bit word |
+| `0x3FC` | 4 | `0x538` | 32-bit word |
+| `0x400` | 4 | `0x53C` | 32-bit word |
+| `0x404` | 4 | `0x540` | 32-bit word |
+
+The offsets above are grounded in explicit loads/stores, NEON vector loads/stores, and helper calls whose arguments are destination pointer, source pointer, and byte count. The three `0xA0/0xC0`-byte copies are therefore known block boundaries, but their semantic meaning (for example, filter count, coefficient type, or channel arrangement) remains unknown.
+
+The recovered copies cover through destination offset `0x407`; the top-level structure is `0x4EC` bytes. The remaining tail is not mapped by this copy routine and must not be assumed to be padding.
+
+The routine also reads configuration/state fields at object offsets `+0x9B4`, `+0x9B0`, `+0x518`, and `+0x54C`, and examines per-entry state at offsets including `+0x6C`, `+0x8C`, `+0xAC`, `+0xDC`, `+0xFC`, and `+0x11C`. These are internal engine-object offsets, not ACF structure offsets.
+
+**Limit:** this is a partial layout map, not a reconstructed C header. Do not serialize, modify, or pass a hand-built structure based only on these offsets. Next, trace the code that populates the source regions (object offsets `+0x140` through `+0x540`) and the consumers of the destination blocks to identify their types and units.
