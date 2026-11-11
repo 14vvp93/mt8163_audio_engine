@@ -31,7 +31,6 @@ jobs:
           cd /tmp/vdexExtractor
           ./make.sh gcc
           test -x bin/vdexExtractor
-          bin/vdexExtractor --get-api -i /dev/null || true
 
       - name: Download firmware analysis artifact
         env:
@@ -48,6 +47,7 @@ jobs:
           cp "$VDEX" /tmp/boot-carservices.vdex
           file /tmp/boot-carservices.vdex
           sha256sum /tmp/boot-carservices.vdex
+          /tmp/vdexExtractor/bin/vdexExtractor --get-api -i /tmp/boot-carservices.vdex
 
       - name: Extract and disassemble CompactDex
         run: |
