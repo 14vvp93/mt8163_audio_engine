@@ -295,3 +295,41 @@ The relocation-aware lookup table used by `GetFmChipSamplingRate()` contains the
 The setter independently confirms the inverse mapping: input 32,000 maps to enum 0, 44,100 maps to enum 1, and 48,000 maps to enum 2. It opens `/dev/fm` and issues ioctl `0xC004F521` for the I2S setting operation. Unknown input rates take the error path. This resolves the enum-to-rate question without relying on string ordering.
 
 The direct-connection function's merge-capability call is now also confirmed at the ABI level: the virtual call loads vtable offset `+0x1c`, which the decoded vtable resolves to `IsFMMergeInterfaceSupported()`. This does not yet identify the exact card/PCM names for each branch or establish physical board wiring; those remain separate open items.
+
+
+## Exact ALSA Card/PCM names for both FM HAL branches
+
+The exact primary HAL binary from workflow run `43114692814` was inspected after decoding its Android APS2 packed relocations and global `String8` initializers. This resolves the previously open Card/PCM name pairs.
+
+The branch condition is the virtual call at vtable offset `+0x1c`, verified as `WCNChipController::IsFMMergeInterfaceSupported()`. Both the direct-playback function and the AP capture provider use that same capability result:
+
+| Merge interface result | Direct FM playback: Card name and PCM name | AP FM capture: Card name and PCM name |
+|---|---|---|
+| true | `MRGRX_PLayback` | `MRGRX_CAPTURE` |
+| false | `FM_I2S_Playback` | `FM_I2S_Capture` |
+
+In each case the exact same String8 identifier is passed once to `GetCardIndexByString()` and once to `GetPcmIndexByString()`. The true branch is the MRGRX path; the false branch is the FM_I2S path. The capture path then opens the selected PCM with `PCM_IN` (`0x10000000`) and starts it. The direct playback path opens the selected PCM with flags 0 and starts it.
+
+This resolves the HAL's symbolic ALSA endpoint selection. It does not reveal the runtime numeric card/PCM indices, because those are obtained from the device's AudioALSADeviceParser configuration at runtime. It also does not prove the board-level wiring between the tuner chip, AP I2S pins, and CD3313 analog inputs.
+
+## Current paired CD3313 module: selector mapping revalidated
+
+The exact `cd3313.ko` paired with this firmware (Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`) was re-opened and disassembled. Its current `.rodata` symbol `CSWTCH.201` is a six-entry 32-bit lookup table with values `2, 1, 0, 3, 0, 2`; channel 6 / sentinel `-1` bypasses the table and uses selector code 3. The current module's channel-name pointer table is `RADIO, ARM, AUX, EXBT, AUX2, DAB, NONE`.
+
+The matching CD3313-AX-BJ-24 datasheet decodes selector bits 1..0 as code 0 = Source 1, 1 = Source 2, 2 = Source 3, and 3 = Source 4 (no external input pins). Therefore the current paired binary confirms:
+
+| CD3313 logical channel | Label | Selector bits | Chip input |
+|---:|---|---:|---|
+| 0 | RADIO | 2 | Source 3 |
+| 1 | ARM | 1 | Source 2 |
+| 2 | AUX | 0 | Source 1 |
+| 3 | EXBT | 3 | Source 4 (no external pins) |
+| 4 | AUX2 | 0 | Source 1 |
+| 5 | DAB | 2 | Source 3 |
+| 6 / sentinel -1 | NONE | 3 | Source 4 (no external pins) |
+
+This supersedes the earlier cross-build caution: the RADIO → Source 3 selector mapping is now directly revalidated against the exact paired module, not merely carried over from the older module. Combined with RadioService's Java inputPath 0 and the current module's RADIO label, the static chain is now confirmed as `RadioService inputPath 0 → CD3313 logical channel 0 (RADIO) → selector code 2 → chip Source 3`.
+
+The current paired module also differs from the older reconstruction in its GPIO number for the second source-switch output. In `set_input_channel()`, it requests raw GPIO 396 low only for logical channel 2 and high otherwise; it requests raw GPIO 474 high only for logical channel 0 and low otherwise. These are driver-requested raw levels, not physical readback or proof of board signal names/polarity. Do not substitute the older module's GPIO number 398 for this current build.
+
+The CD3313 RADIO/Source 3 mapping still does not prove that the FM tuner is physically wired to Source 3 on this board, nor that the CD3313 analog RADIO input is the same physical signal as the HAL's AP-side FM I2S capture route.
