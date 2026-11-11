@@ -8,7 +8,7 @@ Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device c
 
 ### Planned components
 
-1. **CD3313 control layer** — kernel command semantics, hidden Java API and Binder route are recovered; the native JNI ioctl builder and exact request word are still missing.
+1. **CD3313 control layer** — kernel command semantics, hidden Java API and Binder route are recovered; the native JNI transport/framing (expected to use ioctl) is still missing.
 2. **PCM DSP core** — independent C++ processing library with format-aware input/output, explicit bypass, controlled latency, and host-side tests.
 3. **Android integration adapter** — integration at a verified AudioFlinger/HAL processing point; no global hook until call/SCO bypass and routing are understood.
 4. **Control API/UI** — separate digital DSP controls plus CD3313-supported source, volume, mute, bass/treble/loudness and four-output level controls. The recovered setBalance(FL,FR,RL,RR) API maps to the driver's four analog output attenuators. The chip does not provide independent per-output PEQ or delay.
