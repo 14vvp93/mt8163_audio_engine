@@ -40,4 +40,4 @@ The persistent JSON array is private to the app. The native packed layout is exp
 
 ## Validation status
 
-CI must pass Android APK compilation and the native ARMv7 build before this feature is considered build-verified. Runtime persistence and audible behavior still require installation and testing on a compatible Android 9 device.
+Android APK compilation (including the ARMv7 JNI/C++ build) passed in GitHub Actions run `42969841753` for commit `98b44dd2ea8c0852dd8c3f686adcc9b7e8c29fd4`. The generated debug APK artifact is `mt8163-audio-test-debug-apk` (artifact ID `13832503462`). This verifies compilation and packaging only. Runtime persistence, UI behavior, DSP output and audible behavior still require installation and testing on a compatible Android 9 device.
