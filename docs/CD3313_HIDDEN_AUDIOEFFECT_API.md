@@ -20,13 +20,13 @@ I²C transaction or live audio setting was changed.
 
 ## 1. Recovered control-plane call chain
 
-The class/field/method references establish this route:
+The recovered Java layer establishes the first four steps and strongly indicates the device-node target:
 
 **android.audio.AudioEffect**
 → Binder interface **ISourceService.doExtAudioEffect(int, int[])**
 → **SourceService.doExtAudioEffect(int, int[])**
 → native **ExtAudioMuxer.SendCmdAudioMux(int, int[])**
-→ **/dev/audiomux**
+→ likely **/dev/audiomux**
 → CD3313 kernel driver.
 
 Evidence:
@@ -42,9 +42,10 @@ Evidence:
 - SourceService.<init>() calls ExtAudioMuxer.nativeInit().
 - SendCmdAudioMux(int, int[]) and nativeInit() are native methods.
 
-The Java/Binder path and device-node name are therefore recovered. The
-native implementation that builds the actual ioctl request is not present in
-the supplied archive.
+The Java/Binder path and the Java-side /dev/audiomux existence check are
+recovered. Because the native implementation is absent, its actual open/ioctl
+calls and the final hop into this exact driver are strongly indicated but not
+yet proven.
 
 ## 2. AudioEffect command builders
 
