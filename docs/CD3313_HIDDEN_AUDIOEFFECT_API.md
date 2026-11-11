@@ -242,3 +242,21 @@ The public doExtAudioEffect(int, int[]) method also returns an integer. The
 status is propagated from the Binder service/native muxer and can be logged
 by the app; it is not a hardware readback. setMasterVolume(float,float) is
 the exception and returns void because it updates a system property.
+
+## 6. Java-array length versus kernel command length
+
+A cross-layer comparison exposes two important size mismatches. The Java/Binder layer supplies these arrays:
+
+| Command | Java array length | Kernel minimum size field | Kernel handler reads | Status |
+|---|---:|---:|---:|---|
+| 0x03 input gain | 2 words | 3 words | first 2 words | Native layer must account for one additional word |
+| 0x12 master-volume percentage | 1 word | 2 words | first 2 words | Native layer must account for one additional word |
+| 0x15 four-channel levels | 4 words | 2 words | 4 words | Kernel minimum is insufficient; safe client must send all 4 |
+| 0x55 bass boost | 4 words | 2 words | first 2 words | Java supplies extra words not consumed by this handler |
+| 0x5C treble | 4 words | 2 words | first 2 words | Java supplies extra words not consumed by this handler |
+
+For 0x03 and 0x12, the Java array length alone cannot satisfy the recovered kernel dispatcher threshold if the native layer copies exactly that many words and sets the size field to the array length. The missing JNI implementation must therefore be inspected to determine whether it pads the payload, uses a fixed command-specific size, or applies another framing rule. The kernel's second 0x12 word is retained as opaque data by the emulator; its value and meaning are not established.
+
+For 0x15, the inverse hazard exists: the kernel's length table accepts a two-word size field even though the handler reads four words. A safe native bridge must enforce four complete words regardless of the driver's weaker minimum.
+
+These are cross-layer facts, not evidence of the native bridge's actual behavior. Do not infer padding values, ioctl size fields, or the low request-number byte until the JNI provider is recovered. The emulator's typed builders deliberately construct safe kernel-side frames and must not be treated as a byte-for-byte reproduction of the Java arrays.
