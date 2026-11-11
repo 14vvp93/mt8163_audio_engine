@@ -51,7 +51,11 @@ public final class Cd3313ApiProbe {
             appendMethod(available, apiClass, "setTreble", int.class, int.class);
             appendMethod(available, apiClass, "setSubWoofer", int.class, int.class);
 
-            return "READ-ONLY PASS: android.audio.AudioEffect loaded; "
+            boolean methodsComplete = available.indexOf("(missing)") < 0;
+            boolean binderAlive = "sourceinfo Binder ping OK".equals(binderStatus);
+            String probeResult = methodsComplete && binderAlive
+                    ? "READ-ONLY PASS" : "READ-ONLY PARTIAL";
+            return probeResult + ": android.audio.AudioEffect loaded; "
                     + "getInstance() succeeded. " + binderStatus + ".\n"
                     + "Public control methods: " + available + "\n"
                     + "No CD3313 control command was sent. Native /dev/audiomux operation is not tested.";
