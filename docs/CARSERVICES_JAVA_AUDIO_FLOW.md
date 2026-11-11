@@ -65,12 +65,13 @@ These planes interact, but they are not interchangeable. Keep their interfaces s
 
 ## Remaining work
 
-1. Decode the full `CarStatusService` ACC transition handler and its delayed messages.
-2. Trace every caller of `setMasterMute` and identify the reason values used at each call site.
-3. Decode the FM radio input-path arguments and relate them to driver command `0x04`.
-4. Continue matching the native Audio HAL and audio policy routing to the Java service layer.
-5. Keep all real-device control writes disabled until the complete payload and ioctl ABI is proven.
+The Java mute call-site inventory, FM inputPath payloads, current paired CD3313 selector table, and HAL endpoint-name branches have now been resolved in the later sections of this document. Remaining work is narrower:
 
+1. Analyze the firmware's FM tuner kernel modules (`fmradio_drv.ko` and any external tuner drivers) to identify the exact owner of `/dev/fm` and confirm the ioctl metadata ABI.
+2. Determine which Audio Policy file the target image actually loads; the supplied system and vendor XML variants differ on FM Tuner In.
+3. Resolve runtime numeric ALSA card/PCM indexes from the active AudioALSADeviceParser inventory.
+4. Locate the board DT/DTBO or schematic to verify pinmux and physical wires between the FM tuner, GPIO source switches, CD3313, and AP I2S.
+5. Keep real-device control writes disabled; continue with static analysis and read-only validation only.
 
 ## Detailed ACC transition handling
 
@@ -158,18 +159,15 @@ The driver command 0x04 is known to receive the Java payload shape [inputPath, m
 
 ## Audio HAL and policy cross-check (FM path)
 
-The firmware artifact also contains vendor/audio_policy_configuration.xml and vendor/audio.primary.mt8163.so. These provide a second, lower-level view of the FM route:
+The HAL exports the dedicated FM controller, direct-connection path, FM capture provider, and FM transmitter symbols. `WCNChipController` opens `/dev/fm` and exposes `FM_IOCTL_GET_AUDIO_INFO`, `FM_IOCTL_I2S_SETTING`, and `FM_IOCTL_SETVOL`. The exact metadata fields, sample-rate mapping, direct-control parameter, and ALSA endpoint branches are documented below.
 
-- The active-looking primary module policy declares FM Tuner In as an attached input device. Its input profile supports PCM 16-bit at 8, 16, 32, 44.1, and 48 kHz, mono or stereo.
-- The policy routes FM Tuner In as a source to Speaker, Wired Headset, and Wired Headphones. The default output device is Speaker. FM Tuner Out is separately declared as an output sink for primary output; do not confuse FM Tuner In with FM Tuner Out.
-- The stripped primary HAL still exports symbols for AudioALSAFMController::setFmEnable, routing, setFmDirectConnection_l, setFmVolume, AudioALSACaptureHandlerFMRadio, AudioALSACaptureDataProviderFMRadio, and AudioALSAPlaybackHandlerFMTransmitter.
-- WCNChipController symbols and strings show a separate FM-chip control interface: /dev/fm and /proc/fm, with strings for FM_IOCTL_GET_AUDIO_INFO, FM_IOCTL_I2S_SETTING, and FM_IOCTL_SETVOL. The HAL also contains FM_I2S_Playback and FM_I2S_Capture modes and reads FM chip I2S pad/mode/rate information.
-- AudioALSAStreamManager exposes setFmEnable(bool, bool, bool, unsigned int) and setFmVolume(float), delegating into the dedicated FM HAL path.
+The supplied firmware contains two different Audio Policy XML candidates:
 
-This establishes a policy/HAL FM route and a separate FM-chip control interface. It does not yet establish the exact physical wiring, selected I2S pads, or whether the CD3313 Java input-path ID 0 is the same physical signal as policy device FM Tuner In. The CD3313 /dev/audiomux mute plane, the FM tuner chip /dev/fm control plane, and Android audio-policy routing must remain separate in the model until the HAL routing implementation and board configuration are fully correlated.
+- `vendor/audio_policy_configuration.xml` attaches `FM Tuner In`, gives it PCM16 profiles at 8/16/32/44.1/48 kHz (mono/stereo), and routes it to Speaker, Wired Headset, and Wired Headphones. It separately declares `FM Tuner Out`.
+- `system/audio_policy_configuration.xml` is a different policy variant; it attaches Built-In Back Mic instead and has no FM Tuner In device or route.
+- The vendor `audio_policy.conf` also includes `AUDIO_DEVICE_IN_FM_TUNER` in the primary module's attached input devices.
 
-The legacy vendor/audio_policy.conf also lists AUDIO_DEVICE_IN_FM_TUNER among primary input devices, but its surrounding global section is commented generic configuration. Prefer the XML policy for the current route description and verify the actual runtime-selected policy file on the target image before treating either file as definitive.
-
+The static dump does not prove which policy file is selected by the running image. Therefore the vendor FM route is a firmware candidate, not runtime proof. Neither policy file proves that the Android FM Tuner In path is physically the same signal as CD3313 logical RADIO / Source 3. Keep the `/dev/fm`, HAL PCM, CD3313 `/dev/audiomux`, and Audio Policy planes distinct.
 
 ## CD3313 driver confirmation: mute reasons and input-path IDs
 
@@ -189,30 +187,27 @@ This confirms the driver's mute arbitration mechanism but does not identify the 
 
 ## FM-to-CD3313 logical input correlation
 
-The Java RadioService call sites and the existing CD3313 driver reconstruction can be correlated at the logical channel level, with an important build-identity qualification:
-
-- RadioService uses inputPath ID 0 for its FM mute operations (constructor, retune, MCU mute-state handling, scan, and the generic radio mute wrapper).
-- The earlier detailed CD3313 reconstruction (module SHA-256 `b9ef172de1532867208fc620d4fe8d24612aa2ee4ad2d62ab2daaf6622387afb`) records the character-device channel-name table as logical channel 0 = RADIO.
-- That same reconstructed module maps logical channel 0 to CD3313 chip Source 3 (selector code 2). The datasheet identifies Source 3 as one of the three externally pinned stereo inputs.
-- The paired `cd3313.ko` extracted from the newer firmware-library artifact is a different build (Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`). Its matching channel-name and selector mapping has not yet been independently revalidated against that exact binary.
-
-Thus the current best correlation is RadioService inputPath 0 → earlier CD3313 logical channel 0 / RADIO → chip Source 3. Treat the RADIO/Source 3 mapping as a strong cross-build lead, not yet a proven identity for the newer paired module. It still does not prove the board-level wire from the FM tuner to the CD3313 Source 3 pins, nor that the Android Audio Policy FM Tuner In PCM route and the CD3313 analog RADIO route are the same signal path. The primary HAL exposes a separate FM I2S path and /dev/fm tuner control plane; that route must not be conflated with the CD3313 analog input selector without board wiring or live routing evidence.
-
-The selector map and channel labels from the earlier module are documented in [CD3313_REGISTER_IMAGE.md](CD3313_REGISTER_IMAGE.md) and [CD3313_COMMAND_DISPATCH.md](CD3313_COMMAND_DISPATCH.md). The Java-side FM path and payloads are documented above. This remains static firmware evidence, with the newer-module comparison open.
-
+This section records the earlier pre-revalidation state and is superseded by the exact paired-module analysis immediately below. The current paired `cd3313.ko` has now been disassembled directly: its channel-name table and selector lookup independently confirm the RADIO → Source 3 mapping. Do not treat the older cross-build caveat in this historical section as the current conclusion.
 
 ## Revalidation against the exact paired CD3313 module
 
-The compact `cd3313-current-module-analysis` artifact from workflow run `43113850964` now provides a direct check against the CD3313 module paired with this firmware, rather than relying only on the earlier reconstructed build.
+The exact paired `cd3313.ko` from workflow run `43113850964` is Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
 
-- Current module Build ID: `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
-- Current module SHA-256: `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`.
-- Its `.rodata` name-pointer table contains seven entries in this exact order: `RADIO`, `ARM`, `AUX`, `EXBT`, `AUX2`, `DAB`, `NONE`.
-- Its BSS symbol `channel_mute` is 28 bytes, i.e. seven 32-bit channel mute masks. The `internal_radio` state is also present.
-- The DWARF debug information names a `channel_to_cd3313(channel)` inline helper at source line 411, but this module's symbol/disassembly output does not expose a standalone body for that helper. The exact logical-channel-to-chip-selector translation therefore remains to be recovered from the optimized code/data tables.
+Its current channel-name table is `RADIO, ARM, AUX, EXBT, AUX2, DAB, NONE`. Its `.rodata` symbol `CSWTCH.201` contains six 32-bit selector entries `2, 1, 0, 3, 0, 2`; channel 6 / sentinel `-1` uses selector 3. With the CD3313-AX-BJ-24 selector encoding (0=Source 1, 1=Source 2, 2=Source 3, 3=Source 4/no external pins), the exact paired-build map is:
 
-This directly confirms that the current paired driver labels logical channel index 0 as `RADIO`, which matches RadioService's Java inputPath 0. The earlier Source 3 selector mapping came from the older detailed CD3313 reconstruction; do not automatically carry that selector value across builds. For the current paired binary, the verified conclusion is `RadioService inputPath 0 → CD3313 logical channel 0 (RADIO)`; the hardware selector/pin and board-level FM wiring remain open.
+| Channel | Label | Selector | Chip input |
+|---:|---|---:|---|
+| 0 | RADIO | 2 | Source 3 |
+| 1 | ARM | 1 | Source 2 |
+| 2 | AUX | 0 | Source 1 |
+| 3 | EXBT | 3 | Source 4 (no external pins) |
+| 4 | AUX2 | 0 | Source 1 |
+| 5 | DAB | 2 | Source 3 |
+| 6 / -1 | NONE | 3 | Source 4 (no external pins) |
 
+This supersedes the earlier cross-build caution: the exact paired module confirms `RadioService inputPath 0 → CD3313 logical channel 0 (RADIO) → selector code 2 → Source 3`.
+
+DWARF constants identify `GPIO39_Aux_Aux2_SW=396` and `GPIO_Radio_DAB_SW=474`. The current `set_input_channel()` requests GPIO 396 LOW only for channel 2 and HIGH otherwise; GPIO 474 HIGH only for channel 0 and LOW otherwise. This groups AUX/AUX2 on Source 1 and RADIO/DAB on Source 3, with the respective GPIO distinguishing each pair. These are driver-requested raw levels, not electrical readback or proof of the physical PCB trace.
 
 ## MT8163 FM HAL mode selection and I2S metadata
 
