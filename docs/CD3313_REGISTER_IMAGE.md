@@ -284,3 +284,54 @@ The four bytes are submitted as separate one-byte I²C writes through `cd3313_wr
 The driver still has a request-length validation defect: the `cmd_len_list` threshold for `0x15` is two words, but the callback reads four. It also does not validate all four indices against the 16-entry lookup table before indexing. The safe host contract remains exactly four complete 32-bit words, each in the range 0..15. Do not send malformed requests to the device.
 
 **Important boundary:** these are four CD3313 analog attenuation registers. They do not represent four PCM input channels and do not establish whether the chip receives stereo, duplicated mono, or four discrete digital channels. The captured Android primary policy remains stereo.
+
+
+## CD3313 signal architecture: stereo analog input, four analog outputs
+
+The manufacturer datasheet's overview, block diagram and pin table clarify the
+meaning of the four speaker-control bytes:
+
+- CD3313 has an input multiplexer for **three stereo analog sources** (left
+  and right input pins for each source).
+- Its signal-processing core is organized as left/right paths with input
+  selection/gain, volume, bass, treble and loudness control.
+- It then feeds four independently controlled analog output attenuators and
+  mute paths.
+- The four output pins are:
+  - pin 25: `OUTLF` — front left;
+  - pin 24: `OUTRF` — front right;
+  - pin 23: `OUTLR` — rear left;
+  - pin 22: `OUTRR` — rear right.
+- The datasheet specifies independent four-channel attenuation/balance/
+  loudness control in 1.25 dB steps. The bass and treble networks are shown
+  on the left/right signal paths, not as four independent per-output PEQs.
+- The chip is an analog audio processor controlled over I²C. It has no
+  multichannel PCM input interface.
+
+This resolves an important distinction: the CD3313 really does provide four
+independent **analog speaker outputs and output-level controls**, but it does
+not accept four independent digital PCM channels. The four bytes handled by
+driver command `0x15` are the four output attenuator settings, not evidence
+of a four-channel PCM transport.
+
+### Consequences for the MT8163 project
+
+1. The existing four-channel FL/FR/RL/RR level controls can be mapped to the
+   CD3313's four analog output attenuators once the userspace control API is
+   recovered.
+2. Stereo PEQ/bass/clarity processing belongs in the digital stereo path
+   before the DAC/CD3313 analog inputs. The CD3313 itself does not provide
+   independent front/rear parametric EQ.
+3. Independent front/rear delay or different per-speaker PEQ cannot be
+   implemented through the CD3313's four attenuation registers alone.
+4. The Normal speaker handler's recovered mono fold means its speaker route
+   can feed identical left/right content into the downstream analog stereo
+   path. The CD3313 can still apply independent front/rear/left/right output
+   attenuation, but cannot recreate lost stereo content.
+5. The exact physical connection between the MT8163 DAC/I²S path and the
+   CD3313's three analog stereo input pairs still requires board/DT/mixer
+   evidence.
+
+Datasheet source: CD3313-AX-BJ-24, revision 2012-01-B1, sections 1, 2.2 and
+2.3. The datasheet confirms chip capabilities; it does not prove which pins
+or sources are connected on this particular head-unit board.
