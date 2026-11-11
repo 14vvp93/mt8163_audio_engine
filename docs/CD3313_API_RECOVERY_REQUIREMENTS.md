@@ -49,14 +49,21 @@ adb shell getprop ro.build.fingerprint
 adb shell getprop ro.build.version.release
 adb shell getprop ro.hw.dsp.chip
 
-adb shell 'find /system/framework /vendor/framework -type f \( -name "*.jar" -o -name "*.odex" -o -name "*.vdex" \) 2>/dev/null' > framework-file-list.txt
+adb shell 'for d in /system/framework /vendor/framework; do [ -d "$d" ] && find "$d" -type f \( -name "*.jar" -o -name "*.odex" -o -name "*.vdex" \); done 2>/dev/null' > framework-file-list.txt
 
-adb shell 'find /system/lib /vendor/lib -type f \( -name "libaudiocompensationfilter_vendor.so" -o -name "libaudiocomponentengine_vendor.so" -o -name "libaudioprimarydevicehalifclient.so" \) 2>/dev/null' > audio-library-file-list.txt
+adb shell 'for d in /system/lib /vendor/lib; do [ -d "$d" ] && find "$d" -type f \( -name "libaudiocompensationfilter_vendor.so" -o -name "libaudiocomponentengine_vendor.so" -o -name "libaudioprimarydevicehalifclient.so" \); done 2>/dev/null' > audio-library-file-list.txt
 
-adb pull /system/framework framework
-adb pull /vendor/framework vendor-framework
-adb pull /system/lib system-lib
-adb pull /vendor/lib vendor-lib
+# Pull framework directories only if they exist on this firmware.
+for p in /system/framework /vendor/framework; do
+  adb shell "[ -d $p ]" && adb pull "$p" || true
+done
+
+# Pull only the three missing 32-bit vendor libraries when present.
+for name in libaudiocompensationfilter_vendor.so libaudiocomponentengine_vendor.so libaudioprimarydevicehalifclient.so; do
+  for base in /vendor/lib /system/lib; do
+    adb pull "$base/$name" 2>/dev/null && break
+  done
+done
 ```
 
 The directory pulls may be large. If bandwidth is limited, use the two file lists first and pull only the missing JARs and three named libraries. Preserve the original paths in the upload or archive.
