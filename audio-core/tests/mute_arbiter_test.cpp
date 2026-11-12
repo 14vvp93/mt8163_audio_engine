@@ -1,4 +1,5 @@
 #include "mt8163_audio_core/mute_arbiter.hpp"
+#include "mt8163_audio_core/cd3313_compat.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -6,6 +7,8 @@
 using mt8163_audio_core::MuteArbiter;
 using mt8163_audio_core::MuteOwner;
 using mt8163_audio_core::SourceId;
+using mt8163_audio_core::cd3313_master_reason_mask;
+using mt8163_audio_core::cd3313_radio_input_reason_mask;
 
 namespace {
 
@@ -79,6 +82,43 @@ void test_idempotence_and_validation() {
             "invalid source is not reported muted");
 }
 
+void test_cd3313_legacy_reason_mapping() {
+    MuteArbiter mute;
+    mute.set_master(MuteOwner::AccPowerState, true);
+    mute.set_master(MuteOwner::SilenceMode, true);
+    mute.set_master(MuteOwner::BluetoothCallTransition, true);
+    const std::uint32_t expected_master =
+        (std::uint32_t{1U} << 2U) |
+        (std::uint32_t{1U} << 1U) |
+        (std::uint32_t{1U} << 3U);
+    require(cd3313_master_reason_mask(mute.master_owner_mask()) == expected_master,
+            "master owners map to recovered CD3313 reason bits");
+
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioScan, true);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioPacketMute, true);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioRetune, true);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioStartupMute, true);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioUserMute, true);
+    auto radio_mask = mute.source_owner_mask(SourceId::FmRadio);
+    const std::uint32_t expected_radio =
+        (std::uint32_t{1U} << 1U) |
+        (std::uint32_t{1U} << 2U) |
+        (std::uint32_t{1U} << 4U) |
+        (std::uint32_t{1U} << 16U);
+    require(cd3313_radio_input_reason_mask(radio_mask) == expected_radio,
+            "radio owners map to input-path reason bits");
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioScan, false);
+    radio_mask = mute.source_owner_mask(SourceId::FmRadio);
+    require((cd3313_radio_input_reason_mask(radio_mask) &
+             (std::uint32_t{1U} << 2U)) != 0U,
+            "shared legacy reason remains while another owner is active");
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioPacketMute, false);
+    radio_mask = mute.source_owner_mask(SourceId::FmRadio);
+    require((cd3313_radio_input_reason_mask(radio_mask) &
+             (std::uint32_t{1U} << 2U)) == 0U,
+            "shared legacy reason clears after every mapped owner clears");
+}
+
 }  // namespace
 
 int main() {
@@ -86,6 +126,7 @@ int main() {
     test_source_scope_and_master_inheritance();
     test_clear_owner_is_scoped();
     test_idempotence_and_validation();
+    test_cd3313_legacy_reason_mapping();
     std::cout << "AudioCore mute arbiter tests passed\n";
     return 0;
 }
