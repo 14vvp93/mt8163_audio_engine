@@ -254,9 +254,6 @@ std::int32_t process_effect(effect_handle_t self,
         }
     } callback_guard{context};
     (void)callback_guard;
-    if (!context->framework_enabled.load(std::memory_order_acquire)) {
-        return -ENODATA;
-    }
     if (!context->configured.load(std::memory_order_acquire)) return -EINVAL;
 
     audio_buffer_t input = in_buffer != nullptr
@@ -268,6 +265,14 @@ std::int32_t process_effect(effect_handle_t self,
         return -EINVAL;
     }
     if (!context->bypass_copy_compatible.load(std::memory_order_acquire)) return -EINVAL;
+
+    // AudioFlinger continues calling INSERT effects while STOPPING/STOPPED.
+    // Preserve the dry signal for that final block, then report that the
+    // effect tail is complete so AudioFlinger can transition to IDLE.
+    if (!context->framework_enabled.load(std::memory_order_acquire)) {
+        copy_bypass(context, input, output, context->config.outputCfg.format);
+        return -ENODATA;
+    }
 
     if (context->processing.test_and_set(std::memory_order_acquire)) {
         copy_bypass(context, input, output, context->config.outputCfg.format);
