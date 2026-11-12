@@ -234,3 +234,21 @@ in the host test harness; it does not replace runtime testing on the target ROM.
 AOSP reference implementation:
 - https://android.googlesource.com/platform/frameworks/av/+/26965db50a617f69bdefca0d7533796c80374f2c/services/audioflinger/Effects.cpp
 
+## Transactional configuration updates — 2026-11-12
+
+`EFFECT_CMD_SET_CONFIG` is now treated as an atomic state update. The
+adapter validates the required sample-rate, channel-mask and format fields,
+requires matching input/output layouts, and verifies that the output layout
+has a known PCM sample width before replacing the active configuration.
+Malformed or non-copy-compatible configurations are rejected without
+overwriting the previous known-good configuration.
+
+Valid but unsupported PCM streams remain accepted and are passed through
+unchanged. This preserves the fail-open behavior for unsupported sample rates,
+formats and channel layouts that are still safe to copy.
+
+The Android effect ABI smoke test now submits a mismatched input/output
+sample-rate configuration while the effect is disabled, expects `-EINVAL`,
+then re-enables processing and verifies that the previous 48 kHz PCM16
+configuration still processes correctly. This is a host ABI regression test;
+target framework behavior and device runtime remain unverified.
