@@ -56,3 +56,45 @@ A deeper full-library/VDEX/FM analysis is running separately; its result must be
 ## Scope limitation
 
 This is a structural and execution audit of the retained workflows, their inputs and their latest cleanup-related runs. It is not a complete third-party action supply-chain audit or a guarantee that every workflow has passed on every branch.
+
+
+## Fresh portability pass — 2026-11-12
+
+A file-level pass was repeated across the 16 retained workflow files on
+`feature/cd3313-driver-rewrite`.
+
+- No workflow contains a hard-coded `14march93/mt8163_audio_engine` or
+  `14vvp93/mt8163_audio_engine` repository target in its executable workflow logic.
+- No workflow pins checkout or push operations to the old feature branch.
+- `audit-reference-archives.yml` is the only retained workflow found to push commits.
+  It checks out `${{ github.ref }}`, scopes concurrency to that ref, and pushes to
+  `${GITHUB_REF_NAME}`; it is therefore branch-portable. It requires
+  `contents: write`; analysis-only workflows should remain read-only.
+- Branch filters intentionally limit automatic runs. The current feature branch is
+  explicitly included in `analyze-audio-hal.yml`,
+  `analyze-firmware-libraries.yml`, `decompile-heq.yml`,
+  `firmware-audio-config-audit.yml`, and `scan-audiomux-clients.yml`.
+  `analyze-firmware-images.yml` and `test-cd3313-emulator.yml` are main-only.
+  These are trigger filters, not hard-coded checkout targets; manual dispatch remains
+  available where declared.
+- `android-effect-library.yml` pins its AOSP source checkout to
+  `android-9.0.0_r61`. `analyze-firmware-images.yml` clones mkbootimg without a
+  pinned commit, and `analyze-firmware-libraries.yml` clones vdexExtractor without
+  a pinned commit; these are reproducibility follow-ups.
+- Retained workflows use major-version action tags such as `actions/checkout@v5`.
+  Full-SHA action pinning and a third-party supply-chain review remain separate work.
+
+## Separation plan for the public compute repository
+
+The public compute worker is initialized at
+`14vvp93/public_calculations`. The following reverse-engineering and firmware-data
+jobs are compute candidates: HAL/CD3313/firmware-image/library analysis, archive
+inventory and extraction, HEQ decompilation, firmware audio-config audit, and
+audiomux-client scanning. Product build/release jobs and product-facing tests should
+remain indexed by the canonical product repository until their source checkout and
+artifact contracts are deliberately moved. Do not duplicate the authoritative
+product implementation in the worker repository.
+
+Moving a job is not complete merely because its YAML is copied. Its input paths,
+source ref, tool versions, artifact schema, permissions, output retention, and
+report destination must be adapted and tested in the worker repository.
