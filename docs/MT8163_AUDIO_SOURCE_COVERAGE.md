@@ -118,8 +118,10 @@ factory. In `AudioALSAStreamIn::read()`, the HAL loads the selected handler
 from the stream object and dispatches its virtual `read(buffer, bytes)`
 method. The FM handler's `open()` obtains the singleton
 `AudioALSACaptureDataProviderFMRadio` and constructs an
-`AudioALSACaptureDataClient` for the stream attributes. This proves a real
-AudioRecord/input-stream FM capture route, not just the existence of an
+`AudioALSACaptureDataClient` for the stream attributes. Its
+`AudioALSACaptureHandlerFMRadio::read()` dispatches to the client's read
+method when the client exists. This proves a real AudioRecord/input-stream FM
+capture route delivering PCM to the input stream, not just the existence of an
 unused provider class. The extra guard fields still need semantic mapping.
 
 The disassembly was checked against the extracted Android 9 primary HAL:
