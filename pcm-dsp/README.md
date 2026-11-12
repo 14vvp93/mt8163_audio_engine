@@ -7,7 +7,7 @@ This library is an independent, host-buildable C++17 DSP core. It is not yet con
 ### Legacy stereo core
 
 - interleaved signed PCM16 stereo;
-- 44.1 kHz and 48 kHz;
+- 32 kHz, 44.1 kHz and 48 kHz (32 kHz added for the MT6627 FM PCM rate);
 - 10 configurable RBJ biquad bands: peaking, low/high shelf, second-order HPF/LPF;
 - preamp, balance, linked stereo peak limiter;
 - bit-exact bypass and no heap allocation in the processing method;
