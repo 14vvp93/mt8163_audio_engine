@@ -61,7 +61,7 @@ public:
 
 private:
     struct Slot {
-        StreamToken token{0U};
+        std::atomic<StreamToken> token{0U};
         std::uint32_t native_handle{0U};
         PcmConfig config{};
         PcmDirection direction{PcmDirection::Playback};
