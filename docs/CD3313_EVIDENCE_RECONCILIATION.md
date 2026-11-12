@@ -60,6 +60,7 @@ The exact vendor hardened-usercopy implementation/config still requires source c
 - Command 0x03 requires the conservative three-word frame and validates channel 0..6 and gain 0..3 before emulator dispatch.
 - Command 0x15 requires four complete 32-bit indices and validates each index in 0..15.
 - Command 0x09 requires one complete word, validates `volume_max` in 0..40, and is modeled as the master-volume upper bound.
+- `0xF0` is the separate read-direction 8-byte identifier query; its write-direction branch is not an operation and is excluded from the 11-command host write allowlist.
 - Commands 0x56 and 0xA3 require one complete word; their semantics are modeled only to the extent established by the vendor callback.
 - Frames above 63 words are rejected.
 - ioctl success is treated as queue submission, not I2C completion.
