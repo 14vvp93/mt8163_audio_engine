@@ -118,7 +118,7 @@ Save-AdbText "audio_config_file_list" "for d in /vendor/etc /system/etc; do echo
 
 # FM-specific, read-only state needed to correlate the MT6627 driver, HAL and ALSA route.
 Save-AdbText "fm_proc_status" "echo ==== /proc/fm; ls -l /proc/fm 2>&1; cat /proc/fm 2>&1; echo ==== /dev/fm; ls -l /dev/fm 2>&1" -Root
-Save-AdbText "fm_customer_config_candidates" "for d in /vendor/firmware /system/etc/firmware /vendor/etc/firmware /odm/etc/firmware /lib/firmware /system/vendor/firmware; do echo ==== `$d; find `$d -maxdepth 4 -type f -iname fm_cust.cfg -print -exec cat {} + 2>/dev/null; done" -Root
+Save-AdbText "fm_customer_config_candidates" "for d in /vendor/firmware /system/etc/firmware /vendor/etc/firmware /odm/etc/firmware /lib/firmware /system/vendor/firmware; do echo ==== `$d; find `$d -maxdepth 4 -type f -iname fm_cust.cfg -print 2>/dev/null | while read f; do echo ==== `$f; cat `$f 2>&1; done; done" -Root
 Save-AdbText "audio_policy_candidates" "for d in /odm/etc /vendor/etc /system/etc; do echo ==== `$d; find `$d -maxdepth 2 -type f -iname 'audio_policy_configuration*.xml' -print 2>/dev/null; done"
 Save-AdbText "pinctrl_audio" "find /sys/kernel/debug/pinctrl -maxdepth 2 -type f 2>/dev/null | grep -E '/(pinmux-pins|pins|pinmux-functions|pinconf-pins)$' | while read f; do echo ==== `$f; cat `$f 2>&1; done" -Root
 Save-AdbText "dmesg_root" "dmesg" -Root
