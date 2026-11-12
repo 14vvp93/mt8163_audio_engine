@@ -86,6 +86,55 @@ def main() -> None:
             destination = dest / Path(*rel.parts)
         copy_one(source, destination, f"files2.zip:{rel.as_posix()}", rows, seen)
 
+    # Keep the extracted HEQ APK permanently as GitHub-safe chunks. The
+    # original APK is 161 MiB, above GitHub's 100 MiB per-file limit.
+    heq_source = root / "HEQ" / "HEQ.apk"
+    if not heq_source.is_file():
+        raise SystemExit(f"missing extracted HEQ APK: {heq_source}")
+    heq_dir = dest / "heq"
+    heq_dir.mkdir(parents=True, exist_ok=True)
+    heq_hash = digest(heq_source)
+    heq_size = heq_source.stat().st_size
+    chunk_size = 64 * 1024 * 1024
+    heq_parts = []
+    with heq_source.open("rb") as source:
+        index = 1
+        while True:
+            data = source.read(chunk_size)
+            if not data:
+                break
+            part_name = f"HEQ.apk.part{index:03d}"
+            target = heq_dir / part_name
+            temporary = heq_dir / (part_name + ".tmp")
+            temporary.write_bytes(data)
+            copy_one(temporary, target, f"HEQ.zip:HEQ.apk (part {index})", rows, seen)
+            temporary.unlink()
+            heq_parts.append({
+                "path": target.relative_to(Path.cwd()).as_posix(),
+                "size": target.stat().st_size,
+                "sha256": digest(target),
+            })
+            index += 1
+    heq_manifest = {
+        "source": "HEQ.zip:HEQ.apk",
+        "size": heq_size,
+        "sha256": heq_hash,
+        "chunk_size": chunk_size,
+        "parts": heq_parts,
+    }
+    (heq_dir / "HEQ_APK_MANIFEST.json").write_text(
+        json.dumps(heq_manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    (heq_dir / "README.md").write_text(
+        "# Extracted HEQ APK\n\n"
+        "The original 161 MiB APK is stored as three GitHub-safe chunks. "
+        "Reassemble from the repository root with:\n\n"
+        "    cat reference-materials/extracted/heq/HEQ.apk.part* > HEQ.apk\n\n"
+        "Verify the resulting file against the SHA-256 in HEQ_APK_MANIFEST.json. "
+        "The original split HEQ ZIP volumes remain unchanged in reference-materials/heq/.\n",
+        encoding="utf-8",
+    )
+
     rows.sort(key=lambda row: row["path"])
     manifest = {
         "purpose": "Complete persistent extraction of all retained archive sets except the 161 MiB HEQ APK, which exceeds GitHub's 100 MiB per-file limit.",
@@ -100,6 +149,7 @@ def main() -> None:
             "unmatched_shared_libraries": 0,
             "note": "All files2 .so entries were SHA-256 verified against lib.zip or vendor_lib.zip and are represented at their canonical filesystem paths."
         },
+        "heq_apk": heq_manifest,
         "file_count": len(rows),
         "total_bytes": sum(row["size"] for row in rows),
         "files": rows,
