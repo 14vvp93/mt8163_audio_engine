@@ -98,11 +98,16 @@ int main() {
                     ParseError::PayloadSizeMismatch,
                 "header-only frame with a nonzero size field must be rejected");
 
+        auto invalid_input_gain_none = make_frame(0x03U, 3U, 12U);
+        invalid_input_gain_none[4U] = 6U;
+        require(parse_driver_command(invalid_input_gain_none).error ==
+                    ParseError::InvalidArgumentValue,
+                "parser must reject the NONE channel for input gain");
         auto invalid_input_gain_channel = make_frame(0x03U, 3U, 12U);
         invalid_input_gain_channel[4U] = 7U;
         require(parse_driver_command(invalid_input_gain_channel).error ==
                     ParseError::InvalidArgumentValue,
-                "parser must reject input-gain channel indices outside 0..6");
+                "parser must reject input-gain channel indices above 5");
         auto invalid_input_gain_value = make_frame(0x03U, 3U, 12U);
         invalid_input_gain_value[8U] = 4U;
         require(parse_driver_command(invalid_input_gain_value).error ==
@@ -243,9 +248,13 @@ int main() {
         require(encode_rejects({0x09U, 1U, {41U, 0U, 0U, 0U}}),
                 "encoder must reject a master-volume maximum above 40");
         require(encode_rejects({0x03U, 3U, {
+                    6U, 0U, 0U, 0U, 1U, 0U, 0U, 0U,
+                    0U, 0U, 0U, 0U}}),
+                "encoder must reject the NONE channel for input gain");
+        require(encode_rejects({0x03U, 3U, {
                     7U, 0U, 0U, 0U, 1U, 0U, 0U, 0U,
                     0U, 0U, 0U, 0U}}),
-                "encoder must reject input-gain channels outside 0..6");
+                "encoder must reject input-gain channels above 5");
         require(encode_rejects({0x03U, 3U, {
                     2U, 0U, 0U, 0U, 4U, 0U, 0U, 0U,
                     0U, 0U, 0U, 0U}}),
