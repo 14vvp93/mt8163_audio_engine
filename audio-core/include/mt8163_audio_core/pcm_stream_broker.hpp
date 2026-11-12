@@ -53,6 +53,7 @@ private:
         // High bit admits callback writers; low bits count in-flight writes.
         // A single atomic word makes admission and stop's gate-close race-free.
         std::atomic<std::uint32_t> write_gate{0U};
+        std::atomic<std::uint32_t> generation{0U};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
         PcmConfig config{};
