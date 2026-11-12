@@ -673,14 +673,12 @@ int main() {
               state_emulator.journal().back().sequence == 17U,
               "rejected transition is atomic and is not journaled");
 
-        Emulator unknown_command_emulator;
-        check(static_cast<bool>(unknown_command_emulator.write(
-                  encode_driver_command(DriverCommand{0xF0, 1, {0, 0, 0, 0}}))),
-              "recognized command with unresolved semantics is retained");
-        check(unknown_command_emulator.journal().size() == 1U &&
-              !unknown_command_emulator.journal().front().modeled &&
-              unknown_command_emulator.journal().front().command.id == 0xF0,
-              "unresolved semantics remain visible as an unmodeled journal event");
+        Emulator read_query_write_emulator;
+        check(!read_query_write_emulator.write(
+                  {0x00, 0xF0, 0x01, 0x40, 0, 0, 0, 0}) &&
+              read_query_write_emulator.journal().empty() &&
+              read_query_write_emulator.rejected_commands() == 1U,
+              "read-only 0xF0 query is rejected from the write-command queue");
 
         state_emulator.reset();
         check(state_emulator.journal().empty() &&
