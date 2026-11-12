@@ -2,7 +2,7 @@
 
 ## Scope
 
-This audit is based on the ARM32 cd3313.ko disassembly, DWARF, the recovered driver tables, and the vendor-kernel version identified by the module. No malformed requests have been sent to a physical head unit. Findings below are static-analysis results, not device-tested exploits.
+This audit combines earlier standalone-module findings with vendor-kernel context. The standalone reference module is Build ID `dae15c9eb019e9388d15cb88088c202d017ebcf0`; the firmware-paired vendor module is Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`. Do not apply findings across these variants without checking the exact build. Direct revalidation of the paired vendor callback is recorded in [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md). No malformed requests have been sent to a physical head unit. Findings below are static-analysis results, not device-tested exploits.
 
 Primary evidence:
 - [Focused module analysis run 42883809539](https://github.com/14march93/mt8163_audio_engine/actions/runs/42883809539)
@@ -17,10 +17,10 @@ Primary evidence:
 | R1 | Ioctl slab object is 256 bytes, but the copy cap is 256 bytes after a 4-byte header | High, conditional on vendor hardened-usercopy implementation | A 64-word-or-larger payload can exceed the slab object and trigger a kernel BUG |
 | R2 | Commands 0x56 and 0xA3 read one payload word without a size check | High | Zero-word requests consume stale slab data and can toggle loudness or subwoofer GPIO |
 | R3 | Command 0x15 validates only a two-word minimum but reads four words | High | Two/three-word requests consume stale payload words |
-| R4 | Command 0x15 uses all four values as offsets into a 16-entry speaker table without full range validation | High | Out-of-range values can read beyond the table and generate unintended register bytes |
+| R4 | The paired vendor module range-checks all four 0x15 indices against 0..15 before table access; the earlier no-check claim is not valid for this build | High | The remaining confirmed issue is short-payload stale-word consumption, not out-of-range table indexing |
 | R5 | Raw write() uses a 12-byte zeroed buffer, copies up to all 12 bytes, then calls kstrtouint() without adding a terminator | High, assuming the Linux 4.9.117 helper behavior | A full 12-byte valid-hex input can make the parser inspect beyond the local buffer |
 | R6 | Raw write() preserves the VFS file position; after the first write, a later write on the same fd starts at a nonzero offset in a freshly zeroed buffer | High | Subsequent write() calls on the same open descriptor are parsed as an empty string and silently do nothing |
-| R7 | Raw write() ignores i2c_master_send() status and updates the cache anyway | High | The software cache can claim a byte was written when the I²C transfer failed |
+| R7 | The older standalone raw-write path ignores transfer status; the paired vendor build checks exact one-byte success and retries up to five times before updating cache | High for the variant difference | Do not attribute the standalone cache-consistency defect to the paired vendor module |
 | R8 | ioctl write returns success after queueing; callback result and post_event_delayed() result are not propagated | High | Userspace cannot treat ioctl success as proof that a command ran |
 | R9 | cmd_read() reports cached register bytes and software state, not hardware readback | High | A stale cache can look like successful hardware state |
 
@@ -47,7 +47,7 @@ The emulator requires one complete 32-bit word and intentionally does not reprod
 
 The command-length table requires two words, and the callback checks only size_field > 1, but it then loads four 32-bit values at +4, +8, +12, and +16. Missing values in a two/three-word request are stale slab contents.
 
-Each value is then used as an offset into the 16-entry cd3313_speaker table. The recovered branch does not validate all four indices against 0..15. The emulator requires four words and validates all four indices.
+The paired vendor module compares each of the four unsigned indices against 15 before indexing the 16-entry cd3313_speaker table. The previous no-range-check statement is superseded by the direct vendor callback disassembly. The short-payload problem remains: a two- or three-word frame passes the driver's size check, then the callback reads four words. The emulator requires four complete words and validates all four indices.
 
 ### R5/R6/R7 — raw write()
 
