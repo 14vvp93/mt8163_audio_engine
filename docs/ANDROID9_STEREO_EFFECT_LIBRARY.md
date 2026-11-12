@@ -211,3 +211,26 @@ Before adding the effect to the target ROM's effect configuration:
 
 Do not register the effect globally or modify the system image as part of this
 scaffold. The target-specific config and runtime behavior are not yet known.
+
+## Disable transition and dry-buffer contract — 2026-11-12
+
+Android 9 AudioFlinger continues to invoke an enabled INSERT effect while its
+state is STOPPING/STOPPED. After EFFECT_CMD_DISABLE, the effect must therefore
+keep the final process callback safe: copy the input PCM bit-for-bit to a
+distinct output buffer, then return `-ENODATA` to indicate that the effect tail
+is complete. AudioFlinger uses that return value in STOPPED to force the
+disable-wait counter to one and transition the effect chain to IDLE.
+
+The adapter now implements this contract when its framework-enabled flag is
+false. This is separate from the user DSP-enabled parameter: a framework-active
+effect with DSP disabled continues to return success and dry-copy each block,
+whereas a framework-disabled effect dry-copies the final block and returns
+`-ENODATA`.
+
+The host ABI smoke test covers the post-disable callback and checks both the
+`-ENODATA` result and bit-exact PCM output. This validates the adapter contract
+in the host test harness; it does not replace runtime testing on the target ROM.
+
+AOSP reference implementation:
+- https://android.googlesource.com/platform/frameworks/av/+/26965db50a617f69bdefca0d7533796c80374f2c/services/audioflinger/Effects.cpp
+
