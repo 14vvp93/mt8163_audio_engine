@@ -139,8 +139,12 @@ create a separate bounded PCM adapter at the verified FM HAL boundary that
 calls the same DSP core. Do not patch the vendor HAL or intercept ALSA based
 only on endpoint names.
 
-The FM route must retain a hard bypass for calls, unsupported sample rates,
-non-stereo buffers and any path whose buffer ownership/format is not proven.
+The stereo PCM16 DSP core now supports 32 kHz, matching the MT6627 driver's
+class-1 metadata. This is core-level readiness only: the Android output effect
+adapter remains restricted to 44.1/48 kHz, and no FM capture/AudioPatch adapter
+has been connected. The FM route must retain a hard bypass for calls,
+unsupported sample rates, non-stereo buffers and any path whose buffer
+ownership/format is not proven.
 
 ## 5. Shared engine / independent route adapters
 
