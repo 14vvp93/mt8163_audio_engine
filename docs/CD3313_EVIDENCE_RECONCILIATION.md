@@ -57,6 +57,7 @@ The exact vendor hardened-usercopy implementation/config still requires source c
 ## 5. Safe implementation status
 
 - Every parsed frame must contain the full declared payload; no implicit read or padding is performed by the parser.
+- Command 0x03 requires the conservative three-word frame and validates channel 0..6 and gain 0..3 before emulator dispatch.
 - Command 0x15 requires four complete 32-bit indices and validates each index in 0..15.
 - Command 0x09 requires one complete word, validates `volume_max` in 0..40, and is modeled as the master-volume upper bound.
 - Commands 0x56 and 0xA3 require one complete word; their semantics are modeled only to the extent established by the vendor callback.
@@ -69,7 +70,7 @@ The exact vendor hardened-usercopy implementation/config still requires source c
 
 - [x] Re-extract the command dispatcher from the exact vendor archive module Build ID e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56.
 - [ ] Reconcile every command ID, generic length-table check, local branch check, actual argument reads and command-specific ranges.
-- [ ] Complete the `0x03` channel/gain range and control-flow review; its three-word host threshold remains a fail-closed policy because the vendor callback reads two words without a local size guard.
+- [ ] Complete the `0x03` control-flow review; its three-word host threshold remains a fail-closed policy because the vendor callback reads two words without a local size guard. The replacement validates channel 0..6 and gain 0..3.
 - [x] Identify `0x09` as `volume_max`, default 40, and model a safe 0..40 replacement contract.
 - [ ] Inventory every Java/Binder caller and record the exact array length and argument values for every command.
 - [ ] Decide and implement the safe legacy JNI compatibility buffer, including deterministic initialization of the extra word, without modifying the original JNI binary.
