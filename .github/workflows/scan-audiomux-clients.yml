@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "reference-materials/firmware-dumps/files.zip"
+      - "reference-materials/extracted/**"
       - ".github/workflows/scan-audiomux-clients.yml"
 
 permissions:
@@ -25,9 +25,9 @@ jobs:
 
       - name: Extract archive and inventory files
         run: |
-          test -s reference-materials/firmware-dumps/files.zip
+          test -d reference-materials/extracted
           mkdir -p audiomux-client-scan/input audiomux-client-scan/reports
-          unzip -oq reference-materials/firmware-dumps/files.zip -d audiomux-client-scan/input
+          cp -a reference-materials/extracted/. audiomux-client-scan/input/
           find audiomux-client-scan/input -type f -print0 | sort -z |
             xargs -0 file > audiomux-client-scan/reports/file-inventory.txt
 
