@@ -35,7 +35,30 @@ int main() {
 
     try {
         Engine engine;
-        check(!engine.configure(32000U), "unsupported sample rate rejected");
+        check(engine.configure(32000U), "32 kHz accepted for FM PCM");
+        Parameters fm_parameters;
+        fm_parameters.enabled = true;
+        fm_parameters.limiter_enabled = false;
+        fm_parameters.bands[0] = {1000.0F, 6.0F, 0.707F, true,
+                                  FilterType::Peaking, 1.0F};
+        std::vector<std::int16_t> fm_input(3200U * 2U);
+        std::vector<std::int16_t> fm_output(fm_input.size(), 0);
+        for (std::size_t frame = 0; frame < 3200U; ++frame) {
+            const auto sample = static_cast<std::int16_t>(9000.0F * std::sin(
+                2.0F * 3.14159265358979323846F * 1000.0F *
+                static_cast<float>(frame) / 32000.0F));
+            fm_input[frame * 2U] = sample;
+            fm_input[frame * 2U + 1U] = sample;
+        }
+        check(engine.process(fm_input.data(), fm_output.data(), 3200U,
+                             fm_parameters),
+              "32 kHz FM PCM processing succeeds");
+        check(fm_output != fm_input,
+              "32 kHz FM EQ changes the test signal");
+        for (const auto sample : fm_output) {
+            check(std::isfinite(static_cast<float>(sample)),
+                  "32 kHz FM output remains finite");
+        }
         check(engine.configure(44100U), "44.1 kHz accepted");
         check(engine.configure(48000U), "48 kHz accepted");
 
