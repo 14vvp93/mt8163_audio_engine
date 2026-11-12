@@ -50,6 +50,9 @@ jobs:
             -iname 'audio.primary.mt8163.so' -o \
             -iname 'libaudiopolicycustomextensions.so' -o \
             -iname 'libaudiopolicymanagerdefault.so' -o \
+            -iname 'libcarservices_jni.so' -o \
+            -iname 'libfmjni.so' -o \
+            -iname 'libfmcust.so' -o \
             -iname 'audio_policy_configuration*.xml' -o \
             -iname 'a2dp_audio_policy_configuration.xml' -o \
             -iname 'r_submix_audio_policy_configuration.xml' -o \
