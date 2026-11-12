@@ -281,3 +281,10 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - CD3313 Protocol Safety run [43304787779](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43304787779) completed SUCCESS: host tests, ASAN/UBSAN and seeded libFuzzer all passed.
 - AudioCore TSAN run [43304787782](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43304787782) completed SUCCESS.
 - These runs cover the code set through commit `8fee63d1`; subsequent commits through the current roadmap update are documentation-only. Status: HOST VERIFIED for this code set. No Android ARM ABI, target-kernel build, or DEVICE VERIFIED claim is made.
+
+
+### Final P0-A host verification after input-gain bounds
+
+- CD3313 Protocol Safety run [43305452037](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43305452037) completed SUCCESS after the channel 0..5 correction: host tests, ASAN/UBSAN and seeded libFuzzer all PASS.
+- AudioCore TSAN run [43305452073](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43305452073) completed SUCCESS.
+- These runs cover code commit `f664d0ea`; current branch HEAD `7d893a72` includes that commit and subsequent documentation-only updates. HOST VERIFIED. Android ABI, target kernel, board topology and physical device remain UNVERIFIED.
