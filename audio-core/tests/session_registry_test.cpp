@@ -45,6 +45,10 @@ void test_duplicate_and_invalid_inputs() {
             "NONE source is rejected");
     require(!sessions.open(1U, SourceId::LocalMedia, RouteType::None),
             "NONE route is rejected");
+    require(!sessions.open(1U, SourceId::BluetoothA2dp, RouteType::PrimaryPcm),
+            "A2DP cannot claim the primary PCM route");
+    require(!sessions.open(1U, SourceId::Aux, RouteType::PrimaryPcm),
+            "analog AUX cannot claim a PCM route without evidence");
     require(sessions.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm),
             "valid session opens");
     require(!sessions.open(1U, SourceId::Navigation, RouteType::PrimaryPcm),
