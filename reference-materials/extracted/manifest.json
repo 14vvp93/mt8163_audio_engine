@@ -1,0 +1,2473 @@
+{
+  "purpose": "Persistent audio-relevant extraction from the complete archive set.",
+  "source_archives": [
+    "reference-materials/firmware-dumps/files2.zip.001-.003",
+    "reference-materials/firmware-dumps/lib.zip.001-.004",
+    "reference-materials/firmware-dumps/vendor_lib.zip.001-.002",
+    "reference-materials/heq/HEQ.zip.001-.017 (161 MiB APK is retained in the source archive and CI extraction artifact, not Git)"
+  ],
+  "file_count": 410,
+  "total_bytes": 120781717,
+  "files": [
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/AudioInputSource/AudioInputSource.apk",
+      "size": 100089,
+      "sha256": "bf52d6a19f5e66e0b1eae13379556d27587280d66a0d7b4bf59ebbeda45d8cb2",
+      "source": "files2.zip:system/AudioInputSource/AudioInputSource.apk"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/AudioInputSource/oat/arm/AudioInputSource.odex",
+      "size": 17120,
+      "sha256": "0530861fb170bcc9a0ef4cca2c2f75c2dede69d47492da05953250daf1f3a4d1",
+      "source": "files2.zip:system/AudioInputSource/oat/arm/AudioInputSource.odex"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/AudioInputSource/oat/arm/AudioInputSource.vdex",
+      "size": 23936,
+      "sha256": "36a711e5161c6853baa3df4b8b80a12ff8b7c222d19cf201a586a9f6e370e71a",
+      "source": "files2.zip:system/AudioInputSource/oat/arm/AudioInputSource.vdex"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/a2dp_audio_policy_configuration.xml",
+      "size": 2090,
+      "sha256": "e20164e2412fa4b6497a908b2304dd8fe19684925fbae38ed6461ad60f3a9ec2",
+      "source": "files2.zip:system/a2dp_audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audio_effects.conf",
+      "size": 5668,
+      "sha256": "550ca26f659fa9062ad641db4ef8b2634f38f16eee49206b66249c4999592e3a",
+      "source": "files2.zip:system/audio_effects.conf"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audio_policy_configuration.xml",
+      "size": 11830,
+      "sha256": "66080ee7be339d8e4d7893b02bef2d5067dfa42cb6aec489d9741df8e29830d7",
+      "source": "files2.zip:system/audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audio_policy_configuration_stub.xml",
+      "size": 1141,
+      "sha256": "b144fd3ec9b3d8e1aa19ea98895033a5603954cdcea47d57ea37929d539a332c",
+      "source": "files2.zip:system/audio_policy_configuration_stub.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audio_policy_volumes.xml",
+      "size": 12678,
+      "sha256": "0a0b75614bdf7507a3f694a219f90d8cd562221ef6f0994cc01cab2cd899be4e",
+      "source": "files2.zip:system/audio_policy_volumes.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audioserver",
+      "size": 37324,
+      "sha256": "3e03ec5998d415ef36b37e0ab29df8a7cf9f62fd463b98e9274519a2211397fe",
+      "source": "files2.zip:system/audioserver"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/audioserver.rc",
+      "size": 781,
+      "sha256": "34e2b81e4d49c1dd778c26818b9dc37d352dbf9cdc655f8c6232cb4009c22d1c",
+      "source": "files2.zip:system/audioserver.rc"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/framework/arm/boot-carservices.art",
+      "size": 73728,
+      "sha256": "fc77391150d2d6c13fa2bc7c8a059a0c8cc129586221fcc9122baaaf2f884868",
+      "source": "files2.zip:framework/arm/boot-carservices.art"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/framework/arm/boot-carservices.art.rel",
+      "size": 3812,
+      "sha256": "c821f1e638d21768fe46f612ec8da8ef0f57d9575f22eb4e2113370e33d5ea40",
+      "source": "files2.zip:framework/arm/boot-carservices.art.rel"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/framework/arm/boot-carservices.oat",
+      "size": 30096,
+      "sha256": "11168f5e2cbc1a18dfdf0dc357264258f999a7e145239cd80b062ec2c690b37e",
+      "source": "files2.zip:framework/arm/boot-carservices.oat"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/framework/boot-carservices.vdex",
+      "size": 343992,
+      "sha256": "af384924cc16755d9ffca03f713132774ad3a4f1b66734d1f4bec5671a931b58",
+      "source": "files2.zip:framework/boot-carservices.vdex"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/hearing_aid_audio_policy_configuration.xml",
+      "size": 719,
+      "sha256": "b16270e3a739faedaebf97b991d9dc86ee31d2b0e781b507f1280c92e4ae5090",
+      "source": "files2.zip:system/hearing_aid_audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.common-util.so",
+      "size": 20248,
+      "sha256": "afa9ef598e384e5a478a150d034b3da060ea84bd3b89b4c3555adbd4c68034bb",
+      "source": "lib.zip:lib/android.hardware.audio.common-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.common@2.0-util.so",
+      "size": 24164,
+      "sha256": "ca8d5dce2650ff434f7759996ddee89d9a45806f5eb30847f3edd83cb377b763",
+      "source": "lib.zip:lib/android.hardware.audio.common@2.0-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.common@2.0.so",
+      "size": 15872,
+      "sha256": "e77c7af666c35bba06d473359075e282f9ef01466258ed5b3a0f333aed8db196",
+      "source": "lib.zip:lib/android.hardware.audio.common@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.common@4.0-util.so",
+      "size": 24164,
+      "sha256": "ca8ca089e1ff4c4008041ac40feb5becd10e079ea0b1eecdbab5c1e19e324c6c",
+      "source": "lib.zip:lib/android.hardware.audio.common@4.0-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.common@4.0.so",
+      "size": 15872,
+      "sha256": "1ce01e1dd213c39acba23186d66b0c534b00bf5b69eb3b441c0da031ffc060e1",
+      "source": "lib.zip:lib/android.hardware.audio.common@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.effect@2.0.so",
+      "size": 905920,
+      "sha256": "c5b2645d183a64aa21573e963666ce595e5d8d9bfa44ffb1b7dd83f2cd64a17d",
+      "source": "lib.zip:lib/android.hardware.audio.effect@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio.effect@4.0.so",
+      "size": 901748,
+      "sha256": "d350b0d8135e46f37619f6024c1d99b4e20931d7fffce2fc1e0f81fcbc939735",
+      "source": "lib.zip:lib/android.hardware.audio.effect@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio@2.0.so",
+      "size": 456984,
+      "sha256": "f03e6d8dc28080cad600f27f8f4e8942a498800b53dfd4bcf549785146d20fc0",
+      "source": "lib.zip:lib/android.hardware.audio@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/android.hardware.audio@4.0.so",
+      "size": 487024,
+      "sha256": "3074f2be7e737d4534bed19a7edf91612f23c65d6877fc9c75af609fbeaf03a2",
+      "source": "lib.zip:lib/android.hardware.audio@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/hw/audio.a2dp.default.so",
+      "size": 47076,
+      "sha256": "2e071c95c5b6b8ecc3da2abe9e7018b84447f03e808ac81d56502634e965305e",
+      "source": "lib.zip:lib/hw/audio.a2dp.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaaudio.so",
+      "size": 159880,
+      "sha256": "44d58727257f0378d609eb194274e73d553e3b60a01689611a483e0caa3bc9ec",
+      "source": "lib.zip:lib/libaaudio.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaaudioservice.so",
+      "size": 134584,
+      "sha256": "bcc8adf786bb420b104bfb12457cd462198ba5f4757e853954a07f14e6d85324",
+      "source": "lib.zip:lib/libaaudioservice.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudio-resampler.so",
+      "size": 32236,
+      "sha256": "7be7c0d1919db45af336c5316ed9630f917331e4820e8e1a1efdb4d5e22697eb",
+      "source": "lib.zip:lib/libaudio-resampler.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioclient.so",
+      "size": 393504,
+      "sha256": "f4c45f86f8be5faed1189eb5ec4a654bd07c0275e2596ad8c263d7c81085caf9",
+      "source": "lib.zip:lib/libaudioclient.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiocompensationfilter.so",
+      "size": 15916,
+      "sha256": "f2a9b3578d9ff2088bda8ed07d317553cf004b9906fff8e4faac1a1ef1d341a3",
+      "source": "lib.zip:lib/libaudiocompensationfilter.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiocomponentengine.so",
+      "size": 41092,
+      "sha256": "cced2ffd8d1de0d2746528875f70ae928d93bb273424059bd5785c197c6b3acb",
+      "source": "lib.zip:lib/libaudiocomponentengine.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiocustparam.so",
+      "size": 32504,
+      "sha256": "39ff3110bf398753c6239bf21e2dbc005720783f9ef4982416f655277029a7b5",
+      "source": "lib.zip:lib/libaudiocustparam.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiodcrflt.so",
+      "size": 24660,
+      "sha256": "cc7eb59fdedbbb39faadd704fdc36306ee381efdad2bb96cfd4196f2921e3fa2",
+      "source": "lib.zip:lib/libaudiodcrflt.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiodecoder.so",
+      "size": 22108,
+      "sha256": "a2137b111a4af512a57f9fc4d899e6d6bc8919532800772c3f6d9c22340d0ec4",
+      "source": "lib.zip:lib/libaudiodecoder.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiodevsdk.so",
+      "size": 505560,
+      "sha256": "df103e9c35efccd81ec65fecfd4a3d0920f5e2b42c80034d028771d37e6caabc",
+      "source": "lib.zip:lib/libaudiodevsdk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioeffect_jni.so",
+      "size": 37500,
+      "sha256": "700ede52f5f3f56e481ea7bf900d7307f8c6e048f2708b18cacebc47fa7c6bc3",
+      "source": "lib.zip:lib/libaudioeffect_jni.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioencoder.so",
+      "size": 22108,
+      "sha256": "ebaed17e5866e7992d8d7a63f629208bfc92388640297f4c3d9607fd58ac38b1",
+      "source": "lib.zip:lib/libaudioencoder.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioflinger.so",
+      "size": 343712,
+      "sha256": "cc9847a03838d53342d617c683700ccb3e68cdac067352584f04a15a6ae8a3e3",
+      "source": "lib.zip:lib/libaudioflinger.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiohal.so",
+      "size": 19980,
+      "sha256": "f631068c6906b05e57bde245c06b451a02840bf8a093092abbbf786aef4e0a77",
+      "source": "lib.zip:lib/libaudiohal.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiohal@2.0.so",
+      "size": 140244,
+      "sha256": "ecc9e085a8ebd98e3d835f2ebe5ede1d8c4151f855acd1fbd38e202f6f63a13d",
+      "source": "lib.zip:lib/libaudiohal@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiohal@4.0.so",
+      "size": 161632,
+      "sha256": "93157573a1cacfdd5bee084fa9762237e5dfd2fcb6afb29a92f1b3e31f13fb29",
+      "source": "lib.zip:lib/libaudiohal@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiohal_deathhandler.so",
+      "size": 24384,
+      "sha256": "6e25fff1415c825e1daa5c435dd8756e356d799e33d1b1727ada85147669fb2d",
+      "source": "lib.zip:lib/libaudiohal_deathhandler.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiomanager.so",
+      "size": 24540,
+      "sha256": "cd05f8113fc19b903453031f1d1a96db8a47e78e910e66dcefacf5a679f51e6b",
+      "source": "lib.zip:lib/libaudiomanager.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiopolicycustomextensions.so",
+      "size": 113564,
+      "sha256": "9f4b6940d241a4bc6517214f1fc3fd0b3d69964f54aaa04e5ceb836d47d04afb",
+      "source": "lib.zip:lib/libaudiopolicycustomextensions.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiopolicyenginedefault.so",
+      "size": 84484,
+      "sha256": "c0d7380c66bbd6fd009b09fa7eeea17d0da6e5bb244d5788444337409453de79",
+      "source": "lib.zip:lib/libaudiopolicyenginedefault.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiopolicymanager.so",
+      "size": 15868,
+      "sha256": "5415d58ba409951f633a21dd535b134b593727c921443f18edb9820242726404",
+      "source": "lib.zip:lib/libaudiopolicymanager.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiopolicymanagerdefault.so",
+      "size": 321036,
+      "sha256": "0ddcaabf015c96ce96430159edc0795e6dabc516ca0cf2afae11aababb09fa2d",
+      "source": "lib.zip:lib/libaudiopolicymanagerdefault.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiopolicyservice.so",
+      "size": 93340,
+      "sha256": "a07accfd4c9018baed150efc21fa5d9eed0b5526c6ac41c0da67cbf44f7e290c",
+      "source": "lib.zip:lib/libaudiopolicyservice.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioprocessing.so",
+      "size": 409580,
+      "sha256": "44c2aa0f7894d0e3b600f7f63a77ecf4c542e0bfc9f7cd50a2bd38258ff6b45a",
+      "source": "lib.zip:lib/libaudioprocessing.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiospdif.so",
+      "size": 24448,
+      "sha256": "18701aa8efe9559008285d5b8f415c1667dfd1e072755fc1988060a081c5f086",
+      "source": "lib.zip:lib/libaudiospdif.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudiotoolkit.so",
+      "size": 15904,
+      "sha256": "9f1ea1973547add7038e11a50fe5abaf37511118a5ad8ee3f4eb1306c88ff4da",
+      "source": "lib.zip:lib/libaudiotoolkit.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libaudioutils.so",
+      "size": 66580,
+      "sha256": "923393135d41113136683e51b6908179bcd4cb12f73e2824e3bf71239efea30c",
+      "source": "lib.zip:lib/libaudioutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libcarservices_jni.so",
+      "size": 6092616,
+      "sha256": "ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f",
+      "source": "lib.zip:lib/libcarservices_jni.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libem_audio_jni.so",
+      "size": 41392,
+      "sha256": "b36141ed837908255d6e7fac6a9165b9fdcc8446f810755b619059e096911668",
+      "source": "lib.zip:lib/libem_audio_jni.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/libmtkaudio_utils.so",
+      "size": 15904,
+      "sha256": "35b62a733b939e169cdd2ba0d5c8390bdcac219ce405712b23679a6738ad3be8",
+      "source": "lib.zip:lib/libmtkaudio_utils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.common-util.so",
+      "size": 11044,
+      "sha256": "776937e29c7b160ab044461b57b1ba903957bf366e5ba4ed88d6dc618a9973e6",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.common-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.common@2.0-util.so",
+      "size": 14820,
+      "sha256": "d81f9c34e494710bde9f4c2e54a262598e4ed2699556be2db277b600e3d205dc",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.common@2.0-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.common@2.0.so",
+      "size": 6456,
+      "sha256": "b443bf34260c4b855538f6d2af81d58fc2cdf1f0689f5ec35d9ba0792dcde9ad",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.common@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.common@4.0-util.so",
+      "size": 14824,
+      "sha256": "4483073df7a1234dbf7e3dfbd8b235ea0032b0728ed4992007275ada645ff8a2",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.common@4.0-util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.common@4.0.so",
+      "size": 6456,
+      "sha256": "8322d5a233cb306dd3a4b877a1ce16ff589914727f3a57d808b746c253060b33",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.common@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.effect@2.0.so",
+      "size": 896832,
+      "sha256": "b370e67ba6a09eb3d37e80ea7edb068f5f730514023371cb5b1c2dde4a11fb2e",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.effect@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio.effect@4.0.so",
+      "size": 892916,
+      "sha256": "88841926b2bb095e243f3bc68eeab8247fa165d66de3e04128d1df2db8732b9c",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio.effect@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio@2.0.so",
+      "size": 447856,
+      "sha256": "d2a99d7a06df38c3bca2cef4c3034c1b969f2ebebed08a35595d78fb294a77ae",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.audio@4.0.so",
+      "size": 477812,
+      "sha256": "2e4833a3ab5cbfba58fe4cff6f069e87c62d3be0b07415e5c68ddb21e30f6748",
+      "source": "lib.zip:lib/vndk-28/android.hardware.audio@4.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/android.hardware.automotive.audiocontrol@1.0.so",
+      "size": 66696,
+      "sha256": "3be6926c9e9f9a87ed8c2b3a38735a4bf14d8161aafa9632c8350c72aeef97e1",
+      "source": "lib.zip:lib/vndk-28/android.hardware.automotive.audiocontrol@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/libaudioroute.so",
+      "size": 14892,
+      "sha256": "9a1ef7a8ca6c169517f9525b33cce527da3254888d74f9215ec18f09aada8f8c",
+      "source": "lib.zip:lib/vndk-28/libaudioroute.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/lib/vndk-28/libaudioutils.so",
+      "size": 57476,
+      "sha256": "9632207b8b10b83776fcd11e01eb65625698e90f01b1c60d5bc8dc2b5c76baf8",
+      "source": "lib.zip:lib/vndk-28/libaudioutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/libem_audio_jni.so",
+      "size": 41392,
+      "sha256": "b36141ed837908255d6e7fac6a9165b9fdcc8446f810755b619059e096911668",
+      "source": "files2.zip:system/libem_audio_jni.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/r_submix_audio_policy_configuration.xml",
+      "size": 2105,
+      "sha256": "44aa04e6a3fe674bf22e1e87fee602ca4d42e701740bf96f0101fe6c3b2abe09",
+      "source": "files2.zip:system/r_submix_audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/system/usb_audio_policy_configuration.xml",
+      "size": 2237,
+      "sha256": "13f6bfaa10b9e77974b0e250fb59e4f583ce0a623766c8cfce1451c96f37afde",
+      "source": "files2.zip:system/usb_audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/AudioParamOptions.xml",
+      "size": 2855,
+      "sha256": "e3f1827308fdfb0fbe82f2ce68d0604ced585f053818e2d2500196e2d2cef574",
+      "source": "files2.zip:vendor/AudioParamOptions.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/a2dp_audio_policy_configuration.xml",
+      "size": 2220,
+      "sha256": "223581ca21517d5cbdce9f6a3adb87b2d6e1b615fdb1e1a572ae9b3abce7a07d",
+      "source": "files2.zip:vendor/a2dp_audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/android.hardware.audio@4.0-service-mediatek",
+      "size": 10840,
+      "sha256": "1f2848726bb752eb291c5abe583144e6cc4f4b49047b38750f2af21b96e9a827",
+      "source": "files2.zip:vendor/android.hardware.audio@4.0-service-mediatek"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/android.hardware.audio@4.0-service-mediatek.rc",
+      "size": 907,
+      "sha256": "20089785ff5d27955f2ce22314804b78bad89b0bb00f6c125b39330a95b3fe7f",
+      "source": "files2.zip:vendor/android.hardware.audio@4.0-service-mediatek.rc"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_device.xml",
+      "size": 8407,
+      "sha256": "eb3b490a033e26c00514c3a9b54f5ebf5bcc965e9839d746bc4f7a67bcaef56a",
+      "source": "files2.zip:vendor/audio_device.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_effects.xml",
+      "size": 5832,
+      "sha256": "61c6fe7cdd977c32b0014bdf1b07277b1cb7bebe1369b8907660fdee72d639a3",
+      "source": "files2.zip:vendor/audio_effects.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_em.xml",
+      "size": 2549,
+      "sha256": "a012adb31a8719461305c9758654947c66055aef079fa930f145b0ddca67b28d",
+      "source": "files2.zip:vendor/audio_em.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_param/AudioParamOptions.xml",
+      "size": 2855,
+      "sha256": "e3f1827308fdfb0fbe82f2ce68d0604ced585f053818e2d2500196e2d2cef574",
+      "source": "files2.zip:vendor/audio_param/AudioParamOptions.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_policy.conf",
+      "size": 5196,
+      "sha256": "f8670165c5cd9d4be1fd2196c2a20bfe68e25f3410ab84dae68018f9e4afa7e6",
+      "source": "files2.zip:vendor/audio_policy.conf"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_policy_configuration.xml",
+      "size": 11252,
+      "sha256": "1c7964434ee57913ebfecd0a98203557da19859b3eeb35bb8e1b6f48d7ad3146",
+      "source": "files2.zip:vendor/audio_policy_configuration.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audio_policy_volumes.xml",
+      "size": 10439,
+      "sha256": "2dac8b16c0841fdaafe1e6d0986a5035c4fe2c66e6178eabe24f2711900b0630",
+      "source": "files2.zip:vendor/audio_policy_volumes.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audiocmdservice_atci",
+      "size": 54136,
+      "sha256": "302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566",
+      "source": "files2.zip:vendor/audiocmdservice_atci"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/audiocmdservice_atci.rc",
+      "size": 181,
+      "sha256": "4c38c958052e71915cb5e35037faf3b44c13a5332ecf65f2975d5f48c3621750",
+      "source": "files2.zip:vendor/audiocmdservice_atci.rc"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/egl/egl.cfg",
+      "size": 64,
+      "sha256": "effdf424c954e98874956d4758eccd6691ec3d36d274333fe0c7fab48e505d66",
+      "source": "vendor_lib.zip:lib/egl/egl.cfg"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/egl/libGLES_mali.so",
+      "size": 32807772,
+      "sha256": "cda71d92b240024b4850643f69e95bb3962542badce845bce26415b9bc623c12",
+      "source": "vendor_lib.zip:lib/egl/libGLES_mali.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.audio.effect@4.0-impl.so",
+      "size": 209520,
+      "sha256": "616e6250ae87bc4cf5258aa61d9e86c237a4d625a70fbe39289ea65b6100ce9f",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.audio.effect@4.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so",
+      "size": 191752,
+      "sha256": "58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.audio@4.0-impl-mediatek.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.bluetooth@1.0-impl-mediatek.so",
+      "size": 46128,
+      "sha256": "428a28457f4c6b8a18822a77cb4a444051652643195e31620a8f34e06a9f6bca",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.bluetooth@1.0-impl-mediatek.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.camera.provider@2.4-impl-mediatek.so",
+      "size": 112888,
+      "sha256": "a7863c0f89acc0c25e6fec91751f6db7f69cfaee8b104603a895b3347600c6ca",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.camera.provider@2.4-impl-mediatek.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.drm@1.0-impl.so",
+      "size": 79304,
+      "sha256": "b7383ef040061ecac48f2f45c702c5c93ae72dfbabaafebfbb56e51f000a2272",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.drm@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.gatekeeper@1.0-impl.so",
+      "size": 15060,
+      "sha256": "71bc9f93ea428002ab441327d42f8defe29dcc60099a949265a12244dc109145",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.gatekeeper@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.graphics.allocator@2.0-impl.so",
+      "size": 15672,
+      "sha256": "0786539a1cf517820244859abf23e1592a896f73bbc701f966752fb68253c058",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.graphics.allocator@2.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.graphics.composer@2.1-impl.so",
+      "size": 73092,
+      "sha256": "30529611f030699fb230ae5d6dacd5321d1c7ff6de5c0a297a30b066afc087be",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.graphics.composer@2.1-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.graphics.mapper@2.0-impl.so",
+      "size": 24436,
+      "sha256": "dca7775c7440a3d1178d66b672fad24930da317be7f643f1247040f1e7090f08",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.graphics.mapper@2.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.keymaster@3.0-impl.so",
+      "size": 19672,
+      "sha256": "46c0097f27c27d6b48dca07788be1f71314b8dcad2bbde83bc61bb78a7182fc0",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.keymaster@3.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.light@2.0-impl-mediatek.so",
+      "size": 28368,
+      "sha256": "6f78307b471b5f009f656c6e927ba9306845d304a68d216e569f6a01b42ec696",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.light@2.0-impl-mediatek.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.memtrack@1.0-impl.so",
+      "size": 15028,
+      "sha256": "cf3964df7b7c87d8e6a52d3ad988b58d017be82b20d8fc3c6c61df7543c4d4f6",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.memtrack@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.sensors@1.0-impl-mediatek.so",
+      "size": 62280,
+      "sha256": "b0bb5764bc20351dda0d3e74ac94d721d43b9889542e69a4c4429d81d6bc845c",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.sensors@1.0-impl-mediatek.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/android.hardware.vibrator@1.0-impl.so",
+      "size": 15068,
+      "sha256": "c457fa8a8368e901b1144a0e4680c478d01da5f45fa297dda8d1654bcec73f73",
+      "source": "vendor_lib.zip:lib/hw/android.hardware.vibrator@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.primary.default.so",
+      "size": 11596,
+      "sha256": "057342350c8781883f410231f02a0f4a130e0d99780bf49fdb0685ac3d2b4b15",
+      "source": "vendor_lib.zip:lib/hw/audio.primary.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.primary.mt8163.so",
+      "size": 1671852,
+      "sha256": "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4",
+      "source": "vendor_lib.zip:lib/hw/audio.primary.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.r_submix.default.so",
+      "size": 33148,
+      "sha256": "c3030856912a881640479d73207377a7fe8dc04900a5518db06ea11ff822f903",
+      "source": "vendor_lib.zip:lib/hw/audio.r_submix.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.r_submix.mt8163.so",
+      "size": 46116,
+      "sha256": "afb798f2633d27200359e9d6432f0d8d22dd49a01162fa825abbdcc90e6bad81",
+      "source": "vendor_lib.zip:lib/hw/audio.r_submix.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.usb.default.so",
+      "size": 19764,
+      "sha256": "48e31517648216b1f3d8a06eb07fedd880acbe912d58c5716b4b4b3f179c794a",
+      "source": "vendor_lib.zip:lib/hw/audio.usb.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio.usb.mt8163.so",
+      "size": 33336,
+      "sha256": "65548cab3d4b35f114aa3c6450828557236559e45733ad06f5ce25c576e241c8",
+      "source": "vendor_lib.zip:lib/hw/audio.usb.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/audio_policy.stub.so",
+      "size": 7120,
+      "sha256": "8c0a391b9cf760fb291e3568377bcf430cab6dc654c5dd1eda3acd95ea71d5db",
+      "source": "vendor_lib.zip:lib/hw/audio_policy.stub.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/flp.default.so",
+      "size": 32756,
+      "sha256": "2b849996eb2f4b29dfdaac919e268f465b69cb5be0ec31c690f34eb8ef07ff85",
+      "source": "vendor_lib.zip:lib/hw/flp.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/gatekeeper.mt8163.so",
+      "size": 19992,
+      "sha256": "6336531fbc0e12f6cbaa562a161d9c9f1e431f5294cebd806859487883fd91ef",
+      "source": "vendor_lib.zip:lib/hw/gatekeeper.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/gps.default.so",
+      "size": 54336,
+      "sha256": "a15f433b1b5237c8db52876af618431bd4e9252dc797c1b29eae8b2f846dcccb",
+      "source": "vendor_lib.zip:lib/hw/gps.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/gralloc.default.so",
+      "size": 24720,
+      "sha256": "c99515513fb96d80453aed52e50c70c6156d254ab197072425398e4fd11d29e3",
+      "source": "vendor_lib.zip:lib/hw/gralloc.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/gralloc.mt8163.so",
+      "size": 54292,
+      "sha256": "dff5390838d09cfc84a88fa1f1dfb08c1e932e6462927003986a61ad68c40c9a",
+      "source": "vendor_lib.zip:lib/hw/gralloc.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/hwcomposer.mt8163.so",
+      "size": 456640,
+      "sha256": "4430bda4462715b23400f3ee94ae46486e53ce0e37c764ebadc8a0e10d3d7159",
+      "source": "vendor_lib.zip:lib/hw/hwcomposer.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/keystore.mt8163.so",
+      "size": 33632,
+      "sha256": "f2f9ecbf7433b10795fc9a47fb6954d08b6d690fc7642360b1be51c209f64442",
+      "source": "vendor_lib.zip:lib/hw/keystore.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/libSoftGatekeeper.so",
+      "size": 28556,
+      "sha256": "f4b4db13407e5df81f75f38276c1c076cf214d7bb058054b9d8b2f7b7ce4e032",
+      "source": "vendor_lib.zip:lib/hw/libSoftGatekeeper.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/lights.mt8163.so",
+      "size": 20084,
+      "sha256": "8e1e82ab6dd37f2fee9e6f45b4392647ef5dbc7f8c9c622aaf9255962d5e321f",
+      "source": "vendor_lib.zip:lib/hw/lights.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/local_time.default.so",
+      "size": 6720,
+      "sha256": "4d58507c6ae86d365a25f7485907b7b4684c89559b22ba2bfef6234f6be932d4",
+      "source": "vendor_lib.zip:lib/hw/local_time.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/memtrack.mt8163.so",
+      "size": 19896,
+      "sha256": "4ba4cef0e7640f8ed346d305ead41c3637ff6709210f4570ae98c30af5cdec66",
+      "source": "vendor_lib.zip:lib/hw/memtrack.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/power.default.so",
+      "size": 6764,
+      "sha256": "e06fe2658d03373c52664a723a651b73590ec817e5451da3f7e2af3e22831a5e",
+      "source": "vendor_lib.zip:lib/hw/power.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/power.mt8163.so",
+      "size": 19908,
+      "sha256": "48d18740c9f7ea75fa9aaad503a1287c7f1fa4fafb8c1a2a95048644ec145dbc",
+      "source": "vendor_lib.zip:lib/hw/power.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/sensors.mt8163.so",
+      "size": 184080,
+      "sha256": "6f914c8a5a83a4e532337a43ec00b0fc5472c67c6bcc14d2147b967284ddcd30",
+      "source": "vendor_lib.zip:lib/hw/sensors.mt8163.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.camera.ccap@1.0-impl.so",
+      "size": 28140,
+      "sha256": "7641c69e12f87c4dc80bf0df3f614a9f2e21d7adfdb7a49db913a69156759f74",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.camera.ccap@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.gnss@1.1-impl.so",
+      "size": 137496,
+      "sha256": "363605096ca0678343c42973c0da5855be25f58b8a53c210ad2a4351aff7632b",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.gnss@1.1-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.hdmi@1.0-impl.so",
+      "size": 45304,
+      "sha256": "19ee7c6f8de367080766e2e3f2ef84dbd80f279e44f5f53ac5175fd5568ba59c",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.hdmi@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.keymanage@1.0-impl.so",
+      "size": 28476,
+      "sha256": "79fa9cfddd59854f85f6ffeba412b55a100f486e4511bdb54f0ea0c61e4c39e8",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.keymanage@1.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.keymaster_attestation@1.1-impl.so",
+      "size": 28132,
+      "sha256": "642e91f88bc57bdba66f998a9b138e23bffd8424693642401602713cc53b4e6c",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.keymaster_attestation@1.1-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.mms@1.5-impl.so",
+      "size": 52924,
+      "sha256": "a9ea1c14d8a81e83ac0e26370b7a42936a0f8cb0777af431284b63a796815c13",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.mms@1.5-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.mtkcodecservice@1.1-impl.so",
+      "size": 82528,
+      "sha256": "5450c582e5454ad79a50ccf12da9918a6447c90ceed27ffb7b34c4dbafe35be8",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.mtkcodecservice@1.1-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.nvram@1.1-impl.so",
+      "size": 36628,
+      "sha256": "601e0c9ab4cb06830c9cbebbaa72f11a71d429ef12b260e959b490e64fbbbb4c",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.nvram@1.1-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.power@2.0-impl.so",
+      "size": 62148,
+      "sha256": "26266f9a4a17d4859c866337a876114a2238473ab24fc29783fb94d52eb7108c",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.power@2.0-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vendor.mediatek.hardware.pq@2.2-impl.so",
+      "size": 124064,
+      "sha256": "f60df74c3a6dc31c57be333058bdb928a21f48fc3c9bfd525cb91ce07acd065a",
+      "source": "vendor_lib.zip:lib/hw/vendor.mediatek.hardware.pq@2.2-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/hw/vibrator.default.so",
+      "size": 6816,
+      "sha256": "c5a9f9a3dba836f4fd929562c7e8fbeb3e547fb93288c8111a4bae9a69f37141",
+      "source": "vendor_lib.zip:lib/hw/vibrator.default.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/lbs_hidl_service-impl.so",
+      "size": 74580,
+      "sha256": "0149eb5de46033fb200f0c4f1379d6a733151f685b5d00acaefd181e96d127b2",
+      "source": "vendor_lib.zip:lib/lbs_hidl_service-impl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/lib3a.log.so",
+      "size": 19828,
+      "sha256": "8915d0c8534ca8473031a3f1ba223903eee743bf367dd27ccb41b3d7b653d4cf",
+      "source": "vendor_lib.zip:lib/lib3a.log.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/lib3am.so",
+      "size": 341704,
+      "sha256": "8b8fb3a256c072cec79bf43e43b94877ea84e2f75dfb3e741c52cfae1a286ccf",
+      "source": "vendor_lib.zip:lib/lib3am.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libBnMtkCodec.so",
+      "size": 73760,
+      "sha256": "b0b10cd2744f284987578335719a10d0e2200962123e7838f743dfe5462a6479",
+      "source": "vendor_lib.zip:lib/libBnMtkCodec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libDR.so",
+      "size": 318520,
+      "sha256": "9b5c5f49c3cb6e1b3a6fdf0984eb7ab04fd8fb2742d00f6e0c843ef3145ff573",
+      "source": "vendor_lib.zip:lib/libDR.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libGdmaScalerPipe.so",
+      "size": 28032,
+      "sha256": "f0009433431079d377d3ed29192612b8f77466b800205df208040fde62c40914",
+      "source": "vendor_lib.zip:lib/libGdmaScalerPipe.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libGocAec1Mic.so",
+      "size": 581844,
+      "sha256": "44a08258f53ebce7bc93a30e3456be6a971d84bae9a6f5896450ba73feb88ce0",
+      "source": "vendor_lib.zip:lib/libGocAec1Mic.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libGocAecApi.so",
+      "size": 147960,
+      "sha256": "dc7af9ec1e7a925868d11adad2048cc83d7c4608446f68003dd7bacaf39a4f5e",
+      "source": "vendor_lib.zip:lib/libGocAecApi.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libJpgDecPipe.so",
+      "size": 53640,
+      "sha256": "32988082054ac7798c3065749a1dec3e8ce3bb5ecaf34099e122bc73b1179568",
+      "source": "vendor_lib.zip:lib/libJpgDecPipe.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libJpgEncPipe.so",
+      "size": 36436,
+      "sha256": "aa9d2e0318ae85bb738c362edbd4c0c538a03871609b9de7d4daaeb95e39389f",
+      "source": "vendor_lib.zip:lib/libJpgEncPipe.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxAdpcmDec.so",
+      "size": 57480,
+      "sha256": "7c15590ef1b63d3b6b219cfb1c964a49f2959d1a9661441b35ead6c6572fc8db",
+      "source": "vendor_lib.zip:lib/libMtkOmxAdpcmDec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxAdpcmEnc.so",
+      "size": 61664,
+      "sha256": "3acc4b2238fef9cc120d330c07b1010b098d54ddf7b1e0c810cfaeaa846051d8",
+      "source": "vendor_lib.zip:lib/libMtkOmxAdpcmEnc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxAlacDec.so",
+      "size": 61372,
+      "sha256": "f61560bba1ba25027b3e645dc487f2abbc7d118ebd1460ff3c00339685dae72f",
+      "source": "vendor_lib.zip:lib/libMtkOmxAlacDec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxApeDec.so",
+      "size": 66036,
+      "sha256": "66a959f4debdb315fc09aa75d35c59872a32d928c3ab9c1c983326746db767d4",
+      "source": "vendor_lib.zip:lib/libMtkOmxApeDec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxCore.so",
+      "size": 28184,
+      "sha256": "666cbafb373c37072aca14e3df09dda9238cbd2c2219630ee0400a03418377d8",
+      "source": "vendor_lib.zip:lib/libMtkOmxCore.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxG711Dec.so",
+      "size": 53052,
+      "sha256": "27c5d823a272609b5887a12781c8a8fea3f85312346c7ad6fc68e3eb7c36c169",
+      "source": "vendor_lib.zip:lib/libMtkOmxG711Dec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxGsmDec.so",
+      "size": 74080,
+      "sha256": "daf76857cf3b2036425c4a1e1a30db64abe096c556e8d03be242cb93ec16a186",
+      "source": "vendor_lib.zip:lib/libMtkOmxGsmDec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxMp3Dec.so",
+      "size": 106920,
+      "sha256": "55526cd9ac4231a2d3247ab132233fe2fb1b1d6041a923faf4e27b3f3e23661b",
+      "source": "vendor_lib.zip:lib/libMtkOmxMp3Dec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxRawDec.so",
+      "size": 66404,
+      "sha256": "d81b1d7742e5e510fffd139e2a4a325db8a9865774ccd0b04da86d10ece64758",
+      "source": "vendor_lib.zip:lib/libMtkOmxRawDec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxVdecEx.so",
+      "size": 223564,
+      "sha256": "72d4664f416927b0b2f2c26c1339675037ecba5f3bc6645bdc484af5cb06b7b1",
+      "source": "vendor_lib.zip:lib/libMtkOmxVdecEx.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxVenc.so",
+      "size": 157520,
+      "sha256": "91241bcf3911390331012ae9b74d26391589a62ab8ac2971fe68fe0348b55f24",
+      "source": "vendor_lib.zip:lib/libMtkOmxVenc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libMtkOmxVorbisEnc.so",
+      "size": 119620,
+      "sha256": "007182ad7a6a25030eb1a7243c69b98236016b9139da15a5acc597c8bc4c22f5",
+      "source": "vendor_lib.zip:lib/libMtkOmxVorbisEnc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libOpenCL.so",
+      "size": 60804,
+      "sha256": "b04c7139379664f996bec82d3ebf9965f46b1411bc7bf60689942662aaccca61",
+      "source": "vendor_lib.zip:lib/libOpenCL.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libSwJpgCodec.so",
+      "size": 24664,
+      "sha256": "2710e6c5b1693c4597ff0a1053e6080d21a1fdf7078ec263f51686b0d63c58cf",
+      "source": "vendor_lib.zip:lib/libSwJpgCodec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/lib_uree_mtk_video_secure_al.so",
+      "size": 32196,
+      "sha256": "2157492ef5549d2f86b2c4325cf90bcaae667fd211d50d1ff95040a6669c3b30",
+      "source": "vendor_lib.zip:lib/lib_uree_mtk_video_secure_al.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libacdk.so",
+      "size": 244420,
+      "sha256": "daf8832a0b607b0f28e5efeecb03aa29ccba109d8c7c6c8cbb291f6712b7ef3e",
+      "source": "vendor_lib.zip:lib/libacdk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaedv.so",
+      "size": 99752,
+      "sha256": "3f527bcaafd1fcfcd9ac162858b7a5ada736135f756b9bd2786a6d2cb0e08598",
+      "source": "vendor_lib.zip:lib/libaedv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libalsautils.so",
+      "size": 19332,
+      "sha256": "d664dc655acf5996df90c55722a32aa574b2da8a119d2ebd449e67f01d36649e",
+      "source": "vendor_lib.zip:lib/libalsautils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libapmonitor_vendor.so",
+      "size": 65960,
+      "sha256": "37f4634198cd4d0e67baca015b565e16378411a3d4f90498966bff83e0b03982",
+      "source": "vendor_lib.zip:lib/libapmonitor_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libasn1c_core_vendor.so",
+      "size": 147572,
+      "sha256": "3eb1cf10cdcee6f418239a7c9b21a0a88f48b2493203e460660c49798cc59e6d",
+      "source": "vendor_lib.zip:lib/libasn1c_core_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libasn1c_mapi_vendor.so",
+      "size": 239756,
+      "sha256": "062cbcdc369a0b7b6408e661359b91ceb6972ec597a64b7a79705e964561f7ce",
+      "source": "vendor_lib.zip:lib/libasn1c_mapi_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libasn1c_mdmi_vendor.so",
+      "size": 826652,
+      "sha256": "e55d4a1f42a3aa84632f5b4a393d11503d9fca90e2d565c507d369018110ac8e",
+      "source": "vendor_lib.zip:lib/libasn1c_mdmi_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudio_param_parser-vnd.so",
+      "size": 164728,
+      "sha256": "451cc594dd450f2894e8b4f9f784c934cb6ab77e3c3a79b399314b64f8f0032c",
+      "source": "vendor_lib.zip:lib/libaudio_param_parser-vnd.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiocompensationfilter_vendor.so",
+      "size": 19716,
+      "sha256": "0ccc211a70b3f8e281c39e4ac6727f60f745a6381b229c77e64ec812078a36f3",
+      "source": "vendor_lib.zip:lib/libaudiocompensationfilter_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiocomponentengine_vendor.so",
+      "size": 40796,
+      "sha256": "1f2d0a1b046f68bd522edd8b49d3e746768d2fa406e463b617bc7030aaf20ce6",
+      "source": "vendor_lib.zip:lib/libaudiocomponentengine_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiocustparam_vendor.so",
+      "size": 36284,
+      "sha256": "09ae1117ed68725b7f6ac305f5662fad106093c7f179392f0d827b1a5f495ce2",
+      "source": "vendor_lib.zip:lib/libaudiocustparam_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiodcrflt_vendor.so",
+      "size": 24652,
+      "sha256": "fbecd2e413a3385ce1413e093bf613e29e65cb99a6aace977706b2862d9b3d4a",
+      "source": "vendor_lib.zip:lib/libaudiodcrflt_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiofmtconv.so",
+      "size": 19740,
+      "sha256": "e66fb8a6464dff1cdedcbfb6df7a3cb48fd236663af9d248f789b92b6f35753e",
+      "source": "vendor_lib.zip:lib/libaudiofmtconv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudioprimarydevicehalifclient.so",
+      "size": 41268,
+      "sha256": "b5e805b6cf20d995babb730f70b6287d4d4ff0c7168c189de326d05e8d58c22c",
+      "source": "vendor_lib.zip:lib/libaudioprimarydevicehalifclient.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiosetting.so",
+      "size": 15564,
+      "sha256": "4d9b76f892b510908e647257dddc6208fa103b4e8394b3f20395b863a82dadd3",
+      "source": "vendor_lib.zip:lib/libaudiosetting.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libaudiotoolkit_vendor.so",
+      "size": 19704,
+      "sha256": "29e3d78ba19c3282092c9842a1a877648372700704608f3c03c8cfad21bf2cfb",
+      "source": "vendor_lib.zip:lib/libaudiotoolkit_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libavservices_minijail_vendor.so",
+      "size": 10760,
+      "sha256": "28356f8c169ccd3f2fbb9807f64ebbb10208d994cd46f7a8193da98917066f84",
+      "source": "vendor_lib.zip:lib/libavservices_minijail_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbessound_hd_mtk_vendor.so",
+      "size": 71356,
+      "sha256": "337240ff5f598490e3848d26aa3720452c0956e57605a0f372b8070c0149520c",
+      "source": "vendor_lib.zip:lib/libbessound_hd_mtk_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libblisrc32_vendor.so",
+      "size": 98404,
+      "sha256": "f16d4dba31c9eaa7a5cb23b60ef338990f423228ebf2e3d34a2b08433f7f6ef9",
+      "source": "vendor_lib.zip:lib/libblisrc32_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libblisrc_vendor.so",
+      "size": 91824,
+      "sha256": "3aeec6148fcbfdff310c76947b4f538c1595edf811e29518a64671eb7047a402",
+      "source": "vendor_lib.zip:lib/libblisrc_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbluetooth_hw_test.so",
+      "size": 32160,
+      "sha256": "78b14241bd51da8eb962bdf3571874d62f32e86083d4a0ac442827a99ee1275e",
+      "source": "vendor_lib.zip:lib/libbluetooth_hw_test.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbluetooth_mtk.so",
+      "size": 36904,
+      "sha256": "9f7c5b83a251e50de3a2924dea950b93c680306df9570e2609a24a39babffdaf",
+      "source": "vendor_lib.zip:lib/libbluetooth_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbluetooth_mtk_pure.so",
+      "size": 37296,
+      "sha256": "90f343666a43e0ea49a7e84d5ba5d344a4b3b59a6587c6ee16f8d587ff8d6f29",
+      "source": "vendor_lib.zip:lib/libbluetooth_mtk_pure.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbluetooth_relayer.so",
+      "size": 23908,
+      "sha256": "ea5f04bb31ca151430922b302469785d9bfa0cc3c9a318982ff21e64775298f1",
+      "source": "vendor_lib.zip:lib/libbluetooth_relayer.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbluetoothem_mtk.so",
+      "size": 23876,
+      "sha256": "15994ead0e6e7f770418d80565767f42b18471129494dee67b1ed79d9c341fac",
+      "source": "vendor_lib.zip:lib/libbluetoothem_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libblulight_defender.so",
+      "size": 16056,
+      "sha256": "c9f9020f3e4e34c65c3af254db55381d283772667936c413abb3a67a22760fdb",
+      "source": "vendor_lib.zip:lib/libblulight_defender.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbt-vendor.so",
+      "size": 19688,
+      "sha256": "ed4caae6096dab55d7d9b8c5ec686346629b9475c7ffd7577771fc8c30d57466",
+      "source": "vendor_lib.zip:lib/libbt-vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libbwc.so",
+      "size": 32460,
+      "sha256": "0af535da16dc39f25a36316ad6c4aeba012f9c456944b1e1b2a23d4b96f0e0ae",
+      "source": "vendor_lib.zip:lib/libbwc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.camadapter.so",
+      "size": 645300,
+      "sha256": "98f001c0462b2b2b0779cd1b5525330b360abea63c6f06ea6d1bd516d6ca71af",
+      "source": "vendor_lib.zip:lib/libcam.camadapter.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.campipe.so",
+      "size": 57564,
+      "sha256": "f12d067423e5eb8ec7733ce5860bd03e48575e0368465c43716a6ea198070951",
+      "source": "vendor_lib.zip:lib/libcam.campipe.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.camshot.so",
+      "size": 149616,
+      "sha256": "a9a5aef6e12cd93ad7a713cdcd8955e705729404c93e0e2a359dfbcc5d74d05b",
+      "source": "vendor_lib.zip:lib/libcam.camshot.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.client.so",
+      "size": 206120,
+      "sha256": "046f109689aee7ef1a785a065c6b7242de2c1c92b66388127a5b6f26f8cc6390",
+      "source": "vendor_lib.zip:lib/libcam.client.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.device1.so",
+      "size": 66440,
+      "sha256": "379dc93ad82b6d6140573955314afdb2268c798a4c4861ae167e6de9bb0cd4f1",
+      "source": "vendor_lib.zip:lib/libcam.device1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.exif.so",
+      "size": 57780,
+      "sha256": "9d7cb54655a8df1fccf346fdcede5b99ae5b352c1952b433452cd69a32b22bb8",
+      "source": "vendor_lib.zip:lib/libcam.exif.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.exif.v3.so",
+      "size": 53652,
+      "sha256": "88dec4abe13a1c9ff0f350b383b44a58213d6c041e5281990890d522432faff8",
+      "source": "vendor_lib.zip:lib/libcam.exif.v3.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.hal3a.v3.dng.so",
+      "size": 23896,
+      "sha256": "65cfd3e0d724e27bb4365fd83e1de04763bff4b968707d3a962aaf1427423abf",
+      "source": "vendor_lib.zip:lib/libcam.hal3a.v3.dng.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.hal3a.v3.so",
+      "size": 545784,
+      "sha256": "de79663335ef1a363b96d75c2c70e36473a6540b6b4d8a3566bf84f2b5674599",
+      "source": "vendor_lib.zip:lib/libcam.hal3a.v3.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.halsensor.so",
+      "size": 181412,
+      "sha256": "afbff9c6280929ff7d06508016b46c87c6fa1d46b6f092c254eb5647c1d16595",
+      "source": "vendor_lib.zip:lib/libcam.halsensor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.iopipe.so",
+      "size": 113316,
+      "sha256": "cc8366dd207b5db9ff26eae8d6c82ef6883907c7a63572b0ef9aff3e0f937a13",
+      "source": "vendor_lib.zip:lib/libcam.iopipe.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.iopipe_FrmB.so",
+      "size": 150348,
+      "sha256": "7c6fc3d53301abc08fb99a4ac6e521fe6ece31c931791d04fb0f2ed648e302ef",
+      "source": "vendor_lib.zip:lib/libcam.iopipe_FrmB.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.metadataprovider.so",
+      "size": 201268,
+      "sha256": "4f4af4c27bf7eb1078cb176b607a265f61c21f53844bb620af27b152f6bb3bdb",
+      "source": "vendor_lib.zip:lib/libcam.metadataprovider.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.paramsmgr.so",
+      "size": 211840,
+      "sha256": "2c30d6a2d724ba9b70de304cf1901cf892a72f813e5e1a0493d00b9d60d680f2",
+      "source": "vendor_lib.zip:lib/libcam.paramsmgr.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.utils.sensorlistener.so",
+      "size": 19708,
+      "sha256": "51d5af6e877f71cf8f2aa0ca9a68c377f7616c3bcd3aa7bc8cd7adf554ce3124",
+      "source": "vendor_lib.zip:lib/libcam.utils.sensorlistener.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam.utils.so",
+      "size": 58856,
+      "sha256": "36f0a7b2a9e2bbccae00955b21a523d2bfd56f5d15c09aad32ba06d937b6cad1",
+      "source": "vendor_lib.zip:lib/libcam.utils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam1_utils.so",
+      "size": 41080,
+      "sha256": "2a787abb97f38f6e920cb728a82439284da00c08c535f23c2656b7deb1ac4214",
+      "source": "vendor_lib.zip:lib/libcam1_utils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam3_hwnode.so",
+      "size": 240552,
+      "sha256": "1e5fd820dc3569ebf966504fb10281e698502022bd7b1c04d71db2c258149f70",
+      "source": "vendor_lib.zip:lib/libcam3_hwnode.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam3_hwpipeline.so",
+      "size": 247248,
+      "sha256": "f7ba7f00d1bd703f500d7b057586a3bcebef1fd6c87d81ca2a8029482fc72b74",
+      "source": "vendor_lib.zip:lib/libcam3_hwpipeline.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam3_pipeline.so",
+      "size": 257220,
+      "sha256": "82c0c3794c1a206a032e40c7f0ac8657c0b1cc2d6d045314f3482fe45206666e",
+      "source": "vendor_lib.zip:lib/libcam3_pipeline.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam3_utils.so",
+      "size": 147848,
+      "sha256": "f38588ddc5c06a44f7bc3566b2c97fc988195b309b035c1759c209fa937a55e0",
+      "source": "vendor_lib.zip:lib/libcam3_utils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam_hwutils.so",
+      "size": 49172,
+      "sha256": "66bd5216876738202489dfb5536c932ae224296d4a2f7eea4b93a7d49dadb71d",
+      "source": "vendor_lib.zip:lib/libcam_hwutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam_mmp.so",
+      "size": 15560,
+      "sha256": "4d1f8698b6f08d11243c2c703d7c4d9d5464c749c301050be759eb8cdf7aa8a6",
+      "source": "vendor_lib.zip:lib/libcam_mmp.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam_platform.so",
+      "size": 20092,
+      "sha256": "c8b29a80d7a27a00b071d970799ffba474ad87a4fde53cc520966a3c71b8ad76",
+      "source": "vendor_lib.zip:lib/libcam_platform.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcam_utils.so",
+      "size": 87636,
+      "sha256": "9c2156435e6828e4a3ea42809473b50e3b98eb69bda290847e6ca79b927c9031",
+      "source": "vendor_lib.zip:lib/libcam_utils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcamalgo.so",
+      "size": 5469544,
+      "sha256": "bf0bb2b9edf84b2dfb07826c3abf56b2055000845586a6b440132f242b531bf3",
+      "source": "vendor_lib.zip:lib/libcamalgo.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcamdrv.so",
+      "size": 76060,
+      "sha256": "4e9bdd3bac0e679c361e2f2f41c806bcdc46bec358211475927ed75030c2c8c9",
+      "source": "vendor_lib.zip:lib/libcamdrv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcamdrv_FrmB.so",
+      "size": 89352,
+      "sha256": "38ced3f08b510656139fb91fcd0d9aa2d72db2a21b30d2e7a8af7b5f3c8b6317",
+      "source": "vendor_lib.zip:lib/libcamdrv_FrmB.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcameracustom.so",
+      "size": 2488760,
+      "sha256": "d15af25546c89e53ca27990b30622321c6507625413b2ca91ebd78458ad30bb3",
+      "source": "vendor_lib.zip:lib/libcameracustom.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcarrierconfig.so",
+      "size": 44452,
+      "sha256": "468ccbad9af906979a364a8d68e88003c3e152cda4613023d01cd543c9f61ec6",
+      "source": "vendor_lib.zip:lib/libcarrierconfig.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libccap.so",
+      "size": 185492,
+      "sha256": "0a884792c543bebb4e2691bcef819ffc19e1d4bd0a67c43e43dc69e1004d2a23",
+      "source": "vendor_lib.zip:lib/libccap.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libccci_util.so",
+      "size": 48724,
+      "sha256": "3283e3476988b7d84bbdfdec3ba17b7bf8ec5cd9d221660a19102140d55de32a",
+      "source": "vendor_lib.zip:lib/libccci_util.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libchrome.so",
+      "size": 1056200,
+      "sha256": "e3edf41079e1b52a08977118c1d875759a46e95c3c1f55f1281babaa93cb6d7e",
+      "source": "vendor_lib.zip:lib/libchrome.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcustom_nvram.so",
+      "size": 76764,
+      "sha256": "529cc849521d45ba88db897a7be448e29900ea5a96daf9c2b67f65bab4b25e3e",
+      "source": "vendor_lib.zip:lib/libcustom_nvram.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libcvsd_mtk.so",
+      "size": 55108,
+      "sha256": "993d39e4d3ab8644df942e080cc3f1df81ee21dfefd7449d990f51b8e8f715c9",
+      "source": "vendor_lib.zip:lib/libcvsd_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libdirect-coredump.so",
+      "size": 6612,
+      "sha256": "e2582aae078e2d525c1af78c2be7ff112a4620298c0c5c4bfb2763a83eec8ccb",
+      "source": "vendor_lib.zip:lib/libdirect-coredump.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libdpframework.so",
+      "size": 459912,
+      "sha256": "278828710c220f6e997c157a91c49b8562366aff6e4bb90fbc3c333ed3054ec1",
+      "source": "vendor_lib.zip:lib/libdpframework.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libeffects.so",
+      "size": 19672,
+      "sha256": "d03e7ca28faf8301b3e83c107a6964f5aa136ae354d2d139099c332e8415e956",
+      "source": "vendor_lib.zip:lib/libeffects.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libeffectsconfig.so",
+      "size": 19260,
+      "sha256": "0157cba43f2fa9e9f49945d2ae660210d0e409f00cb1b13661bd9a866731915c",
+      "source": "vendor_lib.zip:lib/libeffectsconfig.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libfeatureio.so",
+      "size": 637236,
+      "sha256": "eb3080308695a878174c35c0d5e8d06f8118235b24c3cff8be724a481c8dd5e8",
+      "source": "vendor_lib.zip:lib/libfeatureio.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libfeatureiodrv.so",
+      "size": 132848,
+      "sha256": "11f7fcfa6bb1520c901bd80e0dddefc912bf9436df2892d323d50dd8f72e8e99",
+      "source": "vendor_lib.zip:lib/libfeatureiodrv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libfft_vendor.so",
+      "size": 36640,
+      "sha256": "9a804a090aa41d2558239d3b1f04fd32fe5644a889565b0ae64fbc4d7010b43c",
+      "source": "vendor_lib.zip:lib/libfft_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libfile_op.so",
+      "size": 89696,
+      "sha256": "f99217ca282e1775dd1ce7576dd04626ffa72fb977dd37ed6530a449b7ccac5e",
+      "source": "vendor_lib.zip:lib/libfile_op.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libforkexecwrap.so",
+      "size": 10844,
+      "sha256": "543a5e670ba415b805ec9051af44a0ba155c7acfebd6a3a43457e9a271bb6fc4",
+      "source": "vendor_lib.zip:lib/libforkexecwrap.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libfpspolicy.so",
+      "size": 28072,
+      "sha256": "d13fb74ce532ba977058eac14934474a995ddc341a2291abbb1392d5871c033f",
+      "source": "vendor_lib.zip:lib/libfpspolicy.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libged.so",
+      "size": 23732,
+      "sha256": "ecd7a89f11cbcb6097eea663a79aa25dba0b95a4859c58fa4b65a1203a056f4c",
+      "source": "vendor_lib.zip:lib/libged.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libgeofence.so",
+      "size": 24512,
+      "sha256": "ad1eaab4caeaf5edbedb689bac0042d3aeeae8b1005dc4c6a25fa0eb9ecf7242",
+      "source": "vendor_lib.zip:lib/libgeofence.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libgpu_aux.so",
+      "size": 49296,
+      "sha256": "3f59d7ed6dac7facd61ec9d24150c96c550bfac435482d0eaf22544ef935eea3",
+      "source": "vendor_lib.zip:lib/libgpu_aux.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libgralloc_extra.so",
+      "size": 10868,
+      "sha256": "5b7311338dcd246223b36d7f9fc387c988765ef609a8d438fabddf77a8444f8e",
+      "source": "vendor_lib.zip:lib/libgralloc_extra.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhdrproc.so",
+      "size": 65852,
+      "sha256": "57d6ec2e488f8011005fd0d0d02752a000da5f5b4b8039f05dbe8c27608591e9",
+      "source": "vendor_lib.zip:lib/libhdrproc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhevce_sb.ca7.android.so",
+      "size": 248808,
+      "sha256": "ad5f0802acff548c9a705dc7d3dd35b174a6f6371ae43fe7470f8433ec45c42d",
+      "source": "vendor_lib.zip:lib/libhevce_sb.ca7.android.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhwc2on1adapter.so",
+      "size": 108500,
+      "sha256": "c4317e5a86f18f998fa1a5375a4135635ef51f9a350e626f04bb4f6ec9ee00a7",
+      "source": "vendor_lib.zip:lib/libhwc2on1adapter.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhwc2onfbadapter.so",
+      "size": 24312,
+      "sha256": "4b5d531ba40c5857a00481c233ad246554b22e97a887effb51158adf009b524f",
+      "source": "vendor_lib.zip:lib/libhwc2onfbadapter.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhwm.so",
+      "size": 57172,
+      "sha256": "d9d53937e8c39c41bd44d9dd9e1e1350d017473eb2f09defc2bae1462df6554b",
+      "source": "vendor_lib.zip:lib/libhwm.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libhwminijail.so",
+      "size": 10752,
+      "sha256": "b44c137af7b76eda128ad605ef8be201fbfa1f9544267985fceaedc188b3f64c",
+      "source": "vendor_lib.zip:lib/libhwminijail.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libifcutils_mtk.so",
+      "size": 6524,
+      "sha256": "a8176adbb1273d1464ce7995b6f21089776e8a4414302af4224d77fe17a00ae5",
+      "source": "vendor_lib.zip:lib/libifcutils_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libimageio.so",
+      "size": 82472,
+      "sha256": "6c82beeb93f92b228a11053ac8210a6270eb9fc6bfb1cd3d7f91dbad8d5881c1",
+      "source": "vendor_lib.zip:lib/libimageio.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libimageio_FrmB.so",
+      "size": 91100,
+      "sha256": "ae18c38d00b7aeeaebc3be932d51cde8211dbf4d93abda8050dcb21331d610f9",
+      "source": "vendor_lib.zip:lib/libimageio_FrmB.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libimageio_plat_drv.so",
+      "size": 187376,
+      "sha256": "99a6e180ff2f1432e71b7619117fdd8bad812a408dc5d18e9a3963020c617682",
+      "source": "vendor_lib.zip:lib/libimageio_plat_drv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libimageio_plat_drv_FrmB.so",
+      "size": 187684,
+      "sha256": "3f5e221d1d84e13094f9b9af950ab0a4a7ddfbd1b221600b1d65dbe44b0d0175",
+      "source": "vendor_lib.zip:lib/libimageio_plat_drv_FrmB.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libion_mtk.so",
+      "size": 10712,
+      "sha256": "ae7722989ac7c9e67a3d80bb3be33f275e1f76736c87bdf6afa3b42e16112b5e",
+      "source": "vendor_lib.zip:lib/libion_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libion_ulit.so",
+      "size": 6520,
+      "sha256": "ed12c61126e2b1677cc523adbdb16fc122546b6c532744485a57c61d4fa9b184",
+      "source": "vendor_lib.zip:lib/libion_ulit.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libispfeaturem.so",
+      "size": 48472,
+      "sha256": "b12fee559eefc065ffb2e6b99e2382d89472928b6d1bdb8acc73390b2ffbaff3",
+      "source": "vendor_lib.zip:lib/libispfeaturem.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libjpeg-alpha_vendor.so",
+      "size": 366912,
+      "sha256": "ce52871b5cce39f682562420b842d536cdb0d94ef3de28cc8b01824dbdcfab6b",
+      "source": "vendor_lib.zip:lib/libjpeg-alpha_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libkeymaster3device.so",
+      "size": 143952,
+      "sha256": "bd58716e29284e68d0f982f5f3fba0342a3e895d17511909faad6893e9774e4d",
+      "source": "vendor_lib.zip:lib/libkeymaster3device.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libkeystore-engine-wifi-hidl.so",
+      "size": 24564,
+      "sha256": "d557e5076a73bbc8df42b9eca7d044c441f6004b44cc40fd819879abd4217dfb",
+      "source": "vendor_lib.zip:lib/libkeystore-engine-wifi-hidl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libkeystore-wifi-hidl.so",
+      "size": 6872,
+      "sha256": "1085ab3125f2a3e680243db830058ceef535ed75531d02dc08a7b4a9e2e87e96",
+      "source": "vendor_lib.zip:lib/libkeystore-wifi-hidl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libkmsetkey.so",
+      "size": 19700,
+      "sha256": "be81c31dd667760e98c27346425fcf12a68a87e3e059a81b66b3ac9fb72085e4",
+      "source": "vendor_lib.zip:lib/libkmsetkey.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libksensor.so",
+      "size": 26396,
+      "sha256": "318660d1b0c1ceb5ca0231354de1ff4a9ed4ccbf3df7a5cd16ec702f8709b910",
+      "source": "vendor_lib.zip:lib/libksensor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libladder.so",
+      "size": 40312,
+      "sha256": "efbaa07c96a5d6269ce5cc02b540006f0fc3821ee501ee15ac290e76ab160051",
+      "source": "vendor_lib.zip:lib/libladder.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libm4u.so",
+      "size": 10732,
+      "sha256": "6e081d6981bccbedb11f621fc4771d0c5cacd1003a3a767b1a9022f8283ad3ce",
+      "source": "vendor_lib.zip:lib/libm4u.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmhalImageCodec.so",
+      "size": 19692,
+      "sha256": "d0fed1b31df662e98fcab99a425ccd065b0f36b3d9ff0419bfcff311add51006",
+      "source": "vendor_lib.zip:lib/libmhalImageCodec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libminiui.so",
+      "size": 612952,
+      "sha256": "05bf41ffa7b322c5f3ebd385ac4db3c61de37fb8a478c83dc66df04e78daec08",
+      "source": "vendor_lib.zip:lib/libminiui.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmmprofile.so",
+      "size": 19804,
+      "sha256": "bc7e51ebfe5d8506184d604b981e2e3442084734c43da5c19ef0b1153956b3b3",
+      "source": "vendor_lib.zip:lib/libmmprofile.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmnl.so",
+      "size": 3168292,
+      "sha256": "b2168abfbde559c1cea6a8a1b8ddb08a762bbd3e34dd66f9b42e5c29dd37d475",
+      "source": "vendor_lib.zip:lib/libmnl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmp4enc_sa.ca7.so",
+      "size": 166540,
+      "sha256": "4d3e60b77b1066d96641e4eab815555cdb6fe0898b9da01eacd34a606bb3236a",
+      "source": "vendor_lib.zip:lib/libmp4enc_sa.ca7.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmrdumpv.so",
+      "size": 10924,
+      "sha256": "7ff2634868d9757aaf2c9491d31a43272edc7aa32870498f9c8f98635d40c2e9",
+      "source": "vendor_lib.zip:lib/libmrdumpv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmsbc_mtk.so",
+      "size": 26284,
+      "sha256": "f176750b6df126f92cff627efd4d06d4063c77755705916a7d726a876926a523",
+      "source": "vendor_lib.zip:lib/libmsbc_mtk.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtcloader.so",
+      "size": 24240,
+      "sha256": "d01333bd1509a2a13e41121f1a62f8bf2d3b617dd3e0b4baa46654f5f115fab9",
+      "source": "vendor_lib.zip:lib/libmtcloader.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtk-ril.so",
+      "size": 2370852,
+      "sha256": "f51d3858aa01efb6477996dedf1298402c5a11c4a2baaf53c6d9966e961807d1",
+      "source": "vendor_lib.zip:lib/libmtk-ril.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtk_drvb.so",
+      "size": 23952,
+      "sha256": "27cf3fc21f16572df1ceef6275cc51edc47b2cc4b6b8ec2cc0f914ae9289bcf3",
+      "source": "vendor_lib.zip:lib/libmtk_drvb.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_debugutils.so",
+      "size": 41416,
+      "sha256": "82697ba58a99f9bf18664d4e59c6fddcff3693874bc8a79c3fe191fb0baa54e1",
+      "source": "vendor_lib.zip:lib/libmtkcam_debugutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_device1.so",
+      "size": 200476,
+      "sha256": "ffc92d3e4d1779e3073fc045b34423e4380c13266a31c1159bbd57bf0a1b2ab5",
+      "source": "vendor_lib.zip:lib/libmtkcam_device1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_device3.so",
+      "size": 100848,
+      "sha256": "354606171c27ce52428e6f3d8e6f668b144e7dec43c8dd593a570b83ad5beb91",
+      "source": "vendor_lib.zip:lib/libmtkcam_device3.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_device3_app.so",
+      "size": 289488,
+      "sha256": "9d650653afe9ad540642c70509096f3308020ce3dcac5d13957a628320a91425",
+      "source": "vendor_lib.zip:lib/libmtkcam_device3_app.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_fwkutils.so",
+      "size": 77824,
+      "sha256": "3c5331e2158aedeb50932d85f179ce20b21e2e84cadf16aea4f49f8ca29a1b63",
+      "source": "vendor_lib.zip:lib/libmtkcam_fwkutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_grallocutils.so",
+      "size": 50344,
+      "sha256": "93971eac86ef026da2f7f449b20b9ce3a0ced84b839c3fe704ac95cd479d70d9",
+      "source": "vendor_lib.zip:lib/libmtkcam_grallocutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_imgbuf.so",
+      "size": 182884,
+      "sha256": "6fde47f705407220a87b56da1556d4ed3eda48c645ca1a216a4c68a938f7c09d",
+      "source": "vendor_lib.zip:lib/libmtkcam_imgbuf.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_metadata.so",
+      "size": 151356,
+      "sha256": "0f1e65da02ab690f029ae9725e4eb5a0e554f23c85345af0ab40bb200801ed34",
+      "source": "vendor_lib.zip:lib/libmtkcam_metadata.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_stdutils.so",
+      "size": 91604,
+      "sha256": "fe3947118c2b70437ea404a1b9759c077d99a3de86e685fc564bc8c491664c6e",
+      "source": "vendor_lib.zip:lib/libmtkcam_stdutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcam_sysutils.so",
+      "size": 53652,
+      "sha256": "da26c48cc9e957631180a4026d0b436742fe9391821142df879094639bff0960",
+      "source": "vendor_lib.zip:lib/libmtkcam_sysutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkconfig.so",
+      "size": 19824,
+      "sha256": "deb79f3077068641e312b7d4db50450b478d910c992d4fb747936259ac936c83",
+      "source": "vendor_lib.zip:lib/libmtkconfig.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkconfigutils.so",
+      "size": 15564,
+      "sha256": "70e85bf0f7a5ebdc82d562845b42b9a481c6569c197d97ef0813f61bb007b8a5",
+      "source": "vendor_lib.zip:lib/libmtkconfigutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkcutils.so",
+      "size": 28196,
+      "sha256": "d11fdc81838c6a44951f6cb00fcf55299108bc0e8cfd32f0428fedc229528ce8",
+      "source": "vendor_lib.zip:lib/libmtkcutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkhardware_legacy.so",
+      "size": 19708,
+      "sha256": "5f3f23345fb449baec27d85b64d03edda677e778c7dfa52b92e63b38d1485dec",
+      "source": "vendor_lib.zip:lib/libmtkhardware_legacy.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtklimiter_vendor.so",
+      "size": 34484,
+      "sha256": "677f3345954b5ebbdb1bfb0e7333fd9f42c44e9823592a7805c1ee86b0a2c548",
+      "source": "vendor_lib.zip:lib/libmtklimiter_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtknetutils.so",
+      "size": 32332,
+      "sha256": "73f38b87ebc4d64c36e016e60740827f5aa93516da165d002ab4885ca115bc2d",
+      "source": "vendor_lib.zip:lib/libmtknetutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkproperty.so",
+      "size": 19800,
+      "sha256": "db37e8c295d625f133ef3a1ec4ce12a46c9788a6d7fe8a1b8b35f982d14fe888",
+      "source": "vendor_lib.zip:lib/libmtkproperty.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkrillog.so",
+      "size": 19704,
+      "sha256": "2c0aaf89563633a8fcf7a59d3898ddde1e435f38d9a021b4972b43abbd06545e",
+      "source": "vendor_lib.zip:lib/libmtkrillog.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkrilutils.so",
+      "size": 61296,
+      "sha256": "8d20472db3871df803d272333ac3b89b996d1187d79e194cdad730991cc21898",
+      "source": "vendor_lib.zip:lib/libmtkrilutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkshifter_vendor.so",
+      "size": 18100,
+      "sha256": "d687d965a48dc44f36ab8880a04b8a7f45960648d34d021d1e482fa77cdf6045",
+      "source": "vendor_lib.zip:lib/libmtkshifter_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtksysutils.so",
+      "size": 40984,
+      "sha256": "f167d60b3b8f65ec347535c0692b78eab2449b115f7ce8863214993c5cedef4a",
+      "source": "vendor_lib.zip:lib/libmtksysutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtktinyxml.so",
+      "size": 49496,
+      "sha256": "61b02bd7aa94fb84a83370fc6508e8f39a6efcecc9f5b4ab76ed95f7778547b3",
+      "source": "vendor_lib.zip:lib/libmtktinyxml.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libmtkutils.so",
+      "size": 138500,
+      "sha256": "2d5be5ca0ff489f23de23704203422f2623516ee64b4c4c8b3eba57ee7f13314",
+      "source": "vendor_lib.zip:lib/libmtkutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnbaio_mono.so",
+      "size": 15340,
+      "sha256": "d674afa0aa4a0f1bd17eb1008e1157892fea2c9778585286748fe6d4d27d5114",
+      "source": "vendor_lib.zip:lib/libnbaio_mono.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnfc_hal_goodix_fwdnld.so",
+      "size": 93576,
+      "sha256": "e9ab6c1a41c2a4eceeb9e9046f3e526fbfaf416ca31fd4e53b589a39a9d63aea",
+      "source": "vendor_lib.zip:lib/libnfc_hal_goodix_fwdnld.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnfc_nci_hal_goodix.so",
+      "size": 407888,
+      "sha256": "a3e58237051e25635608c0164a11bddf99d0c0803076bf4eca48387e009a2b62",
+      "source": "vendor_lib.zip:lib/libnfc_nci_hal_goodix.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnvram.so",
+      "size": 128256,
+      "sha256": "aa55dc972f2d14fe6faa7f205bc4e802e4020a76a5d3526b7349ea895381d4aa",
+      "source": "vendor_lib.zip:lib/libnvram.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnvram_daemon_callback.so",
+      "size": 15584,
+      "sha256": "8080e947e35972024799b5cefc6189cba3d0d779f1a3f69cfb288de53f5c59b6",
+      "source": "vendor_lib.zip:lib/libnvram_daemon_callback.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnvram_platform.so",
+      "size": 15572,
+      "sha256": "50010b381a1df87f64395b6e3d3c4241b62b7a0f642045c05b8fe33db891ac4d",
+      "source": "vendor_lib.zip:lib/libnvram_platform.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnvram_sec.so",
+      "size": 19708,
+      "sha256": "982bcbc2cc7fa4c294d95f1ea23887fc9168356bb5bd8a45fc255ca70c8d5b1c",
+      "source": "vendor_lib.zip:lib/libnvram_sec.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libnvramagentclient.so",
+      "size": 32632,
+      "sha256": "7fd1e96f90ed8ddcce75172b75facdec39bc64348e6e705862edc2bbe68b7c8c",
+      "source": "vendor_lib.zip:lib/libnvramagentclient.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libpixelflinger.so",
+      "size": 155328,
+      "sha256": "d45342dc5b541a5f813ed9c49524590571e13e1ccd8579c26400da1ecea2de8c",
+      "source": "vendor_lib.zip:lib/libpixelflinger.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libpowerhal.so",
+      "size": 90752,
+      "sha256": "5307c09f61b27b02fe5b1b53360cbc6e079fd0e825cafce670580addedebef03",
+      "source": "vendor_lib.zip:lib/libpowerhal.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libpowerhalwrap_vendor.so",
+      "size": 24176,
+      "sha256": "b61715be8936b1cd7235d76049a34ce14087ffbfeb7d74fdb0801ebfa21d6500",
+      "source": "vendor_lib.zip:lib/libpowerhalwrap_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libpq_cust.so",
+      "size": 91852,
+      "sha256": "ca9e0aef157003d31d47f6915d8b8c4aeb1ff7cee2cd514f9050f8aff5fa7791",
+      "source": "vendor_lib.zip:lib/libpq_cust.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libpq_prot.so",
+      "size": 164200,
+      "sha256": "3844f8cc3dbd20c4d9f708b57cebe7a18967c38b3969dcf8062f8d134f7d6176",
+      "source": "vendor_lib.zip:lib/libpq_prot.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libratconfig.so",
+      "size": 19760,
+      "sha256": "4f726463d933ab98c82360d402c5336d209c74d9f254e39be48815ea2e3ef089",
+      "source": "vendor_lib.zip:lib/libratconfig.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libreference-ril.so",
+      "size": 87340,
+      "sha256": "047d4b65f12391c9e083457a647130b3ad19e4aeb55afb22059612bfc6d22305",
+      "source": "vendor_lib.zip:lib/libreference-ril.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libril.so",
+      "size": 243736,
+      "sha256": "790cd7605c33c84cdf29d9a89b63e0622f1ee5691c1e929b330a131b95a44e31",
+      "source": "vendor_lib.zip:lib/libril.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/librilfusion.so",
+      "size": 477520,
+      "sha256": "c672c3efebbbcc05d42125351a9084424f09649102c9d1d8723bbc46628a6769",
+      "source": "vendor_lib.zip:lib/librilfusion.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/librilutils.so",
+      "size": 19696,
+      "sha256": "32ddc8ae8069acb89e6dfbf2bc8c87fb101685dbd7060c697fb4bf4c2c197360",
+      "source": "vendor_lib.zip:lib/librilutils.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libsensorndkbridge.so",
+      "size": 41116,
+      "sha256": "e9eadd72ac5cbf8e2765641a9669dc23b3a97f2a61f251a822447196692e9bdc",
+      "source": "vendor_lib.zip:lib/libsensorndkbridge.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libspeech_enh_lib.so",
+      "size": 629344,
+      "sha256": "5d29c9b1f33bd7ad3cdc63b663b4e4655417da7d6a1d7ef9ea74bd18acff9be1",
+      "source": "vendor_lib.zip:lib/libspeech_enh_lib.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libstagefrighthw.so",
+      "size": 19732,
+      "sha256": "a1dc3083572fb32e003c6f6aad415819cc3078ebf8429eff72376ae6ad870714",
+      "source": "vendor_lib.zip:lib/libstagefrighthw.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libstorage_otp.so",
+      "size": 36440,
+      "sha256": "e2ab5b1ddc9286250fd0c29c51f0c329f449f0fe68d53898dd469d612e99203e",
+      "source": "vendor_lib.zip:lib/libstorage_otp.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libsysenv.so",
+      "size": 70564,
+      "sha256": "4fe2dbe559a958c06a572aac0e97ed9d702f938764276e3927cb5cc85d1c179a",
+      "source": "vendor_lib.zip:lib/libsysenv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libtinycompress.so",
+      "size": 15248,
+      "sha256": "2a9aa9b8c69850a064ab7e07fd95713cb7d6e492972840320761ef5520317bbe",
+      "source": "vendor_lib.zip:lib/libtinycompress.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libtinyxml.so",
+      "size": 49496,
+      "sha256": "d7fc72c7f1aac6cb0a4012b1a14567d51a888a33148d44ba58c73f3f6f5976ce",
+      "source": "vendor_lib.zip:lib/libtinyxml.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libtz_uree.so",
+      "size": 28148,
+      "sha256": "570917ff6d5e84163e7292317ff2fd37ec401efab026465baf1f07055e1b49e8",
+      "source": "vendor_lib.zip:lib/libtz_uree.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libudf.so",
+      "size": 288972,
+      "sha256": "4f241abebcbf3c87745a939b1c93a1744cdabec8de863220064d571f9b27b2eb",
+      "source": "vendor_lib.zip:lib/libudf.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libui_ext.so",
+      "size": 37028,
+      "sha256": "4fa4ea34bff279b28c34b3c889ab26af0558e432f10d1fefc54c3e2082e9f0c6",
+      "source": "vendor_lib.zip:lib/libui_ext.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/liburee_meta_drmkeyinstall_v2.so",
+      "size": 44852,
+      "sha256": "50615e6aa50fdbaa032d4123b7fb6ff3f9599fd02fd2474a8c48ba5fe2b4b34e",
+      "source": "vendor_lib.zip:lib/liburee_meta_drmkeyinstall_v2.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvc1dec_sa.ca7.so",
+      "size": 799788,
+      "sha256": "9d04bfa2ec630ab0e0a0483c8c7bf3dd5b13ca3a61beb2a2ca22610cfbde299e",
+      "source": "vendor_lib.zip:lib/libvc1dec_sa.ca7.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvcodec_oal.so",
+      "size": 26488,
+      "sha256": "bd76ad061e9ce75358e575956133990b793a5f6631444b0c4713907e25f422bf",
+      "source": "vendor_lib.zip:lib/libvcodec_oal.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvcodec_utility.so",
+      "size": 70112,
+      "sha256": "16f906593018d3ae2a94e17878cc8a34d4257e063e42345f4ba9ef4a9ad8b8d3",
+      "source": "vendor_lib.zip:lib/libvcodec_utility.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvcodecdrv.so",
+      "size": 936796,
+      "sha256": "041b957f9bb24d71ae614f7a89bf1d098fe785c4c0b1781c6f676f423c112c90",
+      "source": "vendor_lib.zip:lib/libvcodecdrv.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvp8dec_sa.ca7.so",
+      "size": 366980,
+      "sha256": "61d352aae0886412ac2e7ed155d1d62c9b0612bb6b9869973aca00fc464060a2",
+      "source": "vendor_lib.zip:lib/libvp8dec_sa.ca7.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvp8enc_sa.ca7.so",
+      "size": 273332,
+      "sha256": "2c12dde3cbe12b039f06797b20b9e45b7f68c868ae1c4933f07cbb9d6f70b74c",
+      "source": "vendor_lib.zip:lib/libvp8enc_sa.ca7.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvp9dec_sa.ca7.so",
+      "size": 350960,
+      "sha256": "1fa2882a9d1e652b8f08d8cea927932346a0bde50daca6b87146f4abfa682140",
+      "source": "vendor_lib.zip:lib/libvp9dec_sa.ca7.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libvt_custom.so",
+      "size": 16260,
+      "sha256": "a22037ce718114c43c85a1a9c171c499824117d8d9f96bd693b33d1a2324ea97",
+      "source": "vendor_lib.zip:lib/libvt_custom.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libwebrtc_audio_preprocessing.so",
+      "size": 813424,
+      "sha256": "9d262de5c33b90c6748a9124bf5e2d83e8202619c9ed389bebe13ddcc8e4819d",
+      "source": "vendor_lib.zip:lib/libwebrtc_audio_preprocessing.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libwifi-hal.so",
+      "size": 72436,
+      "sha256": "a7b36a0c04c905b520b509ef39408aab6689f777e3945727124e34fe89cfd3e6",
+      "source": "vendor_lib.zip:lib/libwifi-hal.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libwifitest.so",
+      "size": 28448,
+      "sha256": "cf92f311a6693d77a7b491e065e647474ee3a227cd41b9c65a505f56c4419299",
+      "source": "vendor_lib.zip:lib/libwifitest.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libwpa_client.so",
+      "size": 28132,
+      "sha256": "c7704aec36ca4db847a38f164f6136d54bbe7cf10b949a105d39099f43d37639",
+      "source": "vendor_lib.zip:lib/libwpa_client.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/libwvhidl.so",
+      "size": 3379128,
+      "sha256": "194e1efb6cb6f2428fda66b00df0cd6ed865b344a9a52791b9adfcda440c2891",
+      "source": "vendor_lib.zip:lib/libwvhidl.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/mediacas/libclearkeycasplugin.so",
+      "size": 83208,
+      "sha256": "64a9237e05cb9386958afafc2e35fe07862be3ac190b13ad6394cd476586ba95",
+      "source": "vendor_lib.zip:lib/mediacas/libclearkeycasplugin.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/mediadrm/libdrmclearkeyplugin.so",
+      "size": 50196,
+      "sha256": "c2d9af6e4bb09468af21da2bcca706648660efa279a177fda92ad6b28dc421ae",
+      "source": "vendor_lib.zip:lib/mediadrm/libdrmclearkeyplugin.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/mediadrm/libmockdrmcryptoplugin.so",
+      "size": 40216,
+      "sha256": "50361445835b3ecd7cf14bbb0359b9bce4ea58290591a535e84b9a185aad873c",
+      "source": "vendor_lib.zip:lib/mediadrm/libmockdrmcryptoplugin.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/mediadrm/libwvdrmengine.so",
+      "size": 3295180,
+      "sha256": "5082fd73bff4844c18407a108c55c79e57f3beb2f0f7cc553fef5c39aaeac685",
+      "source": "vendor_lib.zip:lib/mediadrm/libwvdrmengine.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/ak7604.ko",
+      "size": 293740,
+      "sha256": "be362f5c5bc448f396bffbc77c460d40003bb496deb0311424c4d97bc2d54ba1",
+      "source": "vendor_lib.zip:lib/modules/ak7604.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/atmel_mxt_ts.ko",
+      "size": 317296,
+      "sha256": "4684cdda446e6de66276f813f6f1773817dbfec7432bf13498b19d818aafe2f9",
+      "source": "vendor_lib.zip:lib/modules/atmel_mxt_ts.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/axstouch.ko",
+      "size": 987896,
+      "sha256": "f4a65bac96c85e1336a4263d642f8f975d3ce3c8655aa5e0792ad683e7fa1137",
+      "source": "vendor_lib.zip:lib/modules/axstouch.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/betterlife_ts.ko",
+      "size": 350840,
+      "sha256": "7316a67945ee242ff9af12b32d1e8ef66e4902351f34be64a60bea0b9f357b1e",
+      "source": "vendor_lib.zip:lib/modules/betterlife_ts.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/bt_drv.ko",
+      "size": 19308,
+      "sha256": "f4b16d761f9f5297fffe5233517d93ca4c1e89b54ea5d2debc63306a1f6c3a2d",
+      "source": "vendor_lib.zip:lib/modules/bt_drv.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/carstatus.ko",
+      "size": 188388,
+      "sha256": "7d25bc2d3cf0b6de2823336189acb0c3ffc2fb8c29e889a06396683eb6cebe54",
+      "source": "vendor_lib.zip:lib/modules/carstatus.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/cd3313.ko",
+      "size": 188520,
+      "sha256": "6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594",
+      "source": "vendor_lib.zip:lib/modules/cd3313.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/f_iap_lt.ko",
+      "size": 171084,
+      "sha256": "12fd89efb03df3d35f1923f82502e71f8c7825198eab2fd92dd6b87ba3d93274",
+      "source": "vendor_lib.zip:lib/modules/f_iap_lt.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/f_iap_zj.ko",
+      "size": 173704,
+      "sha256": "e422b6aa97d2d52170b0612192288c1a26493f05bba317530066ada6fed4c1a6",
+      "source": "vendor_lib.zip:lib/modules/f_iap_zj.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/fmradio_drv.ko",
+      "size": 223452,
+      "sha256": "17e03615cee4850bd65fa5a69074f767e7f33821cc99a0ff8e40d71b5ddfdaba",
+      "source": "vendor_lib.zip:lib/modules/fmradio_drv.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/focaltech.ko",
+      "size": 908596,
+      "sha256": "f731e24674c751bda2b90704fef0e084825d5050dcf2625938cdab1332b49dce",
+      "source": "vendor_lib.zip:lib/modules/focaltech.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/fy7604.ko",
+      "size": 282016,
+      "sha256": "3a09acda96db7ab89853c37276d2bef37e3c112262bb854475baa04b31046fa5",
+      "source": "vendor_lib.zip:lib/modules/fy7604.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/gps_drv.ko",
+      "size": 17352,
+      "sha256": "22d75e7a1247155525486a9419daf22df1c083612a7dd364446380d4d5a5d747",
+      "source": "vendor_lib.zip:lib/modules/gps_drv.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/gsl37xx.ko",
+      "size": 566636,
+      "sha256": "78bdac40ee684ac1fc617267c30390f07d86398ad6d3defc2af69754a772d233",
+      "source": "vendor_lib.zip:lib/modules/gsl37xx.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/hxchipset-i2c.ko",
+      "size": 925448,
+      "sha256": "9cd9d175f2a11d0cfd2617997515a555ec1a62a27f43155b8b141f11a096281f",
+      "source": "vendor_lib.zip:lib/modules/hxchipset-i2c.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/hyn_cst3xx.ko",
+      "size": 261676,
+      "sha256": "61f50f301a62e33caf8a1152561a059c9de7dc93f20541ad1e207844ee871a64",
+      "source": "vendor_lib.zip:lib/modules/hyn_cst3xx.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/ilitek.ko",
+      "size": 1987912,
+      "sha256": "4d6cc4bdff8498d7462aed5de58335c4876aa763cfc2228f187b310f1b6a72b4",
+      "source": "vendor_lib.zip:lib/modules/ilitek.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/jadard_touch.ko",
+      "size": 1123320,
+      "sha256": "2753a99c9e03e0550d2ff04d1ee980fbc061fc16da6d83c7ea0f4e34cc852b0d",
+      "source": "vendor_lib.zip:lib/modules/jadard_touch.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/jadard_touch_9365tl.ko",
+      "size": 654788,
+      "sha256": "6b7baae95a7305115d34ef739759a6906551b4c50584253f7ae9face9f9bc2d1",
+      "source": "vendor_lib.zip:lib/modules/jadard_touch_9365tl.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/met.ko",
+      "size": 89436,
+      "sha256": "b6d9f4bcf74c2c1a13d9091162dc9dfdd0f973b88ec6e67a0383a0e038cc4272",
+      "source": "vendor_lib.zip:lib/modules/met.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/qn8027.ko",
+      "size": 154816,
+      "sha256": "21267a3803f6742d7915962d568fc074f83f90a33a1140062ec5f3a09010ff02",
+      "source": "vendor_lib.zip:lib/modules/qn8027.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/qn8035.ko",
+      "size": 332876,
+      "sha256": "7c1138bd9e98957427aec66af179c1dc8949d36945fce92ac074cfdf02f0894b",
+      "source": "vendor_lib.zip:lib/modules/qn8035.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/semi_touch_driver.ko",
+      "size": 865528,
+      "sha256": "c2e319370d138206dd0db865f14ad1a104b839008140b4dafc300b2e04f4eb37",
+      "source": "vendor_lib.zip:lib/modules/semi_touch_driver.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/si475x.ko",
+      "size": 324820,
+      "sha256": "32ad0ad5e4b0b79f624664133befaad073151f8b42cf0a3ca2f58453ca75dc77",
+      "source": "vendor_lib.zip:lib/modules/si475x.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/sitronix-ts.ko",
+      "size": 1161688,
+      "sha256": "27eca2493dc896aaed7c7c2db3614541886b921737f9d774417f8e9ec735deb4",
+      "source": "vendor_lib.zip:lib/modules/sitronix-ts.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/synaptics_dsx.ko",
+      "size": 722984,
+      "sha256": "420baa8dffb799f5c8df67d09d3554c8b8a86a0dd5043ca688e01709af1b3fb5",
+      "source": "vendor_lib.zip:lib/modules/synaptics_dsx.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/tda7708LX.ko",
+      "size": 444980,
+      "sha256": "4cc26ce24d0cff206bc4b2df3fd3cf089a6e1ebec780cc7cd59b04dc37ace831",
+      "source": "vendor_lib.zip:lib/modules/tda7708LX.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/tp2825.ko",
+      "size": 187004,
+      "sha256": "eb210588ef4dd62019cb4bd47f77b17a98cf214e540ba44bd46c5d9ab56bb0fa",
+      "source": "vendor_lib.zip:lib/modules/tp2825.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/tp9950.ko",
+      "size": 206184,
+      "sha256": "258dc257028551f39314d803d95bccf9ab2bfb9db8b062a257d1820b237de6bb",
+      "source": "vendor_lib.zip:lib/modules/tp9950.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/tp9951.ko",
+      "size": 215176,
+      "sha256": "e2deab5330a76fe3c124f7c72e99baec3b2fb39832cc32e7efcbfee5bbce1882",
+      "source": "vendor_lib.zip:lib/modules/tp9951.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/wlan_drv_gen2.ko",
+      "size": 1540128,
+      "sha256": "25f0198e8ee32f0588413bd545b6063d3c275cfa9155d816e51edb62a77727b3",
+      "source": "vendor_lib.zip:lib/modules/wlan_drv_gen2.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/wmt_chrdev_wifi.ko",
+      "size": 15652,
+      "sha256": "fcf807d8f5fc9f87113e2111f85902f7cf2da2ebc4e8d0c7861214fd5822d6ff",
+      "source": "vendor_lib.zip:lib/modules/wmt_chrdev_wifi.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/modules/wmt_drv.ko",
+      "size": 869800,
+      "sha256": "90d31e43f4883f9e3cf707cc0ae351672afa2c57ab98d7c866b7efd0d1fb1e8b",
+      "source": "vendor_lib.zip:lib/modules/wmt_drv.ko"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libaudiopreprocessing.so",
+      "size": 29244,
+      "sha256": "dc1a984834856e02688d2101489763f82a058805760426cae0fc8c6d17bfa26d",
+      "source": "vendor_lib.zip:lib/soundfx/libaudiopreprocessing.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libbundlewrapper.so",
+      "size": 72744,
+      "sha256": "0665ca512d7a52c12b5581d01f91cf347564bba849d1ddc3a0ffd6ddf5252587",
+      "source": "vendor_lib.zip:lib/soundfx/libbundlewrapper.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libdownmix.so",
+      "size": 24092,
+      "sha256": "64d515d36281168ee8c4ad49a16157eefa0cca004c97856a1639e8e8c2da568d",
+      "source": "vendor_lib.zip:lib/soundfx/libdownmix.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libdynproc.so",
+      "size": 54904,
+      "sha256": "9459a6c3ebc4717bd2974f5c86f650cc8d93af6f95b69e4f997fe7db9f4f2f42",
+      "source": "vendor_lib.zip:lib/soundfx/libdynproc.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libeffectproxy.so",
+      "size": 19812,
+      "sha256": "77e05944f96e7a4825390e6b2151712cfb8e6de5aae2bddb5a7e408bc86391e9",
+      "source": "vendor_lib.zip:lib/soundfx/libeffectproxy.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libldnhncr.so",
+      "size": 20064,
+      "sha256": "14ac570d01cceac9414430498823d7f1078e8fb37387a30592f759f3bdffb92b",
+      "source": "vendor_lib.zip:lib/soundfx/libldnhncr.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libreverbwrapper.so",
+      "size": 49592,
+      "sha256": "a0f975833d5cfe1d62cde6ed0c0d97883f9af1df9ddbc1ddd849841cae253659",
+      "source": "vendor_lib.zip:lib/soundfx/libreverbwrapper.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/soundfx/libvisualizer.so",
+      "size": 19868,
+      "sha256": "acedb758980c8c8cd2a8ecb7d76a1b5b22866c8a767f354391363be062856997",
+      "source": "vendor_lib.zip:lib/soundfx/libvisualizer.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.apmonitor@1.0.so",
+      "size": 96728,
+      "sha256": "9d3a67a81eeb957463bd1ab17ef73a6bc7ae1c1a726ab1371c84f8b48f6fbedb",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.apmonitor@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.atci@1.0.so",
+      "size": 126728,
+      "sha256": "03db86de5aed6bfe4a0c73049ce81cd5f6f2713981699aa342ae683fa44e9b3a",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.atci@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.audio@4.1.so",
+      "size": 195252,
+      "sha256": "553704e5285c4ab1e505bab569ac261f40ce7e6aa8c0c9173e038acc59dc3be5",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.audio@4.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.camera.ccap@1.0.so",
+      "size": 66544,
+      "sha256": "b02c5676f8962db70d5a2e309b3e9456cd3f733069240817a401374c4fb89273",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.camera.ccap@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.camera.device@1.1.so",
+      "size": 138916,
+      "sha256": "911420310d5bcf3aafa17cc00ff884c9c965b0d794879d7d7fe28499d3876a85",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.camera.device@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.dfps@1.0.so",
+      "size": 297640,
+      "sha256": "cb76cc3d61542df2709af734e570830214ac96200bbdeb9538c5931b27fb7b66",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.dfps@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.engineermode@1.0.so",
+      "size": 180040,
+      "sha256": "8aa92a1dba48ae8e84d6b301f33d885fb78e969416484c5a7bcd9a564dc4844d",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.engineermode@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.gnss@1.1.so",
+      "size": 138936,
+      "sha256": "5e777d901d4933ed3e017f9c1d699e1667cbadb1a639ac7f9c9e06dd2e238f53",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.gnss@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.hdmi@1.0.so",
+      "size": 75056,
+      "sha256": "af1bd9272b5f8c6bdae1b635c2e34d1e3bc8b1e6fc56657537ab5f84cecca79e",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.hdmi@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.keymanage@1.0.so",
+      "size": 66912,
+      "sha256": "a16e38b21fbd8837255ed524bc900053e930b09684e607b703114f95feec6672",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.keymanage@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.keymaster_attestation@1.0.so",
+      "size": 62324,
+      "sha256": "b78aaecd6cbd776abaef6f5aaad702c77f5b7ef761af1d97d4d1635c7bb2020f",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.keymaster_attestation@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.keymaster_attestation@1.1.so",
+      "size": 70624,
+      "sha256": "8f9cf2fe7f3e431af756fd4937ed8b027c3b2026a216f6a774fdf1e21d3fa912",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.keymaster_attestation@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.lbs@1.0.so",
+      "size": 96404,
+      "sha256": "2112a18998f689a50ed6f8e33eb431fc8be185c1b8207a8b0ae4a0e0f683c6ce",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.lbs@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.log@1.0.so",
+      "size": 92252,
+      "sha256": "26d0cd39457b085d3ad4a464d6747bc83664822f173a8ee8fabf352e739b108b",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.log@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.0.so",
+      "size": 75112,
+      "sha256": "fcd0cb730d0f36d79dbb65eb660d345c209fdbc1018a58ab1a62d70a3fdbcd82",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.1.so",
+      "size": 70900,
+      "sha256": "e06b917e8b9ee31d8f3795f6e7cedc16181ac906ca320adcbf863bf9d560b564",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.2.so",
+      "size": 75032,
+      "sha256": "e2cd8080fdafbec2386c15101d8d25fe0725bb0bbf732ad72facebef11467072",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.2.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.3.so",
+      "size": 83312,
+      "sha256": "5ec7d560f23a023df7482c0fc8d8c67224e7ab06217f07b9f2ff0ae1418e35a9",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.3.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.4.so",
+      "size": 87476,
+      "sha256": "6b4b72e0c427d5fa270ab34ac2bcb714f162404ca23fc92063d65580f0ead7a0",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.4.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mms@1.5.so",
+      "size": 91628,
+      "sha256": "3caf51a6e2877c3a79b5ee21810f22e9af4e21d928256fdd5e4a6dff2daf1a80",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mms@1.5.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.mtkcodecservice@1.1.so",
+      "size": 105220,
+      "sha256": "394e04a19c3c2b5d01e0ca01f7cbceff2b5fb78ba0aa98319a7bfd0047e7048b",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.mtkcodecservice@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.netdagent@1.0.so",
+      "size": 62304,
+      "sha256": "8d8fa10fde715e0076492e08792e52db9c8b182db839a3a622062ba635809a89",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.netdagent@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.nvram@1.0.so",
+      "size": 62560,
+      "sha256": "478062e92991aee6c1fcd5c53996caca23455925569a5a61f2571c73faee17b7",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.nvram@1.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.nvram@1.1.so",
+      "size": 92124,
+      "sha256": "ed2cb84f79e31483872575617328e29c479d47c677d32851351e95c9417cafa9",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.nvram@1.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.power@2.0-impl_vendor.so",
+      "size": 62140,
+      "sha256": "82f53ba252ac2d277b3816344d807357d6f1bdb93ae01329f7f9eb8158cd44fe",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.power@2.0-impl_vendor.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.power@2.0.so",
+      "size": 105100,
+      "sha256": "f4bb1bc7c3494723e8c96a0df2ba874e3125d7143743e35a76428e8be867b29d",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.power@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.pq@2.0.so",
+      "size": 164480,
+      "sha256": "f4b2aebcace8958dc6bd30fc02ced29492e5181cecfb0629d675b175e45eaa56",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.pq@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.pq@2.1.so",
+      "size": 113984,
+      "sha256": "7ee8b3e13322ec7a15fa36d9d3a306c87e30b6c61d48cafac16b6fe2dd1a99e7",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.pq@2.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.pq@2.2.so",
+      "size": 122248,
+      "sha256": "f5876457f668ce5e4e22b174c1dde0e2eb83b2fab8d1eab2424e598bd85dc4ea",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.pq@2.2.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.radio@3.0.so",
+      "size": 2423684,
+      "sha256": "7f52bd6784ee4c11da1fc5fc7a8cdb23270e2a2c112b1f8dec9f60389740bc80",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.radio@3.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.radio@3.1.so",
+      "size": 254268,
+      "sha256": "2fea0fc94afb0defb49fd1e7e920feeb84ba9962e02cca3603e3391b6d67569d",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.radio@3.1.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.wifi.hostapd@2.0.so",
+      "size": 109988,
+      "sha256": "197246dc4772b25be0de2654e4e09026eca0b49a9e7eef3e7ff53be506cafcec",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.wifi.hostapd@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/lib/vendor.mediatek.hardware.wifi.supplicant@2.0.so",
+      "size": 311216,
+      "sha256": "b4234524e4e8db122cd61a5b68b86e88bae3725709c846dbbc2363b85ee94553",
+      "source": "vendor_lib.zip:lib/vendor.mediatek.hardware.wifi.supplicant@2.0.so"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/media_codecs_google_audio.xml",
+      "size": 4830,
+      "sha256": "c3acd6442046ac4bd949b5c6f18d79f2707b5bdc677fa8e676bd02a88035ac75",
+      "source": "files2.zip:vendor/media_codecs_google_audio.xml"
+    },
+    {
+      "path": "/home/runner/work/mt8163_audio_engine/mt8163_audio_engine/reference-materials/extracted/vendor/media_codecs_mediatek_audio.xml",
+      "size": 4440,
+      "sha256": "5c525bae64b2530edf679d6083f2d9fb214a263e7e958f32a355c7d800cb20b2",
+      "source": "files2.zip:vendor/media_codecs_mediatek_audio.xml"
+    }
+  ]
+}
