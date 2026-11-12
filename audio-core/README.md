@@ -9,15 +9,16 @@ This directory contains the first host-testable primitives for the unified MT816
 - Named mute owners independent from legacy CD3313 reason numbers.
 - Separate master and per-source mute domains.
 - Detached, read-only MuteSnapshot values for publishing state toward the PCM plane.
+- Three-slot, single-writer/multi-reader SnapshotPublisher with bounded reader retries and non-blocking writer backpressure.
 - Explicit mapping from AudioCore mute owners to the paired CD3313 legacy reason masks.
 - Shared legacy radio reason 2 remains asserted until both RadioScan and RadioPacketMute owners release it.
 - Fixed-size state with no dynamic allocation in the mute arbiter.
 
-The mute arbiter is a control-plane object. A future AudioCore control context will own mutations and publish an immutable snapshot to the PCM callback. This class is not a concurrent multi-writer object and must not be accessed unsafely from the real-time thread.
+The mute arbiter is a control-plane object. One serialized AudioCore control context owns mutations. It creates immutable snapshots and publishes them through SnapshotPublisher. The publisher uses three fixed slots and 32-bit atomics; readers have a fixed retry bound, the writer never waits, and a failed acquisition must reuse the previous block snapshot. The publisher is single-writer and multi-reader; it does not make MuteArbiter itself thread-safe.
 
 ## Validation
 
-The CMake targets `mt8163_audio_core_tests` and `mt8163_audio_core_session_tests` cover independent mute owners, master/source scope, CD3313 reason aggregation, session lifecycle, duplicate handles, fixed capacity and invalid identifiers. They are included in the `pcm-dsp` host CMake test suite.
+The CMake targets `mt8163_audio_core_tests`, `mt8163_audio_core_session_tests` and `mt8163_audio_core_snapshot_tests` cover mute ownership, CD3313 reason aggregation, session lifecycle, fixed capacity, snapshot slot pinning and concurrent readers. The snapshot test runs 100,000 writer updates with two readers. They are included in the `pcm-dsp` host CMake test suite.
 
 ## Not implemented yet
 
