@@ -8,7 +8,7 @@ Therefore:
 - `files2.zip` is the canonical, larger reference set.
 - `files.zip` does not provide a distinct binary or configuration revision.
 - Its contents must not be treated as a second firmware version.
-- The smaller archive may be removed from the tracked repository to avoid retaining a redundant 3.2 MiB source package; the matching content remains available in `files2.zip`.
+- The smaller `files.zip` archive was removed from the tracked repository (3.2 MiB saved); the matching content remains available in `files2.zip`.
 
 ## Exact duplicate groups inside the archives
 
