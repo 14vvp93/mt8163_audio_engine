@@ -1,6 +1,6 @@
 # CD3313 command dispatcher reconstruction
 
-This document records behavior recovered from the ARM32 disassembly and DWARF line information in `cd3313.ko`. It is a static reconstruction, not a hardware-verified protocol specification.
+This document records behavior recovered from the ARM32 disassembly and DWARF line information in `cd3313.ko`. It is a static reconstruction, not a hardware-verified protocol specification. It applies to the standalone reference module identified below, not the firmware-paired vendor module. For the installed-module candidate, use [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md); the vendor build adds a 0x09 branch and differs in callback details.
 
 ## Evidence and build identity
 
