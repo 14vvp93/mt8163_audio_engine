@@ -252,3 +252,15 @@ sample-rate configuration while the effect is disabled, expects `-EINVAL`,
 then re-enables processing and verifies that the previous 48 kHz PCM16
 configuration still processes correctly. This is a host ABI regression test;
 target framework behavior and device runtime remain unverified.
+
+## Deferred parameter commit coverage — 2026-11-12
+
+The host ABI smoke test now verifies the deferred parameter contract:
+`EFFECT_CMD_SET_PARAM_DEFERRED` stages a candidate value without changing
+the live audio-thread parameters; `EFFECT_CMD_SET_PARAM_COMMIT` publishes
+the staged set. The test confirms the old preamp remains audible before
+COMMIT and the new preamp is applied on the next processed block afterward.
+
+This covers the successful staging/commit path. Slot-exhaustion behavior
+and concurrent command/process stress still require dedicated tests; the
+host ABI test is not a substitute for target-device runtime validation.
