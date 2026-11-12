@@ -186,16 +186,32 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
     return true; // Unsupported but valid streams are deliberately bypassed.
 }
 
-void copy_bypass(const audio_buffer_t& input, audio_buffer_t& output,
+std::size_t bytes_per_sample(std::uint8_t format) {
+    switch (format) {
+        case AUDIO_FORMAT_PCM_8_BIT: return 1U;
+        case AUDIO_FORMAT_PCM_16_BIT: return 2U;
+        case AUDIO_FORMAT_PCM_24_BIT_PACKED: return 3U;
+        case AUDIO_FORMAT_PCM_8_24_BIT:
+        case AUDIO_FORMAT_PCM_32_BIT:
+        case AUDIO_FORMAT_PCM_FLOAT: return 4U;
+        default: return 0U;
+    }
+}
+
+void copy_bypass(const EffectContext* context,
+                 const audio_buffer_t& input,
+                 audio_buffer_t& output,
                  std::uint8_t format) {
     if (input.raw == nullptr || output.raw == nullptr ||
         input.raw == output.raw || input.frameCount == 0U) {
         return;
     }
-    const std::size_t sample_count = input.frameCount * 2U;
-    const std::size_t sample_bytes =
-        format == AUDIO_FORMAT_PCM_FLOAT ? sizeof(float) : sizeof(std::int16_t);
-    std::memmove(output.raw, input.raw, sample_count * sample_bytes);
+    const std::size_t sample_bytes = bytes_per_sample(format);
+    const std::size_t channels =
+        audio_channel_count_from_out_mask(context->config.outputCfg.channels);
+    if (sample_bytes == 0U || channels == 0U) return;
+    const std::size_t bytes = input.frameCount * channels * sample_bytes;
+    std::memmove(output.raw, input.raw, bytes);
 }
 
 std::int32_t process_effect(effect_handle_t self,
@@ -230,7 +246,7 @@ std::int32_t process_effect(effect_handle_t self,
             context->engine.reset();
             context->was_processing = false;
         }
-        copy_bypass(input, output, format);
+        copy_bypass(context, input, output, format);
         return 0;
     }
 
@@ -304,25 +320,6 @@ void write_status(uint32_t* reply_size, void* reply_data, std::int32_t status) {
     }
 }
 
-bool read_parameter_payload(const effect_param_t* parameter,
-                            std::uint32_t command_size,
-                            std::uint32_t* id,
-                            const void** value,
-                            std::uint32_t expected_size) {
-    if (parameter == nullptr || command_size < offsetof(effect_param_t, data) ||
-        parameter->psize != sizeof(std::uint32_t) ||
-        parameter->vsize != expected_size) {
-        return false;
-    }
-    const std::size_t value_offset =
-        (static_cast<std::size_t>(parameter->psize) + 3U) & ~std::size_t(3U);
-    const std::size_t required = offsetof(effect_param_t, data) +
-                                 value_offset + parameter->vsize;
-    if (required > command_size) return false;
-    std::memcpy(id, parameter->data, sizeof(*id));
-    *value = parameter->data + value_offset;
-    return true;
-}
 
 std::int32_t apply_parameter(EffectContext* context,
                              std::uint32_t id,
@@ -384,6 +381,20 @@ std::int32_t apply_parameter(EffectContext* context,
                 target.shelf_slope = band.shelf_slope;
             }
             break;
+    }
+
+    const auto finite = [](float value) { return std::isfinite(value); };
+    if (!finite(candidate.preamp_db) || !finite(candidate.balance) ||
+        !finite(candidate.limiter_threshold) ||
+        !finite(candidate.limiter_attack_ms) ||
+        !finite(candidate.limiter_release_ms)) {
+        return -EINVAL;
+    }
+    for (const auto& band : candidate.bands) {
+        if (!finite(band.frequency_hz) || !finite(band.gain_db) ||
+            !finite(band.q) || !finite(band.shelf_slope)) {
+            return -EINVAL;
+        }
     }
 
     if (deferred) {
@@ -643,7 +654,7 @@ const effect_descriptor_t kDescriptor = {
     kEffectTypeEqualizer,
     kEffectUuid,
     EFFECT_CONTROL_API_VERSION,
-    EFFECT_FLAG_TYPE_INSERT | EFFECT_FLAG_INSERT_LAST |
+    EFFECT_FLAG_TYPE_POST_PROC | EFFECT_FLAG_INSERT_LAST |
         EFFECT_FLAG_DEVICE_IND | EFFECT_FLAG_AUDIO_MODE_IND |
         EFFECT_FLAG_INPUT_DIRECT | EFFECT_FLAG_OUTPUT_DIRECT,
     120U,
