@@ -78,6 +78,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [ADB audio and Device Tree diagnostics collector](../tools/README.md)
 - [Reference archive extraction utility](../scripts/repository/prepare_reference_archives.py)
 - [Complete firmware reference tree builder](../scripts/repository/curate_audio_references.py)
+- [HEQ APK chunk reassembler and SHA-256 verifier](../scripts/repository/reassemble_heq_apk.py)
 
 ## Repository areas
 
