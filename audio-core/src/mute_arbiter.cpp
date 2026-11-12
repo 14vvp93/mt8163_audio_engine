@@ -2,6 +2,31 @@
 
 namespace mt8163_audio_core {
 
+MuteSnapshot::MuteSnapshot(
+    std::uint32_t master_owners,
+    const std::array<std::uint32_t, kSourceCount>& source_owners) noexcept
+    : master_owners_(master_owners), source_owners_(source_owners) {}
+
+bool MuteSnapshot::master_muted() const noexcept {
+    return master_owners_ != 0U;
+}
+
+bool MuteSnapshot::source_muted(SourceId source) const noexcept {
+    const auto index = static_cast<std::size_t>(source);
+    if (source == SourceId::None || index >= kSourceCount) return false;
+    return master_muted() || source_owners_[index] != 0U;
+}
+
+std::uint32_t MuteSnapshot::master_owner_mask() const noexcept {
+    return master_owners_;
+}
+
+std::uint32_t MuteSnapshot::source_owner_mask(SourceId source) const noexcept {
+    const auto index = static_cast<std::size_t>(source);
+    return source != SourceId::None && index < kSourceCount
+        ? source_owners_[index] : 0U;
+}
+
 bool MuteArbiter::valid_owner(MuteOwner owner) noexcept {
     return static_cast<std::size_t>(owner) < kMuteOwnerCount;
 }
@@ -67,6 +92,10 @@ std::uint32_t MuteArbiter::master_owner_mask() const noexcept {
 std::uint32_t MuteArbiter::source_owner_mask(SourceId source) const noexcept {
     return valid_source(source)
         ? source_owners_[static_cast<std::size_t>(source)] : 0U;
+}
+
+MuteSnapshot MuteArbiter::snapshot() const noexcept {
+    return MuteSnapshot{master_owners_, source_owners_};
 }
 
 }  // namespace mt8163_audio_core
