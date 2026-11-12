@@ -48,7 +48,7 @@ The Float32 API expects normalized samples. Per-channel delay is configured in m
 
 ## Host tests
 
-The host workflow builds the library with CMake and runs tests for stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling. Multiband tests additionally verify bit-exact bypass, independent low/mid/high compression on separate channels, preservation of unselected bands, in-place equivalence, invalid crossover rejection, and finite output for non-finite input.
+The host workflow builds the library with CMake and runs tests for 32 kHz FM-rate stereo processing, 44.1/48 kHz stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling. Multiband tests additionally verify bit-exact bypass, independent low/mid/high compression on separate channels, preservation of unselected bands, in-place equivalence, invalid crossover rejection, and finite output for non-finite input.
 
 
 ## Four-channel utility modules
