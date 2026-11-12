@@ -94,6 +94,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - `cd3313-emulator/` — offline CD3313 protocol/state model and host tests.
 - `kernel/cd3313/` — CD3313 rewrite plan and future kernel implementation.
 - `pcm-dsp/` — PCM/DSP code, JNI bridge, tests and benchmarks.
+- `audio-core/` — unified AudioCore state primitives, mute arbitration, compatibility mapping and host tests.
 - Firmware data — stored in `14vvp93/public_calculations/firmware/`; not duplicated in this private repository.
 - `scripts/repository/` — private repository-maintenance utilities.
 - `tools/` — diagnostic and reverse-engineering helper scripts.
