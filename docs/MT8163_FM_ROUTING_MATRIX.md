@@ -158,3 +158,31 @@ The paired `wmt_drv.ko` (Build ID `c2e5f3477920471011b2d929be212100b0d41ff8`; SH
 
 
 The firmware module inventory includes several alternative tuner drivers (`qn8027`, `qn8035`, `si475x`, `tda7708LX`) alongside `fmradio_drv.ko`. The latter has a `depends=wmt_drv` dependency and exactly implements the HAL's `/dev/fm` ioctl values. The extracted init/config scan found no explicit module-load command, so the intended provider is identified statically but its live loaded state remains to be checked on the target.
+
+
+
+
+## WMT audio-interface state machine and compiled FM mode
+
+The exact paired `wmt_drv.ko` was disassembled with ARM-aware tooling:
+
+- Build ID: `c2e5f3477920471011b2d929be212100b0d41ff8`
+- SHA-256: `90d31e43f4883f9e3cf707cc0ae351672afa2c57ab98d7c866b7efd0d1fb1e8b`
+- `wmt_plat_audio_ctrl()`: VMA `0x5690`, size 392 bytes.
+- `wmt_plat_i2s_ctrl()`: VMA `0x4820`, size 308 bytes.
+
+The binary's audio-control switch selects the two platform pin groups (group 8 = PCM, group 9 = I2S) as follows:
+
+| AIF state | PCM group | I2S group |
+|---:|---|---|
+| 0 | DEINIT | DEINIT |
+| 1 | INIT | DEINIT |
+| 2 | DEINIT | INIT |
+| 3 | INIT | INIT |
+
+The matching MediaTek WMT reference implementation identifies state 0 as `CMB_STUB_AIF_0` (“BT_PCM_OFF & FM line in/out”) and state 2 as PCM deinit plus I2S init. Reference source: [wmt_plat_alps.c, android-mtk-3.18](https://android.googlesource.com/kernel/mediatek/+/android-mtk-3.18/drivers/misc/mediatek/connectivity/common/combo/platform/alps/wmt_plat_alps.c), especially `wmt_plat_audio_ctrl()` and `wmt_plat_i2s_ctrl()`. The binary's function table, control-group calls, and diagnostic strings match this implementation; use the source as a semantic cross-check, not as proof that every line is byte-identical to this firmware.
+
+**Important build finding:** the exact binary's `wmt_plat_i2s_ctrl()` checks the I2S CK/WS/DAT GPIO definitions, but the compiled function contains the warning path “FM digital mode is not set” / “no I2S GPIO settings should be modified by combo driver” and does not contain the I2S pinctrl/GPIO operations present in the reference source's `#if defined(FM_DIGITAL_INPUT) || defined(FM_DIGITAL_OUTPUT)` branch. This is strong evidence that the WMT build was compiled without those FM digital-mode flags; its combo-driver I2S pin control is effectively a no-op for FM in this build.
+
+This materially shifts the static assessment toward an **analog FM line-in/out configuration**, consistent with the CD3313 logical RADIO channel (channel 0 → Source 3). It still does not prove the live `aud_path` value, which AIF state is actually selected at runtime, or the physical wire from the MT6627 analog output to CD3313 Source 3. Those require read-only target observation or board-level documentation.
+
