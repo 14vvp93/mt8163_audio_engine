@@ -71,7 +71,7 @@ The exact vendor hardened-usercopy implementation/config still requires source c
 
 - [x] Re-extract the command dispatcher from the exact vendor archive module Build ID e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56.
 - [ ] Reconcile every command ID, generic length-table check, local branch check, actual argument reads and command-specific ranges.
-- [ ] Complete the `0x03` control-flow review; its three-word host threshold remains a fail-closed policy because the vendor callback reads two words without a local size guard. Direct disassembly shows channel -1 and 6 are rejected, but values 7+ are not bounded before indexing `channel_gain`; the replacement accepts only 0..5 and gain 0..3.
+- [x] Decode the `0x03` channel/gain branch: its three-word host threshold remains a fail-closed policy because the vendor callback reads two words without a local size guard. The callback rejects channel -1 and 6 but does not bound values 7+ before indexing `channel_gain`; the replacement accepts only channels 0..5 and gain 0..3.
 - [x] Identify `0x09` as `volume_max`, default 40, and model a safe 0..40 replacement contract.
 - [ ] Inventory every Java/Binder caller and record the exact array length and argument values for every command.
 - [ ] Decide and implement the safe legacy JNI compatibility buffer, including deterministic initialization of the extra word, without modifying the original JNI binary.
@@ -87,7 +87,7 @@ The 12-pair `cmd_len_list` table and optimized command-dispatch description in t
 
 Likewise, the parser's `0x15` four-word requirement is a safety requirement derived from the four observed 32-bit loads, not the weaker two-word threshold found in the older command table. The host implementation intentionally rejects frames that could leave handler arguments sourced from uninitialized slab bytes. This is a replacement-side contract and must remain distinct from the unsafe factory driver's observed minimum.
 
-The current parser's `known_write_commands()` table remains a conservative host-side acceptance policy. The exact vendor callback has been re-extracted, but full semantic reconciliation still requires caller-by-caller correlation for every dispatched command, especially the `0x03` field checks and the opaque second word of `0x12`.
+The current parser's `known_write_commands()` table remains a conservative host-side acceptance policy. The exact vendor callback has been re-extracted and the `0x03` channel/gain branch has been decoded. Full semantic reconciliation still requires caller-by-caller correlation for every dispatched command and the opaque second word of `0x12`.
 
 
 ## 7. Direct revalidation of the paired vendor callback
