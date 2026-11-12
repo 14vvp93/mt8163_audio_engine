@@ -158,6 +158,18 @@ int main() {
             "disabled DSP bypass succeeds");
     require(output == input, "disabled DSP bypass is bit-exact");
 
+    // Direct-buffer effects may receive the same storage for input and output.
+    // The adapter and PCM16 engine must process that buffer safely in place.
+    set_u32(handle, 1U, 1U);
+    set_float(handle, 2U, 6.0F);
+    out_buffer.raw = input.data();
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "in-place PCM16 processing succeeds");
+    require(input[0] > 1500 && input[0] < 2600,
+            "in-place PCM16 processing applies the preamp");
+    std::fill(input.begin(), input.end(), 1000);
+    out_buffer.raw = output.data();
+
     // Unsupported sample rate and unsupported route must fail open.
     set_u32(handle, 1U, 1U);
     configure(handle, 32000U, AUDIO_FORMAT_PCM_16_BIT);
