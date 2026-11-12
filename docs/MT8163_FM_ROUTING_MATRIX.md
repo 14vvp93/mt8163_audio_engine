@@ -82,6 +82,9 @@ The firmware therefore groups RADIO and DAB onto CD3313 Source 3, distinguished 
 | I2S pad | 28 | Value 0 selects CONN result; value 2 is error |
 
 The setter maps 32,000 / 44,100 / 48,000 Hz back to enum 0 / 1 / 2 and issues ioctl `0xC004F521`.
+The paired MT6627 `fmradio_drv.ko` selects configuration class 1 for chip ID `0x6627`. Its init-time audio metadata is `aud_path=1, i2s_state=1, i2s_mode=0, i2s_rate=0, i2s_pad=0`: valid non-merge path, I2S state enabled, master mode, 32 kHz, and `FM_I2S_PAD_CONN`. Thus the non-merge row below is the driver-configured path, not merely a hypothetical HAL branch. The customer file `fm_cust.cfg` is loaded through `request_firmware()` for tuner thresholds and does not change these five audio metadata fields.
+
+The setter callback at FM-core offset `0x8c` is not populated by the MT6627 low-ops registration, and no other provider was found in the extracted module set. If null, ioctl `0xC004F521` returns `-1002`. The HAL logs but ignores that ioctl result, while its direct PCM configuration obtains the actual rate from `GetFmChipSamplingRate()`; do not treat the HAL 48 kHz request as proof that the chip rate changed from 32 kHz.
 
 The exact HAL Card/PCM string pairs were recovered from the relocation-aware global `String8` initializers and verified at both call sites:
 
@@ -98,17 +101,17 @@ These interfaces must remain distinct in any model:
 
 1. `/dev/fm`: FM tuner/chip metadata and I2S configuration ioctl plane.
 2. ALSA PCM names `MRGRX_PLayback`, `MRGRX_CAPTURE`, `FM_I2S_Playback`, `FM_I2S_Capture`: HAL direct connection and AP capture plane.
-3. `/dev/audiomux` and CD3313 logical channel `RADIO`: analog input selection and mute-control plane.
-4. Android Audio Policy device `FM Tuner In`: policy-level input route to output devices.
+3. `/dev/audiomux` and CD3313 logical channel `RADIO`: CD3313 input selection and mute-control plane.
+4. Android Audio Policy device `FM Tuner In` plus the non-merge HAL I2S endpoints: policy-level FM input and AP-side PCM route.
 
-Static evidence confirms these separate software routes. It does not yet prove whether the board feeds one FM signal to both the CD3313 Source 3 analog input and the AP-side I2S capture path, or which route is active in a given runtime mode.
+Static evidence confirms these separate software routes. The MT6627 metadata selects non-merge I2S, while RadioService independently mutes CD3313 logical RADIO. It is not yet proven whether the board feeds the tuner to both paths, whether one is dormant, or how the paths are selected at runtime.
 
 ## 6. Remaining board-level verification
 
 The next evidence pass searches the extracted firmware configuration and device-tree material for the exact pinmux and board routing:
 
 - the DT/DTBO mapping for GPIO 396 and GPIO 474;
-- I2S pad selection and pinctrl for the FM tuner;
+- the SoC I2S pinmux/pad routing for the FM tuner (the driver reports `FM_I2S_PAD_CONN`, but the DT/DTBO is missing);
 - AudioALSADeviceParser definitions that resolve the four PCM identifiers to numeric card/PCM indexes;
 - the active Audio Policy configuration and any FM-specific route overrides;
 - any schematic or board configuration identifying the CD3313 Source 1/2/3 analog wires.
