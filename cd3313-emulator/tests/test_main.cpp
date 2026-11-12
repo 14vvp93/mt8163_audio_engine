@@ -795,10 +795,13 @@ int main() {
                   RegisterWriteSource::InputGainControl,
               "input gain is cached per channel and updates bits 3..4 of control byte");
         const auto input_journal_before_invalid = input_emulator.journal().size();
-        check(!input_emulator.write(encode_driver_command(DriverCommand{
-                  0x03, 3, {7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}})) &&
+        const std::vector<std::uint8_t> invalid_input_gain_frame{
+            0x00, 0x03, 0x03, 0x40,
+            7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
+        };
+        check(!input_emulator.write(invalid_input_gain_frame) &&
               input_emulator.journal().size() == input_journal_before_invalid,
-              "input gain rejects channel IDs outside the recovered 0..6 range atomically");
+              "input gain parser rejects channel IDs outside 0..6 atomically");
 
         const DriverCommand select_input_one{
             0x01, 1, {1, 0, 0, 0}};
