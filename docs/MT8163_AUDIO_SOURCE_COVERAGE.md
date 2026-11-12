@@ -110,6 +110,17 @@ The HAL resolves ALSA card/PCM indexes dynamically from procfs.
 
 ### Newly verified software capture boundary
 
+The HAL's capture-handler factory compares the input stream source field
+against `0x7CE` (decimal 1998, Android `AUDIO_SOURCE_FM_TUNER`). When its
+additional handler-selection guards permit the FM path, it constructs
+`AudioALSACaptureHandlerFMRadio`. `AudioALSAStreamIn::open()` calls this
+factory, and the input stream's read path dispatches through the selected
+capture handler. The FM handler's `open()` obtains the singleton
+`AudioALSACaptureDataProviderFMRadio` and constructs an
+`AudioALSACaptureDataClient` for the stream attributes. This proves a real
+AudioRecord/input-stream FM capture route, not just the existence of an
+unused provider class. The extra guard fields still need semantic mapping.
+
 The disassembly was checked against the extracted Android 9 primary HAL:
 `audio.primary.mt8163.so`, Build ID
 `f66eaf9e6ac950259f0c253be618d15a`, SHA-256
@@ -137,12 +148,14 @@ they are delivered to capture clients. This is a potential DSP insertion
 boundary, subject to identifying which clients attach and whether the active
 FM-to-speaker AudioPatch consumes this capture stream.
 
-By contrast, `AudioALSAFMController::setFmDirectConnection_l()` opens and
-starts the separate `FM_I2S_Playback` PCM endpoint for the direct connection;
-that function itself does not process a PCM buffer. Keep the direct playback
-path and the software capture/fanout path distinct. Do not assume the capture
-provider is the audible speaker path merely because both use the FM I2S
-interface.
+By contrast, the FM-specific `AudioALSAHardware::createAudioPatch()`
+branch drives `AudioALSAFMController::setFmEnable()`. The controller's
+`setFmDirectConnection_l()` opens and starts the separate
+`FM_I2S_Playback` PCM endpoint; the direct path has no userspace PCM write
+buffer in that function. Keep the AudioPatch/direct playback route and the
+`AUDIO_SOURCE_FM_TUNER` capture/fanout route distinct. The capture provider
+is a proven software PCM boundary for FM input streams, but is not yet proven
+to be the buffer feeding the direct speaker patch.
 
 These are two distinct pieces of evidence: an Audio Policy FM input route and
 a dedicated HAL/ALSA FM I2S endpoint. Until the active FM app-to-HAL call path
@@ -175,13 +188,14 @@ create a separate bounded PCM adapter at the verified FM HAL boundary that
 calls the same DSP core. Do not patch the vendor HAL or intercept ALSA based
 only on endpoint names.
 
-The stereo PCM16 DSP core now supports and host-tests 32 kHz, matching the
-MT6627 driver's class-1 metadata (core/stability/ARMv7 CI passed in workflow
-run 43169035546). This is core-level readiness only: the Android output effect
-adapter remains restricted to 44.1/48 kHz, and no FM capture/AudioPatch adapter
-has been connected. The FM route must retain a hard bypass for calls,
-unsupported sample rates, non-stereo buffers and any path whose buffer
-ownership/format is not proven.
+The stereo PCM16 DSP core supports and host-tests 32 kHz, matching the
+MT6627 driver's class-1 metadata. A separate `FmPcmAdapter` scaffold now
+accepts only 32 kHz PCM16 stereo and processes only when the caller confirms
+an active FM route and normal audio mode. It bypasses bit-exactly for inactive
+routes, non-normal modes, unsupported rates/layouts and disabled DSP. Host
+tests are being run in CI. This adapter is not wired into the vendor HAL or
+the direct FM_I2S playback patch. The FM route must retain a hard bypass for
+calls and any path whose buffer ownership/format is not proven.
 
 Firmware extraction artifact containing the primary HAL, A2DP HAL and policy binaries:
 https://github.com/14march93/mt8163_audio_engine/actions/runs/43168955195/artifacts/13920953355
@@ -210,7 +224,7 @@ avoid stale filter state/clicks.
 | Music | vendor effects v2.0 XML; AOSP Android 9 effect contract | software INSERT scaffold | registration/runtime Music classification |
 | Bluetooth A2DP | vendor A2DP module, PCM16 stereo 44.1 kHz, three output masks | adapter allows A2DP at 44.1 kHz; 48 kHz bypass, host A2DP tests passed in workflow run 43168512245; latest ARMv7 ABI build (with 32 kHz core) passed in workflow run 43169030035 | target AudioFlinger attachment/device notifications and offload verification |
 | Bluetooth SCO | separate 8/16 kHz communication devices | bypass | keep excluded |
-| FM | vendor FM Tuner In policy route; dedicated FM_I2S direct path; separate HAL capture provider with PCM read/fanout buffer | shared stereo core supports 32 kHz; no FM adapter attached yet | determine whether audible speaker patch consumes capture buffer or bypasses it; then select a safe insertion/bridge point |
+| FM | vendor FM Tuner In policy route; AudioPatch/direct FM_I2S playback; AUDIO_SOURCE_FM_TUNER input stream selects FM capture handler/provider | shared 32 kHz core plus separate fail-open FmPcmAdapter scaffold; not connected to target HAL | determine whether the active app uses AudioRecord capture or direct AudioPatch; map factory guard fields and choose the audible PCM path |
 
 No effect XML, product makefile, vendor HAL, kernel module, device configuration,
 or live CD3313 state has been modified by this work.
