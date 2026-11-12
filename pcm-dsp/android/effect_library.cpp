@@ -63,6 +63,7 @@ struct EffectContext {
     std::atomic<int> published_slot{0};
     std::atomic<bool> framework_enabled{false};
     std::atomic<std::uint32_t> active_process_calls{0U};
+    std::atomic_flag processing = ATOMIC_FLAG_INIT;
     std::atomic<bool> configured{false};
     std::atomic<bool> supported_config{false};
     std::atomic<bool> bypass_copy_compatible{false};
@@ -255,6 +256,18 @@ std::int32_t process_effect(effect_handle_t self,
         return -EINVAL;
     }
     if (!context->bypass_copy_compatible.load(std::memory_order_acquire)) return -EINVAL;
+
+    if (context->processing.test_and_set(std::memory_order_acquire)) {
+        copy_bypass(context, input, output, context->config.outputCfg.format);
+        return 0;
+    }
+    struct ProcessingGuard {
+        EffectContext* context;
+        ~ProcessingGuard() {
+            context->processing.clear(std::memory_order_release);
+        }
+    } processing_guard{context};
+    (void)processing_guard;
 
     const std::uint8_t format = context->config.outputCfg.format;
     const bool route_allowed =
