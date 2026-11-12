@@ -103,7 +103,7 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
     if (interleaved == nullptr || frame_count == 0U) return PcmResult::InvalidArgument;
     if (frame_count > kMaxPcmWriteFrames) return PcmResult::BufferTooLarge;
 
-    for (const auto& slot : streams_) {
+    for (auto& slot : streams_) {
         if (slot.handle.load(std::memory_order_acquire) != handle) continue;
 
         std::uint32_t gate = slot.write_gate.load(std::memory_order_acquire);
