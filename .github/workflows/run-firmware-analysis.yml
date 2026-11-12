@@ -17,11 +17,6 @@ on:
           - heq-decompile
           - audio-config-audit
           - audiomux-client-scan
-      source_ref:
-        description: Branch, tag, or commit in 14vvp93/mt8163_audio_engine
-        required: true
-        default: main
-        type: string
 
 permissions:
   contents: read
@@ -30,62 +25,35 @@ jobs:
   audio-hal:
     if: inputs.analysis == 'audio-hal'
     uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-audio-hal.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   cd3313-ioctl:
     if: inputs.analysis == 'cd3313-ioctl'
     uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-cd3313-ioctl.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   cd3313-static:
     if: inputs.analysis == 'cd3313-static'
     uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-cd3313.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   firmware-images:
     if: inputs.analysis == 'firmware-images'
     uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-firmware-images.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   firmware-libraries:
     if: inputs.analysis == 'firmware-libraries'
     uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-firmware-libraries.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   archive-audit:
     if: inputs.analysis == 'archive-audit'
     uses: 14vvp93/public_calculations/.github/workflows/worker-audit-reference-archives.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   heq-decompile:
     if: inputs.analysis == 'heq-decompile'
     uses: 14vvp93/public_calculations/.github/workflows/worker-decompile-heq.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   audio-config-audit:
     if: inputs.analysis == 'audio-config-audit'
     uses: 14vvp93/public_calculations/.github/workflows/worker-firmware-audio-config-audit.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
 
   audiomux-client-scan:
     if: inputs.analysis == 'audiomux-client-scan'
     uses: 14vvp93/public_calculations/.github/workflows/worker-scan-audiomux-clients.yml@main
-    with:
-      source_ref: ${{ inputs.source_ref }}
-    secrets: inherit
