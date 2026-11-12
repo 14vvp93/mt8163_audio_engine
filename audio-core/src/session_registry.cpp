@@ -103,4 +103,9 @@ std::size_t SessionRegistry::size() const noexcept {
     return kMaxAudioSessions - count(SessionState::Free);
 }
 
+const std::array<SessionRecord, kMaxAudioSessions>&
+SessionRegistry::records() const noexcept {
+    return sessions_;
+}
+
 }  // namespace mt8163_audio_core
