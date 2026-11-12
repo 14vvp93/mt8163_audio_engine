@@ -8,8 +8,10 @@ pcm-dsp/Android.mk.
 
 This is an integration scaffold, not a device-ready installation:
 
-- no audio_effects.xml or product makefile has been changed;
-- the effect is not registered or loaded by the target ROM;
+- the extracted vendor audio_effects.xml currently declares stock AOSP effect
+  libraries only and has no active postprocess stream chains;
+- no audio_effects.xml or product makefile has been changed, so the effect is
+  not registered or loaded by the target ROM;
 - the first Android 9 header/ARMv7 cross-compile exposed two bypass-call errors,
   which have been fixed; the corrected CI build is pending;
 - no full Android platform-tree build has been run and no effect has been loaded
