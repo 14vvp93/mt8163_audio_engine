@@ -76,7 +76,42 @@ Do not feed the current four-channel engine by duplicating L/R into
 FL/FR/RL/RR. The CD3313 is a stereo analog-input / four analog-output device;
 its four speaker controls are not four PCM inputs.
 
-## 3. Output-mix effect constraints
+## 3. Preferred attachment: per-stream music post-processing
+
+The AOSP `audio_effects_conf` v2.0 schema defines a `postprocess` section
+with output stream types including `music`, `ring`, `alarm`,
+`notification` and `voice_call`. Its example binds a named effect to
+`<stream type="music">`.
+
+The corresponding AOSP `AudioPolicyEffects::addOutputSessionEffects()`
+implementation looks up the effect list by the selected output stream type,
+creates the configured effect instance on that audio session/output, and
+enables the processor. This is a more precise candidate than attaching one
+global output-mix effect: it can target the legacy Music stream without
+intentionally attaching the same effect to Ring, Alarm, Notification or
+Voice Call streams.
+
+This is still a legacy stream-type boundary. Android 9 automotive usage
+mapping and OEM policy may map navigation guidance or other usages to the
+Music stream, so the exact target stream classification must be checked on
+the device. The current extracted vendor `audio_effects.xml` is documented
+as containing stock AOSP libraries/effects; its exact postprocess section and
+loaded version must be inspected before adding any entry.
+
+AOSP references:
+- Audio effects v2.0 XML schema, including the `postprocess/music` element:
+  https://android.googlesource.com/platform/hardware/interfaces/+/b5433136dd099d533e866028367ba4ed829fab02/audio/effect/2.0/xml/audio_effects_conf_V2_0.xsd
+- AudioPolicyEffects output-session attachment:
+  https://android.googlesource.com/platform/frameworks/av/+/e3c46b0a49d045fa38d35e5cf7ad4becaacbbed6/services/audiopolicy/service/AudioPolicyEffects.cpp
+
+The output-mix chain remains an alternative for a deliberately global effect.
+AOSP orders `AUDIO_SESSION_OUTPUT_MIX` after track-specific chains and before
+`AUDIO_SESSION_OUTPUT_STAGE`, and processes it before writing to the HAL.
+However, it is global to the selected mixer output and may include non-music
+content; prefer the per-stream `music` postprocess configuration if it is
+supported by this exact vendor build.
+
+## 4. Output-mix effect constraints
 
 An output-mix effect is global to the selected PlaybackThread mix, not
 automatically limited to the music stream. It may affect navigation prompts,
@@ -102,7 +137,7 @@ The effect must default to disabled/bypass until explicitly enabled. It must
 not change the AudioFlinger mix format, HAL stream configuration, route
 selection, or CD3313 control state.
 
-## 4. Registration and lifecycle work still required
+## 5. Registration and lifecycle work still required
 
 Before implementation, recover the exact vendor Android 9 effect framework
 contract:
@@ -125,7 +160,7 @@ The exact vendor effect configuration and AudioFlinger runtime state are not
 fully established by the extracted static archive. No effect library,
 XML registration, system image or device configuration was modified.
 
-## 5. Comparison with the HAL callback candidate
+## 6. Comparison with the HAL callback candidate
 
 | Property | MTK Normal post-processing | AudioFlinger output-mix candidate |
 |---|---|---|
@@ -137,10 +172,14 @@ XML registration, system image or device configuration was modified.
 | Offload/direct coverage | Not established | Not guaranteed; output-mix rejected on direct threads |
 | Current project status | Static call site proven | Framework candidate; target-specific validation pending |
 
-## 6. Recommended direction
+## 7. Recommended direction
 
 Prioritize a small Android effect-library prototype around the stereo engine,
-not a binary patch to `audio.primary.mt8163.so`.
+registered first as a `music` postprocess effect if the vendor's Android 9
+AudioPolicyEffects implementation supports the recovered v2.0 configuration.
+Use a global output-mix attachment only if the stream-specific route is
+unavailable and its wider scope is explicitly accepted. Do not patch
+`audio.primary.mt8163.so`.
 
 Keep the first prototype disabled by default and restrict it to normal-mode
 stereo PCM mixer output at 44.1/48 kHz. Preserve the original buffer on every
