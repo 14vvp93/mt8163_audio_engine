@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <new>
+#include <limits>
 
 namespace {
 
@@ -269,6 +270,18 @@ std::int32_t process_effect(effect_handle_t self,
         return -EINVAL;
     }
     if (!context->bypass_copy_compatible.load(std::memory_order_acquire)) return -EINVAL;
+
+    // frameCount is framework-controlled. Guard every later byte/sample
+    // calculation against size_t overflow (notably on 32-bit Android).
+    const std::size_t channels = audio_channel_count_from_out_mask(
+        static_cast<audio_channel_mask_t>(context->config.outputCfg.channels));
+    const std::size_t sample_bytes =
+        bytes_per_sample(context->config.outputCfg.format);
+    if (channels == 0U || sample_bytes == 0U ||
+        static_cast<std::size_t>(input.frameCount) >
+            std::numeric_limits<std::size_t>::max() / channels / sample_bytes) {
+        return -EINVAL;
+    }
 
     // AudioFlinger continues calling INSERT effects while STOPPING/STOPPED.
     // Preserve the dry signal for that final block, then report that the
