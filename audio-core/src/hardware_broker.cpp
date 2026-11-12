@@ -13,8 +13,11 @@ bool valid_owner(MuteOwner owner) noexcept {
 
 }  // namespace
 
-void HardwareCommandBroker::attach(HardwareBackend* backend) noexcept {
+bool HardwareCommandBroker::attach(HardwareBackend* backend) noexcept {
+    if (backend == nullptr) return false;
+    if (backend_ != nullptr && backend_ != backend) return false;
     backend_ = backend;
+    return true;
 }
 
 HardwareResult HardwareCommandBroker::dispatch(
@@ -32,7 +35,9 @@ bool HardwareCommandBroker::valid(
     const HardwareCommand& command) noexcept {
     switch (command.kind) {
         case HardwareCommandKind::SelectSource:
-            return valid_source(command.source);
+            return valid_source(command.source) &&
+                   command.owner == MuteOwner::AccPowerState &&
+                   !command.enabled;
         case HardwareCommandKind::SetMasterMute:
             return command.source == SourceId::None &&
                    valid_owner(command.owner);
