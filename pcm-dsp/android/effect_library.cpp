@@ -146,7 +146,10 @@ bool supported_device(std::uint32_t device) {
     constexpr std::uint32_t allowed =
         static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_SPEAKER) |
         static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_WIRED_HEADSET) |
-        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_WIRED_HEADPHONE);
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_WIRED_HEADPHONE) |
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP) |
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES) |
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER);
     return device != 0U && (device & ~allowed) == 0U;
 }
 
