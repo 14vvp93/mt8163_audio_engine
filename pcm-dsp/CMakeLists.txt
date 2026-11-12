@@ -91,3 +91,7 @@ if(PCM_DSP_BUILD_BENCHMARKS)
     target_link_libraries(pcm_dsp_benchmark PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_benchmark PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
+
+# Unified AudioCore foundation: state ownership and host-testable primitives.
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../audio-core
+                 ${CMAKE_CURRENT_BINARY_DIR}/audio-core-build)
