@@ -110,7 +110,7 @@ The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
 - The actual MuteSnapshot publisher is instantiated by an Android compile probe; ARMv7 CI confirms 32-bit atomics are lock-free for the target ABI.
 - `cd3313_compat` maps AudioCore owner masks to recovered CD3313 master/input reason bits. RadioScan and RadioPacketMute remain distinct internally while safely aggregating onto legacy radio reason bit 2.
 - `SessionRegistry` provides 16 fixed-capacity session slots and a validated Requested/Active/Suspended/Stopping/Failed lifecycle.
-- `AudioCore` now coordinates session lifecycle, mute ownership and audio mode, then publishes a compact generation-stamped snapshot to the PCM plane.
+- `AudioCore` now coordinates session lifecycle, mute ownership and audio mode, then publishes a generation-stamped fixed-size snapshot to the PCM plane, including each session handle, source, route and lifecycle state.
 - `HardwareCommandBroker` is owned by AudioCore. It accepts semantic source selection and master/per-source mute commands, validates inputs, permits only one attached backend and propagates backend errors. It does not encode CD3313 ioctl numbers or wire framing.
 - The broker has a host fake-backend test. No production backend is attached; no `/dev/audiomux` open, ioctl, I2C, GPIO or mixer operation is implemented or performed.
 - The module remains control-plane only; it performs no HAL, Binder, ALSA PCM, ioctl, I2C or GPIO operations.
