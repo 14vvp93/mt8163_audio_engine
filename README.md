@@ -2,7 +2,14 @@
 
 Reverse-engineering and development project for an improved audio system on MediaTek MT8163 / Android 9.
 
-## Current approach
+## Agreed product goal
+
+The target is one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation end to end. HAL integration, policy/routing, audio core, PCM/mixer/DSP, source and state management, and CD3313 hardware control are internal subsystems of this one product—not separate products and not an add-on over the factory engine.
+
+The authoritative scope, ownership rules, priorities, replacement boundary, and definition of done are documented in [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). That goal supersedes the earlier interim approach described in the historical implementation notes below. Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
+
+## Interim implementation notes (historical; superseded as the target architecture)
+
 
 Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device control, call paths, microphone handling, and existing ACF/HCF backend while developing an independent PCM DSP engine.
 
