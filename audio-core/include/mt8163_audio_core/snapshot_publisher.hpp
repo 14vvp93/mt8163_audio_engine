@@ -13,6 +13,7 @@ namespace mt8163_audio_core {
 // Readers never take a mutex and retry a fixed number of times. The writer
 // never waits: publish() returns false when every inactive slot is pinned.
 // A failed reader acquisition must reuse its previous snapshot for that block.
+// The publisher must outlive every ReadHandle acquired from it.
 template <typename T, std::size_t SlotCount = 3U>
 class SnapshotPublisher {
     static_assert(SlotCount >= 3U, "at least three slots are required");
