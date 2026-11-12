@@ -27,7 +27,7 @@ std::uint16_t minimum_size_words(std::uint8_t id) {
 }
 
 std::uint16_t required_size_words(std::uint8_t id) {
-    if (id == 0x56 || id == 0xA3) return 1;
+    if (id == 0x09 || id == 0x56 || id == 0xA3) return 1;
     const auto* spec = find_command(id);
     return spec == nullptr ? 0 : spec->required_size_words;
 }
