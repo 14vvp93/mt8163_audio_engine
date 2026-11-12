@@ -1,11 +1,13 @@
-# Curated extracted firmware references
+# Extracted MT8163 firmware reference tree
 
-This directory contains the persistent, audio-relevant subset promoted from the complete archive extraction.
+This is the persistent, organized extraction of the retained firmware archives.
 
-- system/ — Android system audio policy/configuration, audio-related system libraries, AudioInputSource and carservices compiled artifacts.
-- vendor/ — the complete extracted vendor/lib tree, including HAL libraries, vendor dependencies, kernel modules, plus audio service/configuration files.
-- manifest.json — source archive/member, destination, size and SHA-256 for every promoted file.
+- system/ — all 766 files from lib.zip at their original system/lib and system/lib/vndk-28 paths, plus every non-shared-library member from files2.zip under system/, including framework OAT/VDEX/ART files, AudioInputSource, audio policy/configuration, audio media and service files.
+- vendor/ — the complete 325-file vendor_lib.zip tree under vendor/lib, plus every non-shared-library member from files2.zip under vendor/.
+- manifest.json — source archive member, destination path, size and SHA-256 for every committed extracted file.
 
-All archive sets were extracted and CRC-checked in GitHub Actions. The full extraction is available as a 30-day workflow artifact. This curated tree avoids committing unrelated Android system libraries, generic notification/ringtone assets, framework stub JARs, and the 161 MiB HEQ APK. Original archives remain the source of truth and are not modified.
+The 32 shared-library files listed in files2.zip were byte-identical to files already represented by lib.zip or vendor_lib.zip. They are stored once at their canonical system/lib, system/lib/vndk-28 or vendor/lib paths. The former files.zip was a fully identical 36-file subset of files2.zip and was removed.
 
-Do not install or load these reference binaries on a device. They are read-only reverse-engineering inputs.
+The 161 MiB HEQ.apk is the only archive member not committed as an ordinary Git file because it exceeds GitHub's 100 MiB per-file limit. Its 17 original split volumes remain in reference-materials/heq/, and the extracted APK is available in the full-extraction CI artifact.
+
+All original archive parts and the reference kernel module remain unchanged. These files are offline reverse-engineering inputs; do not install or load them on a device.
