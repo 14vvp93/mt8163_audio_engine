@@ -44,7 +44,7 @@ jobs:
 
   archive-audit:
     if: inputs.analysis == 'archive-audit'
-    uses: 14vvp93/public_calculations/.github/workflows/worker-audit-reference-archives.yml@main
+    uses: 14vvp93/public_calculations/.github/workflows/worker-audit-firmware-integrity.yml@main
 
   heq-decompile:
     if: inputs.analysis == 'heq-decompile'
