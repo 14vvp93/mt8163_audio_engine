@@ -105,7 +105,7 @@ A dedicated HAL control context validates events and updates AudioCore state. Ro
 
 ### PCM plane
 
-The audio callback consumes immutable, prevalidated processing/routing snapshots. It performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block. Control changes are published at block boundaries using a bounded queue or a verified lock-free snapshot mechanism.
+The audio callback consumes immutable, prevalidated processing/routing snapshots. The current MuteArbiter exposes a detached, read-only MuteSnapshot value, but the cross-thread publication mechanism is not implemented yet and must be separately proven lock-free/bounded for ARM32. The callback performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block. Control changes are published at block boundaries using a bounded queue or a verified lock-free snapshot mechanism.
 
 PCM processing failure must fail open to the last safe route where possible. Unsupported formats/routes are explicitly bypassed, never silently reinterpreted.
 
