@@ -240,6 +240,7 @@ std::int32_t process_effect(effect_handle_t self,
             context->active_process_calls.fetch_sub(1U, std::memory_order_release);
         }
     } callback_guard{context};
+    (void)callback_guard;
     if (!context->framework_enabled.load(std::memory_order_acquire)) {
         return -ENODATA;
     }
