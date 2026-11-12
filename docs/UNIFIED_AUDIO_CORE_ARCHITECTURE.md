@@ -83,6 +83,12 @@ The diagram shows ownership boundaries, not a claim that every source is already
 | VehicleStateAdapter | Convert ACC/reverse/telephone/silence signals into typed events | Own audio mute policy or PCM route state |
 | AndroidPolicyAdapter | Translate framework stream/device/patch/mode events | Become a second vendor source-priority controller |
 
+### Snapshot publication implementation
+
+The initial publisher uses three fixed slots and sequentially consistent 32-bit atomics. It is single-writer/multi-reader, allocation-free, has a fixed three-attempt reader acquisition and does not wait in the writer. If all inactive slots are pinned, publication returns false; the control context retries later. If a reader cannot acquire a consistent slot within the bound, the PCM caller retains its previous snapshot for that block.
+
+Host concurrency tests exercise two readers against 100,000 writer updates. ThreadSanitizer and AddressSanitizer/UndefinedBehaviorSanitizer host runs pass. Android ARM32 lock-free support is enforced by a compile-time assertion and is awaiting the current NDK CI run.
+
 ### Initial SessionRegistry implementation
 
 The host-side foundation now includes a fixed-capacity 16-slot SessionRegistry. It tracks opaque session handles, source identity, route type and lifecycle state (Requested, Active, Suspended, Stopping, Failed). It rejects duplicate/zero handles, invalid source/route identifiers and illegal lifecycle transitions. Closing a session releases its slot.
@@ -105,7 +111,7 @@ A dedicated HAL control context validates events and updates AudioCore state. Ro
 
 ### PCM plane
 
-The audio callback consumes immutable, prevalidated processing/routing snapshots. The current MuteArbiter exposes a detached, read-only MuteSnapshot value, but the cross-thread publication mechanism is not implemented yet and must be separately proven lock-free/bounded for ARM32. The callback performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block. Control changes are published at block boundaries using a bounded queue or a verified lock-free snapshot mechanism.
+The audio callback consumes immutable, prevalidated processing/routing snapshots. MuteArbiter exposes a detached, read-only MuteSnapshot. A three-slot SnapshotPublisher<T> now provides single-writer/multi-reader publication: readers have a fixed retry bound, the writer never waits and returns false if every inactive slot is pinned. The caller must reuse its previous block snapshot after a failed acquire. The class statically requires trivially copyable snapshots and lock-free 32-bit atomics; an Android ARM compile probe is included and its target result is tracked separately. The callback performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block.
 
 PCM processing failure must fail open to the last safe route where possible. Unsupported formats/routes are explicitly bypassed, never silently reinterpreted.
 
