@@ -14,6 +14,7 @@ The live feature-branch HEAD is tracked in GitHub; this status document does not
 
 - [Phase 1 audit baseline](PHASE1_AUDIT_BASELINE.md) — consolidated firmware and repository findings.
 - [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md) — control/data-plane owners, mute arbitration and replacement responsibilities.
+- [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md) — original basenames, partition paths, SHA-256 baselines and replacement gates.
 - [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) — one state authority, module contracts, source/route model, mute arbitration and migration gates.
 - [Factory defect and risk register](FACTORY_DEFECTS.md) — static defects and unresolved compatibility risks.
 
