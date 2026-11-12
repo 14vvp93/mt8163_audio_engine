@@ -155,6 +155,15 @@ int main() {
             "unsupported sample-rate bypass succeeds");
     require(output == input, "unsupported sample-rate bypass is bit-exact");
 
+    // The vendor A2DP profile is 44.1 kHz only; fail closed at 48 kHz.
+    configure(handle, 48000U, AUDIO_FORMAT_PCM_16_BIT);
+    set_route(handle, AUDIO_DEVICE_OUT_BLUETOOTH_A2DP);
+    set_u32(handle, 1U, 1U);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "unsupported A2DP sample-rate bypass succeeds");
+    require(output == input, "unsupported A2DP sample-rate bypass is bit-exact");
+
     // The recovered vendor A2DP policy exposes PCM16 stereo at 44.1 kHz.
     // All three A2DP device masks must enter the same software DSP path.
     configure(handle, 44100U, AUDIO_FORMAT_PCM_16_BIT);
