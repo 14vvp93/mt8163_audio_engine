@@ -4,6 +4,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## Project direction and status
 
+- [Repository migration readiness](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.
+
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — workflow inventory, branch pinning and follow-up review.
 
 - [Repository structure and file-placement rules](REPOSITORY_STRUCTURE.md) — canonical map of the repository and cleanup conventions.
