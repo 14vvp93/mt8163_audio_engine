@@ -46,6 +46,7 @@ jobs:
           find "$EXTRACT" -type f \( \
             -iname 'audio_effects.xml' -o \
             -iname 'audio_effects.conf' -o \
+            -iname 'audio.a2dp.default.so' -o \
             -iname 'audio_policy_configuration*.xml' -o \
             -iname 'a2dp_audio_policy_configuration.xml' -o \
             -iname 'r_submix_audio_policy_configuration.xml' -o \
