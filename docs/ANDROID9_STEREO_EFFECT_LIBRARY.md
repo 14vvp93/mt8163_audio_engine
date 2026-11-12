@@ -17,9 +17,9 @@ This is an integration scaffold, not a device-ready installation:
 - host smoke tests pass for descriptor/create/release, default-disabled bypass,
   PCM16 gain, DSP-off bypass, unsupported-rate/device bypass, offload and
   in-call bypass, plus the Float32 adapter;
-- latest verified ARMv7 artifact including Bluetooth A2DP device-mask support
-  (built from commit 2fe79be2) is available at
-  https://github.com/14march93/mt8163_audio_engine/actions/runs/43168171844/artifacts/13920763293;
+- latest verified ARMv7 artifact including Bluetooth A2DP 44.1 kHz gating
+  (built from commit 525f9255) is available at
+  https://github.com/14march93/mt8163_audio_engine/actions/runs/43168512245/artifacts/13921221719;
 - no full Android platform-tree build has been run and no effect has been loaded
   on the head unit;
 - target ROM factory behavior, loaded XML copy/schema and runtime stream
