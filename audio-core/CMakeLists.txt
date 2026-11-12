@@ -1,5 +1,6 @@
 add_library(mt8163_audio_core STATIC
     src/mute_arbiter.cpp
+    src/cd3313_compat.cpp
 )
 target_include_directories(mt8163_audio_core PUBLIC include)
 target_compile_features(mt8163_audio_core PUBLIC cxx_std_17)
