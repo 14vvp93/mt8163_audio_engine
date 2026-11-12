@@ -85,9 +85,10 @@ public:
     SnapshotPublisher(const SnapshotPublisher&) = delete;
     SnapshotPublisher& operator=(const SnapshotPublisher&) = delete;
 
-    // Exactly one control-plane writer may call publish(). This operation is
-    // bounded and never blocks; false means all non-active slots are pinned.
+    // Exactly one control-plane writer may call publish(). A concurrent
+    // second writer fails immediately; no writer ever waits or allocates.
     bool publish(const T& value) noexcept {
+        if (writer_busy_.test_and_set(std::memory_order_acquire)) return false;
         const std::uint32_t active = active_index_.load(std::memory_order_seq_cst);
         for (std::uint32_t offset = 1U; offset < SlotCount; ++offset) {
             const std::uint32_t candidate =
@@ -97,8 +98,10 @@ public:
             }
             slots_[candidate] = value;
             active_index_.store(candidate, std::memory_order_seq_cst);
+            writer_busy_.clear(std::memory_order_release);
             return true;
         }
+        writer_busy_.clear(std::memory_order_release);
         return false;
     }
 
@@ -123,6 +126,7 @@ private:
 
     std::array<T, SlotCount> slots_{};
     std::array<std::atomic<std::uint32_t>, SlotCount> readers_{};
+    std::atomic_flag writer_busy_ = ATOMIC_FLAG_INIT;
     std::atomic<std::uint32_t> active_index_{0U};
 };
 
