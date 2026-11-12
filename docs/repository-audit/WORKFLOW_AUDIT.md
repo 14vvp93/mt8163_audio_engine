@@ -48,7 +48,7 @@ The following runs completed successfully against the full extracted tree:
 
 The full-library/VDEX/FM analysis completed successfully in [run 43201322049](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201322049), scanning 1,117 native ARM objects. The HEQ decompile workflow also passed in [run 43201591594](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201591594) using the committed APK chunks.
 
-- [Repository integrity / Markdown link check — 43203308565](https://github.com/14march93/mt8163_audio_engine/actions/runs/43203308565): 173 local links across 61 tracked Markdown files passed using sparse checkout and the Git tree.
+- [Repository integrity / Markdown link check — 43203584442](https://github.com/14march93/mt8163_audio_engine/actions/runs/43203308565): 173 local links across 61 tracked Markdown files passed using sparse checkout and the Git tree.
 
 ## Branch and permission notes
 
