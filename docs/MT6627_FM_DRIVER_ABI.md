@@ -180,3 +180,9 @@ At init, `fm_cust_config_setup(NULL)` also requests firmware file `fm_cust.cfg` 
 The MT6627 low-ops registration fills the I2S-info getter and audio-info getter, but leaves the setter callback slot at FM-core offset `0x8c` unfilled. The module scan found no other `.ko` provider. When that pointer is null, `fm_i2s_set()` returns `-1002` for ioctl `0xC004F521`.
 
 The primary HAL `SetFmChipSampleRate(48000)` logs the ioctl result but does not propagate it: after successfully opening `/dev/fm`, it returns success even if the ioctl itself failed. The direct PCM setup separately obtains its PCM rate from `GetFmChipSamplingRate()`. Consequently, a HAL request to change the chip to 48 kHz is **not proof** that the tuner changed from its class-1 default of 32 kHz; if the setter callback remains null, the PCM path can still be configured from the reported 32 kHz value.
+
+### Customer config presence in the extracted image
+
+The full extracted firmware scan found no file named `fm_cust.cfg` and no user-space writer for `/proc/fm` (the `/proc/fm` string appears in the primary HAL, but no app, service, init script, or property file writes a custom path there). The driver still calls `request_firmware("fm_cust.cfg")` during init. Unless that file is supplied from an external firmware search location not present in the dump, the tuner-threshold overrides are unavailable. This does not change the class-1 audio metadata above, which is set before the firmware-file request and is not handled by the threshold parser.
+
+The same scan found no other `.ko` provider for the FM I2S setter callback. The core callback slot is zero-initialized and is not written by the MT6627 low-ops registration; the adjacent getter slots are populated. Therefore the static module path reaches the null-callback branch and returns `-1002` for `FM_IOCTL_I2S_SETTING` in this build.
