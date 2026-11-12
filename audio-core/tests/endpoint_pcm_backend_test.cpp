@@ -1,7 +1,10 @@
 #include "mt8163_audio_core/endpoint_pcm_backend.hpp"
 
+#include <condition_variable>
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
+#include <thread>
 
 using namespace mt8163_audio_core;
 
@@ -203,6 +206,99 @@ void test_state_and_error_boundaries() {
             "stopped native handle can be closed");
 }
 
+
+struct BlockingDevice {
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool write_entered{false};
+    bool release_write{false};
+};
+
+PcmResult blocking_open(void*, std::uint32_t, std::uint32_t, PcmDirection,
+                        std::uint32_t, std::uint32_t* handle) noexcept {
+    *handle = 77U;
+    return PcmResult::Ok;
+}
+PcmResult blocking_configure(void*, std::uint32_t, const PcmConfig&) noexcept {
+    return PcmResult::Ok;
+}
+PcmResult blocking_start(void*, std::uint32_t) noexcept {
+    return PcmResult::Ok;
+}
+PcmResult blocking_write(void* context, std::uint32_t, const std::int16_t* data,
+                         std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return PcmResult::InvalidArgument;
+    auto& device = *static_cast<BlockingDevice*>(context);
+    std::unique_lock<std::mutex> lock(device.mutex);
+    device.write_entered = true;
+    device.condition.notify_all();
+    device.condition.wait(lock, [&device] { return device.release_write; });
+    return PcmResult::Ok;
+}
+PcmResult blocking_read(void*, std::uint32_t, std::int16_t* data,
+                        std::size_t frames) noexcept {
+    return data != nullptr && frames != 0U ? PcmResult::Ok : PcmResult::InvalidArgument;
+}
+PcmResult blocking_stop(void*, std::uint32_t) noexcept {
+    return PcmResult::Ok;
+}
+PcmResult blocking_close(void*, std::uint32_t) noexcept {
+    return PcmResult::Ok;
+}
+
+void test_lifecycle_rejects_inflight_transfer() {
+    BlockingDevice device;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    const PcmDeviceOps ops{
+        &device, blocking_open, blocking_configure, blocking_start,
+        blocking_write, blocking_read, blocking_stop, blocking_close
+    };
+    EndpointPcmBackend backend(&endpoint, 1U, ops);
+    require(backend.valid(), "blocking endpoint backend is valid");
+
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok,
+            "blocking stream opens");
+    require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok,
+            "blocking stream configures");
+    require(backend.start(token) == PcmResult::Ok, "blocking stream starts");
+
+    const std::int16_t samples[2]{};
+    std::atomic<PcmResult> write_result{PcmResult::BackendFailure};
+    std::thread writer([&] {
+        write_result.store(backend.write(token, samples, 1U), std::memory_order_release);
+    });
+
+    {
+        std::unique_lock<std::mutex> lock(device.mutex);
+        device.condition.wait(lock, [&device] { return device.write_entered; });
+    }
+
+    require(backend.stop(token) == PcmResult::WouldBlock,
+            "stop never closes the native stream during an active transfer");
+    require(backend.close(token) == PcmResult::WouldBlock,
+            "close never releases the native handle during an active transfer");
+
+    {
+        std::lock_guard<std::mutex> lock(device.mutex);
+        device.release_write = true;
+    }
+    device.condition.notify_all();
+    writer.join();
+
+    require(write_result.load(std::memory_order_acquire) == PcmResult::Ok,
+            "admitted transfer completes before lifecycle retry");
+    require(backend.stop(token) == PcmResult::Ok,
+            "stop succeeds after the transfer gate is released");
+    require(backend.close(token) == PcmResult::Ok,
+            "close succeeds after stop and transfer completion");
+    require(backend.active_streams() == 0U,
+            "closed stream releases its backend slot");
+}
+
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
@@ -223,6 +319,7 @@ int main() {
     test_endpoint_mapping_and_lifecycle();
     test_fm_capture_and_hfp_directions();
     test_state_and_error_boundaries();
+    test_lifecycle_rejects_inflight_transfer();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
     return 0;
