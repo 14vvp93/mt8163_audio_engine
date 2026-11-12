@@ -85,9 +85,9 @@ The diagram shows ownership boundaries, not a claim that every source is already
 
 ### Snapshot publication implementation
 
-The initial publisher uses three fixed slots and sequentially consistent 32-bit atomics. It is single-writer/multi-reader, allocation-free, has a fixed three-attempt reader acquisition and does not wait in the writer. If all inactive slots are pinned, publication returns false; the control context retries later. If a reader cannot acquire a consistent slot within the bound, the PCM caller retains its previous snapshot for that block.
+The publisher uses three fixed slots and sequentially consistent 32-bit atomics. It is single-writer/multi-reader, allocation-free, has a non-blocking writer gate, and a fixed three-attempt reader acquisition. If all inactive slots are pinned, publication returns false; the control context retries later. If a reader cannot acquire a consistent slot within the bound, the PCM caller retains its previous snapshot for that block.
 
-Host concurrency tests exercise two readers against 100,000 writer updates. ThreadSanitizer and AddressSanitizer/UndefinedBehaviorSanitizer host runs pass. Android ARM32 lock-free support is enforced by a compile-time assertion and is awaiting the current NDK CI run.
+Host concurrency tests exercise two readers against 100,000 writer updates. ThreadSanitizer and AddressSanitizer/UndefinedBehaviorSanitizer host runs pass. Android ARMv7 NDK CI verified the publisher instantiation, lock-free 32-bit atomic requirement and AudioCore object architecture as ELF32 ARM in run 43255493234.
 
 ### Initial SessionRegistry implementation
 
@@ -111,7 +111,7 @@ A dedicated HAL control context validates events and updates AudioCore state. Ro
 
 ### PCM plane
 
-The audio callback consumes immutable, prevalidated processing/routing snapshots. MuteArbiter exposes a detached, read-only MuteSnapshot. A three-slot SnapshotPublisher<T> now provides single-writer/multi-reader publication: readers have a fixed retry bound, the writer never waits and returns false if every inactive slot is pinned. The caller must reuse its previous block snapshot after a failed acquire. The class statically requires trivially copyable snapshots and lock-free 32-bit atomics; an Android ARM compile probe is included and its target result is tracked separately. The callback performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block.
+The audio callback consumes immutable, prevalidated processing/routing snapshots. MuteArbiter exposes a detached, read-only MuteSnapshot. A three-slot SnapshotPublisher<T> now provides single-writer/multi-reader publication: readers have a fixed retry bound, the writer never waits and returns false if every inactive slot is pinned. The caller must reuse its previous block snapshot after a failed acquire. The class statically requires trivially copyable snapshots and lock-free 32-bit atomics; Android ARMv7 NDK CI has verified this requirement. The callback performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block.
 
 PCM processing failure must fail open to the last safe route where possible. Unsupported formats/routes are explicitly bypassed, never silently reinterpreted.
 
