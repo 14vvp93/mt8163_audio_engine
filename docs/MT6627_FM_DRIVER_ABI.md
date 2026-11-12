@@ -157,7 +157,7 @@ The 48,001 threshold is consistent with a sample-rate decision. This identifies 
 
 `isFMDirectMode()` returns true only when three patch fields match: field offset 28 equals 1, field offset `0xd60` equals 1, and the device field at offset `0xc4` equals `0x80002000` (`AUDIO_DEVICE_IN_FM_TUNER`). Thus the direct-mode predicate is explicitly tied to an FM Tuner input patch.
 
-This completes the static chain: Audio Policy custom extension selects `FM_DIRECT_CONTROL` for an FM Tuner patch → HAL stores the boolean → when true, `AudioALSAFMController::setFmEnable()` forces the FM chip sample rate to 48 kHz and uses its direct-connection control path. The extension's rate threshold and the HAL's 48 kHz override are both binary-verified. The actual runtime patch and selected policy XML still need target-side confirmation.
+This completes the static chain: Audio Policy custom extension selects `FM_DIRECT_CONTROL` for an FM Tuner patch → HAL stores the boolean → when true, `AudioALSAFMController::setFmEnable()` forces the FM chip sample rate to 48 kHz and uses its direct-connection control path. The extension's rate threshold and the HAL's 48 kHz request are both binary-verified. The expected policy file is `/vendor/etc/audio_policy_configuration.xml`; the live patch state and service-loaded file have not been observed on the target.
 
 ## MT6627 init-time audio metadata selection
 
