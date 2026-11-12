@@ -267,7 +267,8 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 
 ### Remaining P0-A closure items
 
-- [ ] Complete the `0x03` optimized callback channel/gain control-flow review and reconcile all accepted caller values.
+- [x] Decode the `0x03` optimized callback channel/gain branch: channel -1 and 6 are rejected, but values 7+ are not bounded before indexing the seven-byte `channel_gain` array; replacement accepts only 0..5 and gain 0..3.
+- [ ] Correlate every `0x03` Java/Binder caller value against the safe replacement contract.
 - [ ] Complete the Java/Binder caller inventory with exact method-to-command mapping and argument values, including the legacy extra JNI word.
 - [ ] Decide whether the replacement JNI bridge keeps a separately allocated, initialized compatibility word or adopts a new bounded ABI.
 - [ ] Confirm vendor `__check_object_size` and hardened-usercopy behavior from exact kernel source/config.
