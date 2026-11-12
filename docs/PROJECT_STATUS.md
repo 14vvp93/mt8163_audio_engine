@@ -117,16 +117,16 @@ The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
 
 ## Test and validation status
 
-Latest CI for the AudioCore foundation:
+Latest CI for the AudioCore foundation and hardware-command boundary:
 
-- [Test PCM DSP core — run 43255493269](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493269) — success; **14/14 CTest tests passed**, including all three AudioCore test executables.
-- [PCM DSP Stability Lab — run 43255493328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493328) — success.
-- [PCM DSP Performance Benchmark — run 43255493868](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493868) — success.
-- [Repository integrity — run 43255670188](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255670188) — success; includes the read-only collector syntax check.
-- Local ThreadSanitizer: all 3 AudioCore test executables passed.
-- Local AddressSanitizer + UndefinedBehaviorSanitizer: all 3 AudioCore test executables passed.
+- [Test PCM DSP core — run 43264644239](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43264644239) — success; includes AudioCore coordinator, session snapshot and semantic hardware-broker tests.
+- [PCM DSP Stability Lab — run 43264643875](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43264643875) — success.
+- [PCM DSP Performance Benchmark — run 43264644410](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43264644410) — success.
+- [Repository integrity — run 43264660491](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43264660491) — success; includes Markdown-link and read-only collector syntax checks.
+- Local ThreadSanitizer: all 3 AudioCore test executables passed in the previous concurrency-validation stage.
+- Local AddressSanitizer + UndefinedBehaviorSanitizer: all 3 AudioCore test executables passed in the previous sanitizer stage.
 
-Android ARMv7 build and verification — [run 43255493234](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493234) — success. The mute arbiter, CD3313 compatibility mapper, session registry and snapshot-publisher compile probe were verified as ELF32 ARM. The three-library Android artifact was uploaded: [mt8163-audio-engine-android-armv7](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493234/artifacts/13960034320).
+Android ARMv7 build and verification — [run 43264643879](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43264643879) — success. The AudioCore static library, including the coordinator and semantic hardware broker, was compiled with Android NDK r27c, checked as ELF32 ARM and uploaded as a CI artifact. This is an Android ARMv7 library build, not a complete Android 9 HAL build.
 
 A read-only target inventory script is available at [collect_mt8163_audio_runtime.sh](../scripts/device/collect_mt8163_audio_runtime.sh). It records modules, ALSA devices, policy candidates, audio services and process FDs without opening the vendor device nodes or changing hardware state. Its Bash syntax check passed in [Repository integrity run 43255670188](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255670188); it has not been run on the physical head unit.
 
