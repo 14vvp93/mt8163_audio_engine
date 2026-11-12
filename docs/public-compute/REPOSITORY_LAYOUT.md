@@ -1,33 +1,17 @@
 # Repository layout
 
-```text
-.
-├── .github/workflows/       # Manually dispatched compute workflows
-├── firmware/
-│   ├── archives/            # Original public firmware archives (immutable inputs)
-│   ├── dumps/               # Standalone public firmware images/dumps
-│   ├── extracted/            # Re-creatable derived trees; large output is not committed by default
-│   └── manifests/            # Source and extracted-file SHA-256 inventories
-├── analysis/
-│   ├── elf/                  # ELF headers, symbols, dependencies, build IDs
-│   ├── audio-hal/            # Audio HAL, JNI, AudioFlinger/Policy evidence
-│   ├── cd3313/               # CD3313 driver, ioctl, I2C and ABI analysis
-│   ├── pcm-dsp/              # PCM, mixer, DSP and effects
-│   └── config/               # Audio XML/INI/property configuration
-├── scripts/
-│   ├── firmware/             # Safe inventory and deterministic extraction
-│   ├── elf/                  # ELF analysis helpers
-│   └── common/               # Shared hashing and reporting helpers
-├── reports/                  # Reviewed, compact, durable analysis results
-└── docs/                     # Policies, contracts and workflow documentation
-```
+- .github/workflows/ — reusable firmware analysis and compute workers.
+- firmware/dumps/mt8163/ — 22 immutable standalone firmware dumps.
+- firmware/extracted/ — 1,386 SHA-256-verified extracted firmware files.
+- firmware/manifests/ — extracted-file, raw-dump and HEQ integrity manifests.
+- scripts/firmware/ — inventory, safe extraction and analysis tools.
+- tests/ — offline tests for compute tooling.
 
 ## Storage boundaries
 
-- Keep original archives under `firmware/archives/`; never edit them in place.
-- Store standalone raw dumps under `firmware/dumps/` with provenance metadata.
-- Store manifests in Git even when the corresponding extracted tree is too large.
-- Do not commit full extracted trees by default. Recreate them from verified inputs.
-- Commit small, reviewed reports. Large intermediate output belongs in Actions artifacts
-  or an explicitly selected durable large-file backend.
-- Do not duplicate canonical Audio Engine implementation code here.
+- Keep firmware dumps, extracted firmware and machine-readable manifests under firmware/.
+- The extracted tree is the canonical durable dataset; original split ZIP volumes were removed after complete verification.
+- Do not store product implementation code or project documentation here.
+- Do not store generated analysis reports in Git; upload them as Actions artifacts.
+- Keep all product code, build definitions, tests and engineering documentation in the private 14vvp93/mt8163_audio_engine repository.
+- Keep the root README concise and focused on the public data/compute repository's purpose.
