@@ -106,6 +106,23 @@ void test_invalid_order_and_arguments() {
     require(broker.close(3U) == PcmResult::Ok, "stopped stream closes");
 }
 
+void test_fixed_capacity() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    for (std::uint32_t i = 1U; i <= kMaxPcmStreams; ++i) {
+        require(broker.open(i, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                    PcmResult::Ok,
+                "fixed stream capacity can be filled");
+    }
+    require(broker.size() == kMaxPcmStreams, "all fixed stream slots are occupied");
+    require(broker.open(100U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::CapacityExceeded,
+            "capacity exhaustion is reported explicitly");
+    for (std::uint32_t i = 1U; i <= kMaxPcmStreams; ++i) {
+        require(broker.close(i) == PcmResult::Ok, "unconfigured stream closes");
+    }
+}
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -124,6 +141,7 @@ void test_backend_error_propagation() {
 int main() {
     test_complete_lifecycle();
     test_invalid_order_and_arguments();
+    test_fixed_capacity();
     test_backend_error_propagation();
     std::cout << "PCM stream broker tests passed\n";
     return 0;
