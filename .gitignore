@@ -1,0 +1,36 @@
+# Android / Gradle
+.gradle/
+**/.gradle/
+local.properties
+**/local.properties
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+
+# CMake / native build outputs
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+cmake-build-*/
+
+# Generated analysis and extraction workspaces
+/audio-hal-analysis/
+/firmware-analysis/
+/audiomux-client-scan/
+/extracted-files/
+/HEQ.zip
+/HEQ_CONTENTS.txt
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary logs and editor files
+*.tmp
+*.swp
+*~
