@@ -37,9 +37,7 @@ public:
         ++writes;
         last_frames = frames;
         while (block_writes.load(std::memory_order_acquire) &&
-               !release_blocked_write.load(std::memory_order_acquire)) {
-            std::this_thread::yield();
-        }
+               !release_blocked_write.load(std::memory_order_acquire)) std::this_thread::yield();
         return data == nullptr ? PcmResult::InvalidArgument : write_result;
     }
     PcmResult read(StreamToken, std::int16_t* data,
@@ -73,12 +71,10 @@ void test_complete_lifecycle() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
-
     require(broker.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "open supported primary playback route");
     require(broker.configure(1U, config) == PcmResult::Ok, "configure stream");
     require(broker.start(1U) == PcmResult::Ok, "start configured stream");
-
     const std::int16_t samples[8]{};
     require(broker.write(1U, samples, 4U) == PcmResult::Ok, "write bounded PCM frames");
     require(backend.last_frames == 4U, "backend receives frame count unchanged");
@@ -89,6 +85,26 @@ void test_complete_lifecycle() {
             backend.starts.load() == 1U && backend.writes.load() == 1U &&
             backend.stops.load() == 1U && backend.closes.load() == 1U,
             "backend receives exactly one call per lifecycle operation");
+}
+
+void test_primary_microphone_capture() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 1U, 240U};
+    std::int16_t samples[8]{};
+    require(broker.open(29U, SourceId::Microphone, RouteType::PrimaryCapturePcm,
+                        PcmDirection::Capture) == PcmResult::Ok,
+            "primary microphone capture opens");
+    require(backend.last_direction == PcmDirection::Capture,
+            "primary microphone direction reaches backend");
+    require(broker.configure(29U, config) == PcmResult::Ok, "configure microphone capture");
+    require(broker.start(29U) == PcmResult::Ok, "start microphone capture");
+    require(broker.read(29U, samples, 4U) == PcmResult::Ok,
+            "read microphone capture frames");
+    require(broker.write(29U, samples, 4U) == PcmResult::InvalidState,
+            "microphone capture rejects playback writes");
+    require(broker.stop(29U) == PcmResult::Ok, "stop microphone capture");
+    require(broker.close(29U) == PcmResult::Ok, "close microphone capture");
 }
 
 void test_capture_and_hfp_bidirectional_routes() {
@@ -107,8 +123,7 @@ void test_capture_and_hfp_bidirectional_routes() {
             "capture direction reaches backend");
     require(broker.configure(31U, config) == PcmResult::Ok, "configure FM capture");
     require(broker.start(31U) == PcmResult::Ok, "start FM capture");
-    require(broker.read(31U, samples, 4U) == PcmResult::Ok,
-            "capture reads bounded frames");
+    require(broker.read(31U, samples, 4U) == PcmResult::Ok, "capture reads bounded frames");
     require(broker.write(31U, samples, 4U) == PcmResult::InvalidState,
             "capture stream rejects playback writes");
     require(broker.stop(31U) == PcmResult::Ok, "stop FM capture");
@@ -126,10 +141,8 @@ void test_capture_and_hfp_bidirectional_routes() {
     require(broker.start(32U) == PcmResult::Ok &&
             broker.start(33U) == PcmResult::Ok,
             "start both HFP directions");
-    require(broker.write(32U, samples, 4U) == PcmResult::Ok,
-            "HFP downlink writes");
-    require(broker.read(33U, samples, 4U) == PcmResult::Ok,
-            "HFP uplink reads");
+    require(broker.write(32U, samples, 4U) == PcmResult::Ok, "HFP downlink writes");
+    require(broker.read(33U, samples, 4U) == PcmResult::Ok, "HFP uplink reads");
     require(broker.stop(32U) == PcmResult::Ok && broker.stop(33U) == PcmResult::Ok,
             "stop both HFP directions");
     require(broker.close(32U) == PcmResult::Ok && broker.close(33U) == PcmResult::Ok,
@@ -140,7 +153,6 @@ void test_invalid_order_and_arguments() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
     const std::int16_t sample = 0;
-
     require(broker.start(9U) == PcmResult::NotOpen, "unknown handle cannot start");
     require(broker.open(2U, SourceId::FmRadio, RouteType::FmDirectI2s) ==
                 PcmResult::UnsupportedRoute,
@@ -184,8 +196,7 @@ void test_fixed_capacity() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
     for (std::uint32_t i = 1U; i <= kMaxPcmStreams; ++i) {
-        require(broker.open(i, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
-                    PcmResult::Ok,
+        require(broker.open(i, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
                 "fixed stream capacity can be filled");
     }
     require(broker.size() == kMaxPcmStreams, "all fixed stream slots are occupied");
@@ -202,9 +213,7 @@ void test_callback_write_while_opening_another_stream() {
     PcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     const std::int16_t samples[2]{};
-
-    require(broker.open(11U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
-                PcmResult::Ok,
+    require(broker.open(11U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "first stream opens");
     require(broker.configure(11U, config) == PcmResult::Ok, "first stream configures");
     require(broker.start(11U) == PcmResult::Ok, "first stream starts");
@@ -219,12 +228,10 @@ void test_callback_write_while_opening_another_stream() {
             }
         }
     });
-
     while (backend.writes.load(std::memory_order_acquire) == 0U &&
            !failed.load(std::memory_order_relaxed)) std::this_thread::yield();
     require(!failed.load(std::memory_order_relaxed), "callback starts successfully");
-    require(broker.open(12U, SourceId::Navigation, RouteType::PrimaryPcm) ==
-                PcmResult::Ok,
+    require(broker.open(12U, SourceId::Navigation, RouteType::PrimaryPcm) == PcmResult::Ok,
             "second stream opens while first callback is active");
     done.store(true, std::memory_order_release);
     callback.join();
@@ -241,7 +248,6 @@ void test_stop_waits_for_in_flight_callback() {
     PcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     const std::int16_t samples[2]{};
-
     require(broker.open(21U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "stream opens for shutdown race test");
     require(broker.configure(21U, config) == PcmResult::Ok, "stream configures");
@@ -253,13 +259,11 @@ void test_stop_waits_for_in_flight_callback() {
         callback_result.store(broker.write(21U, samples, 1U), std::memory_order_release);
     });
     while (backend.writes.load(std::memory_order_acquire) == 0U) std::this_thread::yield();
-
     require(broker.stop(21U) == PcmResult::WouldBlock,
             "stop closes admission but does not stop backend during an active write");
     require(backend.stops.load() == 0U, "backend stop is deferred until callback exits");
     require(broker.write(21U, samples, 1U) == PcmResult::InvalidState,
             "new callback writes are rejected after admission closes");
-
     backend.release_blocked_write.store(true, std::memory_order_release);
     callback.join();
     require(callback_result.load(std::memory_order_acquire) == PcmResult::Ok,
@@ -289,6 +293,7 @@ void test_backend_error_propagation() {
 
 int main() {
     test_complete_lifecycle();
+    test_primary_microphone_capture();
     test_capture_and_hfp_bidirectional_routes();
     test_invalid_order_and_arguments();
     test_fixed_capacity();

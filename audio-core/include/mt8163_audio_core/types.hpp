@@ -18,12 +18,14 @@ enum class SourceId : std::uint8_t {
     Dab,
     Reverse,
     OnStar,
+    Microphone,
     Count
 };
 
 enum class RouteType : std::uint8_t {
     None = 0,
     PrimaryPcm,
+    PrimaryCapturePcm,
     A2dpPcm,
     HfpSco,
     FmDirectI2s,

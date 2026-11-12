@@ -23,7 +23,7 @@ Capture sequence:
 `open(route, Capture) -> configure -> start -> read* -> stop -> close`
 
 - `open` accepts only source/route pairs validated by the evidence-gated route policy and valid route/direction combinations.
-- Primary PCM, A2DP and HDMI are playback routes. HFP/SCO supports separate playback and capture endpoints. FM capture is capture-only. FM direct I2S and CD3313 analog inputs remain outside this PCM transport.
+- Primary PCM and A2DP are playback routes. Primary microphone PCM and FM capture are capture-only. HFP/SCO supports independent playback and capture endpoints. HDMI is playback-only. FM direct I2S and CD3313 analog inputs remain outside this PCM transport.
 - `configure` accepts only PCM16 with one or two channels and nonzero rate/period. It does not claim every rate is supported by every endpoint; the future platform backend must validate recovered endpoint capabilities.
 - `start` requires a configured stream and opens transfer admission only after the backend starts successfully.
 - `write` is valid only for playback streams; `read` is valid only for capture streams. Both require a started stream, non-null interleaved buffer and 1..2048 frames per call.
@@ -50,7 +50,7 @@ The endpoint backend adds a per-stream atomic transfer gate so overlapping playb
 
 ## Validation required next
 
-1. Host CI for playback/capture lifecycle, HFP bidirectional endpoints, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight transfer.
+1. Host CI for playback/capture lifecycle, primary microphone capture, HFP downlink/uplink, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight transfer.
 2. ARMv7 compile using the Android NDK.
 3. Add endpoint capability negotiation after exact ALSA runtime topology is collected.
 4. Add the HAL owner/lifetime protocol before wiring the broker to real streams.

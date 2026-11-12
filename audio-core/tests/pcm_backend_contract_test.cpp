@@ -14,7 +14,8 @@ void require(bool condition, const char* message) {
 }
 
 void test_route_boundary() {
-    require(is_pcm_transport_route(RouteType::PrimaryPcm), "primary PCM is a PCM route");
+    require(is_pcm_transport_route(RouteType::PrimaryPcm), "primary playback is PCM");
+    require(is_pcm_transport_route(RouteType::PrimaryCapturePcm), "primary capture is PCM");
     require(is_pcm_transport_route(RouteType::A2dpPcm), "A2DP is a PCM route");
     require(is_pcm_transport_route(RouteType::HfpSco), "HFP is a PCM route");
     require(is_pcm_transport_route(RouteType::FmCapturePcm), "FM capture is a PCM route");
@@ -26,9 +27,13 @@ void test_route_boundary() {
 
 void test_direction_boundary() {
     require(is_valid_pcm_route_direction(RouteType::PrimaryPcm, PcmDirection::Playback),
-            "primary route is playback");
+            "primary output is playback");
+    require(is_valid_pcm_route_direction(RouteType::PrimaryCapturePcm, PcmDirection::Capture),
+            "primary input is capture");
     require(!is_valid_pcm_route_direction(RouteType::PrimaryPcm, PcmDirection::Capture),
-            "primary output route is not capture");
+            "primary output cannot be opened as capture");
+    require(!is_valid_pcm_route_direction(RouteType::PrimaryCapturePcm, PcmDirection::Playback),
+            "primary input cannot be opened as playback");
     require(is_valid_pcm_route_direction(RouteType::HfpSco, PcmDirection::Playback) &&
             is_valid_pcm_route_direction(RouteType::HfpSco, PcmDirection::Capture),
             "HFP has independent downlink and uplink directions");

@@ -5,10 +5,10 @@
 The normal AudioCore CTest suite includes:
 
 - `mt8163_audio_core_endpoint_backend_tests`: route/direction mapping,
-  playback and capture lifecycle, HFP downlink/uplink separation, overlapping
-  transfer backpressure, XRUN recovery boundary and invalid endpoint tables.
-- `mt8163_audio_core_pcm_stream_tests`: broker lifecycle, direction
-  enforcement, capture reads, HFP bidirectional streams, slot capacity and
+  primary capture, FM capture, HFP downlink/uplink, overlapping transfer
+  backpressure, XRUN cleanup and invalid endpoint tables.
+- `mt8163_audio_core_pcm_stream_tests`: broker playback/capture lifecycle,
+  primary microphone capture, HFP bidirectional streams, slot capacity and
   stop/drain behavior under an in-flight transfer.
 - `mt8163_audio_core_pcm_contract_tests`: route/direction invariants and
   PCM16 configuration validation.

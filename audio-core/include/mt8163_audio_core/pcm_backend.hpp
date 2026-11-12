@@ -50,6 +50,7 @@ struct PcmConfig {
 constexpr bool is_pcm_transport_route(RouteType route) noexcept {
     switch (route) {
         case RouteType::PrimaryPcm:
+        case RouteType::PrimaryCapturePcm:
         case RouteType::A2dpPcm:
         case RouteType::HfpSco:
         case RouteType::FmCapturePcm:
@@ -70,11 +71,12 @@ constexpr bool is_valid_pcm_route_direction(RouteType route,
         case RouteType::A2dpPcm:
         case RouteType::HdmiPcm:
             return direction == PcmDirection::Playback;
+        case RouteType::PrimaryCapturePcm:
+        case RouteType::FmCapturePcm:
+            return direction == PcmDirection::Capture;
         case RouteType::HfpSco:
             return direction == PcmDirection::Playback ||
                    direction == PcmDirection::Capture;
-        case RouteType::FmCapturePcm:
-            return direction == PcmDirection::Capture;
         case RouteType::None:
         case RouteType::FmDirectI2s:
         case RouteType::Cd3313AnalogInput:
@@ -90,15 +92,10 @@ constexpr bool is_valid_pcm_config(const PcmConfig& config) noexcept {
            config.format == PcmFormat::Pcm16SignedLittleEndian;
 }
 
-// Transport contract. Playback uses write(); capture uses read(). Both are
-// realtime callbacks and must be bounded, nonblocking, allocation-free and
-// noexcept. Lifecycle methods belong to the serialized control plane.
 class PcmBackend {
 public:
     using StreamToken = std::uint32_t;
-
     virtual ~PcmBackend() = default;
-
     virtual PcmResult open(RouteType route, PcmDirection direction,
                            StreamToken* token) noexcept = 0;
     virtual PcmResult configure(StreamToken token,

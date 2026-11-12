@@ -6,7 +6,8 @@
 implementation of the `PcmBackend` contract. It provides:
 
 - explicit route + playback/capture direction to card/device endpoint mapping;
-- independent HFP/SCO playback (downlink) and capture (microphone uplink) records;
+- primary microphone PCM capture and independent HFP/SCO playback/capture
+  endpoints;
 - capture-only FM PCM route validation, with FM direct I2S kept separate;
 - rejection of disabled, duplicate and non-PCM route/direction pairs;
 - opaque stream tokens independent of native PCM handles;
@@ -38,8 +39,8 @@ a hardware driver.
 
 1. Collect `/proc/asound/cards`, `/proc/asound/pcm`, PCM substream status,
    relevant sysfs nodes, mixer controls and process file descriptors.
-2. Match primary playback, A2DP playback, HFP/SCO downlink/uplink and FM
-   capture to observed endpoint/direction pairs. Keep FM direct I2S separate.
+2. Match primary playback/capture, A2DP playback, HFP/SCO downlink/uplink and
+   FM capture to observed endpoint/direction pairs. Keep FM direct I2S separate.
 3. Confirm PCM format, channels, rate, period/buffer constraints from the
    vendor HAL and live runtime.
 4. Implement the target-specific `PcmDeviceOps` bridge against the exact
