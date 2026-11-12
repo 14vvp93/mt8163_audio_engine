@@ -171,16 +171,16 @@ The exact paired `wmt_drv.ko` was disassembled with ARM-aware tooling:
 - `wmt_plat_audio_ctrl()`: VMA `0x5690`, size 392 bytes.
 - `wmt_plat_i2s_ctrl()`: VMA `0x4820`, size 308 bytes.
 
-The binary's audio-control switch selects the two platform pin groups (group 8 = PCM, group 9 = I2S) as follows:
+The binary's `wmt_plat_audio_ctrl()` switch selects the two platform pin groups (group 8 = PCM, group 9 = I2S). Reading the actual jump table and calls in the paired binary gives this **raw numeric function-argument mapping**:
 
-| AIF state | PCM group | I2S group |
+| Raw state argument | PCM group | I2S group |
 |---:|---|---|
-| 0 | DEINIT | DEINIT |
-| 1 | INIT | DEINIT |
-| 2 | DEINIT | INIT |
-| 3 | INIT | INIT |
+| 0 | INIT | INIT |
+| 1 | DEINIT | INIT |
+| 2 | INIT | DEINIT |
+| 3 | DEINIT | DEINIT |
 
-The matching MediaTek WMT reference implementation identifies state 0 as `CMB_STUB_AIF_0` (“BT_PCM_OFF & FM line in/out”) and state 2 as PCM deinit plus I2S init. Reference source: [wmt_plat_alps.c, android-mtk-3.18](https://android.googlesource.com/kernel/mediatek/+/android-mtk-3.18/drivers/misc/mediatek/connectivity/common/combo/platform/alps/wmt_plat_alps.c), especially `wmt_plat_audio_ctrl()` and `wmt_plat_i2s_ctrl()`. The binary's function table, control-group calls, and diagnostic strings match this implementation; use the source as a semantic cross-check, not as proof that every line is byte-identical to this firmware.
+Do not label these raw values as `CMB_STUB_AIF_0..3` yet: the upstream MediaTek reference source documents AIF_0 as analog FM line-in/out, AIF_1 as BT PCM + analog FM, AIF_2 as digital FM I2S, and AIF_3 as both interfaces, but its switch ordering does not match the paired binary's raw argument mapping. The caller/wrapper that translates the AIF enum into this function's raw state is still unresolved. Reference source: [wmt_plat_alps.c, android-mtk-3.18](https://android.googlesource.com/kernel/mediatek/+/android-mtk-3.18/drivers/misc/mediatek/connectivity/common/combo/platform/alps/wmt_plat_alps.c), especially `wmt_plat_audio_ctrl()` and `wmt_plat_i2s_ctrl()`. Treat it as a semantic cross-check, not as proof that every line or enum value is identical to this firmware.
 
 **Important build finding:** the exact binary's `wmt_plat_i2s_ctrl()` checks the I2S CK/WS/DAT GPIO definitions, but the compiled function contains the warning path “FM digital mode is not set” / “no I2S GPIO settings should be modified by combo driver” and does not contain the I2S pinctrl/GPIO operations present in the reference source's `#if defined(FM_DIGITAL_INPUT) || defined(FM_DIGITAL_OUTPUT)` branch. This is strong evidence that the WMT build was compiled without those FM digital-mode flags; its combo-driver I2S pin control is effectively a no-op for FM in this build.
 
