@@ -146,7 +146,7 @@ identifiers, even though the Java API exposes them:
 - 0xA1 low crossover;
 - 0xA2 high crossover.
 
-The older standalone command map did not include command 0x09. Direct disassembly of the firmware-paired vendor module confirms a 0x09 callback branch that reads one word and stores it in a global field, but its semantics remain unresolved. Do not claim that setMasterVolumeMax() has a verified CD3313 effect.
+The older standalone command map did not include command 0x09. Direct disassembly of the firmware-paired vendor module identifies the target as `volume_max`; `set_master_volume()` reads it as the upper bound for accepted volume-step requests. Its initial value is 40. The replacement accepts only 0..40 because the hardware volume table has 41 entries; the factory callback itself does not visibly validate this bound.
 Their IDs may belong to another chip variant or a shared vendor interface.
 
 For the commands the driver does implement, the payload semantics are
