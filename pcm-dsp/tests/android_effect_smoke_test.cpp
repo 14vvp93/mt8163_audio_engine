@@ -79,6 +79,20 @@ void set_float(effect_handle_t handle, std::uint32_t id, float value) {
                  static_cast<std::uint32_t>(bytes.size()), bytes.data());
 }
 
+void set_float_deferred(effect_handle_t handle,
+                        std::uint32_t id,
+                        float value) {
+    std::array<std::uint8_t, offsetof(effect_param_t, data) + 8U> bytes{};
+    auto* parameter = reinterpret_cast<effect_param_t*>(bytes.data());
+    parameter->status = 0;
+    parameter->psize = sizeof(id);
+    parameter->vsize = sizeof(value);
+    std::memcpy(parameter->data, &id, sizeof(id));
+    std::memcpy(parameter->data + 4U, &value, sizeof(value));
+    send_command(handle, EFFECT_CMD_SET_PARAM_DEFERRED,
+                 static_cast<std::uint32_t>(bytes.size()), bytes.data(), false);
+}
+
 effect_config_t make_config(std::uint32_t rate, std::uint8_t format) {
     effect_config_t config{};
     const std::uint32_t mask = EFFECT_CONFIG_SMP_RATE |
@@ -196,6 +210,20 @@ int main() {
             "in-place PCM16 processing applies the preamp");
     std::fill(input.begin(), input.end(), 1000);
     out_buffer.raw = output.data();
+
+    // Deferred parameters must remain invisible until COMMIT.
+    set_float_deferred(handle, 2U, 0.0F);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "processing succeeds before deferred parameter commit");
+    require(output[0] > 1500 && output[0] < 2600,
+            "deferred preamp is not applied before commit");
+    send_command(handle, EFFECT_CMD_SET_PARAM_COMMIT);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "processing succeeds after deferred parameter commit");
+    require(output[0] > 900 && output[0] < 1100,
+            "committed deferred preamp is applied");
 
     // Unsupported sample rate and unsupported route must fail open.
     set_u32(handle, 1U, 1U);
