@@ -1,4 +1,4 @@
-#include "pcm_dsp/quad_engine.hpp"
+#include "pcm_dsp/profiled_quad_engine.hpp"
 
 #include <algorithm>
 #include <array>
@@ -114,6 +114,111 @@ Result run_case(std::uint32_t sample_rate, std::size_t frames) {
         static_cast<double>(sample_rate);
     return {average, p95, max, average * 100.0 / block_budget_us};
 }
+
+Result run_profile_transition_case(std::uint32_t sample_rate,
+                                   std::size_t frames) {
+    constexpr std::size_t channels = pcm_dsp::kOutputChannelCount;
+    constexpr std::size_t transition_cycles = 8U;
+    constexpr std::uint32_t transition_ms = 50U;
+
+    const auto make_profile = [sample_rate](float variant) {
+        pcm_dsp::AudioProfile profile;
+        profile.quad.enabled = true;
+        profile.quad.preamp_db = -3.0F + variant;
+        profile.quad.limiter_enabled = true;
+        for (std::size_t channel = 0; channel < channels; ++channel) {
+            profile.quad.channels[channel].gain_db =
+                (channel == 0U ? 1.0F : -1.0F) + variant;
+            profile.quad.channels[channel].delay_ms =
+                static_cast<float>(channel) * 1.5F;
+            for (std::size_t band = 0; band < pcm_dsp::kQuadEqBandCount; ++band) {
+                auto& eq = profile.quad.channels[channel].bands[band];
+                eq.enabled = true;
+                eq.type = pcm_dsp::FilterType::Peaking;
+                eq.frequency_hz = 25.0F *
+                    std::pow(800.0F, static_cast<float>(band) /
+                        static_cast<float>(pcm_dsp::kQuadEqBandCount - 1U));
+                eq.gain_db = (band % 2U == 0U ? 1.5F : -1.0F) + variant;
+                eq.q = 1.0F;
+            }
+        }
+
+        profile.routing.enabled = true;
+        profile.routing.bass_management_enabled = true;
+        profile.routing.crossover_frequency_hz = 80.0F;
+        profile.routing.crossover_order = pcm_dsp::LinkwitzRileyOrder::Db24;
+
+        profile.dynamics.enabled = true;
+        for (std::size_t channel = 0; channel < channels; ++channel) {
+            for (std::size_t band = 0; band < pcm_dsp::kDynamicsBandCount; ++band) {
+                auto& compressor = profile.dynamics.compressors[channel][band];
+                compressor.enabled = true;
+                compressor.threshold_db = -18.0F;
+                compressor.ratio = band == 0U ? 2.5F : 2.0F;
+                compressor.attack_ms = 8.0F;
+                compressor.release_ms = 120.0F;
+                compressor.knee_db = 6.0F;
+                compressor.makeup_gain_db = 0.0F;
+            }
+        }
+
+        profile.enhancements.bass_enabled = true;
+        profile.enhancements.bass_amount = 0.15F;
+        profile.enhancements.clarity_enabled = true;
+        profile.enhancements.clarity_amount = 0.10F;
+        return profile;
+    };
+
+    const pcm_dsp::AudioProfile profile_a = make_profile(0.0F);
+    const pcm_dsp::AudioProfile profile_b = make_profile(0.5F);
+    pcm_dsp::ProfiledQuadEngine engine;
+    if (!engine.configure(sample_rate, profile_a)) return {};
+
+    std::vector<float> input(frames * channels);
+    std::vector<float> output(frames * channels);
+    std::vector<float> sub(frames);
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        const float frame = static_cast<float>(i / channels);
+        const float rate = static_cast<float>(sample_rate);
+        const float low = std::sin(2.0F * 3.14159265358979323846F *
+                                   60.0F * frame / rate);
+        const float mid = std::sin(2.0F * 3.14159265358979323846F *
+                                   997.0F * frame / rate);
+        const float high = std::sin(2.0F * 3.14159265358979323846F *
+                                    9000.0F * frame / rate);
+        input[i] = 0.07F * (low + mid + high);
+    }
+
+    std::vector<double> timings;
+    timings.reserve(transition_cycles * 20U);
+    for (std::size_t cycle = 0; cycle < transition_cycles; ++cycle) {
+        const auto& target = (cycle % 2U == 0U) ? profile_b : profile_a;
+        if (!engine.apply_profile(target, transition_ms)) return {};
+        do {
+            const auto start = Clock::now();
+            if (!engine.process(input.data(), output.data(), frames, sub.data())) {
+                return {};
+            }
+            const auto end = Clock::now();
+            timings.push_back(
+                std::chrono::duration<double, std::micro>(end - start).count());
+        } while (engine.transition_pending());
+    }
+
+    if (timings.empty()) return {};
+    std::sort(timings.begin(), timings.end());
+    const double average = std::accumulate(
+        timings.begin(), timings.end(), 0.0) /
+        static_cast<double>(timings.size());
+    const double p95 = timings[
+        static_cast<std::size_t>(0.95 * static_cast<double>(timings.size() - 1U))];
+    const double max = timings.back();
+    const double block_budget_us =
+        1'000'000.0 * static_cast<double>(frames) /
+        static_cast<double>(sample_rate);
+    return {average, p95, max, average * 100.0 / block_budget_us};
+}
+
 } // namespace
 
 int main() {
@@ -130,6 +235,19 @@ int main() {
                       << result.realtime_percent << "% of one core, block "
                       << budget_us << " us\n";
             if (!(result.average_us > 0.0) || !std::isfinite(result.max_us)) {
+                passed = false;
+            }
+
+            const Result transition = run_profile_transition_case(rate, frames);
+            std::cout << rate << " Hz, " << frames
+                      << " frames (50 ms profile crossfade): avg "
+                      << transition.average_us << " us, p95 "
+                      << transition.p95_us << " us, max "
+                      << transition.max_us << " us, average CPU "
+                      << transition.realtime_percent << "% of one core, block "
+                      << budget_us << " us\\n";
+            if (!(transition.average_us > 0.0) ||
+                !std::isfinite(transition.max_us)) {
                 passed = false;
             }
         }
