@@ -69,7 +69,7 @@ bool valid_input_gain_arguments(const std::uint8_t* payload,
         (static_cast<std::uint32_t>(payload[5]) << 8U) |
         (static_cast<std::uint32_t>(payload[6]) << 16U) |
         (static_cast<std::uint32_t>(payload[7]) << 24U);
-    return channel <= 6U && gain <= 3U;
+    return channel <= 5U && gain <= 3U;
 }
 } // namespace
 
@@ -201,8 +201,8 @@ DriverCommand make_input_channel_command(std::int32_t channel) {
 
 DriverCommand make_input_gain_command(std::uint32_t channel, std::uint32_t gain,
                                       std::uint32_t opaque_word) {
-    if (channel > 6U)
-        throw std::invalid_argument("CD3313 input gain channel must be in range 0..6");
+    if (channel > 5U)
+        throw std::invalid_argument("CD3313 input gain channel must be in range 0..5");
     if (gain > 3U)
         throw std::invalid_argument("CD3313 input gain must be in range 0..3");
     std::vector<std::uint8_t> payload;
