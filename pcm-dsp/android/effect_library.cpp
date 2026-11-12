@@ -177,6 +177,7 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
              EFFECT_CONFIG_FORMAT);
 
     const bool same_layout = fields_present &&
+        in.samplingRate == out.samplingRate &&
         in.channels == out.channels && in.format == out.format;
     context->bypass_copy_compatible.store(same_layout &&
         audio_channel_count_from_out_mask(
