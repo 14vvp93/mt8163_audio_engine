@@ -11,6 +11,16 @@ Original archives and split parts remain unchanged in `reference-materials/`.
 | `lib.zip` | OK | 766 | 176.2 MiB | `.bc`: 5, `.so`: 761 |
 | `vendor_lib.zip` | OK | 325 | 99.9 MiB | `.cfg`: 1, `.ko`: 33, `.so`: 291 |
 
+## Persistent extracted filesystem
+
+The four retained archive sets contain 1,416 archive members and approximately 559.99 MiB uncompressed. The repository now stores a permanent filesystem extraction of **1,386 files (551.39 MiB)** under `reference-materials/extracted/`:
+
+- `system/`: all 766 files from `lib.zip`, plus all non-.so files from `files2.zip` under system/framework and system/.
+- `vendor/`: all 325 files from `vendor_lib.zip`, plus all non-.so files from `files2.zip` under vendor/.
+- `heq/`: the complete 168,811,733-byte HEQ APK as three chunks below GitHub's 100 MiB per-file limit. Reassembly is verified by `scripts/repository/reassemble_heq_apk.py`.
+
+All 32 shared-library members in `files2.zip` were verified by SHA-256 as exact copies of files in `lib.zip` or `vendor_lib.zip`; they are represented once at their canonical system/vendor paths. The complete raw extraction is also available as a 30-day CI artifact in [run 43200683853](https://github.com/14march93/mt8163_audio_engine/actions/runs/43200683853).
+
 ## Handling policy
 
 - Source archives are preserved as immutable acquisition evidence.
