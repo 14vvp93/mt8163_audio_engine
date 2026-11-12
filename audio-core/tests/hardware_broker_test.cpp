@@ -46,8 +46,12 @@ void test_no_backend_and_validation() {
 void test_semantic_commands_reach_backend() {
     HardwareCommandBroker broker;
     FakeBackend backend;
-    broker.attach(&backend);
+    require(broker.attach(&backend), "first backend attaches");
     require(broker.has_backend(), "backend is attached");
+    FakeBackend second_backend;
+    require(!broker.attach(&second_backend),
+            "a second backend cannot take hardware ownership");
+    require(!broker.attach(nullptr), "null backend is rejected");
 
     const HardwareCommand master{
         HardwareCommandKind::SetMasterMute,
@@ -90,7 +94,7 @@ void test_semantic_commands_reach_backend() {
 void test_invalid_commands_never_reach_backend() {
     HardwareCommandBroker broker;
     FakeBackend backend;
-    broker.attach(&backend);
+    require(broker.attach(&backend), "backend attaches");
 
     HardwareCommand invalid_owner{
         HardwareCommandKind::SetMasterMute,
