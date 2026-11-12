@@ -100,7 +100,8 @@ public:
 void test_audio_core_is_single_hardware_command_owner() {
     AudioCore core;
     FakeAudioHardware backend;
-    core.attach_hardware_backend(&backend);
+    require(core.attach_hardware_backend(&backend),
+            "AudioCore accepts its first hardware backend");
     const HardwareCommand command{
         HardwareCommandKind::SetMasterMute,
         SourceId::None,
