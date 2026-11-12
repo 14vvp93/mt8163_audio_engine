@@ -62,9 +62,13 @@ The extracted tree is committed under `reference-materials/extracted/`. It inclu
 - Firmware inputs remain read-only research material; nothing in this cleanup process writes to a device.
 - Deletion is based on content identity and documented use, not filename guesses.
 
+## Additional firmware findings
+
+The full binary scan covered 1,117 native ARM objects. It identified direct factory `/dev/audiomux` and `/dev/carstatus` references inside `libcarservices_jni.so`, `libaudiopolicymanagerdefault.so` and `libaudioflinger.so`; three alternative DSP modules (`cd3313.ko`, `fy7604.ko`, `ak7604.ko`) expose an audiomux misc-device design; `carstatus.ko` has an unresolved audiomux interaction; and the primary HAL contains a substantial HFP call-audio path with NVRAM-backed parameters. These findings are recorded in [FIRMWARE_ANALYSIS_SUMMARY.md](FIRMWARE_ANALYSIS_SUMMARY.md) and [FACTORY_DEFECTS.md](../FACTORY_DEFECTS.md).
+
 ## Remaining work
 
-- Verify the latest firmware-audio configuration audit against the full extracted tree.
-- Review remaining workflows for overlap, naming and trigger correctness.
 - Run a repository-wide Markdown-link check.
-- Continue semantic analysis of all extracted binaries and configuration files, starting with the primary audio HAL dependency graph.
+- Continue call-graph and dependency-closure analysis, especially framework-level audiomux access and the primary HAL dependency graph.
+- Confirm which alternative DSP kernel module is selected on the target board.
+- Keep target-device validation separate from static and host-side evidence.
