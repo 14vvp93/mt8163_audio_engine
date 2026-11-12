@@ -153,6 +153,14 @@ bool supported_device(std::uint32_t device) {
     return device != 0U && (device & ~allowed) == 0U;
 }
 
+bool is_a2dp_device(std::uint32_t device) {
+    constexpr std::uint32_t a2dp =
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP) |
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES) |
+        static_cast<std::uint32_t>(AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER);
+    return (device & a2dp) != 0U;
+}
+
 std::size_t bytes_per_sample(std::uint8_t format);
 
 bool supported_format(std::uint8_t format) {
@@ -274,9 +282,14 @@ std::int32_t process_effect(effect_handle_t self,
     (void)processing_guard;
 
     const std::uint8_t format = context->config.outputCfg.format;
+    const std::uint32_t output_device =
+        context->output_device.load(std::memory_order_acquire);
+    const bool a2dp_rate_allowed =
+        !is_a2dp_device(output_device) ||
+        context->config.outputCfg.samplingRate == 44100U;
     const bool route_allowed =
         context->audio_mode.load(std::memory_order_acquire) == AUDIO_MODE_NORMAL &&
-        supported_device(context->output_device.load(std::memory_order_acquire)) &&
+        supported_device(output_device) && a2dp_rate_allowed &&
         !context->offload.load(std::memory_order_acquire) &&
         context->supported_config.load(std::memory_order_acquire);
 
