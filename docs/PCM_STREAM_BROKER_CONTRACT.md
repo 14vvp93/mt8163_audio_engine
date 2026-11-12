@@ -27,7 +27,7 @@ The supported sequence is:
 
 ## Realtime boundary
 
-The broker performs a bounded fixed-array lookup and does not allocate or lock. The backend's `write` must be nonblocking/bounded and must not perform device discovery, recovery, synchronous logging or allocation. It reports `WouldBlock`, `Xrun` or `DeviceLost` to the caller; recovery belongs to the control plane.
+The broker performs a bounded fixed-array lookup over atomically published 32-bit handle/state/token fields and does not allocate or lock. The callback does not read control-plane-only route/configuration fields, so opening a different slot does not race with an active callback. The backend's `write` must be nonblocking/bounded and must not perform device discovery, recovery, synchronous logging or allocation. It reports `WouldBlock`, `Xrun` or `DeviceLost` to the caller; recovery belongs to the control plane.
 
 Lifecycle operations are serialized by the HAL control owner. The HAL must quiesce the audio callback before changing or destroying a stream record. Concurrent lifecycle calls and callback use without that quiescence contract are not supported.
 
@@ -42,7 +42,7 @@ Lifecycle operations are serialized by the HAL control owner. The HAL must quies
 
 ## Validation required next
 
-1. Host CI for broker lifecycle, capacity, invalid order and error propagation.
+1. Host CI for broker lifecycle, capacity, invalid order, error propagation, and callback concurrency while another stream opens.
 2. ARMv7 compile using the Android NDK.
 3. Add endpoint capability negotiation after exact ALSA runtime topology is collected.
 4. Add the HAL callback-quiescence/lifetime owner before wiring the broker to real streams.
