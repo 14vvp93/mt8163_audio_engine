@@ -94,6 +94,17 @@ int main() {
                     "special dispatch commands must reject truncated payloads");
         }
 
+
+        const auto legacy_jni_balance = make_frame(0x15U, 5U, 20U);
+        const auto parsed_legacy_jni_balance =
+            parse_driver_command(legacy_jni_balance);
+        require(static_cast<bool>(parsed_legacy_jni_balance),
+                "legacy JNI framing with one initialized compatibility word must parse");
+        require(parsed_legacy_jni_balance.command->payload.size() == 20U &&
+                    encode_driver_command(*parsed_legacy_jni_balance.command) ==
+                        legacy_jni_balance,
+                "legacy JNI compatibility word must be preserved without an over-read");
+
         const auto max_safe = make_frame(0x10U, 63U, 252U);
         require(static_cast<bool>(parse_driver_command(max_safe)),
                 "63-word payload must fit the recovered 256-byte slab including header");
