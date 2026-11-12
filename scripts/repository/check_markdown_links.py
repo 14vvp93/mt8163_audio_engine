@@ -79,7 +79,7 @@ def main() -> int:
             except ValueError:
                 failures.append((source, target, "path escapes repository root"))
                 continue
-            if not resolved.is_file():
+            if not resolved.is_file() and not resolved.is_dir():
                 failures.append((source, target, f"missing: {resolved.relative_to(ROOT)}"))
     print(f"Checked {checked} local Markdown links across {len(list(ROOT.rglob('*.md')))} Markdown files.")
     if failures:
