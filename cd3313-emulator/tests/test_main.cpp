@@ -232,24 +232,26 @@ int main() {
               "special 0x56 and 0xA3 reject zero-word frames instead of modeling stale slab data");
 
 
-        Emulator state_emulator;
-        check(state_emulator.state().master_volume_max == 40U,
+        Emulator volume_limit_emulator;
+        check(volume_limit_emulator.state().master_volume_max == 40U,
               "driver default master-volume maximum is 40");
-        check(static_cast<bool>(state_emulator.write(
+        check(static_cast<bool>(volume_limit_emulator.write(
                   encode_driver_command(make_master_volume_max_command(30)))) &&
-              state_emulator.state().master_volume_max == 30U,
+              volume_limit_emulator.state().master_volume_max == 30U,
               "0x09 updates the master-volume maximum");
-        check(state_emulator.write(
+        check(volume_limit_emulator.write(
                   encode_driver_command(make_master_volume_command(31))).error ==
                   ParseError::InvalidArgumentValue &&
-              !state_emulator.state().master_volume_step.has_value(),
+              !volume_limit_emulator.state().master_volume_step.has_value(),
               "master-volume requests above the configured maximum are rejected safely");
-        check(static_cast<bool>(state_emulator.write(
+        check(static_cast<bool>(volume_limit_emulator.write(
                   encode_driver_command(make_master_volume_command(30)))),
               "master volume at the configured maximum is accepted");
-        check(static_cast<bool>(state_emulator.write(
+        check(static_cast<bool>(volume_limit_emulator.write(
                   encode_driver_command(make_master_volume_max_command(40)))),
               "0x09 can restore the default master-volume maximum");
+
+        Emulator state_emulator;
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_volume_command(23)))),
               "state emulator accepts master volume");
