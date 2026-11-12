@@ -1,4 +1,4 @@
-name: Analyze MT8163 audio HAL
+name: Analyze MT8163 audio HAL from extracted firmware
 
 on:
   push:
