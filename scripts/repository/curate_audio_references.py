@@ -34,7 +34,7 @@ def copy_one(source: Path, destination: Path, source_label: str, rows: list[dict
         raise RuntimeError(f"refusing to overwrite different file: {destination}")
     if not destination.exists():
         shutil.copy2(source, destination)
-    rows.append({"path": destination.as_posix(), "size": destination.stat().st_size,
+    rows.append({"path": destination.relative_to(Path.cwd()).as_posix(), "size": destination.stat().st_size,
                  "sha256": source_hash, "source": source_label})
 
 def main() -> None:
