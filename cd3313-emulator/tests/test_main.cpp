@@ -15,7 +15,7 @@ int main() {
     using namespace cd3313;
     try {
         check(known_write_commands().size() == 11,
-              "expected 12 recovered command specifications");
+              "expected 11 safe write command specifications");
         constexpr std::array<std::uint8_t, 14> accepted_dispatch_ids{{
             0x01, 0x03, 0x04, 0x09, 0x10, 0x11, 0x12, 0x15,
             0x20, 0x55, 0x56, 0x5C, 0xA3, 0xF1
