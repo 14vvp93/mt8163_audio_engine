@@ -32,9 +32,9 @@ std::uint16_t required_size_words(std::uint8_t id) {
     return spec == nullptr ? 0 : spec->required_size_words;
 }
 
-bool valid_channel_indices(const std::vector<std::uint8_t>& payload) {
-    if (payload.size() < 16U) return false;
-    for (std::size_t offset = 0; offset < 16U; offset += 4U) {
+bool valid_channel_indices(const std::uint8_t* payload, std::size_t size) noexcept {
+    if (payload == nullptr || size < 16U) return false;
+    for (std::size_t offset = 0U; offset < 16U; offset += 4U) {
         const std::uint32_t value =
             static_cast<std::uint32_t>(payload[offset]) |
             (static_cast<std::uint32_t>(payload[offset + 1U]) << 8U) |
@@ -98,8 +98,7 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
     if (bytes.size() - 4U != expected)
         return {{}, ParseError::PayloadSizeMismatch};
 
-    if (id == 0x15 && !valid_channel_indices(
-            std::vector<std::uint8_t>(bytes.begin() + 4, bytes.end())))
+    if (id == 0x15 && !valid_channel_indices(bytes.data() + 4U, expected))
         return {{}, ParseError::InvalidArgumentValue};
 
     DriverCommand command;
@@ -124,7 +123,8 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
         throw std::invalid_argument("CD3313 payload exceeds safe slab-object space");
     if (command.payload.size() != expected)
         throw std::invalid_argument("payload size does not match ioctl size field");
-    if (command.id == 0x15 && !valid_channel_indices(command.payload))
+    if (command.id == 0x15 &&
+        !valid_channel_indices(command.payload.data(), command.payload.size()))
         throw std::invalid_argument("CD3313 speaker channel index must be in range 0..15");
 
     const std::uint32_t header =
