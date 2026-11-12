@@ -1,84 +1,99 @@
 # MT8163 Audio Engine — project status
 
-Updated: 2026-11-11
+Updated: 2026-11-12
 
 ## Current milestone
 
-**The CD3313 native JNI transport has been recovered statically.** The previous
-largest blocker—finding the implementation behind
-`android.sourceservice.ExtAudioMuxer.SendCmdAudioMux(int,int[])`—is closed
-for the supplied firmware archives.
+**Phase 1 static ownership reconstruction is in progress.** The firmware analysis now covers the CD3313 JNI/kernel path, vehicle-state input, ACC mute call sites, FM direct/capture routes, A2DP and HFP/SCO separation, and the primary HAL's actual Normal processing boundary. The approved product target remains one unified engine replacing the factory vendor audio implementation.
 
-## Confirmed evidence
+Current working branch: `feature/profile-transition-benchmark`.
+Current branch HEAD at last check: `542a2ee44d74ed76744aa51e672ed2384f6b5af8`.
+`main` was not changed. PR #1 is closed and not merged.
+
+## New architecture and audit documents
+
+- [Phase 1 audit baseline](PHASE1_AUDIT_BASELINE.md) — consolidated firmware and repository findings.
+- [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md) — control/data-plane owners, mute arbitration and replacement responsibilities.
+- [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) — one state authority, module contracts, source/route model, mute arbitration and migration gates.
+- [Factory defect and risk register](FACTORY_DEFECTS.md) — static defects and unresolved compatibility risks.
+
+## Confirmed static findings
+
+### CD3313 transport and hardware control
 
 - Kernel module: `vendor_lib/lib/modules/cd3313.ko`, ELF32 ARM with DWARF.
 - Character device: `/dev/audiomux`.
 - JNI provider: `lib/lib/libcarservices_jni.so`, ELF32 ARM, Android 28.
-- JNI provider Build ID: `bf391e545edd2e482b72cd8a431d1c59`.
-- JNI provider SHA-256:
-  `ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`.
-- Java/Binder path:
-  `AudioEffect → ISourceService → SourceService → ExtAudioMuxer JNI`.
-- `nativeInit()` opens `/dev/audiomux` read-only and issues
-  `0x8080F000`; the driver returns `cd3313\0\0` in its 8-byte response.
+- Java/Binder path: `AudioEffect → ISourceService → SourceService → ExtAudioMuxer JNI`.
+- `nativeInit()` opens `/dev/audiomux` read-only and issues `0x8080F000`; the driver returns the 8-byte `cd3313` identifier.
 - `SendCmdAudioMux()` opens the same device write-only and issues ioctl.
-- Native write request formula:
-  `0x40000000 | ((array_length + 1) << 16) | (command << 8)`.
-  The low request-number byte is zero; the command ID occupies bits 8..15.
+- Native request formula: `0x40000000 | ((array_length + 1) << 16) | (command << 8)`.
+- The native request encodes one more 32-bit word than the Java array declares. The extra word's value and intended origin are unknown.
 
-## Outstanding ABI issue
+Do not invent padding or reproduce this extra-word copy in a new hardware client. The host emulator intentionally builds safe frames from complete, validated payload words.
 
-The native request encodes one more 32-bit word than the Java array declares.
-The CD3313 driver multiplies the encoded size by four and copies that extra
-word from the pointer returned by JNI `GetIntArrayElements()`. For command
-`0x15`, the callback consumes four speaker indices and ignores the fifth
-copied word. The extra word's value and intended origin are unknown.
+### Vehicle state and ACC mute
 
-A plausible explanation is that the vendor JNI counts the ioctl header in
-the size field while the driver separately prepends that header and copies
-the full size again. This is an inference, not proven intent.
+- `carstatus.ko` samples ACC from GPIO86/IRQ and exposes state through `/dev/carstatus`.
+- CarStatusService consumes that state. On ACC OFF it calls `ExtAudioMuxer.setMasterMute(true, 2)` through `/dev/audiomux`, separately sends MCU text `mute=10001` through `/dev/carstatus`, and cancels pending delayed unmute.
+- ACC ON clears CD3313 master reason 2 only after the 2,500 ms delayed transition and only if ACC is still ON; it separately sends MCU text `mute=10000`.
+- The analyzed VDEX contains seven `setMasterMute()` call sites: ACC reason 2, SilenceMode reasons 1 and 24, and Bluetooth voice reason 3.
+- CD3313 stores per-input and global master mute as independent bitmasks; reason arguments are bit indices, not reference counters.
+- `carstatus.ko` probes `/dev/audiomux`; when available, CD3313 owns GPIO393, and carstatus drives it only as a fallback. This is not the same as the ACC-to-CD3313 master-mute command.
 
-**Do not invent a padding value or reproduce this extra-word copy in a new
-hardware client.** The host emulator intentionally builds safe frames from
-complete, validated payload words and does not mimic the native over-read.
+### FM, Bluetooth and source routing
 
-## Test status
+- FM control through `/dev/fm`, direct `FM_I2S_Playback`, software `FM_I2S_Capture`, CD3313 RADIO source selection and Audio Policy FM Tuner In are distinct planes.
+- The direct FM HAL path opens/starts an ALSA endpoint without a userspace PCM write loop. The capture provider is a separate PCM fanout path; no proof yet connects it to the direct speaker AudioPatch.
+- A2DP is separate from HFP/SCO. Policy declares A2DP PCM16 stereo 44.1 kHz, while offload control also exists.
+- HFP/SCO and Voice are separate HAL handlers, with 8/16 kHz profiles, microphone uplink and echo-reference components. They are not normal media streams.
 
-- Firmware library analysis: [run 43089987118](https://github.com/14march93/mt8163_audio_engine/actions/runs/43089987118) — success.
-- HEQ decompilation: [run 43090340667](https://github.com/14march93/mt8163_audio_engine/actions/runs/43090340667) — success.
-- CD3313 host and sanitizer tests: [run 43092920696](https://github.com/14march93/mt8163_audio_engine/actions/runs/43092920696) — both jobs success.
-- Read-only Android API probe APK: [build run 43021678454](https://github.com/14march93/mt8163_audio_engine/actions/runs/43021678454). The probe checks OEM API availability and Binder liveness; it does not send a CD3313 control command.
+### Primary HAL and PCM topology
 
-These are static-analysis and host-CI results. No live ioctl, I²C write,
-audio-setting change, or physical head-unit test has been performed.
+- The primary HAL's direct `AudioMTKFilterManager::process()` call is only in `AudioALSAPlaybackHandlerNormal::write()`.
+- The Normal pipeline performs DC removal, then speaker-dependent stereo-to-mono folding, then MTK post-processing, BLI SRC, bit conversion and ALSA write.
+- The framework primary output and ordinary speaker ALSA route are stereo. The physical downstream distribution to FL/FR/RL/RR is not yet proven.
+- CD3313 four-output attenuation controls are analog control-plane values, not proof of four independent PCM channels.
+- AOSP Android 9 AudioFlinger protects both EffectModule process and command with the same mLock. The previously suspected effect-config race is not a confirmed issue under stock AOSP; the target vendor binary still needs comparison.
 
-## Next work
+### DSP driver selection
 
-1. Run the read-only API/Binder probe on the exact head unit and record the
-   build fingerprint and result.
-2. Investigate the native one-word size discrepancy without sending writes.
-3. Define a safe transaction and rollback plan for a future controlled
-   hardware test.
-4. Continue tracing `carstatus.ko` and its JNI/user-space client to connect
-   ACC/vehicle-state events with CD3313 mute reasons.
-5. Keep the host emulator and real-device backend separate.
+- DTBO enables `cd3313@44`, `ak7604@1c` and `fy7604@50` nodes.
+- Supplied init scripts attempt to load all three module variants.
+- All three modules register the same misc-device name `audiomux`; runtime probe result and actual node owner remain unknown.
+- Do not load alternative modules experimentally. Obtain read-only boot log, module state and I2C probe evidence.
 
-The same expanded artifact also includes its paired `cd3313.ko` build
-(Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256
-`6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`).
-Its ioctl framing and chip-ID response were cross-checked against the older
-driver build already used by the emulator; the relevant behavior matches.
+## Test and validation status
 
-## Additional vehicle-state path found
+Latest previously successful feature-branch code CI was run against `aecc5f5f15a68f60d5e1639b9d7d43e46f6c8c8d` on 2026-11-12:
 
-The same JNI library also registers `android/carsource/McuService.sendCmdCarStatus(String)`.
-Its native implementation writes a fixed 40-byte command buffer to
-`/dev/carstatus`. The paired `carstatus.ko` module exposes read/write
-handlers and reports ACC, reversing, parking, headlight, and telephone-mute
-state. Its `update_mute()` routine always updates its own mute mask, then probes
-`/dev/audiomux` read-only. If the open succeeds, it leaves GPIO393 to the
-CD3313 driver; only if the open fails does carstatus drive GPIO393 as a
-fallback. This appears to be deliberate ownership selection, not an ordinary
-concurrent-write path. It does not send a CD3313 ioctl. The ACC-to-CD3313 mute-reason-2 path is
-therefore still not established. Details:
-[CARSTATUS_MCU_SERVICE_ABI.md](CARSTATUS_MCU_SERVICE_ABI.md).
+- PCM DSP core tests — success.
+- PCM DSP Stability Lab — success.
+- PCM DSP Performance Benchmark — success.
+- Repository integrity — success.
+- Android ARMv7 build and DSP benchmark — success.
+- Android test APK build — success.
+
+These runs predate the documentation-only commits on the current branch HEAD. No new CI run for the latest documentation commits was observed at the last check.
+
+Evidence classification:
+- **HOST VERIFIED:** existing PCM/DSP tests, stability lab, performance benchmark and CD3313 emulator tests covered by CI.
+- **ANDROID BUILD VERIFIED:** Android ARMv7 build and diagnostic/test APK packaging covered by CI.
+- **DEVICE VERIFIED:** no complete replacement route, CD3313 write transaction, FM/A2DP/HFP integration or factory cutover has been validated on the physical head unit.
+
+No live ioctl, I2C write, GPIO change, mixer write, audio-setting change or physical head-unit test has been performed in this phase.
+
+## Open Phase 1 gates
+
+1. Obtain read-only runtime evidence for loaded DSP modules and actual `/dev/audiomux` owner.
+2. Obtain read-only process FD inventory for `/dev/audiomux`, `/dev/carstatus` and `/dev/fm`.
+3. Confirm the selected Audio Policy XML and active FM AudioPatch on target.
+4. Confirm HFP downlink/uplink, microphone and echo-reference lifecycle on target.
+5. Confirm physical DSP population and FM/CD3313 board wiring.
+6. Confirm exact kernel source/config/toolchain before any driver build.
+7. Resolve the native extra-word ABI discrepancy without sending writes.
+8. Compare vendor `libaudioflinger.so` process/command locking with the AOSP Android 9 EffectModule contract.
+
+## Next implementation work
+
+In parallel with the remaining read-only gates, begin host-testable AudioCore foundations from `UNIFIED_AUDIO_CORE_ARCHITECTURE.md`: typed source/session state, route model, owner-based mute arbitration and hardware-broker interfaces. Preserve the existing PCM/DSP core. Do not integrate factory control writes or begin destructive cutover until the ABI and rollback gates are closed.
