@@ -24,6 +24,7 @@ struct AudioCoreSnapshot {
     std::uint8_t active_session_count{0U};
     std::uint8_t suspended_session_count{0U};
     std::uint8_t reserved{0U};
+    std::array<SessionRecord, kMaxAudioSessions> sessions{};
 };
 
 static_assert(std::is_trivially_copyable<AudioCoreSnapshot>::value,
