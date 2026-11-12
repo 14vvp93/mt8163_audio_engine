@@ -1,4 +1,4 @@
-name: Firmware audio configuration audit
+name: Validate extracted firmware audio configuration
 
 on:
   push:
