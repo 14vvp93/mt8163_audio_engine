@@ -22,7 +22,14 @@ cmake-build-*/
 /audiomux-client-scan/
 /extracted-files/
 /HEQ.zip
+/HEQ.zip.sha256
+/HEQ.apk
 /HEQ_CONTENTS.txt
+/extracted/
+/jadx.zip
+/jadx/
+/decompiled/
+/input/
 
 # Editor and operating-system files
 .idea/
