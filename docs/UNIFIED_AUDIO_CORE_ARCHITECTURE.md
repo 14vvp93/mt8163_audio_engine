@@ -225,3 +225,31 @@ The JNI extra-word discrepancy is unresolved. Do not reproduce the vendor JNI fr
 - [Product goal](MT8163_AUDIO_ENGINE_GOAL.md)
 - [Android integration gate](ANDROID_AUDIO_INTEGRATION_GATE.md)
 - [PCM DSP core](../pcm-dsp/README.md)
+
+## 12. Factory-compatible artifact identity and replacement packaging
+
+The deliverable is a replacement firmware set, not a separately named application or parallel audio stack. Whenever a compiled artifact replaces a factory file, its installed filename, relative path, ELF SONAME (for shared libraries), architecture, ABI, exported symbols and relevant service/module identity must match the factory contract.
+
+Rules for every build and packaging change:
+
+1. **Preserve factory filenames.** A replacement for a factory `.so`, executable, kernel module, configuration file or service binary must be emitted under the exact original basename. Do not ship names such as `libmt8163_audio_engine.so` as a substitute for a factory library unless that exact name is itself present in the target firmware and is intentionally part of the replacement contract.
+2. **Preserve factory paths.** Package each replacement at the original partition-relative path (for example, the exact `/system/lib`, `/vendor/lib`, `/vendor/bin`, `/vendor/etc` or module path established by the target image). Do not infer a path from a filename.
+3. **Separate development targets from firmware outputs.** CMake target names, namespaces, source directories and intermediate static libraries may use project-specific names such as `mt8163_audio_core`. Those are build-internal artifacts; the final staged firmware artifact must use the factory identity it replaces.
+4. **Record provenance before replacing.** Maintain a factory-artifact manifest containing original path, basename, SHA-256, ELF class/machine, SONAME, DT_NEEDED dependencies, exported/imported symbols, file mode/owner where recoverable, and the exact replacement target. Record unresolved fields rather than guessing.
+5. **Match the target ABI.** A filename match is not sufficient. Shared libraries and executables must match the target's ARM32 EABI, Android API/platform assumptions, linker namespace, C++ runtime and symbol-version expectations. Kernel modules must match the exact target kernel build/configuration and module ABI. Android NDK host success alone does not establish firmware compatibility.
+6. **Preserve contracts not intentionally replaced.** Keep required HAL entry points, framework-facing symbols, init/service names, property names, configuration schema and ioctl contracts. Changes to any of these require an explicit compatibility implementation and tests.
+7. **Stage and audit before image assembly.** Generate a replacement manifest and compare the staged package against the factory inventory. Fail packaging on unexpected new runtime libraries/services, missing replacement files, filename/path drift, duplicate owners or unapproved factory-file deletion.
+8. **Keep rollback artifacts.** Preserve the exact original files and hashes in the reference baseline. Never overwrite the only factory copy during development.
+
+The exact factory basenames and installation paths must be populated from the recovered target firmware inventory and binary/service audits before the first replacement image is assembled. No placeholder or guessed filename is an acceptable final output name.
+
+The AudioCore static library remains an internal implementation component unless the target firmware proves that a new standalone shared object is required. The default integration direction is to link AudioCore into the factory-named replacement primary HAL and any other explicitly identified factory replacement binaries, so Android continues loading the expected components without a parallel audio stack.
+
+### Artifact-level acceptance gates
+
+- Every staged replacement maps one-to-one to a known factory path and file identity.
+- No replacement artifact is installed under a project-only name where Android or init expects the factory name.
+- Shared-library SONAME and required symbol/dependency contracts are checked against the factory binary.
+- ARM32 / Android 9 / vendor-kernel compatibility is checked independently of host tests.
+- The package contains no unapproved extra audio daemon, HAL, library or kernel module.
+- Factory originals and a verified rollback manifest remain available until target-device validation is complete.
