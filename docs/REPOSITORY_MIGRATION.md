@@ -9,7 +9,7 @@ The project uses two repositories with separate responsibilities:
 | `14vvp93/mt8163_audio_engine` | Canonical product repository: source code, tests, documentation, firmware evidence, manifests and validated results | Private |
 | `14vvp93/public_calculations` | Heavy-compute worker: resource-intensive GitHub Actions for archive processing, ELF analysis, decompilation, large test matrices and builds | Public |
 
-The current working repository, `14march93/mt8163_audio_engine`, is the migration source. The canonical destination is now identified as `14vvp93/mt8163_audio_engine`. Do not treat `public_calculations` as a second product repository or as the canonical storage location for firmware/source data.
+The current working repository, `14march93/mt8163_audio_engine`, is the migration source. The canonical destination is now identified as `14vvp93/mt8163_audio_engine`. `public_calculations` is not a second product repository: it is the approved public home for firmware inputs, derived data, analysis tooling and compute workflows; canonical product source code remains in the private product repository.
 
 ## Compute-repository data policy
 
@@ -48,7 +48,7 @@ run metadata, logs, caches and published artifacts may be visible to anyone.
 
 1. All Git branches and tags required for project history.
 2. The complete Git history, not only the current working-tree snapshot.
-3. Source code, tests, scripts, documentation and immutable firmware archive parts.
+3. Product source code, tests, product scripts and documentation. Public firmware archives and their manifests are maintained in `public_calculations` and referenced from the product repository.
 4. Curated extracted references and their SHA-256 manifest.
 5. Git LFS objects, if LFS is introduced before migration.
 6. Product workflows and any reusable workflow definitions that belong with the source.
@@ -79,7 +79,7 @@ Never copy secret values into Git or documentation.
 - Preserve original multipart ZIP volumes as immutable source inputs.
 - Preserve original public archives and verified manifests in the public compute repository; keep derived extracted trees reproducible and store large outputs using an appropriate durable backend.
 - Do not rely on the old repository's time-limited Actions artifacts as the only copy of extracted data.
-- The 161 MiB HEQ APK cannot be committed as a normal GitHub file. Its split source volumes remain the canonical tracked input. If a permanent assembled copy is needed, choose a storage method supported by the destination and document its checksum.
+- The 161 MiB HEQ APK cannot be committed as a normal GitHub file. Its split source volumes belong in `public_calculations`; preserve the volumes and record their hashes. If a permanent assembled copy is needed, choose a storage method supported by the repository and document its checksum.
 - Public firmware volumes and assembled firmware may be stored in the public compute repository. Do not place credentials, private signing material, personal data or unrelated private content there.
 - Before migration, verify every split archive volume, archive CRC, extracted member count and SHA-256 manifest from a clean checkout.
 
@@ -105,7 +105,7 @@ Never copy secret values into Git or documentation.
 - The firmware configuration audit was previously reported to use the triggering ref and have no hard-coded repository name; this still needs a fresh file-level verification before cutover.
 - Historical Actions run URLs in audit documents are evidence only and should continue pointing to the source repository after migration.
 - The source repository is private. The canonical destination is also private; the compute repository is public and is approved for firmware dumps and derived public analysis. Keep actual secrets and personal data out.
-- The full extraction artifact is temporary and must not be treated as a migration source. Use retained archive volumes plus scripts and manifests to reproduce it.
+- The full extraction artifact is temporary and must not be treated as a migration source. Use retained public archive volumes in `public_calculations` plus scripts and manifests to reproduce it.
 
 ## Cutover gate
 
