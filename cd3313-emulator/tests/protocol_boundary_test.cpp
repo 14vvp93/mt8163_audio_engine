@@ -63,6 +63,11 @@ int main() {
                     ParseError::PayloadSizeMismatch,
                 "header-only frame with a nonzero size field must be rejected");
 
+        auto ignored_low_request_byte = make_frame(0x10U, 1U, 4U);
+        ignored_low_request_byte[0] = 0xA5U;
+        require(static_cast<bool>(parse_driver_command(ignored_low_request_byte)),
+                "parser must preserve the driver behavior of ignoring request bits 0..7");
+
         for (const auto& spec : known_write_commands()) {
             const std::size_t required_bytes =
                 static_cast<std::size_t>(spec.required_size_words) * 4U;
@@ -174,6 +179,8 @@ int main() {
                 "encoder must reject an out-of-range speaker index");
         require(encode_rejects({0x10U, 0x4000U, {0U}}),
                 "encoder must reject size fields wider than 14 bits");
+        require(encode_rejects({0x10U, 64U, std::vector<std::uint8_t>(256U, 0U)}),
+                "encoder must reject payloads that exceed the slab-object boundary");
 
         std::cout << "CD3313 protocol boundary tests passed\n";
         return 0;
