@@ -73,6 +73,11 @@ int main() {
                   {0x00, 0x10, 0x01, 0x40, 0x28, 0x00, 0x00, 0x00}),
               "write ioctl header and payload encoding");
 
+        const auto typed_volume_max =
+            encode_driver_command(make_master_volume_max_command(30));
+        check(typed_volume_max == std::vector<std::uint8_t>(
+                  {0x00, 0x09, 0x01, 0x40, 0x1E, 0, 0, 0}),
+              "typed 0x09 builder sets the master-volume upper bound");
         const auto typed_volume = encode_driver_command(make_master_volume_command(40));
         check(typed_volume == encoded,
               "typed master-volume builder matches the recovered wire frame");
@@ -113,6 +118,11 @@ int main() {
         try { (void)make_master_volume_command(41); }
         catch (const std::invalid_argument&) { rejected_volume = true; }
         check(rejected_volume, "typed volume builder rejects steps above 40");
+        bool rejected_volume_max = false;
+        try { (void)make_master_volume_max_command(41); }
+        catch (const std::invalid_argument&) { rejected_volume_max = true; }
+        check(rejected_volume_max,
+              "typed volume maximum builder rejects values beyond the 41-entry table");
         bool rejected_mute_reason = false;
         try { (void)make_master_mute_command(true, 32); }
         catch (const std::invalid_argument&) { rejected_mute_reason = true; }
@@ -206,6 +216,9 @@ int main() {
         check(parse_driver_command({0x00, 0x09, 0x00, 0x40}).error ==
                   ParseError::SizeFieldTooSmall,
               "special 0x09 rejects a zero-word frame");
+        check(parse_driver_command({0x00, 0x09, 0x01, 0x40, 41, 0, 0, 0}).error ==
+                  ParseError::InvalidArgumentValue,
+              "0x09 rejects a maximum above the 41-entry master-volume table");
         check(static_cast<bool>(parse_driver_command(
                   {0x00, 0x56, 0x01, 0x40, 0, 0, 0, 0})),
               "special 0x56 dispatcher branch");
@@ -220,6 +233,23 @@ int main() {
 
 
         Emulator state_emulator;
+        check(state_emulator.state().master_volume_max == 40U,
+              "driver default master-volume maximum is 40");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_volume_max_command(30)))) &&
+              state_emulator.state().master_volume_max == 30U,
+              "0x09 updates the master-volume maximum");
+        check(state_emulator.write(
+                  encode_driver_command(make_master_volume_command(31))).error ==
+                  ParseError::InvalidArgumentValue &&
+              !state_emulator.state().master_volume_step.has_value(),
+              "master-volume requests above the configured maximum are rejected safely");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_volume_command(30)))),
+              "master volume at the configured maximum is accepted");
+        check(static_cast<bool>(state_emulator.write(
+                  encode_driver_command(make_master_volume_max_command(40)))),
+              "0x09 can restore the default master-volume maximum");
         check(static_cast<bool>(state_emulator.write(
                   encode_driver_command(make_master_volume_command(23)))),
               "state emulator accepts master volume");
