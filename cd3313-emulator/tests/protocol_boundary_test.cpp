@@ -164,6 +164,10 @@ int main() {
                 "encoder must reject payload-size mismatch");
         require(encode_rejects({0x15U, 4U, {0U, 0U, 0U, 0U}}),
                 "encoder must reject incomplete four-channel payload");
+        require(encode_rejects({0x15U, 3U, {
+                    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                    0U, 0U, 0U, 0U}}),
+                "encoder must reject size fields below the four-word handler requirement");
         require(encode_rejects({0x15U, 4U, {
                     16U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
                     0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U}}),
@@ -171,7 +175,7 @@ int main() {
         require(encode_rejects({0x10U, 0x4000U, {0U}}),
                 "encoder must reject size fields wider than 14 bits");
 
-        std::cout << "CD3313 protocol boundary tests passed\\n";
+        std::cout << "CD3313 protocol boundary tests passed\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "CD3313 protocol boundary test failure: "
