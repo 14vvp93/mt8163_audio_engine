@@ -13,6 +13,17 @@ This library is an independent, host-buildable C++17 DSP core. It is not yet con
 - bit-exact bypass and no heap allocation in the processing method;
 - stable parameter changes use parallel old/new IIR banks with an output crossfade; normalized denominator coefficients are never linearly interpolated.
 
+### MT6627 FM capture adapter scaffold
+
+`FmPcmAdapter` wraps the shared stereo engine for the recovered FM input
+profile. It deliberately accepts only 32 kHz PCM16 stereo, and only processes
+when the caller explicitly confirms that the FM route is active and Android
+is in normal audio mode. Disabled DSP, inactive routes, non-normal modes,
+unsupported sample rates and unsupported channel layouts are bit-exact
+bypass. The adapter is a platform-independent PCM boundary component; it is
+not yet called by the target's vendor HAL or the direct FM_I2S AudioPatch
+playback path.
+
 ### Four-channel Float32 foundation
 
 - interleaved Float32 FL/FR/RL/RR processing;
@@ -48,7 +59,7 @@ The Float32 API expects normalized samples. Per-channel delay is configured in m
 
 ## Host tests
 
-The host workflow builds the library with CMake and runs tests for 32 kHz FM-rate stereo processing, 44.1/48 kHz stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling. Multiband tests additionally verify bit-exact bypass, independent low/mid/high compression on separate channels, preservation of unselected bands, in-place equivalence, invalid crossover rejection, and finite output for non-finite input.
+The host workflow builds the library with CMake and runs tests for the FM adapter's 32 kHz stereo processing and bit-exact fail-open gates, 32 kHz FM-rate engine processing, 44.1/48 kHz stereo behavior, all filter types, Float32 four-channel bypass, independent channel gains, all 32 filter slots, repeated extreme parameter transitions, finite output, and limiter ceiling. Multiband tests additionally verify bit-exact bypass, independent low/mid/high compression on separate channels, preservation of unselected bands, in-place equivalence, invalid crossover rejection, and finite output for non-finite input.
 
 
 ## Four-channel utility modules
