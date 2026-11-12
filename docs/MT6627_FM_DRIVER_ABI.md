@@ -46,7 +46,7 @@ The sample-rate enum is independently confirmed in the HAL:
 | 2 | 48,000 Hz |
 | 3 | Error |
 
-The kernel `fm_ops_ioctl()` branch for `0xC004F521` copies **12 bytes** from userspace and passes the three words to `fm_i2s_set()`. That function validates the first field, then invokes a callback stored in the FM core structure at offset `0x8c`, passing the three values. The identity and board-specific implementation of that setter callback are not yet resolved.
+The kernel `fm_ops_ioctl()` branch for `0xC004F521` copies **12 bytes** from userspace and passes the three words to `fm_i2s_set()`. That function validates the first field, then invokes a callback stored in the FM core structure at offset `0x8c`, passing the three values. If that callback pointer is null, `fm_i2s_set()` immediately returns **-1002**; it does not apply the requested I2S settings. The MT6627 low-ops registration fills the adjacent I2S-info getter at offset `0x90` and the five-field audio-info getter at `0xc0`, but does not fill the setter slot at `0x8c`. The setter callback's provider therefore remains an important open question; the cross-module symbol scan is being used to determine whether another module supplies it.
 
 **ABI quirk:** this ioctl also encodes `_IOC_SIZE=4`, while the kernel copies 12 bytes. The HAL supplies all three words.
 
