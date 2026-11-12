@@ -1,0 +1,63 @@
+# FM software DSP route plan
+
+## Goal
+
+Apply the shared PCM DSP to the *audible* FM-to-speaker path without changing
+the tuner driver, CD3313 input selection, or unrelated audio routes.
+
+## Confirmed firmware paths
+
+1. The stock FM policy route is an FM Tuner In AudioPatch. The HAL's
+   `AudioALSAHardware::createAudioPatch()` branch enables it through
+   `AudioALSAStreamManager::setFmEnable()` and
+   `AudioALSAFMController::setFmEnable()`.
+2. The enable tuple reaches `setFmDirectConnection_l()`, which resolves
+   `FM_I2S_Playback`, opens the PCM endpoint and starts it. This function
+   contains no `pcm_write()` buffer path for a software effect to modify.
+3. A separate input-stream route exists. For `AUDIO_SOURCE_FM_TUNER`
+   (1998 / `0x7CE`), the HAL can select
+   `AudioALSACaptureHandlerFMRadio`; its read method gets PCM from the FM
+   capture provider and returns it to an input client.
+4. The recovered RadioService JNI libraries control tuner state and do not
+   expose an app-owned AudioTrack/AudioRecord PCM loop in their native imports.
+   Current static evidence does not show that the stock RadioService consumes
+   the capture stream to play FM.
+
+## Candidate software route
+
+The only currently demonstrated userspace PCM boundary is the FM capture
+input stream. A possible software route is:
+
+`FM tuner I2S -> FM_I2S_Capture -> AUDIO_SOURCE_FM_TUNER input stream
+-> FmPcmAdapter -> standard Android output stream -> speaker`
+
+The adapter is already implemented and tested for 32 kHz PCM16 stereo. It
+fails open unless the caller confirms an active FM route and normal audio
+mode; unsupported rates/layouts and disabled DSP are bit-exact bypass.
+
+This candidate is **not yet a working FM playback route**. The stock direct
+AudioPatch must be disabled or replaced first, otherwise direct and software
+audio may play simultaneously. No evidence yet establishes a safe runtime
+control for switching that patch to the software route.
+
+## Required target checks before integration
+
+- Run `tools/collect_mt8163_audio_diag.ps1` while FM is playing and while it
+  is stopped; compare AudioPolicy patches, AudioFlinger input/output threads,
+  ALSA PCM state and FM control logs.
+- Confirm whether the FM capture PCM endpoint is opened during normal stock
+  playback, or only when an explicit FM input stream is requested.
+- Confirm the active PCM sample rate, channel count and format. Do not assume
+  every FM policy profile is the same as the MT6627 driver's 32 kHz metadata.
+- Identify a reversible way to suppress the direct FM AudioPatch and verify
+  that the tuner remains powered and muted/volume-controlled correctly.
+- Only then connect `FmPcmAdapter` to the confirmed buffer and add a
+  software output bridge. Keep calls, non-normal audio modes, route loss and
+  unsupported PCM formats on exact bypass.
+
+## Safety boundary
+
+No vendor HAL, policy XML, kernel module, system partition or device setting
+has been modified. Host tests and ARMv7 compilation validate the adapter
+component only; they do not validate the FM speaker route on the target.
+
