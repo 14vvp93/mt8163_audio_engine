@@ -13,6 +13,8 @@ The implementation may be split into libraries, services, kernel code, and build
 Replace the factory vendor audio functionality that owns or controls the head unit's audio behavior, while preserving the Android-facing contracts and low-level platform interfaces required for a stable Android 9 system.
 
 The finished engine must own the audio behavior end to end:
+- music playback and mixing, FM/Radio, AUX and other verified input paths;
+- Bluetooth A2DP and the complete Bluetooth HFP call path, including uplink microphone, downlink, echo reference, HFP controls and required NVRAM parameters;
 - Android audio integration and device/stream policy;
 - source selection and routing;
 - PCM stream handling, mixing, and digital processing;
@@ -34,7 +36,7 @@ The project must investigate and, where required, replace or take ownership of:
 - factory CD3313 userspace control and the cd3313.ko driver;
 - vendor mixer/ALSA configuration and route setup where evidence shows they are part of the factory behavior being replaced.
 
-Android AudioFlinger, AudioPolicyManager framework contracts, ALSA, kernel audio drivers, and other platform facilities are not automatically rewrite targets. Retain and use these interfaces where appropriate. Replace a lower-level platform component only when repository evidence and target-device testing demonstrate that it is necessary and feasible.
+Android AudioFlinger, AudioPolicyManager framework contracts, ALSA, kernel audio drivers, and other platform facilities are not automatically rewrite targets. Retain public framework/platform contracts where appropriate. However, static analysis of this firmware found direct /dev/audiomux and /dev/carstatus references inside libaudioflinger.so and libaudiopolicymanagerdefault.so. Those vendor-specific hooks and direct device-node control paths are part of the factory implementation to be replaced or safely redirected; preserving the public Android framework API does not mean preserving those factory modifications. Replace a lower-level platform component only when repository evidence and target-device testing demonstrate that it is necessary and feasible.
 
 This distinction is intentional: **the factory audio implementation is replaced; the Android platform interfaces and necessary hardware foundations are preserved unless a proven requirement says otherwise.**
 
