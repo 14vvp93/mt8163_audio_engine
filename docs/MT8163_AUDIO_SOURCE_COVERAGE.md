@@ -110,6 +110,18 @@ The HAL resolves ALSA card/PCM indexes dynamically from procfs.
 
 ### Newly verified software capture boundary
 
+The disassembly was checked against the extracted Android 9 primary HAL:
+`audio.primary.mt8163.so`, Build ID
+`f66eaf9e6ac950259f0c253be618d15a`, SHA-256
+`112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+Relevant exported symbols include `AudioALSACaptureDataProviderFMRadio::open()`
+(`0x000e78f8`), `readThread()` (`0x000e7ef4`),
+`AudioALSACaptureDataProviderBase::provideCaptureDataToAllClients()`
+(`0x000e24a0`), `AudioALSACaptureHandlerFMRadio::read()`
+(`0x000d8424`), and
+`AudioALSAFMController::setFmDirectConnection_l()` (`0x000af2f0`).
+
+
 The primary HAL also contains a concrete FM capture data path:
 
 - `AudioALSACaptureDataProviderFMRadio::readThread()` reads PCM from its
@@ -170,6 +182,9 @@ adapter remains restricted to 44.1/48 kHz, and no FM capture/AudioPatch adapter
 has been connected. The FM route must retain a hard bypass for calls,
 unsupported sample rates, non-stereo buffers and any path whose buffer
 ownership/format is not proven.
+
+Firmware extraction artifact containing the primary HAL, A2DP HAL and policy binaries:
+https://github.com/14march93/mt8163_audio_engine/actions/runs/43168955195/artifacts/13920953355
 
 ## 5. Shared engine / independent route adapters
 
