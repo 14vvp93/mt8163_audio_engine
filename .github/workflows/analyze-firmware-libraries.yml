@@ -411,6 +411,26 @@ jobs:
           print(f"Scanned {scanned} firmware binaries/configs; found {hits} FM direct-control or endpoint string hits")
           PY
 
+      - name: Disassemble audio policy custom extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=firmware-analysis/lib/lib/libaudiopolicycustomextensions.so
+          OUT=firmware-analysis/board-audio-routing/policy-extension
+          if [ ! -f "$SRC" ]; then
+            echo "Policy extension binary not found at $SRC" > firmware-analysis/board-audio-routing/policy-extension-status.txt
+            exit 0
+          fi
+          mkdir -p "$OUT"
+          cp "$SRC" "$OUT/libaudiopolicycustomextensions.so"
+          cd "$OUT"
+          sha256sum libaudiopolicycustomextensions.so > sha256.txt
+          file libaudiopolicycustomextensions.so > file.txt
+          readelf -h -n -Ws -rW libaudiopolicycustomextensions.so > elf-report.txt 2>&1 || true
+          arm-linux-gnueabi-objdump -drwC libaudiopolicycustomextensions.so > disassembly.txt 2>&1 || true
+          strings -a -t x libaudiopolicycustomextensions.so > strings.txt
+          grep -i -E 'FM_DIRECT_CONTROL|FM_I2S|MRGRX|fm|audio parameter|setParameters|set_parameters' strings.txt > focused-strings.txt || true
+
       - name: Upload FM tuner driver analysis
         uses: actions/upload-artifact@v6
         with:
