@@ -55,6 +55,22 @@ bool valid_master_volume_max(const std::uint8_t* payload,
         (static_cast<std::uint32_t>(payload[3]) << 24U);
     return value <= 40U;
 }
+
+bool valid_input_gain_arguments(const std::uint8_t* payload,
+                                std::size_t size) noexcept {
+    if (payload == nullptr || size < 8U) return false;
+    const std::uint32_t channel =
+        static_cast<std::uint32_t>(payload[0]) |
+        (static_cast<std::uint32_t>(payload[1]) << 8U) |
+        (static_cast<std::uint32_t>(payload[2]) << 16U) |
+        (static_cast<std::uint32_t>(payload[3]) << 24U);
+    const std::uint32_t gain =
+        static_cast<std::uint32_t>(payload[4]) |
+        (static_cast<std::uint32_t>(payload[5]) << 8U) |
+        (static_cast<std::uint32_t>(payload[6]) << 16U) |
+        (static_cast<std::uint32_t>(payload[7]) << 24U);
+    return channel <= 6U && gain <= 3U;
+}
 } // namespace
 
 std::array<std::uint8_t, 8> read_device_identifier_payload() {
@@ -113,6 +129,8 @@ ParseResult parse_driver_command(const std::vector<std::uint8_t>& bytes) {
         return {{}, ParseError::InvalidArgumentValue};
     if (id == 0x09 && !valid_master_volume_max(bytes.data() + 4U, expected))
         return {{}, ParseError::InvalidArgumentValue};
+    if (id == 0x03 && !valid_input_gain_arguments(bytes.data() + 4U, expected))
+        return {{}, ParseError::InvalidArgumentValue};
 
     DriverCommand command;
     command.id = id;
@@ -142,6 +160,9 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
     if (command.id == 0x09 &&
         !valid_master_volume_max(command.payload.data(), command.payload.size()))
         throw std::invalid_argument("CD3313 master volume maximum must be in range 0..40");
+    if (command.id == 0x03 &&
+        !valid_input_gain_arguments(command.payload.data(), command.payload.size()))
+        throw std::invalid_argument("CD3313 input gain requires channel 0..6 and gain 0..3");
 
     const std::uint32_t header =
         (1U << 30U) |
