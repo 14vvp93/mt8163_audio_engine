@@ -288,3 +288,13 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - CD3313 Protocol Safety run [43305452037](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43305452037) completed SUCCESS after the channel 0..5 correction: host tests, ASAN/UBSAN and seeded libFuzzer all PASS.
 - AudioCore TSAN run [43305452073](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43305452073) completed SUCCESS.
 - These runs cover code commit `f664d0ea`; current branch HEAD `7d893a72` includes that commit and subsequent documentation-only updates. HOST VERIFIED. Android ABI, target kernel, board topology and physical device remain UNVERIFIED.
+
+
+### P0-A follow-up — application caller values and remaining evidence gaps
+
+- Added [CD3313_HEQ_CALLER_AUDIT.md](analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) from the recovered HEQ APK (`a7c6e116…`). It records concrete ASP caller values for treble, bass, loudness, subwoofer, four-channel balance and master-volume normalization, including the boot replay path.
+- The recovered HEQ callsites use four balance values scaled to 0..15, loudness/subwoofer enable values normalized to 0/1, and nonuniform second arguments for treble/bass/subwoofer. Do not collapse those second arguments into one assumed range.
+- `setInputGain()` and `setMasterVolumeMax()` were not found in the inspected `AspSettings` class. This is scoped to this APK slice, not proof of no other firmware callers.
+- The `0x03` callback range analysis is now documented: vendor rejects channel -1 and 6, fails to bound values 7+, and writes through a seven-byte `channel_gain` array. The replacement restricts channels to 0..5 and gains to 0..3; tests cover channel 6 and 7 rejection.
+- Remaining P0-A blockers are the full VDEX caller/callsite inventory, the exact policy for the legacy JNI extra word (compatibility adapter versus new bounded ABI), and the exact vendor kernel source/config for `__check_object_size`/hardened-usercopy. The connected Dropbox root and searches currently return no firmware/kernel source files; do not infer that the user's other Dropbox folders are empty.
+- Keep the native transport detached. No direct `/dev/audiomux` client, ioctl, I2C write, GPIO change, module load or physical-device test has been implemented or performed.
