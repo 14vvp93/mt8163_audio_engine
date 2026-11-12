@@ -40,6 +40,21 @@ jobs:
           git clone --depth 1 --branch android-9.0.0_r61 https://android.googlesource.com/platform/system/media platform/system/media
           git clone --depth 1 --branch android-9.0.0_r61 https://android.googlesource.com/platform/system/core platform/system/core
 
+      - name: Build and run host effect ABI smoke tests
+        run: |
+          mkdir -p build/host-effect
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror \
+            -I pcm-dsp/include \
+            -isystem platform/hardware/libhardware/include \
+            -isystem platform/system/media/audio/include \
+            -isystem platform/system/core/include \
+            -isystem platform/system/core/libcutils/include \
+            pcm-dsp/android/effect_library.cpp \
+            pcm-dsp/src/engine.cpp \
+            pcm-dsp/tests/android_effect_smoke_test.cpp \
+            -o build/host-effect/android_effect_smoke_test
+          ./build/host-effect/android_effect_smoke_test
+
       - name: Compile vendor effect library for ARMv7
         run: |
           mkdir -p build/android9-armv7
