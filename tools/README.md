@@ -44,8 +44,10 @@ For FM routing, it additionally captures `/proc/asound/cards`,
 `/proc/asound/pcm`, `/proc/fm`, FM device-node metadata, all candidate
 `audio_policy_configuration*.xml` files, `fm_cust.cfg` from common firmware
 search locations, and read-only pinctrl debugfs snapshots when root access
-allows them. It also records `dumpsys media.audio_policy` and `getprop`, which
-help determine the policy actually loaded and the runtime FM control flags.
+allows them. It also records `dumpsys media.audio_policy`, `dumpsys media.audio_flinger`,
+`getprop`, filtered Bluetooth manager state, and audio media metrics. These
+help identify the active output thread/effect chain, negotiated A2DP codec,
+offload state/properties, and FM control flags.
 
 ### Safety and sharing
 
