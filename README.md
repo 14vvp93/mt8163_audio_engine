@@ -8,10 +8,9 @@ The target is one integrated **MT8163 Audio Engine** that replaces the factory v
 
 The authoritative scope, ownership rules, priorities, replacement boundary, and definition of done are documented in [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). That goal supersedes the earlier interim approach described in the historical implementation notes below. Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
 
-## Interim implementation notes (historical; superseded as the target architecture)
+## Historical research notes (not the current product target)
 
-
-Do not replace the stock MTK audio HAL wholesale. Preserve its routing, device control, call paths, microphone handling, and existing ACF/HCF backend while developing an independent PCM DSP engine.
+The notes below record an earlier, narrower implementation phase. They are retained as technical evidence and must not be used as the current architecture decision. The current target is the integrated Audio Engine defined above: replace the factory vendor audio implementation end to end while preserving required Android framework and kernel contracts. Any statement below that recommends retaining the stock MTK audio HAL as the final solution is historical and superseded.
 
 ### Planned components
 
