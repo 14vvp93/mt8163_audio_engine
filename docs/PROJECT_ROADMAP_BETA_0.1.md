@@ -273,3 +273,10 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - [ ] Confirm vendor `__check_object_size` and hardened-usercopy behavior from exact kernel source/config.
 - [ ] Reconcile all command IDs and branch-local side effects against the paired vendor build; keep production transport detached.
 - [ ] No target ABI, board topology, hardware I/O or device validation is complete.
+
+
+### CI closure for the current P0-A code set
+
+- CD3313 Protocol Safety run [43304787779](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43304787779) completed SUCCESS: host tests, ASAN/UBSAN and seeded libFuzzer all passed.
+- AudioCore TSAN run [43304787782](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43304787782) completed SUCCESS.
+- These runs cover the code set through commit `8fee63d1`; subsequent commits through the current roadmap update are documentation-only. Status: HOST VERIFIED for this code set. No Android ARM ABI, target-kernel build, or DEVICE VERIFIED claim is made.
