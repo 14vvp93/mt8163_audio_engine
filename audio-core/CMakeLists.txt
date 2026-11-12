@@ -2,6 +2,7 @@ add_library(mt8163_audio_core STATIC
     src/mute_arbiter.cpp
     src/cd3313_compat.cpp
     src/session_registry.cpp
+    src/snapshot_publisher_compile_check.cpp
 )
 target_include_directories(mt8163_audio_core PUBLIC include)
 target_compile_features(mt8163_audio_core PUBLIC cxx_std_17)
@@ -17,4 +18,10 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(mt8163_audio_core_session_tests PRIVATE mt8163_audio_core)
     target_compile_options(mt8163_audio_core_session_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME mt8163_audio_core_session_tests COMMAND mt8163_audio_core_session_tests)
+
+    find_package(Threads REQUIRED)
+    add_executable(mt8163_audio_core_snapshot_tests tests/snapshot_publisher_test.cpp)
+    target_link_libraries(mt8163_audio_core_snapshot_tests PRIVATE mt8163_audio_core Threads::Threads)
+    target_compile_options(mt8163_audio_core_snapshot_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME mt8163_audio_core_snapshot_tests COMMAND mt8163_audio_core_snapshot_tests)
 endif()
