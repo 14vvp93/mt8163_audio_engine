@@ -7,7 +7,7 @@ Updated: 2026-11-12
 **Phase 1 static ownership reconstruction is in progress.** The firmware analysis now covers the CD3313 JNI/kernel path, vehicle-state input, ACC mute call sites, FM direct/capture routes, A2DP and HFP/SCO separation, and the primary HAL's actual Normal processing boundary. The approved product target remains one unified engine replacing the factory vendor audio implementation.
 
 Current working branch: `feature/profile-transition-benchmark`.
-Current branch HEAD at last check: `542a2ee44d74ed76744aa51e672ed2384f6b5af8`.
+Current branch HEAD at last check: `885408b16faaf378db5e42841739d5661921e01a`.
 `main` was not changed. PR #1 is closed and not merged.
 
 ## New architecture and audit documents
@@ -63,22 +63,31 @@ Do not invent padding or reproduce this extra-word copy in a new hardware client
 - All three modules register the same misc-device name `audiomux`; runtime probe result and actual node owner remain unknown.
 - Do not load alternative modules experimentally. Obtain read-only boot log, module state and I2C probe evidence.
 
+## AudioCore foundation implementation
+
+The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
+
+- Source/route/mode identifiers are separate from legacy CD3313 reason values.
+- `MuteArbiter` tracks master and per-source mute owners independently, with idempotent owner set/clear operations.
+- `cd3313_compat` maps AudioCore owner masks to recovered CD3313 master/input reason bits. RadioScan and RadioPacketMute remain distinct internally while safely aggregating onto legacy radio reason bit 2.
+- `SessionRegistry` provides 16 fixed-capacity session slots and a validated Requested/Active/Suspended/Stopping/Failed lifecycle.
+- The module is control-plane only; it performs no HAL, Binder, ALSA, ioctl, I2C or GPIO operations.
+
 ## Test and validation status
 
-Latest previously successful feature-branch code CI was run against `aecc5f5f15a68f60d5e1639b9d7d43e46f6c8c8d` on 2026-11-12:
+Latest host-side CI for the new foundation:
 
-- PCM DSP core tests — success.
-- PCM DSP Stability Lab — success.
-- PCM DSP Performance Benchmark — success.
-- Repository integrity — success.
-- Android ARMv7 build and DSP benchmark — success.
-- Android test APK build — success.
+- [Test PCM DSP core — run 43254056322](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254056322) — success; includes both AudioCore tests.
+- [PCM DSP Stability Lab — run 43254056260](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254056260) — success.
+- [PCM DSP Performance Benchmark — run 43254056346](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254056346) — success.
+- [Repository integrity — run 43254056300](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254056300) — success.
+- Host CTest run includes 13 tests, all passed.
 
-These runs predate the documentation-only commits on the current branch HEAD. No new CI run for the latest documentation commits was observed at the last check.
+Android ARMv7 build compiled the AudioCore static library successfully in run 43253777747, but the added verification step initially looked in the wrong archive directory and failed. The archive path was corrected and the updated ARMv7 workflow is running as [run 43254125094](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094); final ELF verification and artifact upload are pending.
 
 Evidence classification:
-- **HOST VERIFIED:** existing PCM/DSP tests, stability lab, performance benchmark and CD3313 emulator tests covered by CI.
-- **ANDROID BUILD VERIFIED:** Android ARMv7 build and diagnostic/test APK packaging covered by CI.
+- **HOST VERIFIED:** AudioCore mute/compatibility and session-registry tests, PCM/DSP tests, stability lab and performance benchmark.
+- **ANDROID BUILD VERIFIED:** AudioCore source compilation for Android ARMv7 was observed; final archive ELF verification and artifact publication are pending.
 - **DEVICE VERIFIED:** no complete replacement route, CD3313 write transaction, FM/A2DP/HFP integration or factory cutover has been validated on the physical head unit.
 
 No live ioctl, I2C write, GPIO change, mixer write, audio-setting change or physical head-unit test has been performed in this phase.
