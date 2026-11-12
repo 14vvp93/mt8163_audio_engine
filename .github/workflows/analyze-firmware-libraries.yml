@@ -506,7 +506,7 @@ jobs:
                       pcm_hits.extend("  " + line[:400] for line in matches[:80])
               except OSError:
                   continue
-          pcm_out.write_text("\\n".join(pcm_hits) + ("\\n" if pcm_hits else "No FM I2S PCM endpoint names found in scanned kernel modules or text configs.\\n"))
+          pcm_out.write_text("\n".join(pcm_hits) + ("\n" if pcm_hits else "No FM I2S PCM endpoint names found in scanned kernel modules or text configs.\n"))
           print(f"FM I2S PCM-name hits: {len(pcm_hits)}")
           (out / "audio-policy-config-paths.txt").write_text("\n".join(libs) + ("\n" if libs else "No policy config path strings found in matching libraries.\n"))
           print(f"Found {len(refs)} FM/WMT symbol lines; found {len(libs)} policy config path lines")
