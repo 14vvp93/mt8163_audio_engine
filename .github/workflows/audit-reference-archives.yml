@@ -2,8 +2,6 @@ name: Audit and extract reference archives
 
 on:
   push:
-    branches:
-      - feature/cd3313-driver-rewrite
     paths:
       - "scripts/repository/prepare_reference_archives.py"
       - "scripts/repository/curate_audio_references.py"
@@ -14,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: reference-archive-audit-feature
+  group: reference-archive-audit-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +23,7 @@ jobs:
       - name: Check out working branch
         uses: actions/checkout@v5
         with:
-          ref: feature/cd3313-driver-rewrite
+          ref: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract every complete reference ZIP set
@@ -70,7 +68,7 @@ jobs:
             echo "Archive inventory is unchanged."
           else
             git commit -m "docs: record reference archive inventory"
-            git fetch origin feature/cd3313-driver-rewrite
-            git rebase origin/feature/cd3313-driver-rewrite
-            git push origin HEAD:feature/cd3313-driver-rewrite
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
