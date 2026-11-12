@@ -121,7 +121,7 @@ void test_backend_failure_is_propagated() {
     HardwareCommandBroker broker;
     FakeBackend backend;
     backend.result = HardwareResult::TransportError;
-    broker.attach(&backend);
+    require(broker.attach(&backend), "backend attaches");
     const HardwareCommand command{
         HardwareCommandKind::SelectSource,
         SourceId::LocalMedia,
