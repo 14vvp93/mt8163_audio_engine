@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/repository/prepare_reference_archives.py"
       - "scripts/repository/curate_audio_references.py"
+      - "scripts/repository/reassemble_heq_apk.py"
       - ".github/workflows/audit-reference-archives.yml"
   workflow_dispatch:
 
@@ -39,6 +40,10 @@ jobs:
           python3 scripts/repository/curate_audio_references.py \
             --expanded "$RUNNER_TEMP/mt8163-reference-expanded" \
             --destination reference-materials/extracted
+
+      - name: Verify reassembly of the committed HEQ APK chunks
+        run: |
+          python3 scripts/repository/reassemble_heq_apk.py --output "$RUNNER_TEMP/HEQ-verified.apk"
 
       - name: Upload extracted reference tree for inspection
         uses: actions/upload-artifact@v6
