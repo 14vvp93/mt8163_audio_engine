@@ -2,6 +2,7 @@ add_library(mt8163_audio_core STATIC
     src/mute_arbiter.cpp
     src/cd3313_compat.cpp
     src/session_registry.cpp
+    src/route_policy.cpp
     src/audio_core.cpp
     src/hardware_broker.cpp
     src/snapshot_publisher_compile_check.cpp
@@ -20,6 +21,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(mt8163_audio_core_coordinator_tests PRIVATE mt8163_audio_core)
     target_compile_options(mt8163_audio_core_coordinator_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME mt8163_audio_core_coordinator_tests COMMAND mt8163_audio_core_coordinator_tests)
+
+    add_executable(mt8163_audio_core_route_tests tests/route_policy_test.cpp)
+    target_link_libraries(mt8163_audio_core_route_tests PRIVATE mt8163_audio_core)
+    target_compile_options(mt8163_audio_core_route_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME mt8163_audio_core_route_tests COMMAND mt8163_audio_core_route_tests)
 
     add_executable(mt8163_audio_core_hardware_tests tests/hardware_broker_test.cpp)
     target_link_libraries(mt8163_audio_core_hardware_tests PRIVATE mt8163_audio_core)
