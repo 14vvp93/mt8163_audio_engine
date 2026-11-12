@@ -22,6 +22,9 @@ enum class PcmResult : std::uint8_t {
     NotOpen,
     InvalidState,
     BackendFailure,
+    WouldBlock,
+    Xrun,
+    DeviceLost,
     BufferTooLarge,
     CapacityExceeded
 };
@@ -68,7 +71,9 @@ constexpr bool is_valid_pcm_config(const PcmConfig& config) noexcept {
 // Implementations must be preallocated, bounded and noexcept. open/configure/
 // start/stop/close belong to the HAL stream lifecycle, not the PCM callback.
 // write() is the realtime entry point: it must not allocate, log, block on a
-// mutex, or perform control-plane device discovery. The implementation must
+// mutex, block on I/O, or perform control-plane device discovery. It must use
+// a nonblocking/bounded transport and report WouldBlock/Xrun/DeviceLost rather
+// than performing recovery in the callback. The implementation must
 // preserve caller buffer ownership and consume exactly frame_count frames.
 class PcmBackend {
 public:
