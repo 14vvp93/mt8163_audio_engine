@@ -5,6 +5,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 ## Project direction and status
 
 - [Repository migration readiness](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.\n- [Public compute worker](PUBLIC_COMPUTE_WORKER.md) — repository ownership, worker invocation and artifact handoff.
+- [Firmware dataset migration](public-compute/FIRMWARE_DATASET_LAYOUT.md) — public firmware layout, verified transfer and archive deletion decision.
+- [Public compute operating procedures](public-compute/WORKFLOWS.md) — workflow catalog and execution rules.
 
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — workflow inventory, branch pinning and follow-up review.
 
@@ -79,18 +81,15 @@ Use this page as the navigation map for the project. The documents remain groupe
 ## Tools
 
 - [ADB audio and Device Tree diagnostics collector](../tools/README.md)
-- [Reference archive extraction utility](../scripts/repository/prepare_reference_archives.py)
-- [Complete firmware reference tree builder](../scripts/repository/curate_audio_references.py)
-- [HEQ APK chunk reassembler and SHA-256 verifier](../scripts/repository/reassemble_heq_apk.py)
 - [Offline Markdown link checker](../scripts/repository/check_markdown_links.py)
 
 ## Repository areas
 
-- `.github/workflows/` — CI, static analysis, archive extraction and validation workflows.
+- `.github/workflows/` — product CI, Android builds, host tests and entry points to public compute workers.
 - `android-test/` — Android-side bring-up and read-only API probes.
 - `cd3313-emulator/` — offline CD3313 protocol/state model and host tests.
 - `kernel/cd3313/` — CD3313 rewrite plan and future kernel implementation.
 - `pcm-dsp/` — PCM/DSP code, JNI bridge, tests and benchmarks.
-- `reference-materials/` — original firmware archives, immutable reference binaries and the complete organized extracted filesystem tree.
-- `scripts/repository/` — reproducible repository-maintenance utilities.
+- Firmware data — stored in `14vvp93/public_calculations/firmware/`; not duplicated in this private repository.
+- `scripts/repository/` — private repository-maintenance utilities.
 - `tools/` — diagnostic and reverse-engineering helper scripts.
