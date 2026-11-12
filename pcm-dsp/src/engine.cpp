@@ -199,7 +199,12 @@ bool Engine::process(const std::int16_t* input,
     // a1/a2 values can move poles outside the unit circle. Run both stable
     // filter banks in parallel and crossfade their outputs instead.
     if (coefficients_changed) {
-        transition_states_ = states_;
+        // Filter state coordinates depend on the active coefficient set.
+        // Start the target bank clean rather than transplanting potentially
+        // incompatible delay states from a different filter topology.
+        for (auto& band : transition_states_) {
+            for (auto& channel : band) channel = {};
+        }
     }
 
     const float threshold = clamp(parameters.limiter_threshold, 0.1F, 1.0F);
