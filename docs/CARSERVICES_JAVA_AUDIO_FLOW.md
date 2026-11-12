@@ -389,3 +389,8 @@ The `/dev/fm` owner and its nonstandard ioctl copy sizes are documented in [MT66
 
 
 The paired MT6627 kernel implementation, exact ioctl sizes, and WMT I2S pin-control evidence are now documented in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md). Note that the kernel copies 20 bytes for `0xC004F530` and 12 bytes for `0xC004F521`, although both ioctl values encode size 4.
+
+
+## Audio Policy producer of FM_DIRECT_CONTROL
+
+The firmware's `libaudiopolicycustomextensions.so` resolves the source of the `FM_DIRECT_CONTROL` AudioParameter key. `AudioPolicyManagerCustomImpl::setFMIndirectMode(unsigned int)` adds the key and sends it through the Audio Policy client's `setParameters` callback: value 1 for an argument below 48,001 and value 0 for 48,001 or higher. Its `isFMDirectMode()` predicate recognizes an FM Tuner input patch by device mask `0x80002000` plus two patch-state fields. This is the policy-side producer; it is not a RadioService Java setting or a user app toggle. Full binary identity and offsets are in [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md).
