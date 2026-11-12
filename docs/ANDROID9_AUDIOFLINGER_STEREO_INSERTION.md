@@ -174,11 +174,11 @@ XML registration, system image or device configuration was modified.
 |---|---|---|
 | Before speaker mono fold | No | Yes, on mixer path |
 | Stereo preserved for speaker route | No | Expected; must verify live |
-| Scope | Normal handler only | Global selected output mix |
+| Scope | Normal handler only | Preferred: legacy Music stream session; fallback: global output mix |
 | Framework effect API | No | Yes |
 | Requires vendor HAL patch | Likely for custom replacement | Not necessarily; requires effect registration/privilege |
 | Offload/direct coverage | Not established | Not guaranteed; output-mix rejected on direct threads |
-| Current project status | Static call site proven | Framework candidate; target-specific validation pending |
+| Current project status | Static call site proven | Music postprocess candidate identified; target-specific validation pending |
 
 ## 7. Recommended direction
 
