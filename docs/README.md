@@ -77,7 +77,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 - [ADB audio and Device Tree diagnostics collector](../tools/README.md)
 - [Reference archive extraction utility](../scripts/repository/prepare_reference_archives.py)
-- [Curated reference promotion utility](../scripts/repository/curate_audio_references.py)
+- [Complete firmware reference tree builder](../scripts/repository/curate_audio_references.py)
 
 ## Repository areas
 
