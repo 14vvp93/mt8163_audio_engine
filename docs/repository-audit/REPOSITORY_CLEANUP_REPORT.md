@@ -68,7 +68,7 @@ The full binary scan covered 1,117 native ARM objects. It identified direct fact
 
 ## Remaining work
 
-- Run a repository-wide Markdown-link check.
+- Repository-wide Markdown link check passed: 172 local links across 61 Markdown files (run 43203141154).
 - Continue call-graph and dependency-closure analysis, especially framework-level audiomux access and the primary HAL dependency graph.
 - Confirm which alternative DSP kernel module is selected on the target board.
 - Keep target-device validation separate from static and host-side evidence.
