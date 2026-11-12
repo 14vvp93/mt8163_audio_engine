@@ -215,3 +215,18 @@ Start with **P0-A: CD3313 memory-safety and protocol audit**. In parallel, conti
 - Fuzzing has not yet completed successfully on the expanded workflow.
 - Invalid/null pointer behavior at the JNI/kernel boundary requires source-level analysis; the userspace vector parser itself does not accept raw pointers.
 - Production transport remains disabled.
+
+### P0-A follow-up — evidence reconciliation and CI results
+
+- Added [CD3313_EVIDENCE_RECONCILIATION.md](CD3313_EVIDENCE_RECONCILIATION.md). It identifies the vendor archive module (Build ID e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56) as the stronger installed-module candidate and explicitly separates it from the older standalone module (Build ID dae15c9eb019e9388d15cb88088c202d017ebcf0).
+- Recorded the static JNI framing formula: array_length + 1 words. The extra word is a confirmed over-read in the factory JNI/kernel pair; a future compatibility bridge must allocate and initialize its own extra word or deliberately revise the ABI only after caller inventory.
+- The current vendor-module ABI audit reports a special 0x09 branch. The parser now safely recognizes 0x09 as a one-word opaque command; no operation semantics or hardware behavior are inferred.
+- Recorded unresolved evidence conflicts around 0x03 minimum-length validation and the exact vendor-module command map. The older standalone dispatch map is not treated as authoritative for the installed candidate.
+- Consolidated CD3313 checks into the existing .github/workflows/test-cd3313-emulator.yml rather than retaining duplicate workflows. It now covers integration/beta-0.1, normal host tests, ASAN/UBSAN and a bounded Clang libFuzzer run.
+- CI run [43301144576](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43301144576) passed all three jobs: host-tests, sanitizer-tests and libfuzzer. This run includes the 0x09 parser and boundary coverage.
+- CI run [43301304060](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43301304060) is queued for the additional legacy JNI initialized-padding regression test. Do not mark that exact latest test as passed until this run completes.
+- Latest known integration commit at this update: ae0f081bb40ce707f314b28915fa407736818e93.
+
+### Updated immediate P0-A focus
+
+Continue with the exact vendor archive module's callback disassembly and reconcile every command ID, length check and argument read. Specifically resolve the 0x03 discrepancy, determine the 0x09 operation, inventory all Java/Binder command-array callers, and define the safe legacy JNI compatibility buffer. Do not enable hardware transport.
