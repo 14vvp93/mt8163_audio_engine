@@ -76,7 +76,7 @@ struct EffectContext {
     std::array<std::int16_t, kMaxFloatFrames * 2U> float_output{};
     bool was_processing{false};
 
-    explicit EffectContext(const effect_interface_s* itf) : interface(itf) {
+    explicit EffectContext(effect_interface_s* itf) : interface(itf) {
         slots[0].value = control_parameters;
     }
 };
