@@ -194,3 +194,24 @@ Start with **P0-A: CD3313 memory-safety and protocol audit**. In parallel, conti
 ---
 
 **Decision:** This roadmap is the agreed project route for MT8163 Audio Engine Beta 0.1. Any proposed deviation must be evaluated against safety, ABI compatibility, route correctness and measurable performance, and must not silently change the agreed priority order.
+
+## 9. Execution log — 2026-11-12
+
+### P0-A work started
+
+- Added `cd3313-emulator/tests/protocol_boundary_test.cpp` to systematically exercise every recovered normal command and both special dispatch commands at their minimum/required payload sizes, with truncated and oversized frames, round-trip encoding, and the 63/64-word slab boundary.
+- Added the `cd3313_protocol_boundary_tests` CTest target.
+- Added `.github/workflows/cd3313-protocol-safety.yml` with normal protocol tests and ASAN/UBSAN execution.
+- Added bounded libFuzzer harness `cd3313-emulator/fuzz/protocol_fuzz.cpp`. The harness caps each input at 1024 bytes and round-trips every accepted frame through the encoder/parser.
+- Added optional Clang-only `CD3313_BUILD_FUZZER` CMake target and a 45-second libFuzzer CI job.
+- CI run [43300447361](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43300447361) completed successfully: `protocol-tests` PASS and `protocol-asan-ubsan` PASS. This run predates the newly added libFuzzer job.
+- CI run [43300480240](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43300480240) is checking the expanded workflow including libFuzzer. At the time of this log, the normal protocol test passed; ASAN/UBSAN and libFuzzer were still running.
+- Latest known integration commit at log creation: `46aa65ad8b691b127d4d42a88b6391f4b3111185`.
+
+### Remaining P0-A gaps
+
+- The exact factory JNI/kernel frame-length contract is not yet reconciled byte-for-byte.
+- Command-specific field ranges and response semantics still need a complete source-backed specification; opaque words must not be guessed.
+- Fuzzing has not yet completed successfully on the expanded workflow.
+- Invalid/null pointer behavior at the JNI/kernel boundary requires source-level analysis; the userspace vector parser itself does not accept raw pointers.
+- Production transport remains disabled.
