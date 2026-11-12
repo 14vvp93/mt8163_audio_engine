@@ -13,7 +13,7 @@ This directory contains the first host-testable primitives for the unified MT816
 - Explicit mapping from AudioCore mute owners to the paired CD3313 legacy reason masks.
 - Shared legacy radio reason 2 remains asserted until both RadioScan and RadioPacketMute owners release it.
 - Fixed-size state with no dynamic allocation in the mute arbiter.
-- Initial AudioCore coordinator that owns session lifecycle, mute state, audio mode and the single hardware-command broker, then publishes a compact immutable snapshot to the PCM plane.
+- Initial AudioCore coordinator that owns session lifecycle, mute state, audio mode and the single hardware-command broker, then publishes a fixed-size immutable snapshot to the PCM plane, including every active session's handle, source, route and lifecycle state.
 - Semantic hardware commands for source selection and master/per-source mute, with strict input validation, one non-owning backend attachment and explicit error propagation. The broker has no CD3313 ioctl numbers or guessed wire format; it is callable only from the serialized control context.
 - Snapshot generation tracking and a dirty/retry contract when all inactive publisher slots are pinned.
 
