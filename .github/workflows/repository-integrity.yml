@@ -18,7 +18,13 @@ jobs:
   markdown-links:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
+      - name: Check out Markdown files only
         uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /*.md
+            **/*.md
+            /scripts/repository/check_markdown_links.py
+          sparse-checkout-cone-mode: false
       - name: Validate local Markdown links
         run: python3 scripts/repository/check_markdown_links.py
