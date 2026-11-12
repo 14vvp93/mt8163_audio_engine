@@ -1,6 +1,7 @@
 #include <hardware/audio_effect.h>
 #include <system/audio.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
