@@ -120,6 +120,65 @@ void test_concurrent_readers_never_observe_torn_snapshot() {
             "concurrent readers observe only coherent snapshots");
 }
 
+
+struct MultiWriterSnapshot {
+    std::uint64_t sequence{0U};
+    std::uint64_t inverse{~std::uint64_t{0U}};
+    std::uint64_t writer{0U};
+    std::uint64_t check{0U};
+};
+
+static_assert(std::is_trivially_copyable<MultiWriterSnapshot>::value,
+              "multi-writer snapshot must be trivially copyable");
+
+void test_concurrent_writers_are_serialized_or_rejected() {
+    constexpr std::uint64_t kUpdatesPerWriter = 30000U;
+    SnapshotPublisher<MultiWriterSnapshot> publisher(MultiWriterSnapshot{});
+    std::atomic<unsigned> completed{0U};
+    std::atomic<bool> failed{false};
+
+    auto writer_body = [&](std::uint64_t writer_id) {
+        for (std::uint64_t i = 1U; i <= kUpdatesPerWriter; ++i) {
+            const std::uint64_t sequence = (writer_id << 48U) | i;
+            const MultiWriterSnapshot next{
+                sequence, ~sequence, writer_id, sequence ^ writer_id};
+            while (!publisher.publish(next)) std::this_thread::yield();
+        }
+        completed.fetch_add(1U, std::memory_order_release);
+    };
+
+    auto reader_body = [&]() {
+        while (completed.load(std::memory_order_acquire) != 2U) {
+            auto snapshot = publisher.try_acquire();
+            if (!snapshot) continue;
+            if (snapshot->inverse != ~snapshot->sequence ||
+                snapshot->check != (snapshot->sequence ^ snapshot->writer)) {
+                failed.store(true, std::memory_order_relaxed);
+                return;
+            }
+            // Keep the slot pinned briefly to exercise writer backpressure.
+            std::this_thread::yield();
+        }
+    };
+
+    std::thread writer1(writer_body, 1U);
+    std::thread writer2(writer_body, 2U);
+    std::thread reader1(reader_body);
+    std::thread reader2(reader_body);
+    writer1.join();
+    writer2.join();
+    reader1.join();
+    reader2.join();
+
+    require(!failed.load(std::memory_order_relaxed),
+            "concurrent writers never expose a partially written snapshot");
+    auto final_snapshot = publisher.try_acquire();
+    require(static_cast<bool>(final_snapshot), "final snapshot remains readable");
+    require(final_snapshot->inverse == ~final_snapshot->sequence &&
+            final_snapshot->check == (final_snapshot->sequence ^ final_snapshot->writer),
+            "final snapshot fields remain coherent after concurrent writer stress");
+}
+
 }  // namespace
 
 int main() {
@@ -127,6 +186,7 @@ int main() {
     test_pinned_slots_apply_backpressure();
     test_mute_snapshot_publication();
     test_concurrent_readers_never_observe_torn_snapshot();
+    test_concurrent_writers_are_serialized_or_rejected();
     std::cout << "AudioCore snapshot publisher tests passed\n";
     return 0;
 }

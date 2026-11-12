@@ -49,19 +49,25 @@ transactions, GPIO changes, module loads/unloads, property changes or mixer
 writes. Permission-denied output is retained as evidence, not treated as an
 empty result.
 
-Review dumpsys and log files before sharing; they may contain process,
-package or session metadata.
+Mixer commands are invoked without write arguments and are used only to list
+current controls/values. Review dumpsys and log files before sharing; they may
+contain process, package or session metadata.
 EOF2
 
 run_device_read fingerprint 'for key in ro.build.fingerprint ro.build.version.release ro.build.version.sdk ro.product.board ro.hardware ro.boot.hardware ro.vendor.build.fingerprint ro.vendor.build.version.sdk; do printf "%s=" "$key"; getprop "$key"; done'
 run_device_read kernel_modules 'cat /proc/modules'
 run_device_read alsa_cards 'cat /proc/asound/cards'
 run_device_read alsa_pcm 'cat /proc/asound/pcm'
+run_device_read alsa_pcm_runtime 'for file in /proc/asound/card*/pcm*/info /proc/asound/card*/pcm*/sub*/status; do [ -r "$file" ] || continue; printf "\\n=== %s ===\\n" "$file"; cat "$file"; done'
+run_device_read alsa_sysfs 'ls -l /sys/class/sound /dev/snd'
+run_device_read mixer_controls 'if command -v tinymix >/dev/null 2>&1; then tinymix; elif command -v amixer >/dev/null 2>&1; then for card in /proc/asound/card*; do [ -e "$card" ] || continue; idx=${card##*card}; amixer -c "$idx" contents; done; else echo "tinymix/amixer not available"; fi'
 run_device_read audio_device_nodes 'ls -l /dev/audiomux /dev/carstatus /dev/fm'
 run_device_read i2c_devices 'ls -l /sys/bus/i2c/devices'
 run_device_read platform_devices 'ls -l /sys/bus/platform/devices'
 run_device_read policy_candidates 'ls -l /vendor/etc/audio_policy_configuration.xml /system/etc/audio_policy_configuration.xml /vendor/etc/audio_policy.conf /system/etc/audio_policy.conf'
 run_device_read policy_hashes 'sha256sum /vendor/etc/audio_policy_configuration.xml /system/etc/audio_policy_configuration.xml /vendor/etc/audio_policy.conf /system/etc/audio_policy.conf'
+run_device_read audio_hal_binary 'for file in /vendor/lib/hw/audio.primary.mt8163.so /vendor/lib64/hw/audio.primary.mt8163.so /system/lib/hw/audio.primary.mt8163.so; do [ -r "$file" ] || continue; ls -l "$file"; sha256sum "$file"; done'
+run_device_read audio_properties 'getprop | grep -Ei "audio|bluetooth|fm|media"'
 run_device_read audio_services 'service list'
 run_device_read hal_services 'lshal'
 run_device_read audio_flinger 'dumpsys media.audio_flinger'
@@ -70,10 +76,9 @@ run_device_read processes 'ps -A'
 run_device_read device_logs 'logcat -d -v threadtime | grep -Ei "audiomux|cd3313|ak7604|fy7604|carstatus|fmradio|FM_I2S|HFP|SCO"'
 run_device_read kernel_log 'dmesg'
 
-fd_command='for proc in /proc/[0-9]*; do pid=${proc##*/}; for fd in "$proc"/fd/*; do target=$(readlink "$fd" 2>/dev/null) || continue; case "$target" in /dev/audiomux|/dev/carstatus|/dev/fm) printf "%s %s -> %s\n" "$pid" "${fd##*/}" "$target" ;; esac; done; done'
+fd_command='for proc in /proc/[0-9]*; do pid=${proc##*/}; for fd in "$proc"/fd/*; do target=$(readlink "$fd" 2>/dev/null) || continue; case "$target" in /dev/audiomux|/dev/carstatus|/dev/fm|/dev/snd/*) printf "%s %s -> %s\\n" "$pid" "${fd##*/}" "$target" ;; esac; done; done'
 run_device_read audio_device_fd_owners "$fd_command"
 
-# Compact companion log file, restricted to the relevant audio subsystems.
 grep -Ei 'audiomux|cd3313|ak7604|fy7604|carstatus|fmradio|FM_I2S|HFP|SCO' \
     "$OUT_DIR/device_logs.txt" "$OUT_DIR/kernel_log.txt" \
     > "$OUT_DIR/audio_related_logs.txt" 2>/dev/null || true
