@@ -375,3 +375,25 @@ image modification has been performed.
 
 Detailed decision and AOSP references: [Android 9 AudioFlinger stereo
 insertion candidate](ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md).
+
+## 15. Refined Android 9 insertion candidate: stream-specific Music postprocess
+
+The Audio Effects v2.0 configuration schema supports a `postprocess` list
+keyed by output stream type, including `music`. AOSP
+`AudioPolicyEffects::addOutputSessionEffects()` resolves the configured
+postprocess list for the requested stream and creates/enables its effect on
+the output audio session. This is a narrower candidate than a global
+`AUDIO_SESSION_OUTPUT_MIX` effect and can target the legacy Music stream.
+
+The effect still runs in AudioFlinger before the vendor HAL receives the PCM
+block, so it is upstream of the MT8163 Normal handler's speaker mono fold.
+However, this exact behavior must be confirmed against the target's Android 9
+framework tag and vendor modifications. Legacy stream classification may
+also place navigation or other usages on Music. The extracted vendor
+`audio_effects.xml` must be checked for schema version and existing
+`postprocess` entries before any change.
+
+Prefer a Music postprocess attachment for the first prototype. Retain a
+session-0 output-mix effect only as a fallback when broader global processing
+is explicitly intended. Detailed AOSP references and constraints are in
+[ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md](ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md).
