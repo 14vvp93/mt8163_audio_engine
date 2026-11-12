@@ -179,7 +179,7 @@ int main() {
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "CD3313 protocol boundary test failure: "
-                  << error.what() << '\\n';
+                  << error.what() << '\n';
         return 1;
     }
 }
