@@ -1,0 +1,24 @@
+name: Repository integrity
+
+on:
+  push:
+    branches: [main, feature/cd3313-driver-rewrite]
+    paths:
+      - "**/*.md"
+      - "README.md"
+      - "scripts/repository/check_markdown_links.py"
+      - ".github/workflows/repository-integrity.yml"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown-links:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Validate local Markdown links
+        run: python3 scripts/repository/check_markdown_links.py
