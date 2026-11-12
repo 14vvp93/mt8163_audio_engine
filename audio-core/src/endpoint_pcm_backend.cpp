@@ -101,6 +101,7 @@ PcmResult EndpointPcmBackend::open(RouteType route, StreamToken* token) noexcept
     free_slot->token = allocated;
     free_slot->native_handle = native_handle;
     free_slot->config = PcmConfig{};
+    free_slot->write_busy.clear(std::memory_order_relaxed);
     free_slot->state.store(state_value(PcmStreamState::Open), std::memory_order_release);
     *token = allocated;
     return PcmResult::Ok;
@@ -149,9 +150,11 @@ PcmResult EndpointPcmBackend::write(StreamToken token,
     }
     if (interleaved == nullptr || frame_count == 0U) return PcmResult::InvalidArgument;
     if (frame_count > kMaxEndpointPcmWriteFrames) return PcmResult::BufferTooLarge;
+    if (slot->write_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
 
     const PcmResult result = ops_.write(ops_.context, slot->native_handle,
                                         interleaved, frame_count);
+    slot->write_busy.clear(std::memory_order_release);
     if (result == PcmResult::Xrun || result == PcmResult::DeviceLost) {
         slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
@@ -177,7 +180,9 @@ PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
     if (slot->state.load(std::memory_order_acquire) == state_value(PcmStreamState::Started)) {
         return PcmResult::InvalidState;
     }
+    if (slot->write_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
     const PcmResult result = ops_.close(ops_.context, slot->native_handle);
+    slot->write_busy.clear(std::memory_order_release);
     if (result == PcmResult::Ok) {
         slot->token = 0U;
         slot->native_handle = 0U;

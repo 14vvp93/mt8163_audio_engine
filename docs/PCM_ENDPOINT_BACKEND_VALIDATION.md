@@ -9,13 +9,14 @@ CTest suite. It covers:
 - valid configure/start/write/stop/close lifecycle;
 - rejection of four-channel configurations until target evidence supports them;
 - callback frame-count bounds;
+- overlapping writes on the same stream returning `WouldBlock`;
 - XRUN propagation and transition to a failed state;
 - duplicate route and non-PCM endpoint-table rejection.
 
-The endpoint backend uses atomic state publication because PCM writes may
-arrive concurrently. Lifecycle operations remain serialized by the control
-plane; the PcmStreamBroker closes callback admission and drains active writes
-before stop/close.
+The endpoint backend uses atomic state publication and a per-stream atomic
+write gate because PCM callbacks may arrive concurrently. Lifecycle
+operations remain serialized by the control plane; the PcmStreamBroker closes
+callback admission and drains active writes before stop/close.
 
 ## Android build
 

@@ -39,10 +39,10 @@ struct PcmDeviceOps {
 };
 
 // Concrete route/configuration/lifecycle adapter. Lifecycle calls are
-// serialized by the control plane; writes may run concurrently on a handle.
-// The platform supplies a validated endpoint table and PcmDeviceOps; this
-// class owns token mapping, state validation and bounded dispatch. It does
-// not guess card/device IDs and does not itself issue ALSA ioctls.
+// serialized by the control plane; writes may arrive concurrently, but this
+// class admits only one platform write per stream and returns WouldBlock for
+// overlapping callbacks. The platform supplies a validated endpoint table
+// and PcmDeviceOps; card/device IDs are never guessed here.
 class EndpointPcmBackend final : public PcmBackend {
 public:
     EndpointPcmBackend(const PcmEndpoint* endpoints, std::size_t endpoint_count,
@@ -66,6 +66,7 @@ private:
         PcmConfig config{};
         std::atomic<std::uint32_t> state{
             static_cast<std::uint32_t>(PcmStreamState::Closed)};
+        std::atomic_flag write_busy = ATOMIC_FLAG_INIT;
     };
 
     const PcmEndpoint* find_endpoint(RouteType route) const noexcept;

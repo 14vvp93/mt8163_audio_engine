@@ -18,6 +18,10 @@ struct FakeDevice {
     std::uint32_t closes{0U};
     PcmConfig last_config{};
     PcmResult next_write_result{PcmResult::Ok};
+    EndpointPcmBackend* backend{nullptr};
+    PcmBackend::StreamToken reenter_token{0U};
+    bool reenter_write{false};
+    PcmResult nested_write_result{PcmResult::Ok};
 };
 
 void require(bool condition, const char* message) {
@@ -51,6 +55,10 @@ PcmResult fake_write(void* context, std::uint32_t, const std::int16_t* data,
     auto& fake = *static_cast<FakeDevice*>(context);
     if (data == nullptr || frames == 0U) return PcmResult::InvalidArgument;
     ++fake.writes;
+    if (fake.reenter_write) {
+        fake.reenter_write = false;
+        fake.nested_write_result = fake.backend->write(fake.reenter_token, data, 1U);
+    }
     const PcmResult result = fake.next_write_result;
     fake.next_write_result = PcmResult::Ok;
     return result;
@@ -113,6 +121,15 @@ void test_state_and_error_boundaries() {
     require(backend.configure(token, PcmConfig{48000U, 2U, 256U}) == PcmResult::Ok,
             "valid config accepted");
     require(backend.start(token) == PcmResult::Ok, "stream starts");
+
+    fake.backend = &backend;
+    fake.reenter_token = token;
+    fake.reenter_write = true;
+    require(backend.write(token, sample, 1U) == PcmResult::Ok,
+            "outer platform write completes");
+    require(fake.nested_write_result == PcmResult::WouldBlock,
+            "overlapping write on one stream is rejected without waiting");
+
     require(backend.write(token, sample, kMaxEndpointPcmWriteFrames + 1U) ==
                 PcmResult::BufferTooLarge,
             "oversized callback rejected");

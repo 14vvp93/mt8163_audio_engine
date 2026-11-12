@@ -10,6 +10,8 @@
 - opaque stream tokens independent of native PCM handles;
 - validated Open → Configured → Started → Stopped → Closed lifecycle;
 - bounded write dispatch with PCM16 frame validation;
+- a lock-free per-stream write gate: overlapping callbacks return
+  `WouldBlock` instead of concurrently entering the platform PCM API;
 - XRUN and device-loss propagation without recovery or allocation in the
   callback path;
 - injectable platform operations so host tests can verify route mapping,
@@ -24,9 +26,11 @@ runtime availability. These must be collected from the target device.
 
 The platform layer must supply `PcmEndpoint` records only after read-only
 runtime evidence has identified each endpoint. A tinyalsa or other platform
-adapter can implement `PcmDeviceOps`; it must guarantee nonblocking bounded
-writes, per-handle concurrency safety, and no allocation/logging in the
-callback. The current host fake is a test double, not a hardware driver.
+adapter can implement `PcmDeviceOps`. Lifecycle operations are serialized
+by the control plane; the endpoint adapter serializes writes per stream and
+requires platform callbacks to be safe across independent handles. The
+platform write callback must be bounded, nonblocking and free of allocation
+and logging. The current host fake is a test double, not a hardware driver.
 
 ## Integration gates
 
