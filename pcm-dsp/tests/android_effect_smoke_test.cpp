@@ -183,6 +183,22 @@ int main() {
                 "A2DP PCM route applies the software preamp");
     }
 
+    // The A2DP HAL contains an offload-control path. Even at the
+    // otherwise-supported 44.1 kHz PCM profile, an offloaded effect instance
+    // must bypass rather than process a stream whose PCM ownership is unclear.
+    set_route(handle, AUDIO_DEVICE_OUT_BLUETOOTH_A2DP);
+    effect_offload_param_t a2dp_offload{};
+    a2dp_offload.isOffload = true;
+    send_command(handle, EFFECT_CMD_OFFLOAD, sizeof(a2dp_offload),
+                 &a2dp_offload);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "A2DP offload bypass succeeds");
+    require(output == input, "A2DP offload bypass is bit-exact");
+    a2dp_offload.isOffload = false;
+    send_command(handle, EFFECT_CMD_OFFLOAD, sizeof(a2dp_offload),
+                 &a2dp_offload);
+
     // Bluetooth SCO is a telephony route and must remain bypassed.
     set_route(handle, AUDIO_DEVICE_OUT_BLUETOOTH_SCO);
     std::fill(output.begin(), output.end(), 0);
