@@ -260,12 +260,14 @@ MT6627 driver's class-1 metadata. A separate `FmPcmAdapter` scaffold now
 accepts only 32 kHz PCM16 stereo and processes only when the caller confirms
 an active FM route and normal audio mode. It bypasses bit-exactly for inactive
 routes, non-normal modes, unsupported rates/layouts and disabled DSP.
-The FM adapter host tests passed in workflow run `43170383602` (all 11/11
-CMake tests passed, including `pcm_dsp_fm_adapter_tests`); the full Android
-ARMv7 DSP archive build passed in run `43170383626`, and the Stability Lab
-passed in run `43170383558`. The ARMv7 archive contains
-`libmt8163_pcm_dsp.a` with the `FmPcmAdapter` methods:
-https://github.com/14march93/mt8163_audio_engine/actions/runs/43170383626/artifacts/13921359099
+The FM adapter host tests passed again in workflow run `43171471621`
+(all 11/11 CMake tests passed, including disabled-DSP exact bypass);
+the Android ARMv7 DSP archive build passed in run `43171471610`, the
+Stability Lab in `43171471659`, the performance benchmark in
+`43171471662`, and the Android test APK build in `43171471645`.
+The latest ARMv7 archive contains `libmt8163_pcm_dsp.a` with the
+`FmPcmAdapter` methods:
+https://github.com/14march93/mt8163_audio_engine/actions/runs/43171471610/artifacts/13922137285
 This adapter is not wired into the vendor HAL or the direct FM_I2S playback
 patch. The FM route must retain a hard bypass for calls and any path whose
 buffer ownership/format is not proven.
