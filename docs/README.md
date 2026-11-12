@@ -15,6 +15,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Repository cleanup report](repository-audit/REPOSITORY_CLEANUP_REPORT.md) — repository layout, archive handling and cleanup decisions.
 - [Archive inventory](repository-audit/ARCHIVE_INVENTORY.md) — complete extraction results and file-type counts.
 - [Duplicate analysis](repository-audit/DUPLICATE_ANALYSIS.md) — byte-identical files and redundant source archive findings.
+- [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — retained workflows, cleanup decisions and verified runs.
 
 ## CD3313 hardware and driver
 
