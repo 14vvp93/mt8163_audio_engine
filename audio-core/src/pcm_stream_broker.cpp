@@ -51,6 +51,7 @@ PcmResult PcmStreamBroker::open(std::uint32_t handle, SourceId source,
     free_slot->route = route;
     free_slot->config = PcmConfig{};
     free_slot->write_gate.store(0U, std::memory_order_relaxed);
+    free_slot->generation.fetch_add(1U, std::memory_order_relaxed);
     free_slot->backend_token.store(token, std::memory_order_relaxed);
     free_slot->handle.store(handle, std::memory_order_release);
     free_slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Open), std::memory_order_release);
@@ -104,6 +105,10 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
     if (frame_count > kMaxPcmWriteFrames) return PcmResult::BufferTooLarge;
 
     for (auto& slot : streams_) {
+        // Capture generation before matching the handle. If this slot is
+        // closed and reused while this callback is delayed, the post-pin
+        // generation check rejects the stale invocation.
+        const auto generation = slot.generation.load(std::memory_order_acquire);
         if (slot.handle.load(std::memory_order_acquire) != handle) continue;
 
         std::uint32_t gate = slot.write_gate.load(std::memory_order_acquire);
@@ -117,6 +122,12 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
                     std::memory_order_acquire)) {
                 break;
             }
+        }
+
+        if (slot.generation.load(std::memory_order_acquire) != generation ||
+            slot.handle.load(std::memory_order_acquire) != handle) {
+            slot.write_gate.fetch_sub(1U, std::memory_order_release);
+            return PcmResult::NotOpen;
         }
 
         if (slot.state.load(std::memory_order_acquire) !=
