@@ -44,7 +44,7 @@ The artifact has 14-day retention and expires on 2026-11-26. It also contains bo
 
 ## First-pass audio findings
 
-See [MT8163 audio control architecture](AUDIO_CONTROL_ARCHITECTURE.md), [MT8163 audio stack — first-pass findings](../reports/MT8163_AUDIO_STACK_FIRST_PASS.md), [DSP driver ownership analysis](../reports/DSP_DRIVER_OWNERSHIP_ANALYSIS.md), [CD3313 module variant comparison](../reports/CD3313_MODULE_VARIANT_DIFF.md), [CD3313 ioctl ABI audit](../reports/CD3313_IOCTL_ABI_AUDIT.md) and [ExtAudioMuxer JNI ABI audit](../reports/EXT_AUDIO_MUXER_JNI_ABI_AUDIT.md).
+See [MT8163 audio control architecture](AUDIO_CONTROL_ARCHITECTURE.md), [MT8163 audio stack — first-pass findings](../analysis-reports/MT8163_AUDIO_STACK_FIRST_PASS.md), [DSP driver ownership analysis](../analysis-reports/DSP_DRIVER_OWNERSHIP_ANALYSIS.md), [CD3313 module variant comparison](../analysis-reports/CD3313_MODULE_VARIANT_DIFF.md), [CD3313 ioctl ABI audit](../analysis-reports/CD3313_IOCTL_ABI_AUDIT.md) and [ExtAudioMuxer JNI ABI audit](../analysis-reports/EXT_AUDIO_MUXER_JNI_ABI_AUDIT.md).
 
 Highest-priority follow-ups:
 1. Confirm actual DSP probe success/failure from read-only target logs; the DTBO enables three nodes that share one `audiomux` misc-device name.
