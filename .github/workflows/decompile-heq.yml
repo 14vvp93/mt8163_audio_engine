@@ -3,29 +3,28 @@ name: Decompile and inspect HEQ
 on:
   workflow_dispatch:
   push:
+    branches: [main, feature/cd3313-driver-rewrite]
     paths:
+      - "reference-materials/extracted/heq/**"
+      - "scripts/repository/reassemble_heq_apk.py"
       - ".github/workflows/decompile-heq.yml"
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
   decompile:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Download latest successful HEQ artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Reassemble and verify HEQ APK from committed chunks
         run: |
-          set -euo pipefail
-          RUN_ID="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow reassemble-heq.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
-          test -n "$RUN_ID" && test "$RUN_ID" != "null"
-          echo "Using successful HEQ archive run: $RUN_ID"
-          gh run download "$RUN_ID" --repo "${GITHUB_REPOSITORY}" --name heq-reassembled-and-extracted --dir input
-          test -s input/extracted/HEQ.apk
-          sha256sum input/extracted/HEQ.apk | tee apk.sha256
+          mkdir -p input
+          python3 scripts/repository/reassemble_heq_apk.py --output input/HEQ.apk
+          sha256sum input/HEQ.apk | tee apk.sha256
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -43,7 +42,7 @@ jobs:
 
       - name: Decompile APK
         run: |
-          jadx/bin/jadx --no-res --show-bad-code --threads-count 2 -d decompiled input/extracted/HEQ.apk
+          jadx/bin/jadx --no-res --show-bad-code --threads-count 2 -d decompiled input/HEQ.apk
           find decompiled -type f | sort > decompiled-files.txt
 
       - name: Extract targeted algorithm and DSP references
