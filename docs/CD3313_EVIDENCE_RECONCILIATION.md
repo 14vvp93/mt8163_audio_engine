@@ -84,3 +84,20 @@ The 12-pair `cmd_len_list` table and optimized command-dispatch description in t
 Likewise, the parser's `0x15` four-word requirement is a safety requirement derived from the four observed 32-bit loads, not the weaker two-word threshold found in the older command table. The host implementation intentionally rejects frames that could leave handler arguments sourced from uninitialized slab bytes. This is a replacement-side contract and must remain distinct from the unsafe factory driver's observed minimum.
 
 The current parser's `known_write_commands()` table is therefore a conservative host-side acceptance policy. It is not yet a fully reconciled, vendor-build-exact protocol specification. Closure still requires instruction-level control-flow review of Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56` for every dispatch ID, generic threshold, branch-local check and argument read.
+
+
+## 7. Direct revalidation of the paired vendor callback
+
+The exact vendor archive module (Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`) was re-extracted from the successful public firmware worker artifact `cd3313-current-module-analysis` (run `43238133570`). The full `event_callback` disassembly at `0x1504` was reviewed directly. The resulting command guards and reads are documented in [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md).
+
+Corrections from that exact disassembly:
+
+- Vendor command `0x03` reads two words without a visible size-field guard. The host parser's three-word threshold is deliberately conservative; it is not a proven vendor callback acceptance threshold.
+- Vendor command `0x15` checks only that the size field is greater than one before loading four words. This confirms the short-payload stale-slab issue.
+- Contrary to the earlier risk-audit statement, the vendor callback range-checks **all four** `0x15` indices against 0..15 before table access. The prior claim of missing index checks is superseded.
+- Commands `0x09`, `0x56` and `0xA3` also load payload words without a visible size-field guard. The safe parser requires complete words for all of them.
+- Vendor `0xA3` drives raw GPIO 409. This is a requested raw level, not a board-level polarity or physical-state claim.
+
+The paired vendor `cd3313_write_reg` and `cmd_write` retry and require an exact one-byte I2C transfer before updating their software cache. The standalone module's older write-path weakness must not be attributed to the paired vendor build.
+
+The parser remains fail-closed. No production transport, ioctl, I2C, GPIO, module-load or physical-device operation was performed.
