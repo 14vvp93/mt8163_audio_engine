@@ -51,9 +51,10 @@ firmware archive contains no special A2DP-offload-disabled policy XML.
 ### Adapter change
 
 The Android effect adapter now accepts the three A2DP output device masks in
-addition to Speaker and wired headset/headphones. The host smoke test now
-expects the DSP preamp to process PCM16 stereo at the vendor A2DP rate
-(44.1 kHz) for all three masks. Bluetooth SCO remains an exact bypass.
+addition to Speaker and wired headset/headphones, but only at the vendor's
+verified 44.1 kHz profile. A2DP at 48 kHz is fail-open bit-exact bypass.
+The host smoke test checks DSP processing at 44.1 kHz for all three masks and
+exact bypass at 48 kHz. Bluetooth SCO remains an exact bypass.
 
 This is a source/configuration-based implementation change. The smoke test
 must pass in CI, and actual AudioFlinger attachment/device notifications must
