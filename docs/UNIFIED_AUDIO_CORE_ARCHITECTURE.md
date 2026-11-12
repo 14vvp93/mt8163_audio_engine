@@ -141,7 +141,17 @@ Compatibility mapping to the paired CD3313 firmware:
 | Bluetooth voice master mute | 3 | BLUETOOTH_CALL_TRANSITION |
 | selected-input effective mute reflected to master | 31 (reserved) | SELECTED_INPUT_MUTE_BRIDGE |
 
-Radio input-path reasons 1, 2, 4 and 16 are a separate per-input bitmask domain; they must not be confused with global master reasons using the same integer.
+Radio input-path reasons are a separate per-input bitmask domain; they must not be confused with global master reasons using the same integer:
+
+| AudioCore owner | Legacy radio input reason |
+|---|---:|
+| RadioRetune | 1 |
+| RadioScan | 2 |
+| RadioPacketMute | 2 |
+| RadioUserMute | 4 |
+| RadioStartupMute | 16 |
+
+RadioScan and RadioPacketMute are separate internal owners but share legacy reason bit 2. The compatibility mapper must keep bit 2 set while either owner remains active, and clear it only after both owners release it. This avoids one caller prematurely unmuting the radio path while another caller still owns the mute.
 
 ### Volume
 
