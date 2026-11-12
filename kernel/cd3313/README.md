@@ -67,7 +67,7 @@ The recovered vendor JNI constructs the ioctl word using (java_array_length + 1)
 
 ## Static issues that must be closed
 
-See docs/CD3313_DRIVER_RISK_AUDIT.md. At minimum:
+See [docs/CD3313_DRIVER_RISK_AUDIT.md](../../docs/CD3313_DRIVER_RISK_AUDIT.md) and the central [factory defect register](../../docs/FACTORY_DEFECTS.md). At minimum:
 - ioctl object allocation/copy size mismatch;
 - unchecked short payloads for 0x56 and 0xA3;
 - 0x15 reads four words despite a weaker length threshold;
