@@ -10,6 +10,7 @@
 namespace cd3313 {
 struct EmulatorState {
     std::optional<std::uint32_t> master_volume_step;
+    std::uint32_t master_volume_max{40U};
     std::optional<std::uint8_t> master_volume_register_value;
     std::uint32_t master_mute_reason_mask{0};
     bool initialization_sequence_applied{false};
