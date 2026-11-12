@@ -7,7 +7,7 @@ Updated: 2026-11-12
 **Phase 1 static ownership reconstruction is in progress.** The firmware analysis now covers the CD3313 JNI/kernel path, vehicle-state input, ACC mute call sites, FM direct/capture routes, A2DP and HFP/SCO separation, and the primary HAL's actual Normal processing boundary. The approved product target remains one unified engine replacing the factory vendor audio implementation.
 
 Current working branch: `feature/profile-transition-benchmark`.
-Current branch HEAD at last check: `885408b16faaf378db5e42841739d5661921e01a`.
+The live feature-branch HEAD is tracked in GitHub; this status document does not pin a stale revision.
 `main` was not changed. PR #1 is closed and not merged.
 
 ## New architecture and audit documents
