@@ -25,7 +25,21 @@ Evidence labels: STATIC CONFIRMED means recovered from firmware artifacts; HOST 
 | A2DP | Separate A2DP HAL/policy module and primary output routing | Bluetooth media; PCM16 stereo 44.1 kHz is declared in policy, while HAL also contains offload control. | Dedicated route adapter; detect negotiated format and offload state. |
 | HFP/SCO | SourceService voice-state logic, CD3313 source priority, primary HAL HFP/SCO handlers and capture/echo paths | Call downlink, microphone uplink, echo reference, SCO and call mute. | Dedicated telephony route with correct clock, microphone, echo and gain handling; never treat it as A2DP. |
 
-## 2. Mute arbitration recovered from firmware
+## 2. Framework callback serialization and the experimental effect adapter
+
+The AOSP Android 9 AudioFlinger reference protects both EffectModule::process() and EffectModule::command() with the same EffectModule mLock. The SET_CONFIG command and the real-time effect callback are therefore serialized by the framework in the stock implementation. The apparent race from the plugin's separate enabled/active-call checks is not a confirmed defect under that contract.
+
+The exact target vendor libaudioflinger.so is a separate binary and must be checked for vendor changes to this lock path before relying on the AOSP contract. Do not add a mutex or change the audio callback merely to address a race that has not been demonstrated. The effect adapter remains a diagnostic/temporary scaffold, not the final product integration.
+
+## 3. Normal PCM boundary and channel topology
+
+The primary HAL has one direct call to AudioMTKFilterManager::process(), from AudioALSAPlaybackHandlerNormal::write(). The order is DC removal → stereo-to-mono conversion when the speaker bit is present → MTK post-processing → BLI SRC → bit conversion → ALSA write. The Voice, HFP/SCO, HDMI, FM transmitter and capture handlers do not call this same wrapper at the inspected direct call sites.
+
+The framework primary output and ordinary speaker ALSA path are both declared/configured stereo. For speaker output, the stereo pair may already have been folded to mono and duplicated before the MTK post-process callback. CD3313's four speaker-level controls are analog attenuation controls, not proof of four independent PCM channels. The physical distribution of PCM to FL/FR/RL/RR remains unresolved.
+
+**Architecture consequence:** do not connect the four-channel DSP core to this Normal callback as if it were a proven quad PCM boundary. The unified engine needs a separately proven stereo ingress and an explicit, board-verified downstream channel-distribution strategy.
+
+## 4. Mute arbitration recovered from firmware
 
 CD3313 has two independent mute domains:
 
