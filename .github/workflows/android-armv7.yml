@@ -65,6 +65,7 @@ jobs:
           readelf -h mute_arbiter.cpp.o | grep -E "Class:|Machine:"
           readelf -h cd3313_compat.cpp.o | grep -E "Class:|Machine:"
           readelf -h session_registry.cpp.o | grep -E "Class:|Machine:"
+          readelf -h snapshot_publisher_compile_check.cpp.o | grep -E "Class:|Machine:"
       - name: Upload Android ARMv7 libraries
         uses: actions/upload-artifact@v6
         with:
