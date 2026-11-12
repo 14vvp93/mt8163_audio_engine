@@ -95,6 +95,18 @@ a dedicated HAL/ALSA FM I2S endpoint. Until the active FM app-to-HAL call path
 is traced on the target, do not assume they are the same route or that the
 Music postprocess effect sees the FM samples.
 
+The paired `libaudiopolicycustomextensions.so` adds a further FM-specific
+AudioPatch control path: it exports `fm_addAudioPatch()`,
+`fm_removeAudioPatch()` and `isFMDirectMode()`. The direct-mode predicate
+recognizes an `AUDIO_DEVICE_IN_FM_TUNER` patch with two additional patch-state
+fields. Its `setFMIndirectMode(rate)` method sends
+`FM_DIRECT_CONTROL=1` below 48,001 and `0` at/above 48,001; the primary HAL
+stores that boolean and uses it in the FM enable/direct-connection lifecycle.
+This reinforces that FM is managed through a dedicated policy patch and HAL
+controller, not merely as an ordinary Android Music track. It still does not
+prove the exact PCM buffer ownership or where a software effect can safely be
+inserted.
+
 ### FM integration decision
 
 Do not add `AUDIO_DEVICE_IN_FM_TUNER` to the current output effect's allowed
