@@ -95,7 +95,7 @@ Corrections from that exact disassembly:
 - Vendor command `0x03` reads two words without a visible size-field guard. The host parser's three-word threshold is deliberately conservative; it is not a proven vendor callback acceptance threshold.
 - Vendor command `0x15` checks only that the size field is greater than one before loading four words. This confirms the short-payload stale-slab issue.
 - Contrary to the earlier risk-audit statement, the vendor callback range-checks **all four** `0x15` indices against 0..15 before table access. The prior claim of missing index checks is superseded.
-- Commands `0x09`, `0x56` and `0xA3` also load payload words without a visible size-field guard. The safe parser requires complete words for all of them.
+- Commands `0x09`, `0x56` and `0xA3` also load payload words without a visible size-field guard. The safe parser requires complete words for all of them. The `0x09` target is now identified as `volume_max` (default 40), used by `set_master_volume()` to bound the volume step.
 - Vendor `0xA3` drives raw GPIO 409. This is a requested raw level, not a board-level polarity or physical-state claim.
 
 The paired vendor `cd3313_write_reg` and `cmd_write` retry and require an exact one-byte I2C transfer before updating their software cache. The standalone module's older write-path weakness must not be attributed to the paired vendor build.
