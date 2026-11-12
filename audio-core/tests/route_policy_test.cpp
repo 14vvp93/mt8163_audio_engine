@@ -6,7 +6,6 @@
 using namespace mt8163_audio_core;
 
 namespace {
-
 void require(bool condition, const char* message) {
     if (!condition) {
         std::cerr << "FAIL: " << message << '\n';
@@ -30,6 +29,9 @@ void test_proven_pcm_routes() {
     require(validate_source_route(SourceId::BluetoothHfp, RouteType::HfpSco) ==
                 RouteValidation::Supported,
             "HFP is separate from A2DP");
+    require(validate_source_route(SourceId::Microphone, RouteType::PrimaryCapturePcm) ==
+                RouteValidation::Supported,
+            "microphone input uses primary capture PCM");
 }
 
 void test_fm_planes_remain_distinct() {
@@ -39,8 +41,7 @@ void test_fm_planes_remain_distinct() {
     require(validate_source_route(SourceId::FmRadio, RouteType::FmCapturePcm) ==
                 RouteValidation::Supported,
             "FM capture PCM is recognized");
-    require(validate_source_route(SourceId::FmRadio,
-                                  RouteType::Cd3313AnalogInput) ==
+    require(validate_source_route(SourceId::FmRadio, RouteType::Cd3313AnalogInput) ==
                 RouteValidation::Supported,
             "FM CD3313 analog control/input plane is recognized");
     require(validate_source_route(SourceId::FmRadio, RouteType::PrimaryPcm) ==
@@ -49,16 +50,13 @@ void test_fm_planes_remain_distinct() {
 }
 
 void test_cd3313_analog_inputs() {
-    require(validate_source_route(SourceId::Aux,
-                                  RouteType::Cd3313AnalogInput) ==
+    require(validate_source_route(SourceId::Aux, RouteType::Cd3313AnalogInput) ==
                 RouteValidation::Supported,
             "AUX maps to CD3313 analog input");
-    require(validate_source_route(SourceId::Aux2,
-                                  RouteType::Cd3313AnalogInput) ==
+    require(validate_source_route(SourceId::Aux2, RouteType::Cd3313AnalogInput) ==
                 RouteValidation::Supported,
             "AUX2 maps to CD3313 analog input");
-    require(validate_source_route(SourceId::Dab,
-                                  RouteType::Cd3313AnalogInput) ==
+    require(validate_source_route(SourceId::Dab, RouteType::Cd3313AnalogInput) ==
                 RouteValidation::Supported,
             "DAB maps to CD3313 analog input");
     require(validate_source_route(SourceId::Aux, RouteType::PrimaryPcm) ==
@@ -80,7 +78,6 @@ void test_unproven_and_invalid_pairs() {
                 RouteValidation::Invalid,
             "out-of-range source is invalid");
 }
-
 }  // namespace
 
 int main() {

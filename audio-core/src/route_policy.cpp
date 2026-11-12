@@ -10,6 +10,7 @@ bool valid_source(SourceId source) noexcept {
 bool valid_route(RouteType route) noexcept {
     switch (route) {
         case RouteType::PrimaryPcm:
+        case RouteType::PrimaryCapturePcm:
         case RouteType::A2dpPcm:
         case RouteType::HfpSco:
         case RouteType::FmDirectI2s:
@@ -60,6 +61,11 @@ RouteValidation validate_source_route(SourceId source,
         case SourceId::Aux2:
         case SourceId::Dab:
             return route == RouteType::Cd3313AnalogInput
+                ? RouteValidation::Supported
+                : RouteValidation::Unverified;
+
+        case SourceId::Microphone:
+            return route == RouteType::PrimaryCapturePcm
                 ? RouteValidation::Supported
                 : RouteValidation::Unverified;
 

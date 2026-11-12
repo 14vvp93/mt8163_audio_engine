@@ -1,0 +1,38 @@
+name: PCM Stream Broker ThreadSanitizer
+
+on:
+  push:
+    branches:
+      - work/pcm-backend
+  pull_request:
+    branches:
+      - work/pcm-backend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pcm-broker-tsan:
+    name: pcm-broker-tsan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure ThreadSanitizer build
+        run: |
+          cmake -S pcm-dsp -B build-tsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DPCM_DSP_BUILD_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+
+      - name: Build PCM stream broker tests
+        run: cmake --build build-tsan --target mt8163_audio_core_pcm_stream_tests --parallel 2
+
+      - name: Run PCM stream broker tests under TSAN
+        env:
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+        run: ctest --test-dir build-tsan --output-on-failure -R mt8163_audio_core_pcm_stream_tests
