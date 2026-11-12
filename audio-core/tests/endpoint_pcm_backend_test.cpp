@@ -279,8 +279,8 @@ void test_lifecycle_rejects_inflight_transfer() {
 
     require(backend.stop(token) == PcmResult::WouldBlock,
             "stop never closes the native stream during an active transfer");
-    require(backend.close(token) == PcmResult::WouldBlock,
-            "close never releases the native handle during an active transfer");
+    require(backend.close(token) == PcmResult::InvalidState,
+            "started stream must be stopped before close can be attempted");
 
     {
         std::lock_guard<std::mutex> lock(device.mutex);
