@@ -3,6 +3,7 @@
 #include "mt8163_audio_core/pcm_backend.hpp"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -37,10 +38,11 @@ struct PcmDeviceOps {
     PcmResult (*close)(void*, std::uint32_t) noexcept = nullptr;
 };
 
-// Concrete route/configuration/lifecycle adapter. The platform supplies a
-// validated endpoint table and PcmDeviceOps; this class owns token mapping,
-// state validation and bounded dispatch. It does not guess card/device IDs
-// and does not itself issue ALSA ioctls.
+// Concrete route/configuration/lifecycle adapter. Lifecycle calls are
+// serialized by the control plane; writes may run concurrently on a handle.
+// The platform supplies a validated endpoint table and PcmDeviceOps; this
+// class owns token mapping, state validation and bounded dispatch. It does
+// not guess card/device IDs and does not itself issue ALSA ioctls.
 class EndpointPcmBackend final : public PcmBackend {
 public:
     EndpointPcmBackend(const PcmEndpoint* endpoints, std::size_t endpoint_count,
@@ -62,7 +64,8 @@ private:
         StreamToken token{0U};
         std::uint32_t native_handle{0U};
         PcmConfig config{};
-        PcmStreamState state{PcmStreamState::Closed};
+        std::atomic<std::uint32_t> state{
+            static_cast<std::uint32_t>(PcmStreamState::Closed)};
     };
 
     const PcmEndpoint* find_endpoint(RouteType route) const noexcept;

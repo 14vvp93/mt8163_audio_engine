@@ -1,6 +1,11 @@
 #include "mt8163_audio_core/endpoint_pcm_backend.hpp"
 
 namespace mt8163_audio_core {
+namespace {
+constexpr std::uint32_t state_value(PcmStreamState state) noexcept {
+    return static_cast<std::uint32_t>(state);
+}
+}
 
 EndpointPcmBackend::EndpointPcmBackend(const PcmEndpoint* endpoints,
                                        std::size_t endpoint_count,
@@ -37,7 +42,8 @@ const PcmEndpoint* EndpointPcmBackend::find_endpoint(RouteType route) const noex
 EndpointPcmBackend::Slot* EndpointPcmBackend::find_slot(StreamToken token) noexcept {
     if (token == 0U) return nullptr;
     for (auto& slot : streams_) {
-        if (slot.state != PcmStreamState::Closed && slot.token == token) return &slot;
+        if (slot.state.load(std::memory_order_acquire) != state_value(PcmStreamState::Closed) &&
+            slot.token == token) return &slot;
     }
     return nullptr;
 }
@@ -46,7 +52,8 @@ const EndpointPcmBackend::Slot* EndpointPcmBackend::find_slot(
     StreamToken token) const noexcept {
     if (token == 0U) return nullptr;
     for (const auto& slot : streams_) {
-        if (slot.state != PcmStreamState::Closed && slot.token == token) return &slot;
+        if (slot.state.load(std::memory_order_acquire) != state_value(PcmStreamState::Closed) &&
+            slot.token == token) return &slot;
     }
     return nullptr;
 }
@@ -69,7 +76,7 @@ PcmResult EndpointPcmBackend::open(RouteType route, StreamToken* token) noexcept
 
     Slot* free_slot = nullptr;
     for (auto& slot : streams_) {
-        if (slot.state == PcmStreamState::Closed) {
+        if (slot.state.load(std::memory_order_acquire) == state_value(PcmStreamState::Closed)) {
             free_slot = &slot;
             break;
         }
@@ -94,7 +101,7 @@ PcmResult EndpointPcmBackend::open(RouteType route, StreamToken* token) noexcept
     free_slot->token = allocated;
     free_slot->native_handle = native_handle;
     free_slot->config = PcmConfig{};
-    free_slot->state = PcmStreamState::Open;
+    free_slot->state.store(state_value(PcmStreamState::Open), std::memory_order_release);
     *token = allocated;
     return PcmResult::Ok;
 }
@@ -103,7 +110,8 @@ PcmResult EndpointPcmBackend::configure(StreamToken token,
                                         const PcmConfig& config) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state != PcmStreamState::Open && slot->state != PcmStreamState::Stopped) {
+    const auto state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
+    if (state != PcmStreamState::Open && state != PcmStreamState::Stopped) {
         return PcmResult::InvalidState;
     }
     if (!is_valid_pcm_config(config)) return PcmResult::InvalidArgument;
@@ -111,9 +119,9 @@ PcmResult EndpointPcmBackend::configure(StreamToken token,
     const PcmResult result = ops_.configure(ops_.context, slot->native_handle, config);
     if (result == PcmResult::Ok) {
         slot->config = config;
-        slot->state = PcmStreamState::Configured;
+        slot->state.store(state_value(PcmStreamState::Configured), std::memory_order_release);
     } else {
-        slot->state = PcmStreamState::Failed;
+        slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
     return result;
 }
@@ -121,10 +129,13 @@ PcmResult EndpointPcmBackend::configure(StreamToken token,
 PcmResult EndpointPcmBackend::start(StreamToken token) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state != PcmStreamState::Configured) return PcmResult::InvalidState;
+    if (slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Configured)) {
+        return PcmResult::InvalidState;
+    }
     const PcmResult result = ops_.start(ops_.context, slot->native_handle);
-    slot->state = result == PcmResult::Ok ? PcmStreamState::Started
-                                          : PcmStreamState::Failed;
+    slot->state.store(state_value(result == PcmResult::Ok ? PcmStreamState::Started
+                                                          : PcmStreamState::Failed),
+                      std::memory_order_release);
     return result;
 }
 
@@ -133,14 +144,16 @@ PcmResult EndpointPcmBackend::write(StreamToken token,
                                     std::size_t frame_count) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state != PcmStreamState::Started) return PcmResult::InvalidState;
+    if (slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
+        return PcmResult::InvalidState;
+    }
     if (interleaved == nullptr || frame_count == 0U) return PcmResult::InvalidArgument;
     if (frame_count > kMaxEndpointPcmWriteFrames) return PcmResult::BufferTooLarge;
 
     const PcmResult result = ops_.write(ops_.context, slot->native_handle,
                                         interleaved, frame_count);
     if (result == PcmResult::Xrun || result == PcmResult::DeviceLost) {
-        slot->state = PcmStreamState::Failed;
+        slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
     return result;
 }
@@ -148,28 +161,40 @@ PcmResult EndpointPcmBackend::write(StreamToken token,
 PcmResult EndpointPcmBackend::stop(StreamToken token) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state == PcmStreamState::Stopped) return PcmResult::Ok;
-    if (slot->state != PcmStreamState::Started) return PcmResult::InvalidState;
+    const auto state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
+    if (state == PcmStreamState::Stopped) return PcmResult::Ok;
+    if (state != PcmStreamState::Started) return PcmResult::InvalidState;
     const PcmResult result = ops_.stop(ops_.context, slot->native_handle);
-    slot->state = result == PcmResult::Ok ? PcmStreamState::Stopped
-                                          : PcmStreamState::Failed;
+    slot->state.store(state_value(result == PcmResult::Ok ? PcmStreamState::Stopped
+                                                          : PcmStreamState::Failed),
+                      std::memory_order_release);
     return result;
 }
 
 PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state == PcmStreamState::Started) return PcmResult::InvalidState;
+    if (slot->state.load(std::memory_order_acquire) == state_value(PcmStreamState::Started)) {
+        return PcmResult::InvalidState;
+    }
     const PcmResult result = ops_.close(ops_.context, slot->native_handle);
-    if (result == PcmResult::Ok) *slot = Slot{};
-    else slot->state = PcmStreamState::Failed;
+    if (result == PcmResult::Ok) {
+        slot->token = 0U;
+        slot->native_handle = 0U;
+        slot->config = PcmConfig{};
+        slot->state.store(state_value(PcmStreamState::Closed), std::memory_order_release);
+    } else {
+        slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
+    }
     return result;
 }
 
 std::size_t EndpointPcmBackend::active_streams() const noexcept {
     std::size_t count = 0U;
     for (const auto& slot : streams_) {
-        if (slot.state != PcmStreamState::Closed) ++count;
+        if (slot.state.load(std::memory_order_acquire) != state_value(PcmStreamState::Closed)) {
+            ++count;
+        }
     }
     return count;
 }
