@@ -138,6 +138,16 @@ public final class MainActivity extends Activity {
         root.addView(cd3313Probe);
         root.addView(cd3313Status);
 
+        TextView audioRouteTitle = text("ANDROID AUDIO ROUTE PREFLIGHT", 14, Color.WHITE);
+        root.addView(audioRouteTitle);
+        Button audioRouteProbe = button("PROBE ANDROID AUDIO · READ-ONLY");
+        TextView audioRouteStatus = text(
+                "Not checked · no audio playback or routing changes", 12, Color.GRAY);
+        audioRouteProbe.setOnClickListener(v ->
+                audioRouteStatus.setText(AudioRouteProbe.run(this)));
+        root.addView(audioRouteProbe);
+        root.addView(audioRouteStatus);
+
         LinearLayout profileActions = new LinearLayout(this);
         profileActions.setOrientation(LinearLayout.HORIZONTAL);
         Button saveProfile = button("SAVE PROFILE");
