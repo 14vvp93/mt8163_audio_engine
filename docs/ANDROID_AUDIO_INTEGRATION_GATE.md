@@ -350,3 +350,28 @@ values, auto-apply defaults or silently restore a saved profile at launch.
 Start hardware controls as unknown/unapplied and require explicit user
 application. Saved values can represent only the last values sent by this app,
 not verified live CD3313 state.
+
+## 14. Android 9 AudioFlinger output-mix insertion candidate
+
+A separate framework-level investigation identified `AUDIO_SESSION_OUTPUT_MIX`
+as a plausible stereo-preserving insertion point before the vendor HAL. The
+AOSP PlaybackThread places the output-mix effect chain after track-specific
+effects and before output-stage effects, then processes the mix chain before
+writing the block to the HAL. This is upstream of the MT8163 Normal handler's
+speaker-bit stereo-to-mono fold.
+
+Android 9's output-effect architecture supports a float processing path for
+software effects and compatibility adapters for legacy int16 effects. The
+existing PCM16 stereo engine could therefore be wrapped as a legacy effect,
+or replaced by a native Float32 stereo API. The exact vendor Android 9 source
+revision and effect registration/runtime behavior must be verified first.
+
+This route has important limits: output-mix effects are global to the selected
+mixer output, not music-only by default; direct/offload output coverage is not
+guaranteed; and mode/device/format gates are required to bypass calls, SCO,
+unsupported routes and formats. The candidate must remain disabled by default
+until the target effect chain is verified. No effect registration or system
+image modification has been performed.
+
+Detailed decision and AOSP references: [Android 9 AudioFlinger stereo
+insertion candidate](ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md).
