@@ -88,7 +88,7 @@ const std::vector<CommandSpec>& known_write_commands() {
     static const std::vector<CommandSpec> commands{
         {0x01, 1, 1}, {0x03, 3, 3}, {0x04, 3, 3}, {0x10, 1, 1},
         {0x11, 2, 2}, {0x12, 2, 2}, {0x15, 2, 4}, {0x20, 3, 3},
-        {0x55, 2, 2}, {0x5C, 2, 2}, {0xF0, 1, 1}, {0xF1, 1, 1}
+        {0x55, 2, 2}, {0x5C, 2, 2}, {0xF1, 1, 1}
     };
     return commands;
 }
