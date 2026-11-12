@@ -69,7 +69,9 @@ The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
 
 - Source/route/mode identifiers are separate from legacy CD3313 reason values.
 - `MuteArbiter` tracks master and per-source mute owners independently, with idempotent owner set/clear operations.
-- `MuteSnapshot` is a detached read-only value for control-to-PCM state publication; the actual bounded/lock-free cross-thread publisher remains a separate implementation gate.
+- `MuteSnapshot` is a detached, read-only value.
+- `SnapshotPublisher<T>` provides three-slot single-writer/multi-reader publication, a non-blocking writer gate, fixed reader retry bound and non-blocking backpressure. A failed reader acquisition must reuse its previous block snapshot.
+- The actual MuteSnapshot publisher is instantiated by an Android compile probe; ARMv7 CI confirms 32-bit atomics are lock-free for the target ABI.
 - `cd3313_compat` maps AudioCore owner masks to recovered CD3313 master/input reason bits. RadioScan and RadioPacketMute remain distinct internally while safely aggregating onto legacy radio reason bit 2.
 - `SessionRegistry` provides 16 fixed-capacity session slots and a validated Requested/Active/Suspended/Stopping/Failed lifecycle.
 - The module is control-plane only; it performs no HAL, Binder, ALSA, ioctl, I2C or GPIO operations.
@@ -78,20 +80,20 @@ The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
 
 Latest CI for the AudioCore foundation:
 
-- [Test PCM DSP core — run 43254584353](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254584353) — success; includes the mute, CD3313 compatibility and session-registry tests.
-- [PCM DSP Stability Lab — run 43254584255](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254584255) — success.
-- [PCM DSP Performance Benchmark — run 43254584001](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254584001) — success.
-- [Repository integrity — run 43254583969](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254583969) — success.
-- Host CTest run includes 13 tests, all passed.
-- Separate local AddressSanitizer + UndefinedBehaviorSanitizer build of the AudioCore tests: 2/2 test executables passed.
+- [Test PCM DSP core — run 43255493269](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493269) — success; **14/14 CTest tests passed**, including all three AudioCore test executables.
+- [PCM DSP Stability Lab — run 43255493328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493328) — success.
+- [PCM DSP Performance Benchmark — run 43255493868](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493868) — success.
+- [Repository integrity — run 43255670188](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255670188) — success; includes the read-only collector syntax check.
+- Local ThreadSanitizer: all 3 AudioCore test executables passed.
+- Local AddressSanitizer + UndefinedBehaviorSanitizer: all 3 AudioCore test executables passed.
 
-Android ARMv7 build and verification — [run 43254584008](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254584008) — success. The mute arbiter (including MuteSnapshot), CD3313 compatibility mapper and session registry objects were verified as ELF32 ARM. The Android artifact was uploaded by the earlier verified package run [43254125094](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094).
+Android ARMv7 build and verification — [run 43255493234](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493234) — success. The mute arbiter, CD3313 compatibility mapper, session registry and snapshot-publisher compile probe were verified as ELF32 ARM. The three-library Android artifact was uploaded: [mt8163-audio-engine-android-armv7](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255493234/artifacts/13960034320).
 
-A read-only target inventory script is now available at [collect_mt8163_audio_runtime.sh](../scripts/device/collect_mt8163_audio_runtime.sh). It records modules, ALSA devices, policy candidates, audio services and process FDs without opening the vendor device nodes or changing hardware state. Its Bash syntax check passed locally and in [Repository integrity run 43254908636](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254908636); it has not been run on the physical head unit.
+A read-only target inventory script is available at [collect_mt8163_audio_runtime.sh](../scripts/device/collect_mt8163_audio_runtime.sh). It records modules, ALSA devices, policy candidates, audio services and process FDs without opening the vendor device nodes or changing hardware state. Its Bash syntax check passed in [Repository integrity run 43255670188](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43255670188); it has not been run on the physical head unit.
 
 Evidence classification:
-- **HOST VERIFIED:** AudioCore mute/compatibility and session-registry tests, PCM/DSP tests, stability lab and performance benchmark.
-- **ANDROID BUILD VERIFIED:** AudioCore source compilation for Android ARMv7 was observed; final archive ELF verification and artifact publication are pending.
+- **HOST VERIFIED:** 14/14 CTest tests, including AudioCore mute/compatibility, session lifecycle and concurrent snapshot publication; stability lab and performance benchmark; local TSAN and ASAN/UBSAN.
+- **ANDROID BUILD VERIFIED:** AudioCore compiles for Android ARMv7; the snapshot publisher's 32-bit lock-free requirement passes the target compile assertion; ELF32 ARM objects and artifact upload are confirmed.
 - **DEVICE VERIFIED:** no complete replacement route, CD3313 write transaction, FM/A2DP/HFP integration or factory cutover has been validated on the physical head unit.
 
 No live ioctl, I2C write, GPIO change, mixer write, audio-setting change or physical head-unit test has been performed in this phase.
