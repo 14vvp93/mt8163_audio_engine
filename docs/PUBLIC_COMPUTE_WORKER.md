@@ -1,78 +1,38 @@
-# Public compute worker
+# Public firmware and compute worker
 
 ## Repository ownership
 
-- `14vvp93/mt8163_audio_engine` is the canonical product repository. It owns all
-  product source code, tests, build definitions, engineering decisions and authoritative
-  product documentation.
-- `14vvp93/public_calculations` is the public compute/data repository. It owns
-  approved public firmware archives, large non-secret reference files, heavy analysis
-  scripts, extracted data, reports and compute artifacts.
+- `14vvp93/mt8163_audio_engine` is the private canonical project repository. It owns all product source code, build definitions, tests, engineering documentation, analysis decisions and project reports.
+- `14vvp93/public_calculations` is the public firmware-data and compute repository. It owns approved firmware dumps, the verified extracted firmware tree, SHA-256 manifests, heavy analysis scripts, worker tests and GitHub Actions workflows.
+- The public repository must not contain product implementation code or project documentation. The private repository must not contain firmware archives, dumps or extracted firmware trees.
 
-Do not create new work in repositories under `14march93`. Those repositories are
-historical references only and are not part of the active workflow.
+## Data flow
 
-## Run heavy compute from the primary repository
+1. Approved firmware data is maintained in `public_calculations/firmware/`.
+2. Public compute workflows read firmware directly from that repository.
+3. When a worker needs project code or private analysis helpers, it checks out the requested revision of `mt8163_audio_engine` using `SOURCE_REPO_READ_TOKEN` with Contents: Read-only.
+4. The worker combines private source code with public firmware data only in its ephemeral runner workspace.
+5. Results are uploaded as GitHub Actions artifacts. The worker does not push firmware, reports or generated data into the private repository.
 
-Open **Actions → Run public firmware compute → Run workflow** in this repository.
-Choose one bounded task:
+The token is a read-only credential. Never print it, write it to files, or pass it as an ordinary workflow input.
 
-- `inventory` — inventory and hash the worker's approved firmware archives.
-- `extract` — safely reassemble and extract split ZIP archives.
-- `audio-inventory` — extract archives and index the Android audio stack and DSP
-  modules.
-- `all-light` — run the lightweight archive inventory task.
+## Public firmware layout
 
-The primary workflow calls the reusable worker workflow at
-`14vvp93/public_calculations/.github/workflows/compute.yml@main`. The worker checks
-out its own scripts and public data in an isolated `worker/` directory. It does not
-need a cross-repository write token, and it does not copy product source code into the
-public repository.
+- `firmware/dumps/mt8163/` — original standalone firmware images, configuration dumps and reference kernel module.
+- `firmware/extracted/` — canonical extracted system/vendor filesystem tree and HEQ reference payload.
+- `firmware/manifests/` — source provenance and SHA-256 inventory for each extracted file.
 
-The output is uploaded as a GitHub Actions artifact attached to the caller's run in
-this primary repository. Use the run's **Artifacts** section to retrieve the reports.
+The split ZIP archives are intentionally not retained after the full extracted tree has been copied and verified against the private source manifest. The extracted tree and its SHA-256 manifest are the durable public firmware dataset.
 
-## Run firmware analysis
+## Compute workflow contract
 
-Open **Actions → Run firmware analysis on public compute → Run workflow**.
-Choose one workload and a source revision (normally `main`). The nine workloads are:
+- Firmware-only processing runs in `public_calculations`.
+- Analysis workflows check out the private repository read-only for code and project helpers, and use firmware from the public repository.
+- Workflow logs and artifacts are public. They must not contain credentials, personal data, or private signing material.
+- Large intermediate outputs belong in Actions artifacts, not in either Git repository.
+- Do not commit generated extracted data or reports to the private project repository.
+- Keep project documentation and reviewed findings in the private repository.
 
-- Audio HAL ELF, symbols, relocations, disassembly and XML checks.
-- CD3313 ioctl ABI and event-queue analysis.
-- CD3313 kernel-module static analysis.
-- Boot, recovery and DTBO image inspection.
-- Firmware library and vendor-stack analysis.
-- Reference archive audit, split-volume reassembly and curated-tree generation.
-- HEQ APK reassembly, decompilation and DSP reference extraction.
-- Extracted firmware audio-configuration validation.
-- CD3313/audiomux userspace-client scan.
+## Migration and cleanup
 
-These jobs execute in the public worker repository but check out the selected primary
-repository revision read-only. Reports are uploaded as artifacts to the caller's run.
-The archive audit no longer commits generated inventory or extracted files back into
-the primary repository.
-
-The former product-side workflow files are retained temporarily as migration backups.
-They should be disabled or archived only after the corresponding worker task has passed
-an end-to-end run.
-
-## Firmware import
-
-Approved public firmware is imported separately by the worker's
-`Import approved public MT8163 firmware` workflow. Its
-`SOURCE_REPO_READ_TOKEN` secret must have read-only Contents access to
-`14vvp93/mt8163_audio_engine`. If that secret was created for the former account,
-replace it with a token scoped to the current primary repository.
-
-## Separation and security rules
-
-- Never put credentials, private keys, passwords, tokens or private signing material
-  into `public_calculations`.
-- Assume all public worker files, logs and artifacts are public.
-- Do not automatically push generated reports or extracted trees back into the
-  product repository.
-- Promote only reviewed, compact technical findings with source hashes and worker run
-  references.
-- Keep Android product builds and implementation tests in the primary repository.
-- Move firmware-only static analysis to the worker in separately reviewed stages; do
-  not delete or disable existing analysis workflows until each replacement is verified.
+The one-time firmware synchronization imports the full 1,386-entry extracted tree from the historical private location into `public_calculations/firmware/extracted`, verifies each file's size and SHA-256, and writes a public provenance manifest. Only after the public copy is verified may the private `reference-materials/` tree and redundant ZIP archives be deleted.
