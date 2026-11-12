@@ -51,7 +51,7 @@ The table below records the exact size-field guard visible in this vendor callba
 | `0xF0` write direction | no payload read; size-zero error branch | none | Do not model as a write operation; read-direction `0xF0` is a separate 8-byte static identifier query |
 | `0xF1` | size > 0 | +4 | Require 1 word |
 
-The 12-entry legacy length table includes an `0xF0` entry, but the paired vendor callback's write-direction `0xF0` branch does not consume a payload or perform a write operation. The read-direction `0xF0` ioctl is a separate fixed 8-byte chip-identifier query. The host `known_write_commands()` allowlist therefore contains 11 safe write commands and deliberately excludes `0xF0`.
+The older standalone module's 12-entry length table includes an `0xF0` entry, but the paired vendor callback's write-direction `0xF0` branch does not consume a payload or perform a write operation. The read-direction `0xF0` ioctl is a separate fixed 8-byte chip-identifier query. The host `known_write_commands()` allowlist therefore contains 11 safe write commands and deliberately excludes `0xF0`.
 
 Unknown command IDs are dropped by the callback's default path after the queued object is freed. The special `0x56` and `0xA3` branches are outside the 12-entry command-length table. The `0x09` branch stores the supplied word into the `volume_max` data symbol at `.data + 0x5c`. The paired `set_master_volume()` function loads this field and rejects requested steps above it. The initial `.data` value is 40. Because the volume lookup table contains 41 entries (indices 0..40), the replacement validates `volume_max <= 40` before accepting the command; the factory callback itself does not visibly enforce that upper bound.
 
