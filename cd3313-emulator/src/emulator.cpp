@@ -120,7 +120,7 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
     case 0x03: {
         const std::uint32_t channel = read_le32(payload, 0);
         const std::uint32_t gain = read_le32(payload, 4);
-        if (channel > 6U || gain > 3U) return false;
+        if (channel >= 6U || gain > 3U) return false;
         state.input_gain[channel] = static_cast<std::uint8_t>(gain);
         if (state.control_register_value.has_value()) {
             state.control_register_value = static_cast<std::uint8_t>(
