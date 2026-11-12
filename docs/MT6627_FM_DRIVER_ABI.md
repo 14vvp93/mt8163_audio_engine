@@ -138,7 +138,7 @@ The firmware-wide string scan found `FM_DIRECT_CONTROL` in the primary HAL and i
 
 - Build ID: `f471dbca5ef93ec7e59d87999c3053f9`
 - SHA-256: `9f4b6940d241a4bc6517214f1fc3fd0b3d69964f54aaa04e5ceb836d47d04afb`
-- Workflow artifact: `mt8163-board-audio-routing-evidence`, run `43124452351`, file `policy-extension/libaudiopolicycustomextensions.so`.
+- Workflow artifact: `mt8163-board-audio-routing-evidence`, [run 43124452351](https://github.com/14march93/mt8163_audio_engine/actions/runs/43124452351), file `policy-extension/libaudiopolicycustomextensions.so`.
 
 The stripped library still exports these relevant symbols:
 
