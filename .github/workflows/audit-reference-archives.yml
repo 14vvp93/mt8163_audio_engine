@@ -6,6 +6,7 @@ on:
       - feature/cd3313-driver-rewrite
     paths:
       - "scripts/repository/prepare_reference_archives.py"
+      - "scripts/repository/curate_audio_references.py"
       - ".github/workflows/audit-reference-archives.yml"
   workflow_dispatch:
 
