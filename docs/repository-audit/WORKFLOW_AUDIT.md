@@ -4,7 +4,7 @@ Audit branch: `feature/cd3313-driver-rewrite`
 
 ## Current inventory
 
-The repository now contains 16 retained workflows:
+The repository now contains 17 retained workflows:
 
 | Workflow | Responsibility |
 |---|---|
@@ -21,6 +21,7 @@ The repository now contains 16 retained workflows:
 | `firmware-audio-config-audit.yml` | Extracted firmware manifest/hash/XML and audio configuration validation |
 | `pcm-dsp-performance.yml` | DSP performance benchmark |
 | `pcm-dsp-stability-lab.yml` | DSP stability and stress tests |
+| `repository-integrity.yml` | Offline validation of local Markdown links |
 | `scan-audiomux-clients.yml` | Search extracted firmware for CD3313 userspace clients |
 | `test-cd3313-emulator.yml` | CD3313 emulator host and sanitizer tests |
 | `test-pcm-dsp.yml` | PCM DSP host tests |
@@ -31,7 +32,7 @@ The repository now contains 16 retained workflows:
 - Removed `reassemble-heq.yml`: HEQ is now committed as three verified APK chunks; decompilation reads those chunks directly and no longer needs to reassemble/extract the source ZIP.
 - Updated the primary HAL analysis and CD3313 client scan to read `reference-materials/extracted/`, not the deleted `files.zip`.
 - Reworked the firmware audio configuration audit to validate the committed manifest and XML directly instead of partially extracting split archives.
-- Removed all stale `files.zip` references from workflow files.
+- Removed all stale `files.zip` references from workflow files.\n- Added an offline Markdown link checker and a dedicated repository-integrity workflow.
 - Corrected the archive audit's branch handling: checkout, concurrency, rebase and push now use the triggering ref rather than always writing to the feature branch.
 - The remaining workflows have distinct build, test, reverse-engineering or validation purposes. No workflow installs firmware or writes to the target device.
 
