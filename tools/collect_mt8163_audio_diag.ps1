@@ -104,7 +104,7 @@ Write-Host "Collecting read-only diagnostics from $Serial ..."
 
 Save-AdbText "getprop" "getprop"
 Save-AdbText "system_identity" "uname -a; cat /proc/version; cat /proc/cmdline; cat /proc/uptime"
-Save-AdbText "asound" "for f in /proc/asound/cards /proc/asound/pcm /proc/asound/devices /proc/asound/timers; do echo ==== $f; cat $f 2>&1; done"
+Save-AdbText "asound" "for f in /proc/asound/cards /proc/asound/pcm /proc/asound/devices /proc/asound/timers; do echo ==== `$f; cat `$f 2>&1; done"
 Save-AdbText "sound_devices" "ls -la /dev/snd 2>&1; ls -la /dev/audiomux 2>&1; ls -la /dev/i2c-* 2>&1"
 Save-AdbText "modules" "cat /proc/modules; echo ==== lsmod; lsmod 2>&1"
 Save-AdbText "tinymix" "command -v tinymix 2>&1; tinymix 2>&1"
@@ -114,12 +114,12 @@ Save-AdbText "audio_service" "dumpsys audio"
 Save-AdbText "i2c_devices" "ls -la /sys/bus/i2c/devices 2>&1; cat /proc/bus/i2c/devices 2>&1"
 Save-AdbText "block_partitions" "ls -la /dev/block/by-name 2>&1; cat /proc/partitions"
 Save-AdbText "device_tree_listing" "ls -la /sys/firmware/devicetree/base 2>&1; ls -la /proc/device-tree 2>&1; cat /sys/firmware/devicetree/base/model 2>&1; tr '\000' '\n' </sys/firmware/devicetree/base/compatible 2>/dev/null"
-Save-AdbText "audio_config_file_list" "for d in /vendor/etc /system/etc; do echo ==== $d; find $d -maxdepth 4 -type f 2>/dev/null | grep -iE 'audio|mixer|codec|i2s'; done"
+Save-AdbText "audio_config_file_list" "for d in /vendor/etc /system/etc; do echo ==== `$d; find `$d -maxdepth 4 -type f 2>/dev/null | grep -iE 'audio|mixer|codec|i2s'; done"
 
 # FM-specific, read-only state needed to correlate the MT6627 driver, HAL and ALSA route.
 Save-AdbText "fm_proc_status" "echo ==== /proc/fm; ls -l /proc/fm 2>&1; cat /proc/fm 2>&1; echo ==== /dev/fm; ls -l /dev/fm 2>&1" -Root
 Save-AdbText "fm_customer_config_candidates" "for d in /vendor/firmware /system/etc/firmware /vendor/etc/firmware /odm/etc/firmware /lib/firmware /system/vendor/firmware; do echo ==== $d; find $d -maxdepth 4 -type f -iname fm_cust.cfg -print -exec cat {} \\; 2>/dev/null; done" -Root
-Save-AdbText "audio_policy_candidates" "for d in /odm/etc /vendor/etc /system/etc; do echo ==== $d; find $d -maxdepth 2 -type f -iname 'audio_policy_configuration*.xml' -print 2>/dev/null; done"
+Save-AdbText "audio_policy_candidates" "for d in /odm/etc /vendor/etc /system/etc; do echo ==== `$d; find `$d -maxdepth 2 -type f -iname 'audio_policy_configuration*.xml' -print 2>/dev/null; done"
 Save-AdbText "pinctrl_audio" "find /sys/kernel/debug/pinctrl -maxdepth 2 -type f \\( -name pinmux-pins -o -name pins -o -name pinmux-functions -o -name pinconf-pins \\) -print 2>/dev/null | while read f; do echo ==== $f; cat $f 2>&1; done" -Root
 Save-AdbText "dmesg_root" "dmesg" -Root
 Save-AdbText "dmesg_user" "dmesg"
