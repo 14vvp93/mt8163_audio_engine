@@ -61,9 +61,10 @@ jobs:
           readelf -h ../libmt8163_audio_jni.so | grep -E "Class:|Machine:"
           mkdir -p audio-core
           cd audio-core
-          ar x ../../libmt8163_audio_core.a
+          ar x ../../audio-core-build/libmt8163_audio_core.a
           readelf -h mute_arbiter.cpp.o | grep -E "Class:|Machine:"
           readelf -h cd3313_compat.cpp.o | grep -E "Class:|Machine:"
+          readelf -h session_registry.cpp.o | grep -E "Class:|Machine:"
       - name: Upload Android ARMv7 libraries
         uses: actions/upload-artifact@v6
         with:
