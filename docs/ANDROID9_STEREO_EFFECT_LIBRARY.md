@@ -264,3 +264,14 @@ COMMIT and the new preamp is applied on the next processed block afterward.
 This covers the successful staging/commit path. Slot-exhaustion behavior
 and concurrent command/process stress still require dedicated tests; the
 host ABI test is not a substitute for target-device runtime validation.
+
+## 32-bit frame-size arithmetic guard — 2026-11-12
+
+The process callback now validates `frameCount` against the maximum safe
+`size_t` byte count for the configured channel layout and sample format
+before any bypass copy, PCM sample indexing, or Float32 chunk offset is
+calculated. This prevents integer wraparound in the 32-bit Android target
+when a malformed or unexpected framework buffer count is supplied.
+
+The check rejects an impossible-to-represent buffer size with `-EINVAL`;
+it does not attempt a bypass copy using an overflowed byte count.
