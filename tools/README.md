@@ -40,6 +40,13 @@ configuration files, including `audio_device.xml`,
 `AudioParamOptions.xml`, `audio_policy_configuration.xml`,
 `mixer_paths.xml` and `audio_param/` when present.
 
+For FM routing, it additionally captures `/proc/asound/cards`,
+`/proc/asound/pcm`, `/proc/fm`, FM device-node metadata, all candidate
+`audio_policy_configuration*.xml` files, `fm_cust.cfg` from common firmware
+search locations, and read-only pinctrl debugfs snapshots when root access
+allows them. It also records `dumpsys media.audio_policy` and `getprop`, which
+help determine the policy actually loaded and the runtime FM control flags.
+
 ### Safety and sharing
 
 The collector is read-only with respect to Android audio settings. It does
