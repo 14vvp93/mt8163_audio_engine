@@ -6,8 +6,8 @@ The project uses two repositories with separate responsibilities:
 
 | Repository | Role | Visibility |
 |---|---|---|
-| `14vvp93/mt8163_audio_engine` | Canonical product repository: source code, tests, documentation, firmware evidence, manifests and validated results | Private |
-| `14vvp93/public_calculations` | Heavy-compute worker: resource-intensive GitHub Actions for archive processing, ELF analysis, decompilation, large test matrices and builds | Public |
+| `14vvp93/mt8163_audio_engine` | Canonical product repository: authoritative source code, tests, architecture, product documentation, reviewed decisions and links to validated evidence | Private |
+| `14vvp93/public_calculations` | Public firmware/data repository and heavy-compute worker: original dumps, archives, extracted data, analysis tools, resource-intensive Actions and public reports | Public |
 
 The current working repository, `14march93/mt8163_audio_engine`, is the migration source. The canonical destination is now identified as `14vvp93/mt8163_audio_engine`. `public_calculations` is not a second product repository: it is the approved public home for firmware inputs, derived data, analysis tooling and compute workflows; canonical product source code remains in the private product repository.
 
