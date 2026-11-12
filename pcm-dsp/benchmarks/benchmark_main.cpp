@@ -245,7 +245,7 @@ int main() {
                       << transition.p95_us << " us, max "
                       << transition.max_us << " us, average CPU "
                       << transition.realtime_percent << "% of one core, block "
-                      << budget_us << " us\\n";
+                      << budget_us << " us\n";
             if (!(transition.average_us > 0.0) ||
                 !std::isfinite(transition.max_us)) {
                 passed = false;
