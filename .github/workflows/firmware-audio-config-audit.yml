@@ -2,80 +2,75 @@ name: Firmware audio configuration audit
 
 on:
   push:
+    branches: [main, feature/cd3313-driver-rewrite]
     paths:
-      - "reference-materials/firmware-dumps/**"
+      - "reference-materials/extracted/**"
       - ".github/workflows/firmware-audio-config-audit.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  inspect-firmware-archives:
+  inspect-curated-firmware:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Install archive tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full
-
-      - name: Extract firmware archives and collect audio configuration
+      - name: Validate curated firmware inventory
         shell: bash
         run: |
           set -euo pipefail
-          ROOT="reference-materials/firmware-dumps"
-          OUT="$GITHUB_WORKSPACE/build/firmware-audio-audit"
-          EXTRACT="$RUNNER_TEMP/firmware-extract"
-          mkdir -p "$OUT/config" "$EXTRACT"
-          : > "$OUT/archive-report.txt"
+          ROOT=reference-materials/extracted
+          OUT=build/firmware-audio-audit
+          mkdir -p "$OUT"
+          test -s "$ROOT/manifest.json"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, xml.etree.ElementTree as ET
 
-          for archive in \
-            "$ROOT/files.zip" \
-            "$ROOT/files2.zip.001" \
-            "$ROOT/lib.zip.001" \
-            "$ROOT/vendor_lib.zip.001"; do
-            if [[ -f "$archive" ]]; then
-              echo "=== $archive ===" | tee -a "$OUT/archive-report.txt"
-              7z l "$archive" >> "$OUT/archive-report.txt" 2>&1 || true
-              dest="$EXTRACT/$(basename "$archive" | sed 's/\.001$//; s/\.zip$//')"
-              mkdir -p "$dest"
-              7z x -y -bd "-o$dest" "$archive" >> "$OUT/archive-report.txt" 2>&1 || echo "EXTRACTION_ERROR: $archive" | tee -a "$OUT/archive-report.txt"
-            fi
-          done
+          root = Path("reference-materials/extracted")
+          out = Path("build/firmware-audio-audit")
+          manifest = json.loads((root / "manifest.json").read_text())
+          rows = []
+          failures = []
+          for item in manifest["files"]:
+              path = Path(item["path"])
+              if not path.is_file():
+                  failures.append(f"MISSING {path}")
+                  continue
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              if digest != item["sha256"]:
+                  failures.append(f"HASH_MISMATCH {path}")
+              rows.append(f"{digest}  {path}")
+              if path.suffix.lower() == ".xml":
+                  try:
+                      ET.parse(path)
+                  except Exception as exc:
+                      failures.append(f"XML_INVALID {path}: {exc}")
+          (out / "sha256-manifest.txt").write_text("\n".join(rows) + "\n")
+          (out / "validation-errors.txt").write_text("\n".join(failures) + ("\n" if failures else ""))
+          (out / "summary.txt").write_text(
+              f"Curated files: {len(manifest['files'])}\n"
+              f"Bytes: {manifest['total_bytes']}\n"
+              f"XML/hash errors: {len(failures)}\n"
+          )
+          print((out / "summary.txt").read_text())
+          if failures:
+              raise SystemExit("\n".join(failures))
+          PY
 
-          echo "=== Candidate configuration files ===" | tee -a "$OUT/archive-report.txt"
-          find "$EXTRACT" -type f \( \
-            -iname 'audio_effects.xml' -o \
-            -iname 'audio_effects.conf' -o \
-            -iname 'audio.a2dp.default.so' -o \
-            -iname 'audio.primary.mt8163.so' -o \
-            -iname 'libaudiopolicycustomextensions.so' -o \
-            -iname 'libaudiopolicymanagerdefault.so' -o \
-            -iname 'libcarservices_jni.so' -o \
-            -iname 'libfmjni.so' -o \
-            -iname 'libfmcust.so' -o \
-            -iname 'audio_policy_configuration*.xml' -o \
-            -iname 'a2dp_audio_policy_configuration.xml' -o \
-            -iname 'r_submix_audio_policy_configuration.xml' -o \
-            -iname 'usb_audio_policy_configuration.xml' -o \
-            -iname 'hearing_aid_audio_policy_configuration.xml' -o \
-            -iname 'audio_policy.conf' -o \
-            -iname 'audio_device.xml' -o \
-            -iname 'mixer_paths*.xml' -o \
-            -iname 'build.prop' -o \
-            -iname 'default.prop' \
-          \) -print | sort | tee "$OUT/config-file-list.txt"
-
-          while IFS= read -r file; do
-            [[ -f "$file" ]] || continue
-            rel="${file#"$EXTRACT"/}"
-            safe="$(printf '%s' "$rel" | tr '/' '_')"
-            cp "$file" "$OUT/config/$safe"
-          done < "$OUT/config-file-list.txt"
-
-          echo "=== Audio effect / stream references ===" >> "$OUT/archive-report.txt"
-          grep -RniE 'postprocess|stream type="music"|music|effect name|library name|uuid' "$OUT/config" >> "$OUT/archive-report.txt" || true
-
-          test -s "$OUT/config-file-list.txt"
+      - name: Index audio routing and DSP configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=reference-materials/extracted
+          OUT=build/firmware-audio-audit
+          grep -RniE 'audio|a2dp|fm|bluetooth|speaker|headset|loudness|equalizer|effect|mixer|i2s' \
+            "$ROOT/system" "$ROOT/vendor" --include='*.xml' --include='*.conf' --include='*.cfg' --include='*.rc' \
+            > "$OUT/audio-config-reference-index.txt" || true
+          find "$ROOT" -type f -printf '%P\t%s bytes\n' | sort > "$OUT/curated-file-list.txt"
 
       - name: Upload firmware audio configuration audit
         uses: actions/upload-artifact@v6
