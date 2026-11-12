@@ -11,18 +11,27 @@ The project uses two repositories with separate responsibilities:
 
 The current working repository, `14march93/mt8163_audio_engine`, is the migration source. The canonical destination is now identified as `14vvp93/mt8163_audio_engine`. Do not treat `public_calculations` as a second product repository or as the canonical storage location for firmware/source data.
 
-## Compute-repository safety boundary
+## Compute-repository data policy
 
-Because `public_calculations` is public, assume workflow source, run history, logs and published artifacts may be visible to anyone.
+The owner explicitly approves public storage of firmware dumps, original firmware
+archives, extracted firmware contents, technical analysis and generated reports in
+`14vvp93/public_calculations`. Firmware dumps are not confidential by default.
 
-- Never copy private firmware dumps, proprietary binaries, signing material, credentials, private source archives or unredacted extracted trees into the public compute repository or its artifacts.
-- Heavy jobs should fetch required inputs from the private canonical repository using a narrowly scoped GitHub App token or fine-grained token stored as a secret. Do not print tokens or sensitive file contents.
-- Keep public workflow inputs explicit and validate repository, ref, task name and paths before processing.
-- Prefer manual dispatch or trusted workflow calls from protected refs. Do not expose private-repository credentials to untrusted pull-request code.
-- Publish only reviewed, sanitized outputs to the public worker repository. Send private or detailed results directly to the private canonical repository, or retain them as private artifacts in the canonical repository.
-- Treat Actions logs as public: avoid verbose shell tracing, dumping environment variables, printing extracted data, or emitting sensitive filenames/content.
-- Use short-lived, least-privilege credentials and grant only the required contents permissions.
-- The compute repository stores reusable scripts/workflows and non-sensitive reports, not the project's authoritative source of truth.
+Because the compute repository is public, assume its source, commit history, workflow
+run metadata, logs, caches and published artifacts may be visible to anyone.
+
+- Do not publish actual credentials, access tokens, passwords, private signing keys,
+  personal data or unrelated private material.
+- Do not print secrets, environment variables or credential-bearing command lines.
+- Validate workflow task names, refs and paths; reject path traversal and unsafe inputs.
+- Prefer manual dispatch for expensive work. Do not expose write credentials to
+  untrusted pull-request code.
+- Keep the canonical product implementation and authoritative product decisions in
+  the private product repository. The public worker stores public inputs, tools,
+  workflows, derived data and public analysis results.
+- Record source archive hashes, member hashes, tool versions and reproducible steps.
+- Use Git LFS or GitHub Releases for durable large files after checking current limits
+  and quotas. Actions artifacts are temporary, retention-limited outputs.
 
 ## Portability rules
 
@@ -68,10 +77,10 @@ Never copy secret values into Git or documentation.
 ## Large firmware inputs
 
 - Preserve original multipart ZIP volumes as immutable source inputs.
-- Preserve the curated extracted tree and manifest in the private canonical repository when file-size limits permit.
+- Preserve original public archives and verified manifests in the public compute repository; keep derived extracted trees reproducible and store large outputs using an appropriate durable backend.
 - Do not rely on the old repository's time-limited Actions artifacts as the only copy of extracted data.
 - The 161 MiB HEQ APK cannot be committed as a normal GitHub file. Its split source volumes remain the canonical tracked input. If a permanent assembled copy is needed, choose a storage method supported by the destination and document its checksum.
-- Do not place private source volumes or assembled firmware in the public compute repository, its cache, or its artifacts.
+- Public firmware volumes and assembled firmware may be stored in the public compute repository. Do not place credentials, private signing material, personal data or unrelated private content there.
 - Before migration, verify every split archive volume, archive CRC, extracted member count and SHA-256 manifest from a clean checkout.
 
 ## Suggested migration sequence
@@ -84,7 +93,7 @@ Never copy secret values into Git or documentation.
 6. Transfer all branches, tags and full Git history using a mirror-based migration.
 7. Transfer required LFS objects and release assets separately, if applicable.
 8. Recreate secrets, variables, permissions, branch rules, Apps and integrations.
-9. Configure `public_calculations` as a compute worker with narrowly scoped access to private inputs and a strict output-sanitization boundary.
+9. Configure `public_calculations` as the public compute worker for approved public firmware inputs, with strict secret hygiene and validated paths.
 10. Run critical product and compute workflows and verify generated commits target the correct repository and branch.
 11. Compare source and destination refs, tags, tree hashes, archive manifests and workflow results.
 12. Only after successful validation, designate `14vvp93/mt8163_audio_engine` as canonical. Keep the old source repository read-only for a defined rollback period.
@@ -95,7 +104,7 @@ Never copy secret values into Git or documentation.
 - The archive workflow concurrency group is scoped by `github.ref`.
 - The firmware configuration audit was previously reported to use the triggering ref and have no hard-coded repository name; this still needs a fresh file-level verification before cutover.
 - Historical Actions run URLs in audit documents are evidence only and should continue pointing to the source repository after migration.
-- The source repository is private. The canonical destination is also private; the compute repository is public. These visibility boundaries must be preserved.
+- The source repository is private. The canonical destination is also private; the compute repository is public and is approved for firmware dumps and derived public analysis. Keep actual secrets and personal data out.
 - The full extraction artifact is temporary and must not be treated as a migration source. Use retained archive volumes plus scripts and manifests to reproduce it.
 
 ## Cutover gate
@@ -105,7 +114,7 @@ Migration is not complete until:
 - required Git history is present;
 - all tracked source archive volumes and curated files match their recorded hashes;
 - the destination can reproduce archive inventory and curated extraction;
-- public compute workflows cannot publish private input data;
+- public compute workflows do not expose credentials or unrelated private data;
 - required tests and analysis workflows pass;
 - no workflow writes back to the old repository unintentionally;
 - the destination's access controls and integrations are confirmed.
