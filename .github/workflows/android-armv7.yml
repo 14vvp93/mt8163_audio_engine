@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "pcm-dsp/**"
+      - "audio-core/**"
       - ".github/workflows/android-armv7.yml"
   pull_request:
     paths:
       - "pcm-dsp/**"
+      - "audio-core/**"
       - ".github/workflows/android-armv7.yml"
   workflow_dispatch:
 
