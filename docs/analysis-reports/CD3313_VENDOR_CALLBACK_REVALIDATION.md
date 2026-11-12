@@ -36,7 +36,7 @@ The table below records the exact size-field guard visible in this vendor callba
 | ID | Vendor callback guard | Words read | Host-side safe policy |
 |---|---|---|---|
 | `0x01` | size > 0 | +4 | Require 1 word |
-| `0x03` | no visible size guard | +4, +8 | Require 3 complete words; replacement additionally restricts channel 0..6 and gain 0..3 |
+| `0x03` | no visible size guard | +4, +8 | Require 3 complete words; replacement additionally restricts channel 0..5 and gain 0..3 |
 | `0x04` | size > 2 | +4, +8, +12 | Require 3 words |
 | `0x09` | no visible size guard | +4 | Sets `volume_max`; default is 40 and `set_master_volume()` uses it as the upper bound |
 | `0x10` | size > 0 | +4 | Require 1 word |
