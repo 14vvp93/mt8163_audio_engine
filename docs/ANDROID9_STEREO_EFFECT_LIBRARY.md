@@ -62,6 +62,20 @@ https://github.com/14march93/mt8163_audio_engine/actions/runs/43167408077
   chain, with direct buffers and device/audio-mode indication; no offload
   capability is advertised.
 
+## Bluetooth A2DP policy correlation
+
+The recovered vendor `a2dp_audio_policy_configuration.xml` declares a
+separate A2DP HAL module with a PCM16, stereo, 44.1 kHz output mix port and
+three output device types: A2DP, A2DP Headphones and A2DP Speaker. The vendor
+fragment does not declare a compressed-offload profile. The Android effect
+adapter therefore now allows those three A2DP output masks, while retaining
+its explicit offload bypass and normal-audio-mode gate.
+
+The host effect smoke test covers DSP processing on all three A2DP masks at
+44.1 kHz and exact bypass on Bluetooth SCO. This validates the adapter's
+device-mask logic, not the target's AudioFlinger routing or runtime offload
+state. See [MT8163 audio source coverage](MT8163_AUDIO_SOURCE_COVERAGE.md).
+
 ## Supported processing contract
 
 The DSP is enabled only when all of these conditions hold:
@@ -71,7 +85,7 @@ The DSP is enabled only when all of these conditions hold:
 3. Stream is stereo output.
 4. Sample rate is 44.1 or 48 kHz.
 5. Input and output formats match and are either PCM16 or PCM Float32.
-6. Current output device is speaker, wired headset, or wired headphones only.
+6. Current output device is speaker, wired headset, wired headphones, or one of the three vendor-declared Bluetooth A2DP output devices.
 7. Audio mode is AUDIO_MODE_NORMAL.
 8. The output is not offloaded.
 
