@@ -155,12 +155,31 @@ int main() {
             "unsupported sample-rate bypass succeeds");
     require(output == input, "unsupported sample-rate bypass is bit-exact");
 
-    configure(handle, 48000U, AUDIO_FORMAT_PCM_16_BIT);
-    set_route(handle, AUDIO_DEVICE_OUT_BLUETOOTH_A2DP);
+    // The recovered vendor A2DP policy exposes PCM16 stereo at 44.1 kHz.
+    // All three A2DP device masks must enter the same software DSP path.
+    configure(handle, 44100U, AUDIO_FORMAT_PCM_16_BIT);
+    set_u32(handle, 1U, 1U);
+    set_float(handle, 2U, 6.0F);
+    const std::array<std::uint32_t, 3> a2dp_devices{{
+        AUDIO_DEVICE_OUT_BLUETOOTH_A2DP,
+        AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES,
+        AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER
+    }};
+    for (const auto device : a2dp_devices) {
+        set_route(handle, device);
+        std::fill(output.begin(), output.end(), 0);
+        require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+                "A2DP PCM DSP process succeeds");
+        require(output[0] > 1500 && output[0] < 2600,
+                "A2DP PCM route applies the software preamp");
+    }
+
+    // Bluetooth SCO is a telephony route and must remain bypassed.
+    set_route(handle, AUDIO_DEVICE_OUT_BLUETOOTH_SCO);
     std::fill(output.begin(), output.end(), 0);
     require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
-            "unsupported output device bypass succeeds");
-    require(output == input, "unsupported output device bypass is bit-exact");
+            "Bluetooth SCO bypass succeeds");
+    require(output == input, "Bluetooth SCO bypass is bit-exact");
 
     // Offload and non-normal modes must also bypass bit-exactly.
     configure(handle, 48000U, AUDIO_FORMAT_PCM_16_BIT);
