@@ -55,7 +55,7 @@ public:
 
     // Hardware control is routed through this broker from the control context
     // only. The attached backend is non-owning and must outlive AudioCore.
-    void attach_hardware_backend(HardwareBackend* backend) noexcept;
+    bool attach_hardware_backend(HardwareBackend* backend) noexcept;
     HardwareResult dispatch_hardware_command(
         const HardwareCommand& command) noexcept;
 
