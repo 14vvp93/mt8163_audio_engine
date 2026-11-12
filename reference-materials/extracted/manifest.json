@@ -1,10 +1,10 @@
 {
-  "purpose": "Complete persistent extraction of all retained archive sets except the 161 MiB HEQ APK, which exceeds GitHub's 100 MiB per-file limit.",
+  "purpose": "Complete persistent extraction of all retained archive sets; the HEQ APK is stored as GitHub-safe chunks.",
   "source_archives": [
     "reference-materials/firmware-dumps/files2.zip.001-.003",
     "reference-materials/firmware-dumps/lib.zip.001-.004",
     "reference-materials/firmware-dumps/vendor_lib.zip.001-.002",
-    "reference-materials/heq/HEQ.zip.001-.017 (HEQ.apk remains in the source archive and full extraction artifact)"
+    "reference-materials/heq/HEQ.zip.001-.017 (HEQ.apk is also committed as chunks under reference-materials/extracted/heq/)"
   ],
   "files2_shared_library_deduplication": {
     "files2_shared_library_count": 32,
