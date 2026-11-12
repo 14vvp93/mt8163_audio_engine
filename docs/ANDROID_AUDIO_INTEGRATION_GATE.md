@@ -351,7 +351,7 @@ Start hardware controls as unknown/unapplied and require explicit user
 application. Saved values can represent only the last values sent by this app,
 not verified live CD3313 state.
 
-## 14. Android 9 AudioFlinger output-mix insertion candidate
+## 14. Android 9 AudioFlinger output-mix insertion candidate (global fallback)
 
 A separate framework-level investigation identified `AUDIO_SESSION_OUTPUT_MIX`
 as a plausible stereo-preserving insertion point before the vendor HAL. The
@@ -376,24 +376,31 @@ image modification has been performed.
 Detailed decision and AOSP references: [Android 9 AudioFlinger stereo
 insertion candidate](ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md).
 
-## 15. Refined Android 9 insertion candidate: stream-specific Music postprocess
+## 15. Refined Android 9 insertion candidate: Music session software INSERT
 
 The Audio Effects v2.0 configuration schema supports a `postprocess` list
 keyed by output stream type, including `music`. AOSP
-`AudioPolicyEffects::addOutputSessionEffects()` resolves the configured
-postprocess list for the requested stream and creates/enables its effect on
-the output audio session. This is a narrower candidate than a global
-`AUDIO_SESSION_OUTPUT_MIX` effect and can target the legacy Music stream.
+`AudioPolicyEffects::addOutputSessionEffects()` resolves that list and
+creates/enables the configured effect on the output audio session. This is
+narrower than a global `AUDIO_SESSION_OUTPUT_MIX` effect.
 
-The effect still runs in AudioFlinger before the vendor HAL receives the PCM
-block, so it is upstream of the MT8163 Normal handler's speaker mono fold.
-However, this exact behavior must be confirmed against the target's Android 9
-framework tag and vendor modifications. Legacy stream classification may
-also place navigation or other usages on Music. The extracted vendor
-`audio_effects.xml` must be checked for schema version and existing
-`postprocess` entries before any change.
+The XML `postprocess` label is the policy attachment mechanism; the effect
+descriptor type decides where processing runs. Use `EFFECT_FLAG_TYPE_INSERT`
+with `EFFECT_FLAG_INSERT_LAST`: AudioFlinger then processes the effect in its
+software session chain before the vendor HAL receives PCM. Do not use
+`EFFECT_FLAG_TYPE_POST_PROC` for this stereo-preserving prototype, because
+that path is forwarded through `audio_stream_out::add_audio_effect` to the
+vendor HAL and does not prove processing occurs before the MTK speaker
+mono-fold stage.
 
-Prefer a Music postprocess attachment for the first prototype. Retain a
-session-0 output-mix effect only as a fallback when broader global processing
-is explicitly intended. Detailed AOSP references and constraints are in
+This is still a candidate pending target validation. Legacy stream
+classification may place navigation or other usages on Music. The extracted
+vendor `audio_effects.xml` must be checked for schema version and existing
+`postprocess` entries before any change. Confirm the effect stays in the
+AudioFlinger software chain and receives correct device/mode notifications.
+
+Prefer a Music postprocess attachment with a TYPE_INSERT descriptor for the
+first prototype. Retain a session-0 output-mix software insert only as a
+fallback when broader global processing is explicitly intended. Detailed
+AOSP references and constraints are in
 [ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md](ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md).
