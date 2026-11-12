@@ -230,3 +230,25 @@ Start with **P0-A: CD3313 memory-safety and protocol audit**. In parallel, conti
 ### Updated immediate P0-A focus
 
 Continue with the exact vendor archive module's callback disassembly and reconcile every command ID, length check and argument read. Specifically resolve the 0x03 discrepancy, determine the 0x09 operation, inventory all Java/Binder command-array callers, and define the safe legacy JNI compatibility buffer. Do not enable hardware transport.
+
+
+### P0-A follow-up — paired vendor callback revalidation and parser boundaries
+
+- Retrieved the exact `cd3313-current-module-analysis` artifact from public firmware worker run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570). Verified SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594` and Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
+- Re-read the paired vendor `cmd_ioctl` and `event_callback` disassembly directly. Added [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md) with the exact command guard/read map and evidence identity.
+- Corrected a prior risk-audit error: the paired vendor callback range-checks all four `0x15` indices against 0..15. The actual remaining issue is that its size check accepts two/three words before it reads four words, leaving missing values sourced from stale slab data.
+- Confirmed the paired vendor callback has no visible size-field guard before its payload reads for `0x03`, `0x09`, `0x56` and `0xA3`. The host parser continues to require complete words. The three-word `0x03` threshold remains explicitly labelled as conservative host policy, not proven vendor acceptance behavior.
+- Corrected variant-specific documentation so standalone-module defects are not incorrectly attributed to the paired vendor build. The paired vendor I2C write helpers retry and update cache only after exact one-byte transfer success.
+- Expanded protocol tests for empty/partial headers, unsupported direction, unknown IDs, ignored low request byte, exact and malformed payload sizes, all four invalid `0x15` index positions, encoder validation, and the 63/64-word slab boundary.
+- Seeded libFuzzer with valid `0x10`, `0x15` and `0x09` frames so mutation begins from accepted protocol paths.
+- CI run [43303015809](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43303015809) completed successfully: host tests, ASAN/UBSAN and seeded libFuzzer all PASS. AudioCore TSAN run [43303015831](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43303015831) also completed successfully.
+- Latest boundary extension checks both 2-word and 3-word `0x15` frames; run [43303482890](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43303482890) is queued and must pass before this exact extension is marked verified.
+- Latest integration commit at this update: `ae10667037b5417460d284168a82bfc317874f07`.
+
+### Remaining P0-A closure items
+
+- [ ] Reconcile the complete vendor callback's field semantics/ranges and every branch against the exact paired module, including `0x03` channel/gain handling and `0x09` semantics.
+- [ ] Inventory all Java/Binder callers and exact array lengths/values; determine the safe legacy JNI compatibility buffer.
+- [ ] Confirm the vendor kernel's `__check_object_size` / hardened-usercopy implementation and configuration.
+- [ ] Reconcile every command ID and ensure the host allowlist is complete without importing standalone-only behavior.
+- [ ] Keep production transport detached; no physical-device or hardware-write validation has been performed.
