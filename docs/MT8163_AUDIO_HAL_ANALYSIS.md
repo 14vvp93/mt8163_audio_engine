@@ -88,20 +88,22 @@ The inspected `audio.primary.mt8163.so` contains many ioctl call sites for other
 
 Do not wire the CD3313 protocol emulator into this HAL based on assumptions. The CD3313 driver may be controlled by a separate vendor service, an application, another library, or a different HAL component. The next investigation should inspect `audiocmdservice_atci`, its init service definition, other vendor executables/libraries, and all available references to `/dev/audiomux`.
 
-## 6. Recommended architecture for our project
+## 6. Initial integration recommendation — superseded by the unified replacement target
 
-Preserve the stock MTK HAL as the hardware transport, routing, and call-path owner. Build our own DSP core as a separate, testable C++ library with no dependency on the proprietary MTK filter implementation.
+This section records the original, conservative integration recommendation made during early reverse engineering. It is **not the current product architecture**.
 
-Recommended layers:
+The approved product target is one unified MT8163 Audio Engine that replaces the factory vendor audio implementation through the original firmware artifact identities. The primary HAL replacement must therefore be built and staged as `/vendor/lib/hw/audio.primary.mt8163.so`, with the exact factory basename and path, and must preserve the Android 9 HAL ABI, required exported symbols, SONAME/dependencies, device routing and telephony contracts. AudioCore is linked internally; it is not installed as a parallel project-named runtime library or a global effect.
 
-1. **PCM DSP core** — format-aware processing for supported PCM streams, with explicit bypass and deterministic latency.
-2. **Android integration adapter** — attach only at a proven output processing point; preserve stream/device routing and bypass call/SCO paths initially.
-3. **CD3313 control service/library** — independent protocol and state model; connect only after locating the real userspace caller and confirming the ioctl ABI.
-4. **Control API/UI** — expose EQ, tone, loudness and routing controls without directly manipulating kernel registers from the UI.
+The reverse-engineering findings in this document remain valid constraints for the replacement:
 
-Initial DSP scope should target primary music/media output at PCM16 stereo 44.1/48 kHz. Navigation and notifications can be added after stream-type handling is proven. Bluetooth SCO, voice calls, microphone capture, FM, USB and HDMI should remain untouched/bypassed until their paths are explicitly mapped.
+1. **PCM processing** — use only proven stream formats and call sites; preserve capacity, buffer, SRC and bit-conversion contracts.
+2. **Android HAL adapter** — implement the factory HAL entry points and lifecycle, retaining the expected output/input stream and device-routing behavior. Do not treat the Normal playback processing hook as coverage for FM, SCO, voice, capture, HDMI or offload.
+3. **CD3313 control** — keep a separate semantic state and command broker, but do not implement raw transport until the userspace/kernel ABI discrepancy is resolved.
+4. **Control API** — keep hardware commands in the serialized control plane, never in the PCM callback.
 
-This is safer than replacing `audio.primary.mt8163.so` or injecting a global effect immediately. It reduces the risk of breaking boot audio, telephony, microphone paths, or device routing.
+The replacement should be delivered incrementally behind factory-compatible build artifacts and tests. Unverified routes must remain explicitly unsupported or safely bypassed; they must not be silently mapped to Normal PCM. Preserve the exact factory originals and rollback hashes until route-by-route device validation is complete.
+
+See [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) and [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md).
 
 ## 7. Next reverse-engineering tasks
 
