@@ -17,6 +17,42 @@ The live feature-branch HEAD is tracked in GitHub; this status document does not
 - [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) — one state authority, module contracts, source/route model, mute arbitration and migration gates.
 - [Factory defect and risk register](FACTORY_DEFECTS.md) — static defects and unresolved compatibility risks.
 
+## Latest continuation — factory identity and AudioCore coordinator
+
+Current feature-branch HEAD: `ae76fd8b15eef6f6d2651e909a15cb589ee0ca35`.  
+Factory replacement names/paths are now a hard build and packaging requirement. The current `main` baseline remains `d38c020763cb448fe0bceb00c6463cbb7d13c3a7`; it was not modified.
+
+### Factory artifact map
+
+The public extracted-firmware manifest was read directly and filtered against audio/framework/device-control components. The initial replacement map records exact factory paths, basenames, sizes and SHA-256 anchors for the primary HAL, framework audio libraries, car-services JNI, vendor audio HIDL service, ATCI tuning service, CD3313/carstatus/alternative DSP modules and policy/configuration files.
+
+Confirmed primary replacement target:
+
+- Factory path: `/vendor/lib/hw/audio.primary.mt8163.so`
+- Factory basename: `audio.primary.mt8163.so`
+- Baseline size: 1,671,852 bytes
+- Baseline SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
+
+The AudioCore static library is an internal implementation library to be linked into this factory-named HAL. It must not be installed as a parallel primary HAL or project-named runtime library. Other factory control clients must be migrated or redirected so no second process continues to own CD3313 state. Kernel module replacement remains blocked on exact kernel source/config/toolchain and module ABI.
+
+See [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md).
+
+### AudioCore coordinator
+
+Implemented the first `AudioCore` coordinator in `audio-core/`. It composes SessionRegistry, MuteArbiter and AudioMode, exposes serialized control-plane mutations and publishes immutable snapshots to the PCM side through SnapshotPublisher. Snapshots contain generation, master/per-source mute masks, mode and session counts. If publication is blocked because all inactive slots are pinned, the control state remains committed and the dirty flag requires a later control-loop retry.
+
+New host test target: `mt8163_audio_core_coordinator_tests`. It covers initial state, snapshot publication, generation changes, mute-owner isolation, session lifecycle and invalid mode/session inputs. No hardware I/O or route execution has been added.
+
+### CI for coordinator and artifact-map changes
+
+- [Test PCM DSP core — run 43259646080](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43259646080) — success at code commit `e4339c6`.
+- [PCM DSP Stability Lab — run 43259646082](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43259646082) — success at `e4339c6`.
+- [PCM DSP Performance Benchmark — run 43259646083](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43259646083) — success at `e4339c6`.
+- [Android ARMv7 build and DSP benchmark — run 43259646049](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43259646049) — success at `e4339c6`, including Android NDK ARMv7 compilation and ELF architecture verification.
+- [Repository integrity — run 43259740306](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43259740306) — success at documentation HEAD `ae76fd8`.
+
+These results verify host tests, ARMv7 static-library compilation and repository integrity. They do not constitute a complete replacement HAL build or device validation.
+
 ## Confirmed static findings
 
 ### CD3313 transport and hardware control
