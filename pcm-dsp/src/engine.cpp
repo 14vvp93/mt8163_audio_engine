@@ -37,6 +37,9 @@ void Engine::reset() {
     for (auto& coefficients : current_coefficients_) {
         coefficients = {};
     }
+    for (auto& band : transition_states_) {
+        for (auto& channel : band) channel = {};
+    }
     limiter_envelope_ = 0.0F;
 }
 
@@ -145,17 +148,11 @@ Engine::BiquadCoefficients Engine::make_filter(float sample_rate,
     return c;
 }
 
-Engine::BiquadCoefficients Engine::interpolate(
-        const BiquadCoefficients& from,
-        const BiquadCoefficients& to,
-        float amount) {
-    BiquadCoefficients result;
-    result.b0 = from.b0 + (to.b0 - from.b0) * amount;
-    result.b1 = from.b1 + (to.b1 - from.b1) * amount;
-    result.b2 = from.b2 + (to.b2 - from.b2) * amount;
-    result.a1 = from.a1 + (to.a1 - from.a1) * amount;
-    result.a2 = from.a2 + (to.a2 - from.a2) * amount;
-    return result;
+bool Engine::coefficients_equal(const BiquadCoefficients& left,
+                                 const BiquadCoefficients& right) {
+    return left.b0 == right.b0 && left.b1 == right.b1 &&
+           left.b2 == right.b2 && left.a1 == right.a1 &&
+           left.a2 == right.a2;
 }
 
 float Engine::run_biquad(float input,
@@ -190,8 +187,19 @@ bool Engine::process(const std::int16_t* input,
     const float right_gain = balance < 0.0F ? 1.0F + balance : 1.0F;
 
     std::array<BiquadCoefficients, kEqBandCount> target_coefficients{};
+    bool coefficients_changed = false;
     for (std::size_t band = 0; band < kEqBandCount; ++band) {
         target_coefficients[band] = make_filter(sample_rate, parameters.bands[band]);
+        coefficients_changed = coefficients_changed ||
+            !coefficients_equal(current_coefficients_[band],
+                                target_coefficients[band]);
+    }
+
+    // Never interpolate normalized IIR denominator coefficients: intermediate
+    // a1/a2 values can move poles outside the unit circle. Run both stable
+    // filter banks in parallel and crossfade their outputs instead.
+    if (coefficients_changed) {
+        transition_states_ = states_;
     }
 
     const float threshold = clamp(parameters.limiter_threshold, 0.1F, 1.0F);
@@ -201,22 +209,41 @@ bool Engine::process(const std::int16_t* input,
     const float release_coeff = std::exp(-1.0F / (release_ms * 0.001F * sample_rate));
 
     for (std::size_t frame = 0; frame < frames; ++frame) {
-        const float amount = frames > 1U
+        const float amount = frames > 0U
             ? static_cast<float>(frame + 1U) / static_cast<float>(frames)
             : 1.0F;
         const std::size_t index = frame * 2U;
-        float left = static_cast<float>(input[index]) / 32768.0F;
-        float right = static_cast<float>(input[index + 1U]) / 32768.0F;
+        const float source_left = static_cast<float>(input[index]) / 32768.0F;
+        const float source_right = static_cast<float>(input[index + 1U]) / 32768.0F;
+        const float dry_left = source_left * preamp * left_gain;
+        const float dry_right = source_right * preamp * right_gain;
+        float left = dry_left;
+        float right = dry_right;
 
-        left *= preamp * left_gain;
-        right *= preamp * right_gain;
-
-        for (std::size_t band = 0; band < kEqBandCount; ++band) {
-            const auto coefficients = interpolate(current_coefficients_[band],
-                                                   target_coefficients[band],
-                                                   amount);
-            left = run_biquad(left, coefficients, states_[band][0]);
-            right = run_biquad(right, coefficients, states_[band][1]);
+        if (coefficients_changed) {
+            float old_left = dry_left;
+            float old_right = dry_right;
+            float new_left = dry_left;
+            float new_right = dry_right;
+            for (std::size_t band = 0; band < kEqBandCount; ++band) {
+                old_left = run_biquad(old_left, current_coefficients_[band],
+                                      states_[band][0]);
+                old_right = run_biquad(old_right, current_coefficients_[band],
+                                       states_[band][1]);
+                new_left = run_biquad(new_left, target_coefficients[band],
+                                      transition_states_[band][0]);
+                new_right = run_biquad(new_right, target_coefficients[band],
+                                       transition_states_[band][1]);
+            }
+            left = old_left + (new_left - old_left) * amount;
+            right = old_right + (new_right - old_right) * amount;
+        } else {
+            for (std::size_t band = 0; band < kEqBandCount; ++band) {
+                left = run_biquad(left, current_coefficients_[band],
+                                  states_[band][0]);
+                right = run_biquad(right, current_coefficients_[band],
+                                   states_[band][1]);
+            }
         }
 
         if (parameters.limiter_enabled) {
@@ -237,8 +264,10 @@ bool Engine::process(const std::int16_t* input,
         output[index] = to_pcm16(left);
         output[index + 1U] = to_pcm16(right);
     }
-    for (std::size_t band = 0; band < kEqBandCount; ++band) {
-        current_coefficients_[band] = target_coefficients[band];
+
+    if (coefficients_changed) {
+        states_ = transition_states_;
+        current_coefficients_ = target_coefficients;
     }
     return true;
 }
