@@ -51,7 +51,7 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 
 ## Reverse-engineering documents
 
-See the [documentation index](docs/README.md) for the complete, categorized list. The repository cleanup and archive inventory are in [docs/repository-audit/](docs/repository-audit/).
+See the [documentation index](docs/README.md) for the complete, categorized list. The current Phase 1 findings are consolidated in [the audit baseline](docs/PHASE1_AUDIT_BASELINE.md). The repository cleanup and archive inventory are in [docs/repository-audit/](docs/repository-audit/).
 
 - [CD3313 kernel protocol](docs/CD3313_PROTOCOL_RECONSTRUCTION.md)
 - [CD3313 character-device read/write ABI](docs/CD3313_CHAR_DEVICE_ABI.md)
