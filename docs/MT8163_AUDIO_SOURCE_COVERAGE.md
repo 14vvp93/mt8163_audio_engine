@@ -146,7 +146,7 @@ avoid stale filter state/clicks.
 | Source | Firmware evidence | DSP status | Remaining gate |
 |---|---|---|---|
 | Music | vendor effects v2.0 XML; AOSP Android 9 effect contract | software INSERT scaffold | registration/runtime Music classification |
-| Bluetooth A2DP | vendor A2DP module, PCM16 stereo 44.1 kHz, three output masks | adapter now allows A2DP; host smoke tests and Android ARMv7 ABI build passed in workflow run 43168171844 | build/test result and target AudioFlinger/offload verification |
+| Bluetooth A2DP | vendor A2DP module, PCM16 stereo 44.1 kHz, three output masks | adapter allows A2DP at 44.1 kHz; 48 kHz bypass, host tests and ARMv7 ABI build passed in workflow run 43168512245 | target AudioFlinger attachment/device notifications and offload verification |
 | Bluetooth SCO | separate 8/16 kHz communication devices | bypass | keep excluded |
 | FM | vendor FM Tuner In policy route plus separate MT6627 FM_I2S HAL/ALSA path | not yet attached to shared DSP | trace active FM PCM path and choose a proven insertion point |
 
