@@ -22,7 +22,7 @@ Android AudioFlinger, AudioPolicyService, ALSA and kernel drivers remain infrast
 
 ### AudioCore runtime
 
-Place the authoritative AudioCore state machine and PCM graph in the replacement primary audio HAL process. This keeps PCM buffers in-process and avoids Binder/IPC on the real-time path. The HAL owns one AudioCore instance for its lifetime.
+Place the authoritative AudioCore state machine and PCM graph in the replacement primary audio HAL process. The confirmed factory artifact is `/vendor/lib/hw/audio.primary.mt8163.so`; the final replacement must keep basename `audio.primary.mt8163.so` and that exact path. Link the project-named AudioCore static library into this factory-named HAL rather than installing a parallel `libmt8163_audio_engine.so` or second audio daemon. This keeps PCM buffers in-process and avoids Binder/IPC on the real-time path. The HAL owns one AudioCore instance for its lifetime. See [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md).
 
 Control clients must be thin proxies. They submit typed events to the HAL control interface; they do not maintain shadow source, mute, volume or DSP state. The exact Android 9-compatible control transport is an implementation gate: evaluate the existing HAL set_parameters/vendor extension path and a small vendor HIDL control interface against the captured framework and service call sites. Do not introduce a second stateful daemon.
 
@@ -220,6 +220,7 @@ The JNI extra-word discrepancy is unresolved. Do not reproduce the vendor JNI fr
 ## Related documents
 
 - [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md)
+- [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md)
 - [Phase 1 audit baseline](PHASE1_AUDIT_BASELINE.md)
 - [Factory defect and risk register](FACTORY_DEFECTS.md)
 - [Product goal](MT8163_AUDIO_ENGINE_GOAL.md)
