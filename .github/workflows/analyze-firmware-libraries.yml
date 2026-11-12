@@ -477,7 +477,7 @@ jobs:
                       libs.extend("  " + line[:500] for line in hits)
               except (OSError, subprocess.SubprocessError):
                   continue
-          pcm_rx = re.compile(r"FM_I2S_Playback|FM_I2S_Capture|MRGRX|FM_I2S", re.IGNORECASE)
+          pcm_rx = re.compile(r"FM_I2S_Playback|FM_I2S_Capture|MRGRX_PLayback|MRGRX_CAPTURE", re.IGNORECASE)
           pcm_hits = []
           pcm_out = out / "fm-i2s-pcm-name-hits.txt"
           pcm_modules = out / "fm-i2s-pcm-modules"
