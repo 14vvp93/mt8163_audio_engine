@@ -170,7 +170,7 @@ The Java ExtAudioMuxer wrapper emits:
 | setMasterVolumeIndex(...) | 0x10 | one volume-step integer |
 | setMasterMute(mute, reason) | 0x11 | [mute, reason] |
 | setMastVolumePercentage(percent) | 0x12 | [percent] |
-| setMasterVolumeMax(value) | 0x09 | [value] — vendor callback branch exists; semantic effect unresolved |
+| setMasterVolumeMax(value) | 0x09 | [value] — sets `volume_max`; safe replacement range 0..40 |
 
 The input-source priority recovered from DoAudioMux() is:
 
