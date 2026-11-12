@@ -61,7 +61,7 @@ Recovered global master-mute call sites in the analyzed boot-carservices.vdex:
 
 ACC behavior: carstatus.ko samples ACC on GPIO86/IRQ; CarStatusService reads the status from /dev/carstatus. On ACC OFF it immediately calls ExtAudioMuxer.setMasterMute(true, 2) through /dev/audiomux, separately sends MCU text mute=10001 through /dev/carstatus, and cancels pending delayed unmute. ACC ON schedules a 2,500 ms delayed transition; reason 2 is cleared only if ACC is still ON, with MCU text mute=10000. The two output commands are independent control planes. A new transition replaces pending work. Reimplement this as a cancellable state-machine transition, not as an unowned timer.
 
-## 3. CD3313 logical source mapping
+## 5. CD3313 logical source mapping
 
 | Logical channel | Label | Selector | Chip input |
 |---:|---|---:|---|
@@ -77,7 +77,7 @@ GPIO 396 distinguishes AUX/AUX2; GPIO 474 distinguishes RADIO/DAB. These are req
 
 CD3313 setBalance(FL, FR, RL, RR) controls four analog output attenuators. It is not a four-channel PCM interface and does not provide four independent PEQ/delay banks.
 
-## 4. FM paths must remain distinct
+## 6. FM paths must remain distinct
 
 1. /dev/fm: tuner and I2S metadata/control.
 2. ALSA FM_I2S_Playback: direct HAL playback endpoint in the paired MT6627 non-merge configuration.
@@ -87,13 +87,13 @@ CD3313 setBalance(FL, FR, RL, RR) controls four analog output attenuators. It is
 
 Static evidence proves these software paths coexist. It does not prove which route is audible, whether both FM audio paths are physically connected, or whether FM capture feeds the direct speaker patch. Those are runtime/board questions.
 
-## 5. DSP driver collision
+## 7. DSP driver collision
 
 DTBO analysis shows enabled I2C2 nodes cd3313@44, ak7604@1c and fy7604@50. Supplied init scripts attempt to load cd3313.ko, ak7604.ko and fy7604.ko. All three register a misc device named audiomux; AK7604/FY7604 also request overlapping GPIO resources.
 
 This is a static registration collision, not proof that all three chips are populated or that all probes succeed. CD3313 appears first in the observed insertion order, but the runtime owner of /dev/audiomux is unknown. Do not load alternative modules experimentally; obtain read-only boot log, module state and I2C probe evidence.
 
-## 6. Safety and replacement gates
+## 8. Safety and replacement gates
 
 1. Do not send guessed or malformed CD3313 requests; native bridge framing has an unresolved extra-word discrepancy.
 2. Treat CD3313 ioctl success as queued, not executed; cached status is not hardware readback.
@@ -102,7 +102,7 @@ This is a static registration collision, not proof that all three chips are popu
 5. Keep normal media, FM direct, FM capture, A2DP, HFP/SCO and microphone capture as separately identified route classes.
 6. Do not remove a factory component until the replacement owns its behavior, compatibility tests pass and rollback is available.
 
-## 7. Phase 1 closure
+## 9. Phase 1 closure
 
 - [x] Recover CD3313 Java/Binder/native control chain and command mapping.
 - [x] Recover carstatus JNI text-write ABI and kernel state interface.
