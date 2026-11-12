@@ -6,7 +6,9 @@
 #include "mt8163_audio_core/types.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace mt8163_audio_core {
 
@@ -23,7 +25,7 @@ struct AudioCoreSnapshot {
     std::uint8_t reserved{0U};
 };
 
-static_assert(__is_trivially_copyable(AudioCoreSnapshot),
+static_assert(std::is_trivially_copyable<AudioCoreSnapshot>::value,
               "AudioCoreSnapshot must be safe for bounded publication");
 
 class AudioCore {
