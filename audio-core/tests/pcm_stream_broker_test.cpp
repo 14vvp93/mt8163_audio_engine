@@ -100,6 +100,16 @@ void test_invalid_order_and_arguments() {
     require(broker.write(3U, &sample, kMaxPcmWriteFrames + 1U) ==
                 PcmResult::BufferTooLarge,
             "oversized write rejected");
+    backend.write_result = PcmResult::WouldBlock;
+    require(broker.write(3U, &sample, 1U) == PcmResult::WouldBlock,
+            "nonblocking backend backpressure is propagated");
+    backend.write_result = PcmResult::Xrun;
+    require(broker.write(3U, &sample, 1U) == PcmResult::Xrun,
+            "PCM xrun is propagated without callback recovery");
+    backend.write_result = PcmResult::DeviceLost;
+    require(broker.write(3U, &sample, 1U) == PcmResult::DeviceLost,
+            "device loss is propagated to the control plane");
+    backend.write_result = PcmResult::Ok;
     require(broker.close(3U) == PcmResult::InvalidState,
             "active stream cannot be closed before callback quiescence and stop");
     require(broker.stop(3U) == PcmResult::Ok, "active stream stops");
