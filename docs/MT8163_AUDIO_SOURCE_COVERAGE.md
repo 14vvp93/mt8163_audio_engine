@@ -42,6 +42,24 @@ The matching system A2DP fragment has the same three device ports and 44.1 kHz
 stereo output profiles, although its mix-port profile is left unspecified.
 The vendor copy is the more explicit profile for this target.
 
+### A2DP HAL binary cross-check
+
+The firmware archive also contains `audio.a2dp.default.so` in both the
+system and vendor_lib locations. The two copies are byte-identical:
+
+- ELF32 ARM, Android 28;
+- Build ID `50451f06f3c570299d158ca4444da1b4`;
+- SHA-256 `2e071c95c5b6b8ecc3da2abe9e7018b84447f03e808ac81d56502634e965305e`.
+
+The HAL reads and writes the negotiated A2DP output codec configuration at
+runtime (sample rate, bits per sample and channel mode), and its command
+strings include `A2DP_CTRL_CMD_OFFLOAD_START`. It therefore contains an
+offload-control path even though the recovered vendor A2DP policy fragment
+does not declare a compressed/direct offload mix-port profile. Do not infer
+that offload is impossible from the policy fragment alone; the actual runtime
+offload state still needs confirmation. The effect adapter retains its
+`EFFECT_CMD_OFFLOAD` bypass for this reason.
+
 The primary system policy separately declares a compressed-offload mix port
 for MP3/AAC/AAC-LC on the primary output route. That is not the same as the
 vendor A2DP module's PCM output profile. A2DP offload must still be checked
