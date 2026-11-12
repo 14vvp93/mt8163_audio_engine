@@ -75,3 +75,12 @@ The exact vendor hardened-usercopy implementation/config still requires source c
 - [ ] Keep hardware transport detached until the above items and board ownership are proven.
 
 No ioctl, I2C write, GPIO change, kernel module load or physical-device test was performed for this reconciliation.
+
+
+### Parser policy versus recovered callback behavior
+
+The 12-pair `cmd_len_list` table and optimized command-dispatch description in the older standalone analysis are not, by themselves, proof of the exact callback-side validation in the firmware-paired vendor module. The vendor-module ABI audit records that command `0x03` reads two words without a visible local length check, while the older table records a three-word minimum. Keep the host parser's three-word threshold as a fail-closed compatibility policy until the exact vendor callback control flow is re-extracted; do not claim that a short `0x03` frame is accepted or rejected by the installed module based only on the current conflicting reports.
+
+Likewise, the parser's `0x15` four-word requirement is a safety requirement derived from the four observed 32-bit loads, not the weaker two-word threshold found in the older command table. The host implementation intentionally rejects frames that could leave handler arguments sourced from uninitialized slab bytes. This is a replacement-side contract and must remain distinct from the unsafe factory driver's observed minimum.
+
+The current parser's `known_write_commands()` table is therefore a conservative host-side acceptance policy. It is not yet a fully reconciled, vendor-build-exact protocol specification. Closure still requires instruction-level control-flow review of Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56` for every dispatch ID, generic threshold, branch-local check and argument read.
