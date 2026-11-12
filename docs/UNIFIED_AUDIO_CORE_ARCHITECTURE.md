@@ -83,6 +83,12 @@ The diagram shows ownership boundaries, not a claim that every source is already
 | VehicleStateAdapter | Convert ACC/reverse/telephone/silence signals into typed events | Own audio mute policy or PCM route state |
 | AndroidPolicyAdapter | Translate framework stream/device/patch/mode events | Become a second vendor source-priority controller |
 
+### Initial SessionRegistry implementation
+
+The host-side foundation now includes a fixed-capacity 16-slot SessionRegistry. It tracks opaque session handles, source identity, route type and lifecycle state (Requested, Active, Suspended, Stopping, Failed). It rejects duplicate/zero handles, invalid source/route identifiers and illegal lifecycle transitions. Closing a session releases its slot.
+
+This registry is control-plane bookkeeping only. It does not choose priorities, open ALSA devices, execute routes or access hardware. Its capacity is an initial bound for tests, not a claim that Android will never expose more than 16 simultaneous logical sessions.
+
 ## 5. Event and real-time model
 
 ### Control plane
