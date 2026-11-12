@@ -1,48 +1,29 @@
-# Importing approved firmware from the primary repository
+# Firmware dataset migration and future updates
 
-The public compute repository hosts approved public MT8163 firmware archives,
-dumps, extracted data and generated analysis reports. The canonical source repository
-is `14vvp93/mt8163_audio_engine`; no future import or workflow should depend on
-the retired `14march93` account.
+## Initial migration — completed
 
-## One-time credential setup
+The one-time migration copied the complete extracted firmware dataset from the former private location into `14vvp93/public_calculations/firmware/extracted/`.
 
-Create a fine-grained GitHub personal access token restricted to
-`14vvp93/mt8163_audio_engine` with **Contents: Read-only** permission. Add it to
-`14vvp93/public_calculations` as an Actions repository secret named
-`SOURCE_REPO_READ_TOKEN`. Do not paste the token into chat, workflow inputs, files,
-or logs. The import workflow runs only on the `main` branch.
+- 1,386 files
+- 578,175,653 bytes
+- Per-file size and SHA-256 verified before commit
+- Source commit: `44e132c8ac299ebfd58831232ec6b6f64ae8f769`
+- Extracted manifest: `firmware/manifests/mt8163-extracted.json`
+- Standalone raw dumps: 22 files, 44,050,240 bytes
+- HEQ APK: three chunks, reassembled and verified against the full APK SHA-256
 
-If the existing secret was created for the former `14march93` repository, replace
-it with a token that grants read-only access to the current private repository. Secret
-values cannot be inspected by workflow code; a missing or insufficient token causes
-the import validation step to fail.
+After verification, the 26 original split ZIP volumes (349,781,724 bytes) and the private `reference-materials/` tree were removed from the current working trees. The original archive history remains in Git history; it is not part of the current branch contents.
 
-## Run the import
+See the private [firmware dataset migration report](FIRMWARE_DATASET_LAYOUT.md) for the complete inventory and provenance.
 
-Open **Actions → Import approved public MT8163 firmware → Run workflow**.
-Select the source branch (default `feature/cd3313-driver-rewrite`) and whether to
-include standalone raw dumps. The workflow imports:
+## Future updates
 
-- split ZIP volumes from `reference-materials/firmware-dumps/`;
-- standalone raw images and configuration dumps when enabled;
-- split HEQ archive volumes from `reference-materials/heq/`;
-- the original `cd3313.ko` reference module.
+New approved firmware should be added directly to `public_calculations/firmware/`:
 
-The importer hashes each source file before copying, verifies the destination copy
-against the source SHA-256, rejects symlinked inputs and destination paths, and
-enforces a 95 MiB per-file safety ceiling. It records the exact source commit, source
-path, destination path, file size and SHA-256 in
-`firmware/manifests/mt8163-source-import.json`, then commits the public inputs to
-`main`. It never writes to the primary source repository.
+1. Place standalone images and dumps under `firmware/dumps/mt8163/`.
+2. Place extracted filesystem content under `firmware/extracted/`, preserving original paths.
+3. Generate/update a manifest with file sizes, SHA-256 values and source provenance.
+4. Run `worker-audit-firmware-integrity.yml` and `compute.yml` with task `verify`.
+5. Keep only one canonical copy of each dataset; do not mirror firmware into the private project repository.
 
-## Size and integrity
-
-The destination is public: imported firmware, extracted content, workflow logs and
-artifacts must contain no credentials, tokens, passwords, private signing keys,
-personal data, or unrelated private material. The import preserves approved input
-bytes; it does not recompress them or silently switch to Git LFS.
-
-Ordinary Git rejects individual blobs above 100 MiB. The workflow uses a conservative
-95 MiB ceiling. If a future file exceeds it, stop and select Git LFS, a GitHub Release,
-or another suitable large-file backend before importing it.
+No private-repository import token or cross-repository firmware importer is used by the current architecture.
