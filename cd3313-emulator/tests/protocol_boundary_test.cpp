@@ -88,6 +88,11 @@ int main() {
                     ParseError::UnknownCommand,
                 "unknown command ID must be rejected");
 
+        const auto read_only_query_as_write = make_frame(0xF0U, 1U, 4U);
+        require(parse_driver_command(read_only_query_as_write).error ==
+                    ParseError::UnknownCommand,
+                "read-only 0xF0 identifier query must not enter the write parser");
+
         const auto header_only = make_frame(0x10U, 1U, 0U);
         require(parse_driver_command(header_only).error ==
                     ParseError::PayloadSizeMismatch,
@@ -233,6 +238,8 @@ int main() {
 
         require(encode_rejects({0xFEU, 1U, {0U, 0U, 0U, 0U}}),
                 "encoder must reject unknown command IDs");
+        require(encode_rejects({0xF0U, 1U, {0U, 0U, 0U, 0U}}),
+                "encoder must reject the read-only 0xF0 query as a write command");
         require(encode_rejects({0x09U, 1U, {41U, 0U, 0U, 0U}}),
                 "encoder must reject a master-volume maximum above 40");
         require(encode_rejects({0x03U, 3U, {
