@@ -32,6 +32,30 @@ public repository.
 The output is uploaded as a GitHub Actions artifact attached to the caller's run in
 this primary repository. Use the run's **Artifacts** section to retrieve the reports.
 
+## Run firmware analysis
+
+Open **Actions → Run firmware analysis on public compute → Run workflow**.
+Choose one workload and a source revision (normally `main`). The nine workloads are:
+
+- Audio HAL ELF, symbols, relocations, disassembly and XML checks.
+- CD3313 ioctl ABI and event-queue analysis.
+- CD3313 kernel-module static analysis.
+- Boot, recovery and DTBO image inspection.
+- Firmware library and vendor-stack analysis.
+- Reference archive audit, split-volume reassembly and curated-tree generation.
+- HEQ APK reassembly, decompilation and DSP reference extraction.
+- Extracted firmware audio-configuration validation.
+- CD3313/audiomux userspace-client scan.
+
+These jobs execute in the public worker repository but check out the selected primary
+repository revision read-only. Reports are uploaded as artifacts to the caller's run.
+The archive audit no longer commits generated inventory or extracted files back into
+the primary repository.
+
+The former product-side workflow files are retained temporarily as migration backups.
+They should be disabled or archived only after the corresponding worker task has passed
+an end-to-end run.
+
 ## Firmware import
 
 Approved public firmware is imported separately by the worker's
