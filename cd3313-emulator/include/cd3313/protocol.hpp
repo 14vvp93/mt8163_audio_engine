@@ -70,6 +70,7 @@ DriverCommand make_input_mute_command(std::int32_t channel, bool mute,
 DriverCommand make_input_mixing_command(bool enabled,
                                         std::uint32_t opaque_word0 = 0,
                                         std::uint32_t opaque_word1 = 0);
+DriverCommand make_master_volume_max_command(std::uint32_t maximum_step);
 DriverCommand make_master_volume_command(std::uint32_t step);
 DriverCommand make_master_mute_command(bool mute, std::uint32_t reason);
 DriverCommand make_four_channel_level_command(std::uint8_t front_left,
