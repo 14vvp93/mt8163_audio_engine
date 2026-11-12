@@ -10,8 +10,10 @@ This is an integration scaffold, not a device-ready installation:
 
 - no audio_effects.xml or product makefile has been changed;
 - the effect is not registered or loaded by the target ROM;
-- no Android 9 platform-tree build has been run yet;
-- no ARM32 effect-library binary has been produced or loaded on the head unit;
+- the first Android 9 header/ARMv7 cross-compile exposed two bypass-call errors,
+  which have been fixed; the corrected CI build is pending;
+- no full Android platform-tree build has been run and no effect has been loaded
+  on the head unit;
 - the UUID and post-process descriptor still need validation against the
   target ROM's effect factory and exact audio_effects.xml schema.
 
