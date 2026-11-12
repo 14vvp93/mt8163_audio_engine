@@ -485,29 +485,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          OUT=firmware-analysis/board-audio-routing
-          mkdir -p "$OUT/fm-customer-config"
-          find firmware-analysis -type f \\( -iname 'fm_cust.cfg' -o -iname '*fm_cust*' \\) -print > "$OUT/fm-customer-config/file-list.txt" || true
-          while IFS= read -r f; do
-            [ -f "$f" ] || continue
-            dest="$OUT/fm-customer-config/$(basename "$f")"
-            cp "$f" "$dest"
-            if file "$f" | grep -qi text; then
-              sed -n '1,240p' "$f" > "$dest.txt"
-            else
-              strings -a -t x "$f" > "$dest.strings.txt" || true
-            fi
-          done < "$OUT/fm-customer-config/file-list.txt"
           python3 - <<'PY'
           from pathlib import Path
-          import re, subprocess
+          import re, shutil, subprocess
           root=Path("firmware-analysis")
           out=root/"board-audio-routing"/"fm-customer-config"
-          rx=re.compile(r"/proc/fm|fm_cust\.cfg|fm_cust_config_setup|FM_IOCTL_I2S_SETTING|FM_IOCTL_GET_AUDIO_INFO",re.I)
-          hits=[]
-          suffixes={".so",".apk",".jar",".vdex",".odex",".dex",".rc",".sh",".prop",".xml",".conf",".cfg",".txt"}
+          out.mkdir(parents=True, exist_ok=True)
+          config_files=[]
           for p in root.rglob("*"):
-              if not p.is_file() or p.suffix.lower() not in suffixes:
+              if p.is_file() and ("fm_cust.cfg" in p.name.lower() or "fm_cust" in p.name.lower()):
+                  config_files.append(p)
+          file_lines=[]
+          for p in config_files:
+              rel=str(p.relative_to(root)).replace("/","__")
+              dst=out/rel
+              shutil.copy2(p,dst)
+              file_lines.append(f"{p} -> {dst}")
+              try:
+                  if p.suffix.lower() in {".cfg",".conf",".txt",".ini",".xml",".prop"}:
+                      (out/(rel+".text")).write_text(p.read_text(errors="replace")[:200000])
+                  else:
+                      data=subprocess.run(["strings","-a","-t","x",str(p)],capture_output=True,text=True,errors="replace").stdout
+                      (out/(rel+".strings")).write_text(data[:200000])
+              except (OSError, subprocess.SubprocessError):
+                  pass
+          (out/"file-list.txt").write_text("\n".join(file_lines)+("\n" if file_lines else "No fm_cust-named file found in extracted firmware tree.\n"))
+          rx=re.compile(r"/proc/fm|fm_cust\.cfg|fm_cust_config_setup|FM_IOCTL_I2S_SETTING|FM_IOCTL_GET_AUDIO_INFO|ro\.bluetooth\.a2dp_offload\.supported|persist\.bluetooth\.a2dp_offload\.disabled",re.I)
+          hits=[]
+          policy_files=[]
+          for p in root.rglob("*"):
+              if not p.is_file():
+                  continue
+              if p.name.lower() in {"audio_policy_configuration.xml","audio_policy_configuration_a2dp_offload_disabled.xml"}:
+                  policy_files.append(p)
+              if p.suffix.lower() not in {".so",".apk",".jar",".vdex",".odex",".dex",".rc",".sh",".prop",".xml",".conf",".cfg",".txt"}:
                   continue
               try:
                   if p.stat().st_size>30*1024*1024:
@@ -522,8 +533,15 @@ jobs:
                       hits.extend("  "+line[:500] for line in lines[:100])
               except (OSError, subprocess.SubprocessError):
                   continue
-          (out/"fm-proc-and-ioctl-references.txt").write_text("\n".join(hits)+("\n" if hits else "No user-space or config references found in scanned files.\n"))
-          print(f"FM config/proc references: {len(hits)} lines")
+          (out/"fm-proc-and-policy-property-references.txt").write_text("\n".join(hits)+("\n" if hits else "No FM proc/config or A2DP policy property references found in scanned files.\n"))
+          policy_lines=[]
+          for p in policy_files:
+              rel=str(p.relative_to(root)).replace("/","__")
+              dst=out/rel
+              shutil.copy2(p,dst)
+              policy_lines.append(f"{p} -> {dst}")
+          (out/"audio-policy-config-files.txt").write_text("\n".join(policy_lines)+("\n" if policy_lines else "No matching audio policy XML file found.\n"))
+          print(f"FM customer files: {len(config_files)}; FM/proc/property hits: {len(hits)}; policy XML files: {len(policy_files)}")
           PY
 
       - name: Upload FM tuner driver analysis
