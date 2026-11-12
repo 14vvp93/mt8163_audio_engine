@@ -138,8 +138,10 @@ void test_state_and_error_boundaries() {
             "xrun propagated to caller");
     require(backend.write(token, sample, 1U) == PcmResult::InvalidState,
             "xrun transitions backend to failed state");
+    require(backend.stop(token) == PcmResult::Ok,
+            "failed stream is explicitly stopped before close");
     require(backend.close(token) == PcmResult::Ok,
-            "failed but stopped native handle can be closed");
+            "stopped native handle can be closed");
 }
 
 void test_invalid_tables() {

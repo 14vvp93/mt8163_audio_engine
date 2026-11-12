@@ -166,8 +166,14 @@ PcmResult EndpointPcmBackend::stop(StreamToken token) noexcept {
     if (slot == nullptr) return PcmResult::NotOpen;
     const auto state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
     if (state == PcmStreamState::Stopped) return PcmResult::Ok;
-    if (state != PcmStreamState::Started) return PcmResult::InvalidState;
+    // A write-side XRUN/device-loss marks the stream Failed, but the native
+    // handle may still require an explicit stop before it can be closed.
+    if (state != PcmStreamState::Started && state != PcmStreamState::Failed) {
+        return PcmResult::InvalidState;
+    }
+    if (slot->write_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
     const PcmResult result = ops_.stop(ops_.context, slot->native_handle);
+    slot->write_busy.clear(std::memory_order_release);
     slot->state.store(state_value(result == PcmResult::Ok ? PcmStreamState::Stopped
                                                           : PcmStreamState::Failed),
                       std::memory_order_release);
