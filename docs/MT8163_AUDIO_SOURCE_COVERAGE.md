@@ -114,14 +114,18 @@ The extracted FM control libraries were cross-checked separately from the
 primary audio HAL:
 
 - `libcarservices_jni.so`: Build ID
-  `bf391e545edd2e482b72cd8a431d1c59`. It contains the
+  `bf391e545edd2e482b72cd8a431d1c59`; SHA-256
+  `ed93d034bfecb0e4bc975e16b64c4fc0b3f1bd631b075759f700269c049fdf1f`.
+  It contains the
   `android::register_android_radio_RadioService()` JNI registration,
   `nativeSetPower` and other RadioService native-method names, and tuner
   control routines including `MainThread::RadioPowerUp()`,
   `RadioFreqSet()`, `RadioStart()` and `RadioPowerDown()`. Its strings
   include `/dev/fmradio` and `/dev/fm`.
 - `libfmjni.so`: Build ID
-  `4459396f1ba98c792e0635454be1aa33`. It exports the FM tuner command API
+  `4459396f1ba98c792e0635454be1aa33`; SHA-256
+  `7e2d0959e5dfe3c5c65befa7bd3fe6dffe4b937cfebe6b59eb0be4665bedfc42`.
+  It exports the FM tuner command API
   (`FMR_pwr_up`, `FMR_pwr_down`, `FMR_tune`, `FMR_seek`,
   `FMR_set_mute`, RDS and signal-quality routines).
 - Neither library's dynamic imports expose Android `AudioRecord`,
@@ -133,6 +137,9 @@ The extracted FM JNI and policy-extension binaries are available in the
 firmware audit artifact:
 https://github.com/14march93/mt8163_audio_engine/actions/runs/43170784980/artifacts/13922186760
 
+The paired policy-extension binary `libaudiopolicycustomextensions.so`
+has Build ID `f471dbca5ef93ec7e59d87999c3053f9` and SHA-256
+`9f4b6940d241a4bc6517214f1fc3fd0b3d69964f54aaa04e5ceb836d47d04afb`.
 The policy extension's `fm_addAudioPatch()` recognizes the FM Tuner input
 patch (device mask `0x80002000`) and maintains its FM patch state. The
 primary HAL's FM-specific `createAudioPatch()` branch then drives the
