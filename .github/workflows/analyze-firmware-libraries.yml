@@ -431,6 +431,56 @@ jobs:
           strings -a -t x libaudiopolicycustomextensions.so > strings.txt
           grep -i -E 'FM_DIRECT_CONTROL|FM_I2S|MRGRX|fm|audio parameter|setParameters|set_parameters' strings.txt > focused-strings.txt || true
 
+      - name: Trace FM callback imports and Audio Policy config selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=firmware-analysis/board-audio-routing
+          mkdir -p "$OUT/fm-wmt-crossrefs" "$OUT/policy-stack"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, shutil, subprocess
+          root = Path("firmware-analysis")
+          out = root / "board-audio-routing"
+          symbols = re.compile(
+              r"fm_low_ops_register|fm_i2s_set|fm_get_aud_info|mt6627fm_get_audio_info|"
+              r"wmt_plat_aif_cb_reg|wmt_plat_i2s_ctrl|wmt_plat_audio_ctrl",
+              re.IGNORECASE,
+          )
+          refs = []
+          modules = root / "vendor_lib/lib/modules"
+          for path in modules.rglob("*.ko") if modules.exists() else []:
+              try:
+                  if path.stat().st_size > 20 * 1024 * 1024:
+                      continue
+                  result = subprocess.run(["readelf", "-Ws", str(path)], text=True, capture_output=True, errors="replace")
+                  matches = [line for line in result.stdout.splitlines() if symbols.search(line) and re.search(r"UND|GLOBAL|WEAK", line)]
+                  if matches:
+                      refs.append(f"MODULE {path}")
+                      refs.extend("  " + line.strip() for line in matches)
+                      shutil.copy2(path, out / "fm-wmt-crossrefs" / path.name)
+              except (OSError, subprocess.SubprocessError):
+                  continue
+          (out / "fm-wmt-symbol-crossrefs.txt").write_text("\n".join(refs) + ("\n" if refs else "No matching FM/WMT symbols found in module symbol tables.\n"))
+          libs = []
+          path_rx = re.compile(r"audio_policy_configuration|audio_policy\.conf|AUDIO_POLICY_CONFIG|/vendor/etc|/system/etc", re.IGNORECASE)
+          for path in root.rglob("libaudiopolicy*.so"):
+              try:
+                  if path.stat().st_size > 30 * 1024 * 1024:
+                      continue
+                  raw = subprocess.run(["strings", "-a", "-n", "5", str(path)], text=True, capture_output=True, errors="replace").stdout
+                  hits = [line for line in raw.splitlines() if path_rx.search(line)]
+                  if hits:
+                      dst = out / "policy-stack" / path.name
+                      shutil.copy2(path, dst)
+                      libs.append(f"LIB {path} -> {dst}")
+                      libs.extend("  " + line[:500] for line in hits)
+              except (OSError, subprocess.SubprocessError):
+                  continue
+          (out / "audio-policy-config-paths.txt").write_text("\n".join(libs) + ("\n" if libs else "No policy config path strings found in matching libraries.\n"))
+          print(f"Found {len(refs)} FM/WMT symbol lines; found {len(libs)} policy config path lines")
+          PY
+
       - name: Upload FM tuner driver analysis
         uses: actions/upload-artifact@v6
         with:
