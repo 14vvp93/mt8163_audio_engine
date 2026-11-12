@@ -5,6 +5,10 @@
 
 using mt8163_audio_core::AudioCore;
 using mt8163_audio_core::AudioMode;
+using mt8163_audio_core::HardwareBackend;
+using mt8163_audio_core::HardwareCommand;
+using mt8163_audio_core::HardwareCommandKind;
+using mt8163_audio_core::HardwareResult;
 using mt8163_audio_core::MuteOwner;
 using mt8163_audio_core::RouteType;
 using mt8163_audio_core::SessionState;
@@ -81,6 +85,35 @@ void test_owner_scoped_clear_and_close() {
             "closed session is removed from snapshot");
 }
 
+class FakeAudioHardware final : public HardwareBackend {
+public:
+    HardwareResult execute(const HardwareCommand& command) noexcept override {
+        last = command;
+        ++calls;
+        return HardwareResult::Applied;
+    }
+
+    HardwareCommand last{};
+    unsigned calls{0U};
+};
+
+void test_audio_core_is_single_hardware_command_owner() {
+    AudioCore core;
+    FakeAudioHardware backend;
+    core.attach_hardware_backend(&backend);
+    const HardwareCommand command{
+        HardwareCommandKind::SetMasterMute,
+        SourceId::None,
+        MuteOwner::AccPowerState,
+        true
+    };
+    require(core.dispatch_hardware_command(command) == HardwareResult::Applied,
+            "AudioCore dispatches semantic command through its broker");
+    require(backend.calls == 1U, "one backend execution is observed");
+    require(backend.last.owner == MuteOwner::AccPowerState,
+            "AudioCore preserves the mute owner identity");
+}
+
 void test_invalid_mode_and_session() {
     AudioCore core;
     require(!core.set_mode(static_cast<AudioMode>(0xFFU)),
@@ -99,6 +132,7 @@ int main() {
     test_control_state_is_published();
     test_owner_scoped_clear_and_close();
     test_invalid_mode_and_session();
+    test_audio_core_is_single_hardware_command_owner();
     std::cout << "AudioCore coordinator tests passed\n";
     return 0;
 }
