@@ -181,7 +181,7 @@ XML registration, system image or device configuration was modified.
 
 ## 6. Comparison with the HAL callback candidate
 
-| Property | MTK Normal post-processing | AudioFlinger output-mix candidate |
+| Property | MTK Normal post-processing | Music-session software INSERT |
 |---|---|---|
 | Before speaker mono fold | No | Yes, on mixer path |
 | Stereo preserved for speaker route | No | Expected; must verify live |
