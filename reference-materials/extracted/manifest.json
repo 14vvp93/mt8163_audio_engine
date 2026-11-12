@@ -11,9 +11,50 @@
     "unmatched_shared_libraries": 0,
     "note": "All files2 .so entries were SHA-256 verified against lib.zip or vendor_lib.zip and are represented at their canonical filesystem paths."
   },
-  "file_count": 1383,
-  "total_bytes": 409363920,
+  "heq_apk": {
+    "source": "HEQ.zip:HEQ.apk",
+    "size": 168811733,
+    "sha256": "a7c6e1163b56270b506a4b8b6f1ae763a4c4ecc9fae5b0a498aeea46968759b3",
+    "chunk_size": 67108864,
+    "parts": [
+      {
+        "path": "reference-materials/extracted/heq/HEQ.apk.part001",
+        "size": 67108864,
+        "sha256": "42623a97df3c8281a5f32a2b6774a1e2c3b9473f455a32a19fb94e798528d609"
+      },
+      {
+        "path": "reference-materials/extracted/heq/HEQ.apk.part002",
+        "size": 67108864,
+        "sha256": "878e32c2c9062a166f0943c2d021a0eec4edbf1822bbd6bd76da3456828762aa"
+      },
+      {
+        "path": "reference-materials/extracted/heq/HEQ.apk.part003",
+        "size": 34594005,
+        "sha256": "017c882cba511189a97462b8373ddc4a3f44c9a98b38085e85ce3324727aba5e"
+      }
+    ]
+  },
+  "file_count": 1386,
+  "total_bytes": 578175653,
   "files": [
+    {
+      "path": "reference-materials/extracted/heq/HEQ.apk.part001",
+      "size": 67108864,
+      "sha256": "42623a97df3c8281a5f32a2b6774a1e2c3b9473f455a32a19fb94e798528d609",
+      "source": "HEQ.zip:HEQ.apk (part 1)"
+    },
+    {
+      "path": "reference-materials/extracted/heq/HEQ.apk.part002",
+      "size": 67108864,
+      "sha256": "878e32c2c9062a166f0943c2d021a0eec4edbf1822bbd6bd76da3456828762aa",
+      "source": "HEQ.zip:HEQ.apk (part 2)"
+    },
+    {
+      "path": "reference-materials/extracted/heq/HEQ.apk.part003",
+      "size": 34594005,
+      "sha256": "017c882cba511189a97462b8373ddc4a3f44c9a98b38085e85ce3324727aba5e",
+      "source": "HEQ.zip:HEQ.apk (part 3)"
+    },
     {
       "path": "reference-materials/extracted/system/AudioInputSource.apk",
       "size": 100089,
