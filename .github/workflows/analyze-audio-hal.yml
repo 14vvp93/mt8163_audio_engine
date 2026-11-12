@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "reference-materials/firmware-dumps/files.zip"
+      - "reference-materials/extracted/vendor/lib/hw/audio.primary.mt8163.so"\n      - "reference-materials/extracted/vendor/lib/**/*.so"
       - ".github/workflows/analyze-audio-hal.yml"
   workflow_dispatch:
 
@@ -25,15 +25,15 @@ jobs:
 
       - name: Extract and identify HAL files
         run: |
-          test -s reference-materials/firmware-dumps/files.zip
-          mkdir -p audio-hal-analysis/input audio-hal-analysis/reports
-          unzip -oq reference-materials/firmware-dumps/files.zip -d audio-hal-analysis/input
+          test -s reference-materials/extracted/vendor/lib/hw/audio.primary.mt8163.so
+          mkdir -p audio-hal-analysis/input/files audio-hal-analysis/reports
+          cp -a reference-materials/extracted/. audio-hal-analysis/input/files/
           find audio-hal-analysis/input -type f -print0 | sort -z | xargs -0 file > audio-hal-analysis/reports/file-types.txt
-          sha256sum audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so > audio-hal-analysis/reports/audio-primary-sha256.txt
+          sha256sum audio-hal-analysis/input/files/vendor/lib/hw/audio.primary.mt8163.so > audio-hal-analysis/reports/audio-primary-sha256.txt
 
       - name: Analyze primary HAL symbols and relocations
         run: |
-          SO=audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so
+          SO=audio-hal-analysis/input/files/vendor/lib/hw/audio.primary.mt8163.so
           arm-linux-gnueabi-readelf -h "$SO" > audio-hal-analysis/reports/primary-elf-header.txt
           arm-linux-gnueabi-readelf -SW -l "$SO" > audio-hal-analysis/reports/primary-sections-and-segments.txt
           arm-linux-gnueabi-readelf -Ws "$SO" | c++filt > audio-hal-analysis/reports/primary-symbols-demangled.txt
@@ -122,6 +122,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: mt8163-primary-hal-binary
-          path: audio-hal-analysis/input/files/vendor/audio.primary.mt8163.so
+          path: audio-hal-analysis/input/files/vendor/lib/hw/audio.primary.mt8163.so
           if-no-files-found: error
           retention-days: 14
