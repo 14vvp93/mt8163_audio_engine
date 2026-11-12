@@ -22,7 +22,9 @@ The current project tree and firmware manifests are separated by repository:
 - Public raw-dump provenance manifest: `firmware/manifests/mt8163-source-import.json` (22 files).
 - HEQ APK chunks and full/chunk hashes: `firmware/manifests/heq-apk.json`.
 
-The canonical extracted set is 578,175,653 bytes; raw dumps total 44,050,240 bytes. The original split ZIP volumes were removed from current branch trees only after size/SHA-256 copy verification. Git history was not rewritten, so historical blobs remain reachable. No files should be deleted merely because their basename or apparent purpose matches another file.
+The canonical extracted set is 578,175,653 bytes; raw dumps total 44,050,240 bytes. The original split ZIP volumes were removed from current branch trees only after size/SHA-256 copy verification. Git history was not rewritten, so historical blobs remain reachable.
+
+A fresh hash grouping of the 1,386-entry extracted manifest finds 10 exact-content duplicate groups covering 69 paths. These include paired AudioInputSource APK/ODEX/VDEX locations, two 42-file and 10-file groups of tiny framework JAR placeholders (200 and 183 bytes respectively), System/Vendor copies of `libpixelflinger.so` and policy XML, and the two AudioParamOptions locations. These are **not approved for deletion**: identical bytes do not establish interchangeable runtime paths, and framework placeholder artifacts must be interpreted with their matching OAT/VDEX and boot-classpath configuration. Preserve every canonical path unless a path-level dependency audit proves it redundant.
 
 ## 2. Product boundary
 
