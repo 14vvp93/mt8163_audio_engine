@@ -11,7 +11,7 @@ namespace {
 
 void require(bool condition, const char* message) {
     if (!condition) {
-        std::cerr << "FAIL: " << message << '\\n';
+        std::cerr << "FAIL: " << message << '\n';
         std::exit(1);
     }
 }
@@ -86,6 +86,6 @@ int main() {
     test_source_scope_and_master_inheritance();
     test_clear_owner_is_scoped();
     test_idempotence_and_validation();
-    std::cout << "AudioCore mute arbiter tests passed\\n";
+    std::cout << "AudioCore mute arbiter tests passed\n";
     return 0;
 }
