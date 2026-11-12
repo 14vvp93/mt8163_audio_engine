@@ -76,9 +76,12 @@ its explicit offload bypass and normal-audio-mode gate.
 The adapter deliberately permits A2DP only at 44.1 kHz, matching the
 recovered vendor profile; 48 kHz A2DP and Bluetooth SCO fail open to exact
 bypass. The host effect smoke test covers all three A2DP masks at 44.1 kHz,
-48 kHz A2DP bypass, and SCO bypass. This validates the adapter's device-mask
-and sample-rate gates, not the target's AudioFlinger routing or runtime
-offload state. See [MT8163 audio source coverage](MT8163_AUDIO_SOURCE_COVERAGE.md).
+48 kHz A2DP bypass, exact bypass for A2DP when `EFFECT_CMD_OFFLOAD` is true,
+and SCO bypass. This explicitly protects against the A2DP HAL's recovered
+offload-control path even though the vendor A2DP policy fragment does not
+declare a compressed-offload mix-port profile. These tests validate the
+adapter's device-mask, sample-rate and offload gates, not the target's
+AudioFlinger routing or runtime offload state. See [MT8163 audio source coverage](MT8163_AUDIO_SOURCE_COVERAGE.md).
 
 ## Supported processing contract
 
