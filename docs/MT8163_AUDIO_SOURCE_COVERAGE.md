@@ -210,7 +210,7 @@ avoid stale filter state/clicks.
 | Music | vendor effects v2.0 XML; AOSP Android 9 effect contract | software INSERT scaffold | registration/runtime Music classification |
 | Bluetooth A2DP | vendor A2DP module, PCM16 stereo 44.1 kHz, three output masks | adapter allows A2DP at 44.1 kHz; 48 kHz bypass, host A2DP tests passed in workflow run 43168512245; latest ARMv7 ABI build (with 32 kHz core) passed in workflow run 43169030035 | target AudioFlinger attachment/device notifications and offload verification |
 | Bluetooth SCO | separate 8/16 kHz communication devices | bypass | keep excluded |
-| FM | vendor FM Tuner In policy route plus separate MT6627 FM_I2S HAL/ALSA path | not yet attached to shared DSP | trace active FM PCM path and choose a proven insertion point |
+| FM | vendor FM Tuner In policy route; dedicated FM_I2S direct path; separate HAL capture provider with PCM read/fanout buffer | shared stereo core supports 32 kHz; no FM adapter attached yet | determine whether audible speaker patch consumes capture buffer or bypasses it; then select a safe insertion/bridge point |
 
 No effect XML, product makefile, vendor HAL, kernel module, device configuration,
 or live CD3313 state has been modified by this work.
