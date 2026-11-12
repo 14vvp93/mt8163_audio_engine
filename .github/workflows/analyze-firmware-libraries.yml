@@ -477,6 +477,37 @@ jobs:
                       libs.extend("  " + line[:500] for line in hits)
               except (OSError, subprocess.SubprocessError):
                   continue
+          pcm_rx = re.compile(r"FM_I2S_Playback|FM_I2S_Capture|MRGRX|FM_I2S", re.IGNORECASE)
+          pcm_hits = []
+          pcm_out = out / "fm-i2s-pcm-name-hits.txt"
+          pcm_modules = out / "fm-i2s-pcm-modules"
+          pcm_modules.mkdir(exist_ok=True)
+          for path in modules.rglob("*.ko") if modules.exists() else []:
+              try:
+                  if path.stat().st_size > 20 * 1024 * 1024:
+                      continue
+                  raw = subprocess.run(["strings", "-a", "-t", "x", str(path)], text=True, capture_output=True, errors="replace").stdout
+                  matches = [line for line in raw.splitlines() if pcm_rx.search(line)]
+                  if matches:
+                      pcm_hits.append(f"MODULE {path}")
+                      pcm_hits.extend("  " + line[:400] for line in matches[:80])
+                      shutil.copy2(path, pcm_modules / path.name)
+              except (OSError, subprocess.SubprocessError):
+                  continue
+          for path in root.rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in {".xml",".conf",".cfg",".prop",".rc",".txt"}:
+                  continue
+              try:
+                  if path.stat().st_size > 10 * 1024 * 1024:
+                      continue
+                  matches = [line.strip() for line in path.read_text(errors="replace").splitlines() if pcm_rx.search(line)]
+                  if matches:
+                      pcm_hits.append(f"CONFIG {path}")
+                      pcm_hits.extend("  " + line[:400] for line in matches[:80])
+              except OSError:
+                  continue
+          pcm_out.write_text("\\n".join(pcm_hits) + ("\\n" if pcm_hits else "No FM I2S PCM endpoint names found in scanned kernel modules or text configs.\\n"))
+          print(f"FM I2S PCM-name hits: {len(pcm_hits)}")
           (out / "audio-policy-config-paths.txt").write_text("\n".join(libs) + ("\n" if libs else "No policy config path strings found in matching libraries.\n"))
           print(f"Found {len(refs)} FM/WMT symbol lines; found {len(libs)} policy config path lines")
           PY
