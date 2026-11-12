@@ -37,15 +37,12 @@ PcmResult PcmStreamBroker::open(std::uint32_t handle, SourceId source,
             break;
         }
     }
-    if (free_slot == nullptr) return PcmResult::BufferTooLarge;
+    if (free_slot == nullptr) return PcmResult::CapacityExceeded;
 
     PcmBackend::StreamToken token = 0U;
     const PcmResult result = backend_.open(route, &token);
     if (result != PcmResult::Ok) return result;
-    if (token == 0U) {
-        (void)backend_.close(token);
-        return PcmResult::BackendFailure;
-    }
+    if (token == 0U) return PcmResult::BackendFailure;
 
     *free_slot = PcmStreamRecord{};
     free_slot->handle = handle;
