@@ -105,6 +105,13 @@ The factory FM architecture has distinct tuner-control and audio-transport paths
 
 The capture route is not proven to feed the direct speaker AudioPatch. A software FM PCM adapter alone will not replace the direct FM route until the actual buffer boundary or a deliberate route redesign is established.
 
+A deeper paired-firmware trace also recovered three distinct FM planes:
+1. `/dev/fm` carries tuner/chip metadata and I2S configuration ioctls.
+2. ALSA `FM_I2S_Playback` / `FM_I2S_Capture` carries the HAL's non-merge direct I2S route for the paired MT6627 class-1 configuration.
+3. `/dev/audiomux` and the CD3313 logical `RADIO` channel provide a separate source-selection/mute control path. RadioService issues CD3313 FM mute operations through inputPath 0.
+
+The static evidence confirms that these software paths coexist; it does not prove whether the board feeds the tuner to both paths, whether one is dormant, or which path is audible on the target. The paired FM driver also reports a 32 kHz configured rate while the HAL rate-set ioctl callback appears unpopulated and its error is masked. Runtime ALSA enumeration, tuner state, physical wiring and actual route selection remain device-side questions.
+
 ### 3.7 Bluetooth and calls
 
 A2DP is a media route and must be mapped independently from SCO/HFP. The supplied A2DP policy declares PCM16 stereo at 44.1 kHz, but the binary contains offload-control behavior; runtime offload must therefore be detected and handled explicitly.
