@@ -18,7 +18,8 @@ constexpr float kMinShelfSlope = 0.1F;
 }
 
 bool Engine::configure(std::uint32_t sample_rate_hz) {
-    if (sample_rate_hz != 44100U && sample_rate_hz != 48000U) {
+    if (sample_rate_hz != 32000U && sample_rate_hz != 44100U &&
+        sample_rate_hz != 48000U) {
         return false;
     }
     if (sample_rate_hz_ != sample_rate_hz) {
