@@ -7,6 +7,23 @@
 
 namespace mt8163_audio_core {
 
+class MuteSnapshot {
+public:
+    bool master_muted() const noexcept;
+    bool source_muted(SourceId source) const noexcept;
+    std::uint32_t master_owner_mask() const noexcept;
+    std::uint32_t source_owner_mask(SourceId source) const noexcept;
+
+private:
+    friend class MuteArbiter;
+    MuteSnapshot(std::uint32_t master_owners,
+                 const std::array<std::uint32_t, kSourceCount>& source_owners)
+        noexcept;
+
+    std::uint32_t master_owners_{0U};
+    std::array<std::uint32_t, kSourceCount> source_owners_{};
+};
+
 // Fixed-size, allocation-free owner-based mute state. Control-plane only:
 // one serialized control context mutates/reads it, then publishes snapshots.
 // Master and per-source reasons are independent domains. Clearing one owner
@@ -24,6 +41,7 @@ public:
 
     std::uint32_t master_owner_mask() const noexcept;
     std::uint32_t source_owner_mask(SourceId source) const noexcept;
+    MuteSnapshot snapshot() const noexcept;
 
 private:
     static bool valid_owner(MuteOwner owner) noexcept;
