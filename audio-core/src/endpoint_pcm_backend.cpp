@@ -46,7 +46,7 @@ EndpointPcmBackend::Slot* EndpointPcmBackend::find_slot(StreamToken token) noexc
     if (token == 0U) return nullptr;
     for (auto& slot : streams_) {
         if (slot.state.load(std::memory_order_acquire) != state_value(PcmStreamState::Closed) &&
-            slot.token == token) return &slot;
+            slot.token.load(std::memory_order_acquire) == token) return &slot;
     }
     return nullptr;
 }
@@ -103,7 +103,7 @@ PcmResult EndpointPcmBackend::open(RouteType route, PcmDirection direction,
         (void)ops_.close(ops_.context, native_handle);
         return PcmResult::CapacityExceeded;
     }
-    free_slot->token = allocated;
+    free_slot->token.store(allocated, std::memory_order_release);
     free_slot->native_handle = native_handle;
     free_slot->config = PcmConfig{};
     free_slot->direction = direction;
@@ -150,13 +150,24 @@ PcmResult EndpointPcmBackend::transfer(StreamToken token, std::int16_t* buffer,
                                        PcmDirection direction) noexcept {
     Slot* slot = find_slot(token);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->direction != direction ||
-        slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
+    if (slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
         return PcmResult::InvalidState;
     }
     if (buffer == nullptr || frame_count == 0U) return PcmResult::InvalidArgument;
     if (frame_count > kMaxEndpointPcmTransferFrames) return PcmResult::BufferTooLarge;
     if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
+
+    // The slot may have been closed and reused after find_slot(). Revalidate
+    // identity and state only after acquiring the transfer gate.
+    if (slot->token.load(std::memory_order_acquire) != token) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::NotOpen;
+    }
+    if (slot->direction != direction ||
+        slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::InvalidState;
+    }
 
     const PcmResult result = direction == PcmDirection::Playback
         ? ops_.write(ops_.context, slot->native_handle, buffer, frame_count)
@@ -190,6 +201,20 @@ PcmResult EndpointPcmBackend::stop(StreamToken token) noexcept {
         return PcmResult::InvalidState;
     }
     if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
+    if (slot->token.load(std::memory_order_acquire) != token) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::NotOpen;
+    }
+    const auto locked_state = static_cast<PcmStreamState>(
+        slot->state.load(std::memory_order_acquire));
+    if (locked_state == PcmStreamState::Stopped) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::Ok;
+    }
+    if (locked_state != PcmStreamState::Started && locked_state != PcmStreamState::Failed) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::InvalidState;
+    }
     const PcmResult result = ops_.stop(ops_.context, slot->native_handle);
     slot->transfer_busy.clear(std::memory_order_release);
     slot->state.store(state_value(result == PcmResult::Ok ? PcmStreamState::Stopped
@@ -205,10 +230,18 @@ PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
         return PcmResult::InvalidState;
     }
     if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
+    if (slot->token.load(std::memory_order_acquire) != token) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::NotOpen;
+    }
+    if (slot->state.load(std::memory_order_acquire) == state_value(PcmStreamState::Started)) {
+        slot->transfer_busy.clear(std::memory_order_release);
+        return PcmResult::InvalidState;
+    }
     const PcmResult result = ops_.close(ops_.context, slot->native_handle);
     slot->transfer_busy.clear(std::memory_order_release);
     if (result == PcmResult::Ok) {
-        slot->token = 0U;
+        slot->token.store(0U, std::memory_order_release);
         slot->native_handle = 0U;
         slot->config = PcmConfig{};
         slot->direction = PcmDirection::Playback;
