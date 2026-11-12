@@ -29,7 +29,7 @@ PcmResult PcmStreamBroker::open(std::uint32_t handle, SourceId source,
 
     Slot* free_slot = nullptr;
     for (auto& slot : streams_) {
-        if (slot.state.load(std::memory_order_acquire) == PcmStreamState::Closed) {
+        if (slot.state.load(std::memory_order_acquire) == static_cast<std::uint32_t>(PcmStreamState::Closed)) {
             free_slot = &slot;
             break;
         }
@@ -48,7 +48,7 @@ PcmResult PcmStreamBroker::open(std::uint32_t handle, SourceId source,
     free_slot->config = PcmConfig{};
     free_slot->backend_token.store(token, std::memory_order_relaxed);
     free_slot->handle.store(handle, std::memory_order_release);
-    free_slot->state.store(PcmStreamState::Open, std::memory_order_release);
+    free_slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Open), std::memory_order_release);
     return PcmResult::Ok;
 }
 
@@ -56,7 +56,7 @@ PcmResult PcmStreamBroker::configure(std::uint32_t handle,
                                      const PcmConfig& config) noexcept {
     Slot* slot = find_control(handle);
     if (slot == nullptr) return PcmResult::NotOpen;
-    const PcmStreamState state = slot->state.load(std::memory_order_acquire);
+    const auto state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
     if (state != PcmStreamState::Open && state != PcmStreamState::Stopped) {
         return PcmResult::InvalidState;
     }
@@ -66,9 +66,9 @@ PcmResult PcmStreamBroker::configure(std::uint32_t handle,
         slot->backend_token.load(std::memory_order_relaxed), config);
     if (result == PcmResult::Ok) {
         slot->config = config;
-        slot->state.store(PcmStreamState::Configured, std::memory_order_release);
+        slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Configured), std::memory_order_release);
     } else {
-        slot->state.store(PcmStreamState::Failed, std::memory_order_release);
+        slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Failed), std::memory_order_release);
     }
     return result;
 }
@@ -76,14 +76,14 @@ PcmResult PcmStreamBroker::configure(std::uint32_t handle,
 PcmResult PcmStreamBroker::start(std::uint32_t handle) noexcept {
     Slot* slot = find_control(handle);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state.load(std::memory_order_acquire) != PcmStreamState::Configured) {
+    if (slot->state.load(std::memory_order_acquire) != static_cast<std::uint32_t>(PcmStreamState::Configured)) {
         return PcmResult::InvalidState;
     }
 
     const PcmResult result = backend_.start(
         slot->backend_token.load(std::memory_order_relaxed));
-    slot->state.store(result == PcmResult::Ok ? PcmStreamState::Started
-                                              : PcmStreamState::Failed,
+    slot->state.store(static_cast<std::uint32_t>(result == PcmResult::Ok
+                          ? PcmStreamState::Started : PcmStreamState::Failed),
                       std::memory_order_release);
     return result;
 }
@@ -97,7 +97,7 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
 
     for (const auto& slot : streams_) {
         if (slot.handle.load(std::memory_order_acquire) != handle) continue;
-        if (slot.state.load(std::memory_order_acquire) != PcmStreamState::Started) {
+        if (slot.state.load(std::memory_order_acquire) != static_cast<std::uint32_t>(PcmStreamState::Started)) {
             return PcmResult::InvalidState;
         }
         const auto token = slot.backend_token.load(std::memory_order_relaxed);
@@ -115,8 +115,8 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
 
     const PcmResult result = backend_.stop(
         slot->backend_token.load(std::memory_order_relaxed));
-    slot->state.store(result == PcmResult::Ok ? PcmStreamState::Stopped
-                                              : PcmStreamState::Failed,
+    slot->state.store(static_cast<std::uint32_t>(result == PcmResult::Ok
+                          ? PcmStreamState::Stopped : PcmStreamState::Failed),
                       std::memory_order_release);
     return result;
 }
@@ -124,14 +124,14 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
 PcmResult PcmStreamBroker::close(std::uint32_t handle) noexcept {
     Slot* slot = find_control(handle);
     if (slot == nullptr) return PcmResult::NotOpen;
-    if (slot->state.load(std::memory_order_acquire) == PcmStreamState::Started) {
+    if (slot->state.load(std::memory_order_acquire) == static_cast<std::uint32_t>(PcmStreamState::Started)) {
         return PcmResult::InvalidState;
     }
 
     const PcmResult result = backend_.close(
         slot->backend_token.load(std::memory_order_relaxed));
     if (result == PcmResult::Ok) {
-        slot->state.store(PcmStreamState::Closed, std::memory_order_release);
+        slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Closed), std::memory_order_release);
         slot->handle.store(0U, std::memory_order_release);
         slot->backend_token.store(0U, std::memory_order_relaxed);
         slot->source = SourceId::None;
@@ -153,14 +153,14 @@ bool PcmStreamBroker::get_record(std::uint32_t handle,
     out->source = slot->source;
     out->route = slot->route;
     out->config = slot->config;
-    out->state = slot->state.load(std::memory_order_acquire);
+    out->state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
     return true;
 }
 
 std::size_t PcmStreamBroker::size() const noexcept {
     std::size_t count = 0U;
     for (const auto& slot : streams_) {
-        if (slot.state.load(std::memory_order_acquire) != PcmStreamState::Closed) ++count;
+        if (slot.state.load(std::memory_order_acquire) != static_cast<std::uint32_t>(PcmStreamState::Closed)) ++count;
     }
     return count;
 }
