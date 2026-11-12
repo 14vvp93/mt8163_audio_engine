@@ -12,10 +12,12 @@ void require(bool condition, const char* message) {
 
 std::vector<std::uint8_t> make_frame(std::uint8_t id,
                                      std::uint16_t words,
-                                     std::size_t payload_bytes) {
-    const std::uint32_t header = (1U << 30U) |
+                                     std::size_t payload_bytes,
+                                     std::uint8_t direction = 1U) {
+    const std::uint32_t header =
+        (static_cast<std::uint32_t>(direction & 0x03U) << 30U) |
         (static_cast<std::uint32_t>(id) << 8U) |
-        (static_cast<std::uint32_t>(words) << 16U);
+        ((static_cast<std::uint32_t>(words) & 0x3FFFU) << 16U);
     std::vector<std::uint8_t> frame{
         static_cast<std::uint8_t>(header),
         static_cast<std::uint8_t>(header >> 8U),
@@ -25,12 +27,42 @@ std::vector<std::uint8_t> make_frame(std::uint8_t id,
     frame.resize(4U + payload_bytes, 0U);
     return frame;
 }
+
+bool encode_rejects(const cd3313::DriverCommand& command) {
+    try {
+        (void)cd3313::encode_driver_command(command);
+        return false;
+    } catch (const std::invalid_argument&) {
+        return true;
+    }
+}
 }
 
 int main() {
     using namespace cd3313;
 
     try {
+        require(parse_driver_command({}).error == ParseError::TruncatedHeader,
+                "empty frame must be rejected");
+        require(parse_driver_command({0U, 0U, 0U}).error ==
+                    ParseError::TruncatedHeader,
+                "partial header must be rejected");
+
+        const auto wrong_direction = make_frame(0x10U, 1U, 4U, 2U);
+        require(parse_driver_command(wrong_direction).error ==
+                    ParseError::UnsupportedDirection,
+                "non-write direction must be rejected");
+
+        const auto unknown_command = make_frame(0xFEU, 1U, 4U);
+        require(parse_driver_command(unknown_command).error ==
+                    ParseError::UnknownCommand,
+                "unknown command ID must be rejected");
+
+        const auto header_only = make_frame(0x10U, 1U, 0U);
+        require(parse_driver_command(header_only).error ==
+                    ParseError::PayloadSizeMismatch,
+                "header-only frame with a nonzero size field must be rejected");
+
         for (const auto& spec : known_write_commands()) {
             const std::size_t required_bytes =
                 static_cast<std::size_t>(spec.required_size_words) * 4U;
@@ -51,7 +83,7 @@ int main() {
                     static_cast<std::size_t>(spec.minimum_size_words - 1U) * 4U);
                 require(parse_driver_command(below_minimum).error ==
                             ParseError::SizeFieldTooSmall,
-                        "each command must reject a size below its recovered driver minimum");
+                        "each command must reject a size below its recovered minimum");
             }
 
             if (spec.required_size_words > spec.minimum_size_words) {
@@ -94,7 +126,6 @@ int main() {
                     "special dispatch commands must reject truncated payloads");
         }
 
-
         const auto legacy_jni_balance = make_frame(0x15U, 5U, 20U);
         const auto parsed_legacy_jni_balance =
             parse_driver_command(legacy_jni_balance);
@@ -104,6 +135,14 @@ int main() {
                     encode_driver_command(*parsed_legacy_jni_balance.command) ==
                         legacy_jni_balance,
                 "legacy JNI compatibility word must be preserved without an over-read");
+
+        for (std::size_t word = 0U; word < 4U; ++word) {
+            auto invalid_index = make_frame(0x15U, 4U, 16U);
+            invalid_index[4U + word * 4U] = 16U;
+            require(parse_driver_command(invalid_index).error ==
+                        ParseError::InvalidArgumentValue,
+                    "each of the four speaker indices must be range-checked");
+        }
 
         const auto max_safe = make_frame(0x10U, 63U, 252U);
         require(static_cast<bool>(parse_driver_command(max_safe)),
@@ -119,11 +158,24 @@ int main() {
                     ParseError::UnsafePayloadSize,
                 "maximum 14-bit size field must be rejected without arithmetic overflow");
 
-        std::cout << "CD3313 protocol boundary tests passed\n";
+        require(encode_rejects({0xFEU, 1U, {0U, 0U, 0U, 0U}}),
+                "encoder must reject unknown command IDs");
+        require(encode_rejects({0x10U, 1U, {0U, 0U, 0U}}),
+                "encoder must reject payload-size mismatch");
+        require(encode_rejects({0x15U, 4U, {0U, 0U, 0U, 0U}}),
+                "encoder must reject incomplete four-channel payload");
+        require(encode_rejects({0x15U, 4U, {
+                    16U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U}}),
+                "encoder must reject an out-of-range speaker index");
+        require(encode_rejects({0x10U, 0x4000U, {0U}}),
+                "encoder must reject size fields wider than 14 bits");
+
+        std::cout << "CD3313 protocol boundary tests passed\\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "CD3313 protocol boundary test failure: "
-                  << error.what() << '\n';
+                  << error.what() << '\\n';
         return 1;
     }
 }
