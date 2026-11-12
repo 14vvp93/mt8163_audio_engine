@@ -1,68 +1,41 @@
-# Compute worker contract
+# Public compute worker contract
 
-## Purpose
+## Ownership
 
-This repository is the public, resource-intensive worker for
-`14vvp93/mt8163_audio_engine`. It owns approved public firmware inputs, extraction
-and analysis tooling, and generated compute reports. It is not a second product source
-repository.
+`14vvp93/mt8163_audio_engine` is the private source of truth for product code, build definitions, tests and engineering documentation.
+
+`14vvp93/public_calculations` is the public source of truth for approved firmware data and firmware-only heavy compute. It contains raw firmware dumps, the SHA-256-verified extracted tree, integrity manifests, reusable GitHub Actions workers and compute scripts. It does not contain product implementation code or project documentation.
 
 ## Invocation
 
-The worker exposes `.github/workflows/compute.yml` in two modes:
+The private project invokes reusable workflows in the public repository through:
 
-- **Reusable workflow:** called by
-  `14vvp93/mt8163_audio_engine/.github/workflows/run-public-compute.yml`.
-  The product repository is the operator entry point; the worker checks out its own
-  public scripts and data and runs the selected task.
-- **Direct workflow dispatch:** available for worker maintenance and standalone
-  compute operations.
-- **Approval-marker push:** the existing `firmware/EXTRACT_APPROVED` and
-  `firmware/AUDIO_ANALYSIS_APPROVED` markers can start the bounded worker pipeline.
+- `run-public-compute.yml` → `compute.yml`
+- `run-firmware-analysis.yml` → the nine firmware analysis workers
 
-Supported tasks:
+The public workflows check out their own public firmware dataset. They do not check out the private project and do not require a private repository token. Worker outputs are uploaded as Actions artifacts to the calling workflow run.
 
-- `inventory`: hash and inventory supported firmware archives.
-- `extract`: numeric reassembly of multipart ZIP volumes, CRC validation,
-  path/symlink/duplicate checks, extraction into a temporary workspace, and manifest
-  generation.
-- `audio-inventory`: extraction plus Android audio-stack and DSP inventory.
-- `all-light`: archive inventory and lightweight checks without committing output.
+## Supported compute tasks
 
-The worker always checks out `14vvp93/public_calculations@main` into a dedicated
-`worker/` directory. Its scripts and data are therefore independent of the caller's
-checkout. Results are uploaded as artifacts to the calling workflow run when invoked
-reusably, or to the worker run when dispatched directly.
+- `inventory` — hash and inventory extracted firmware and standalone raw dumps.
+- `verify` — verify the canonical extracted dataset against its SHA-256 manifest.
+- `all-light` — produce a firmware inventory without deep analysis.
+- `audio-inventory` — verify firmware and generate Android audio-stack/DSP inventory.
 
-## Inputs and outputs
+Nine specialized workers perform HAL analysis, CD3313 ioctl/static analysis, firmware image inspection, library analysis, firmware integrity/HEQ verification, HEQ decompilation, audio configuration audit and audiomux client scanning.
 
-- Inputs are approved public archives under `worker/firmware/archives/`.
-- Raw input bytes are immutable. The worker computes SHA-256 before processing.
-- Outputs include JSON manifests, text reports, and Actions artifacts.
-- Every report should record source hashes, tool versions, task name, and completion
-  status.
-- Partial or failed extraction must be marked incomplete and must not be presented as
-  a complete firmware inventory.
-- Artifacts are temporary; reviewed compact findings may be promoted into the product
-  repository.
+## Data and outputs
 
-## Security
+- Inputs are read from `firmware/dumps/mt8163/`, `firmware/extracted/` and `firmware/manifests/`.
+- The extracted tree contains 1,386 files; the manifest records per-file size and SHA-256.
+- The original split ZIP archives were removed after the extracted tree was verified and committed.
+- Large intermediate outputs and reports belong in Actions artifacts, not Git.
+- No worker pushes generated files into either repository.
 
-This repository is public. Firmware dumps and extracted firmware contents are approved
-for public storage, but credentials, tokens, passwords, private signing keys, personal
-data, and unrelated private material are not. Logs and artifacts are public too.
-Never echo secrets.
+## Security and reliability
 
-The reusable compute workflow needs no cross-repository token: it reads public worker
-data and uses read-only permissions. Firmware import is a separate operation and uses
-`SOURCE_REPO_READ_TOKEN` with read-only Contents access to the private primary
-repository. Keep that token in Actions secrets only.
-
-## Reliability
-
-- Pin third-party Actions to reviewed full commit SHAs before production use.
-- Pin Python and analysis-tool versions.
-- Use explicit timeouts and concurrency cancellation for duplicate runs.
-- Upload intermediate artifacts with a documented retention period.
-- Do not silently push generated files to the product repository.
-- Promotion into the canonical repository requires review and a source commit/hash.
+- Public firmware data, workflow logs and artifacts must contain no credentials, personal data or private signing material.
+- Use read-only permissions and pin third-party Actions to reviewed full commit SHAs.
+- Bound runtime and artifact retention.
+- Keep project code and documentation private.
+- Do not install firmware or write to a physical MT8163 device from these workflows.
