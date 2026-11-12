@@ -1,7 +1,9 @@
 #include "mt8163_audio_core/pcm_stream_broker.hpp"
 
+#include <atomic>
 #include <cstdlib>
 #include <iostream>
+#include <thread>
 
 using namespace mt8163_audio_core;
 
@@ -45,8 +47,8 @@ public:
     }
 
     StreamToken last_token{0U};
-    std::size_t opens{0U}, configures{0U}, starts{0U}, writes{0U}, stops{0U}, closes{0U};
-    std::size_t last_frames{0U};
+    std::atomic<std::size_t> opens{0U}, configures{0U}, starts{0U}, writes{0U}, stops{0U}, closes{0U};
+    std::atomic<std::size_t> last_frames{0U};
     PcmResult open_result{PcmResult::Ok}, configure_result{PcmResult::Ok};
     PcmResult start_result{PcmResult::Ok}, write_result{PcmResult::Ok};
     PcmResult stop_result{PcmResult::Ok}, close_result{PcmResult::Ok};
@@ -68,9 +70,9 @@ void test_complete_lifecycle() {
     require(broker.stop(1U) == PcmResult::Ok, "stop active stream");
     require(broker.close(1U) == PcmResult::Ok, "close stopped stream");
     require(broker.size() == 0U, "closed stream releases fixed slot");
-    require(backend.opens == 1U && backend.configures == 1U &&
-            backend.starts == 1U && backend.writes == 1U &&
-            backend.stops == 1U && backend.closes == 1U,
+    require(backend.opens.load() == 1U && backend.configures.load() == 1U &&
+            backend.starts.load() == 1U && backend.writes.load() == 1U &&
+            backend.stops.load() == 1U && backend.closes.load() == 1U,
             "backend receives exactly one call per lifecycle operation");
 }
 
@@ -133,6 +135,45 @@ void test_fixed_capacity() {
     }
 }
 
+
+void test_callback_write_while_opening_another_stream() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{44100U, 2U, 256U};
+    const std::int16_t samples[2]{};
+
+    require(broker.open(11U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok,
+            "first stream opens");
+    require(broker.configure(11U, config) == PcmResult::Ok, "first stream configures");
+    require(broker.start(11U) == PcmResult::Ok, "first stream starts");
+
+    std::atomic<bool> done{false};
+    std::atomic<bool> failed{false};
+    std::thread callback([&]() {
+        while (!done.load(std::memory_order_acquire)) {
+            if (broker.write(11U, samples, 1U) != PcmResult::Ok) {
+                failed.store(true, std::memory_order_relaxed);
+                return;
+            }
+        }
+    });
+
+    // This mutates a different fixed slot while the callback repeatedly scans
+    // the slot table. The callback path must observe only atomic slot metadata.
+    require(broker.open(12U, SourceId::Navigation, RouteType::PrimaryPcm) ==
+                PcmResult::Ok,
+            "second stream opens while first callback is active");
+    done.store(true, std::memory_order_release);
+    callback.join();
+    require(!failed.load(std::memory_order_relaxed),
+            "first stream callback remains valid while another slot opens");
+    require(backend.writes.load() > 0U, "callback executed writes during concurrent open");
+    require(broker.close(12U) == PcmResult::Ok, "second unconfigured stream closes");
+    require(broker.stop(11U) == PcmResult::Ok, "first stream stops after callback joins");
+    require(broker.close(11U) == PcmResult::Ok, "first stream closes");
+}
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -154,6 +195,7 @@ int main() {
     test_complete_lifecycle();
     test_invalid_order_and_arguments();
     test_fixed_capacity();
+    test_callback_write_while_opening_another_stream();
     test_backend_error_propagation();
     std::cout << "PCM stream broker tests passed\n";
     return 0;
