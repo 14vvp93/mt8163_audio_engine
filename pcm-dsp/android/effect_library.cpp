@@ -52,7 +52,7 @@ struct ParameterSlot {
 };
 
 struct EffectContext {
-    const effect_interface_s* interface;
+    effect_interface_s* interface;
     effect_config_t config{};
     pcm_dsp::Engine engine;
     pcm_dsp::Parameters control_parameters{};
@@ -208,7 +208,8 @@ void copy_bypass(const EffectContext* context,
     }
     const std::size_t sample_bytes = bytes_per_sample(format);
     const std::size_t channels =
-        audio_channel_count_from_out_mask(context->config.outputCfg.channels);
+        audio_channel_count_from_out_mask(
+            static_cast<audio_channel_mask_t>(context->config.outputCfg.channels));
     if (sample_bytes == 0U || channels == 0U) return;
     const std::size_t bytes = input.frameCount * channels * sample_bytes;
     std::memmove(output.raw, input.raw, bytes);
@@ -643,7 +644,7 @@ std::int32_t command_effect(effect_handle_t self,
 std::int32_t get_instance_descriptor(effect_handle_t self,
                                      effect_descriptor_t* descriptor);
 
-const effect_interface_s kEffectInterface = {
+effect_interface_s kEffectInterface = {
     process_effect,
     command_effect,
     get_instance_descriptor,
@@ -654,7 +655,7 @@ const effect_descriptor_t kDescriptor = {
     kEffectTypeEqualizer,
     kEffectUuid,
     EFFECT_CONTROL_API_VERSION,
-    EFFECT_FLAG_TYPE_POST_PROC | EFFECT_FLAG_INSERT_LAST |
+    EFFECT_FLAG_TYPE_POST_PROC |
         EFFECT_FLAG_DEVICE_IND | EFFECT_FLAG_AUDIO_MODE_IND |
         EFFECT_FLAG_INPUT_DIRECT | EFFECT_FLAG_OUTPUT_DIRECT,
     120U,
