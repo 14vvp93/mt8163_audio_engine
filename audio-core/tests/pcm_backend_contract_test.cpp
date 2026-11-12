@@ -3,10 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 
-using mt8163_audio_core::PcmConfig;
-using mt8163_audio_core::RouteType;
-using mt8163_audio_core::is_pcm_transport_route;
-using mt8163_audio_core::is_valid_pcm_config;
+using namespace mt8163_audio_core;
 
 namespace {
 void require(bool condition, const char* message) {
@@ -27,6 +24,22 @@ void test_route_boundary() {
     require(!is_pcm_transport_route(RouteType::None), "NONE is not a PCM route");
 }
 
+void test_direction_boundary() {
+    require(is_valid_pcm_route_direction(RouteType::PrimaryPcm, PcmDirection::Playback),
+            "primary route is playback");
+    require(!is_valid_pcm_route_direction(RouteType::PrimaryPcm, PcmDirection::Capture),
+            "primary output route is not capture");
+    require(is_valid_pcm_route_direction(RouteType::HfpSco, PcmDirection::Playback) &&
+            is_valid_pcm_route_direction(RouteType::HfpSco, PcmDirection::Capture),
+            "HFP has independent downlink and uplink directions");
+    require(is_valid_pcm_route_direction(RouteType::FmCapturePcm, PcmDirection::Capture),
+            "FM capture route is capture");
+    require(!is_valid_pcm_route_direction(RouteType::FmCapturePcm, PcmDirection::Playback),
+            "FM capture cannot be opened as playback");
+    require(!is_valid_pcm_route_direction(RouteType::FmDirectI2s, PcmDirection::Playback),
+            "direct I2S remains outside PCM transport");
+}
+
 void test_pcm_config_validation() {
     PcmConfig config{44100U, 2U, 256U};
     require(is_valid_pcm_config(config), "valid PCM16 stereo configuration accepted");
@@ -41,6 +54,7 @@ void test_pcm_config_validation() {
 
 int main() {
     test_route_boundary();
+    test_direction_boundary();
     test_pcm_config_validation();
     std::cout << "PCM backend contract tests passed\n";
     return 0;

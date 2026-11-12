@@ -7,9 +7,11 @@
 
 namespace mt8163_audio_core {
 
-// This is a transport contract, not an ALSA implementation. Device/card/PCM
-// identifiers are deliberately absent until recovered from the target image
-// and runtime diagnostics.
+enum class PcmDirection : std::uint8_t {
+    Playback = 0,
+    Capture
+};
+
 enum class PcmFormat : std::uint8_t {
     Pcm16SignedLittleEndian = 0
 };
@@ -61,6 +63,26 @@ constexpr bool is_pcm_transport_route(RouteType route) noexcept {
     return false;
 }
 
+constexpr bool is_valid_pcm_route_direction(RouteType route,
+                                            PcmDirection direction) noexcept {
+    switch (route) {
+        case RouteType::PrimaryPcm:
+        case RouteType::A2dpPcm:
+        case RouteType::HdmiPcm:
+            return direction == PcmDirection::Playback;
+        case RouteType::HfpSco:
+            return direction == PcmDirection::Playback ||
+                   direction == PcmDirection::Capture;
+        case RouteType::FmCapturePcm:
+            return direction == PcmDirection::Capture;
+        case RouteType::None:
+        case RouteType::FmDirectI2s:
+        case RouteType::Cd3313AnalogInput:
+            return false;
+    }
+    return false;
+}
+
 constexpr bool is_valid_pcm_config(const PcmConfig& config) noexcept {
     return config.sample_rate_hz != 0U &&
            (config.channel_count == 1U || config.channel_count == 2U) &&
@@ -68,25 +90,24 @@ constexpr bool is_valid_pcm_config(const PcmConfig& config) noexcept {
            config.format == PcmFormat::Pcm16SignedLittleEndian;
 }
 
-// Implementations must be preallocated, bounded and noexcept. open/configure/
-// start/stop/close belong to the HAL stream lifecycle, not the PCM callback.
-// write() is the realtime entry point: it must not allocate, log, block on a
-// mutex, block on I/O, or perform control-plane device discovery. It must use
-// a nonblocking/bounded transport and report WouldBlock/Xrun/DeviceLost rather
-// than performing recovery in the callback. The implementation must
-// preserve caller buffer ownership and consume exactly frame_count frames.
+// Transport contract. Playback uses write(); capture uses read(). Both are
+// realtime callbacks and must be bounded, nonblocking, allocation-free and
+// noexcept. Lifecycle methods belong to the serialized control plane.
 class PcmBackend {
 public:
     using StreamToken = std::uint32_t;
 
     virtual ~PcmBackend() = default;
 
-    virtual PcmResult open(RouteType route, StreamToken* token) noexcept = 0;
+    virtual PcmResult open(RouteType route, PcmDirection direction,
+                           StreamToken* token) noexcept = 0;
     virtual PcmResult configure(StreamToken token,
                                 const PcmConfig& config) noexcept = 0;
     virtual PcmResult start(StreamToken token) noexcept = 0;
     virtual PcmResult write(StreamToken token, const std::int16_t* interleaved,
                             std::size_t frame_count) noexcept = 0;
+    virtual PcmResult read(StreamToken token, std::int16_t* interleaved,
+                           std::size_t frame_count) noexcept = 0;
     virtual PcmResult stop(StreamToken token) noexcept = 0;
     virtual PcmResult close(StreamToken token) noexcept = 0;
 };

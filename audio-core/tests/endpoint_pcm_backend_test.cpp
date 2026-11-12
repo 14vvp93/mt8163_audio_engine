@@ -10,10 +10,12 @@ struct FakeDevice {
     std::uint32_t next_handle{10U};
     std::uint32_t last_card{0U};
     std::uint32_t last_device{0U};
+    PcmDirection last_direction{PcmDirection::Playback};
     std::uint32_t opens{0U};
     std::uint32_t configures{0U};
     std::uint32_t starts{0U};
     std::uint32_t writes{0U};
+    std::uint32_t reads{0U};
     std::uint32_t stops{0U};
     std::uint32_t closes{0U};
     PcmConfig last_config{};
@@ -32,11 +34,13 @@ void require(bool condition, const char* message) {
 }
 
 PcmResult fake_open(void* context, std::uint32_t card, std::uint32_t device,
-                    std::uint32_t, std::uint32_t* handle) noexcept {
+                    PcmDirection direction, std::uint32_t,
+                    std::uint32_t* handle) noexcept {
     auto& fake = *static_cast<FakeDevice*>(context);
     ++fake.opens;
     fake.last_card = card;
     fake.last_device = device;
+    fake.last_direction = direction;
     *handle = fake.next_handle++;
     return PcmResult::Ok;
 }
@@ -63,6 +67,13 @@ PcmResult fake_write(void* context, std::uint32_t, const std::int16_t* data,
     fake.next_write_result = PcmResult::Ok;
     return result;
 }
+PcmResult fake_read(void* context, std::uint32_t, std::int16_t* data,
+                    std::size_t frames) noexcept {
+    auto& fake = *static_cast<FakeDevice*>(context);
+    if (data == nullptr || frames == 0U) return PcmResult::InvalidArgument;
+    ++fake.reads;
+    return PcmResult::Ok;
+}
 PcmResult fake_stop(void* context, std::uint32_t) noexcept {
     ++static_cast<FakeDevice*>(context)->stops;
     return PcmResult::Ok;
@@ -74,43 +85,87 @@ PcmResult fake_close(void* context, std::uint32_t) noexcept {
 
 PcmDeviceOps make_ops(FakeDevice& fake) {
     return PcmDeviceOps{&fake, fake_open, fake_configure, fake_start,
-                        fake_write, fake_stop, fake_close};
+                        fake_write, fake_read, fake_stop, fake_close};
 }
 
 void test_endpoint_mapping_and_lifecycle() {
     FakeDevice fake;
     const PcmEndpoint endpoints[] = {
-        {RouteType::PrimaryPcm, 2U, 0U, 0U, true},
-        {RouteType::FmCapturePcm, 3U, 1U, 0U, false}
+        {RouteType::PrimaryPcm, PcmDirection::Playback, 2U, 0U, 0U, true},
+        {RouteType::FmCapturePcm, PcmDirection::Capture, 3U, 1U, 0U, true},
+        {RouteType::HfpSco, PcmDirection::Playback, 4U, 0U, 0U, true},
+        {RouteType::HfpSco, PcmDirection::Capture, 4U, 1U, 0U, true}
     };
-    EndpointPcmBackend backend(endpoints, 2U, make_ops(fake));
-    require(backend.valid(), "valid endpoint table accepted");
+    EndpointPcmBackend backend(endpoints, 4U, make_ops(fake));
+    require(backend.valid(), "valid route/direction endpoint table accepted");
 
     PcmBackend::StreamToken token = 0U;
-    require(backend.open(RouteType::FmCapturePcm, &token) == PcmResult::UnsupportedRoute,
-            "disabled endpoint cannot be opened");
-    require(backend.open(RouteType::PrimaryPcm, &token) == PcmResult::Ok,
-            "configured primary endpoint opens");
-    require(token != 0U && fake.last_card == 2U && fake.last_device == 0U,
-            "logical route maps to the supplied card/device");
-    require(backend.configure(token, PcmConfig{48000U, 2U, 256U}) == PcmResult::Ok,
-            "valid stream configuration accepted");
-    require(backend.start(token) == PcmResult::Ok, "configured stream starts");
-    const std::int16_t samples[] = {1, -1, 2, -2};
-    require(backend.write(token, samples, 2U) == PcmResult::Ok,
-            "bounded PCM write dispatched");
-    require(backend.stop(token) == PcmResult::Ok, "started stream stops");
-    require(backend.close(token) == PcmResult::Ok, "stopped stream closes");
+    require(backend.open(RouteType::FmCapturePcm, PcmDirection::Playback, &token) ==
+                PcmResult::UnsupportedRoute,
+            "FM capture cannot be opened as playback");
+    require(backend.open(RouteType::FmCapturePcm, PcmDirection::Capture, &token) ==
+                PcmResult::Ok,
+            "configured FM capture endpoint opens");
+    require(token != 0U && fake.last_card == 3U && fake.last_device == 1U &&
+            fake.last_direction == PcmDirection::Capture,
+            "capture route maps to supplied card/device/direction");
+    require(backend.configure(token, PcmConfig{16000U, 1U, 160U}) == PcmResult::Ok,
+            "valid capture configuration accepted");
+    require(backend.start(token) == PcmResult::Ok, "capture stream starts");
+    std::int16_t samples[8]{};
+    require(backend.read(token, samples, 4U) == PcmResult::Ok,
+            "bounded capture read dispatched");
+    require(backend.write(token, samples, 4U) == PcmResult::InvalidState,
+            "capture endpoint rejects playback write");
+    require(backend.stop(token) == PcmResult::Ok, "capture stream stops");
+    require(backend.close(token) == PcmResult::Ok, "capture stream closes");
     require(backend.active_streams() == 0U && fake.closes == 1U,
-            "close releases the backend slot");
+            "close releases backend slot");
+}
+
+void test_hfp_has_independent_directions() {
+    FakeDevice fake;
+    const PcmEndpoint endpoints[] = {
+        {RouteType::HfpSco, PcmDirection::Playback, 4U, 0U, 0U, true},
+        {RouteType::HfpSco, PcmDirection::Capture, 4U, 1U, 0U, true}
+    };
+    EndpointPcmBackend backend(endpoints, 2U, make_ops(fake));
+    require(backend.valid(), "same HFP route may have distinct directions");
+    PcmBackend::StreamToken downlink = 0U, uplink = 0U;
+    require(backend.open(RouteType::HfpSco, PcmDirection::Playback, &downlink) ==
+                PcmResult::Ok,
+            "HFP downlink opens");
+    require(backend.open(RouteType::HfpSco, PcmDirection::Capture, &uplink) ==
+                PcmResult::Ok,
+            "HFP uplink opens");
+    require(backend.configure(downlink, PcmConfig{16000U, 1U, 160U}) == PcmResult::Ok &&
+            backend.configure(uplink, PcmConfig{16000U, 1U, 160U}) == PcmResult::Ok,
+            "both HFP directions configure");
+    require(backend.start(downlink) == PcmResult::Ok &&
+            backend.start(uplink) == PcmResult::Ok,
+            "both HFP directions start");
+    std::int16_t samples[4]{};
+    require(backend.write(downlink, samples, 2U) == PcmResult::Ok,
+            "HFP downlink writes");
+    require(backend.read(uplink, samples, 2U) == PcmResult::Ok,
+            "HFP uplink reads");
+    require(backend.stop(downlink) == PcmResult::Ok &&
+            backend.stop(uplink) == PcmResult::Ok,
+            "both HFP directions stop");
+    require(backend.close(downlink) == PcmResult::Ok &&
+            backend.close(uplink) == PcmResult::Ok,
+            "both HFP directions close");
 }
 
 void test_state_and_error_boundaries() {
     FakeDevice fake;
-    const PcmEndpoint endpoints[] = {{RouteType::PrimaryPcm, 0U, 0U, 0U, true}};
+    const PcmEndpoint endpoints[] = {
+        {RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true}
+    };
     EndpointPcmBackend backend(endpoints, 1U, make_ops(fake));
     PcmBackend::StreamToken token = 0U;
-    require(backend.open(RouteType::PrimaryPcm, &token) == PcmResult::Ok,
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok,
             "stream opens");
     const std::int16_t sample[] = {0};
     require(backend.write(token, sample, 1U) == PcmResult::InvalidState,
@@ -130,7 +185,7 @@ void test_state_and_error_boundaries() {
     require(fake.nested_write_result == PcmResult::WouldBlock,
             "overlapping write on one stream is rejected without waiting");
 
-    require(backend.write(token, sample, kMaxEndpointPcmWriteFrames + 1U) ==
+    require(backend.write(token, sample, kMaxEndpointPcmTransferFrames + 1U) ==
                 PcmResult::BufferTooLarge,
             "oversized callback rejected");
     fake.next_write_result = PcmResult::Xrun;
@@ -147,14 +202,14 @@ void test_state_and_error_boundaries() {
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
-        {RouteType::PrimaryPcm, 0U, 0U, 0U, true},
-        {RouteType::PrimaryPcm, 1U, 0U, 0U, true}
+        {RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true},
+        {RouteType::PrimaryPcm, PcmDirection::Playback, 1U, 0U, 0U, true}
     };
     EndpointPcmBackend invalid(duplicate, 2U, make_ops(fake));
-    require(!invalid.valid(), "duplicate enabled route rejected");
+    require(!invalid.valid(), "duplicate route/direction pair rejected");
 
     const PcmEndpoint non_pcm[] = {
-        {RouteType::FmDirectI2s, 0U, 0U, 0U, true}
+        {RouteType::FmDirectI2s, PcmDirection::Playback, 0U, 0U, 0U, true}
     };
     EndpointPcmBackend invalid_route(non_pcm, 1U, make_ops(fake));
     require(!invalid_route.valid(), "direct I2S cannot be registered as PCM");
@@ -163,6 +218,7 @@ void test_invalid_tables() {
 
 int main() {
     test_endpoint_mapping_and_lifecycle();
+    test_hfp_has_independent_directions();
     test_state_and_error_boundaries();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";

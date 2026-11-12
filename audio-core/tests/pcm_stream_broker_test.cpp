@@ -17,9 +17,10 @@ void require(bool condition, const char* message) {
 
 class FakePcmBackend final : public PcmBackend {
 public:
-    PcmResult open(RouteType, StreamToken* token) noexcept override {
+    PcmResult open(RouteType, PcmDirection direction, StreamToken* token) noexcept override {
         if (token == nullptr) return PcmResult::InvalidArgument;
         *token = ++last_token;
+        last_direction = direction;
         ++opens;
         return open_result;
     }
@@ -41,6 +42,12 @@ public:
         }
         return data == nullptr ? PcmResult::InvalidArgument : write_result;
     }
+    PcmResult read(StreamToken, std::int16_t* data,
+                   std::size_t frames) noexcept override {
+        ++reads;
+        last_frames = frames;
+        return data == nullptr ? PcmResult::InvalidArgument : read_result;
+    }
     PcmResult stop(StreamToken) noexcept override {
         ++stops;
         return stop_result;
@@ -51,12 +58,15 @@ public:
     }
 
     StreamToken last_token{0U};
-    std::atomic<std::size_t> opens{0U}, configures{0U}, starts{0U}, writes{0U}, stops{0U}, closes{0U};
+    PcmDirection last_direction{PcmDirection::Playback};
+    std::atomic<std::size_t> opens{0U}, configures{0U}, starts{0U};
+    std::atomic<std::size_t> writes{0U}, reads{0U}, stops{0U}, closes{0U};
     std::atomic<std::size_t> last_frames{0U};
     std::atomic<bool> block_writes{false}, release_blocked_write{false};
     PcmResult open_result{PcmResult::Ok}, configure_result{PcmResult::Ok};
     PcmResult start_result{PcmResult::Ok}, write_result{PcmResult::Ok};
-    PcmResult stop_result{PcmResult::Ok}, close_result{PcmResult::Ok};
+    PcmResult read_result{PcmResult::Ok}, stop_result{PcmResult::Ok};
+    PcmResult close_result{PcmResult::Ok};
 };
 
 void test_complete_lifecycle() {
@@ -65,7 +75,7 @@ void test_complete_lifecycle() {
     const PcmConfig config{44100U, 2U, 256U};
 
     require(broker.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
-            "open supported primary PCM route");
+            "open supported primary playback route");
     require(broker.configure(1U, config) == PcmResult::Ok, "configure stream");
     require(broker.start(1U) == PcmResult::Ok, "start configured stream");
 
@@ -79,6 +89,51 @@ void test_complete_lifecycle() {
             backend.starts.load() == 1U && backend.writes.load() == 1U &&
             backend.stops.load() == 1U && backend.closes.load() == 1U,
             "backend receives exactly one call per lifecycle operation");
+}
+
+void test_capture_and_hfp_bidirectional_routes() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{16000U, 1U, 160U};
+    std::int16_t samples[8]{};
+
+    require(broker.open(30U, SourceId::FmRadio, RouteType::FmCapturePcm,
+                        PcmDirection::Playback) == PcmResult::UnsupportedRoute,
+            "FM capture endpoint cannot be opened as playback");
+    require(broker.open(31U, SourceId::FmRadio, RouteType::FmCapturePcm,
+                        PcmDirection::Capture) == PcmResult::Ok,
+            "FM capture route opens in capture direction");
+    require(backend.last_direction == PcmDirection::Capture,
+            "capture direction reaches backend");
+    require(broker.configure(31U, config) == PcmResult::Ok, "configure FM capture");
+    require(broker.start(31U) == PcmResult::Ok, "start FM capture");
+    require(broker.read(31U, samples, 4U) == PcmResult::Ok,
+            "capture reads bounded frames");
+    require(broker.write(31U, samples, 4U) == PcmResult::InvalidState,
+            "capture stream rejects playback writes");
+    require(broker.stop(31U) == PcmResult::Ok, "stop FM capture");
+    require(broker.close(31U) == PcmResult::Ok, "close FM capture");
+
+    require(broker.open(32U, SourceId::BluetoothHfp, RouteType::HfpSco,
+                        PcmDirection::Playback) == PcmResult::Ok,
+            "HFP downlink playback route opens");
+    require(broker.open(33U, SourceId::BluetoothHfp, RouteType::HfpSco,
+                        PcmDirection::Capture) == PcmResult::Ok,
+            "HFP microphone uplink capture route opens independently");
+    require(broker.configure(32U, config) == PcmResult::Ok &&
+            broker.configure(33U, config) == PcmResult::Ok,
+            "configure both HFP directions");
+    require(broker.start(32U) == PcmResult::Ok &&
+            broker.start(33U) == PcmResult::Ok,
+            "start both HFP directions");
+    require(broker.write(32U, samples, 4U) == PcmResult::Ok,
+            "HFP downlink writes");
+    require(broker.read(33U, samples, 4U) == PcmResult::Ok,
+            "HFP uplink reads");
+    require(broker.stop(32U) == PcmResult::Ok && broker.stop(33U) == PcmResult::Ok,
+            "stop both HFP directions");
+    require(broker.close(32U) == PcmResult::Ok && broker.close(33U) == PcmResult::Ok,
+            "close both HFP directions");
 }
 
 void test_invalid_order_and_arguments() {
@@ -166,11 +221,8 @@ void test_callback_write_while_opening_another_stream() {
     });
 
     while (backend.writes.load(std::memory_order_acquire) == 0U &&
-           !failed.load(std::memory_order_relaxed)) {
-        std::this_thread::yield();
-    }
+           !failed.load(std::memory_order_relaxed)) std::this_thread::yield();
     require(!failed.load(std::memory_order_relaxed), "callback starts successfully");
-
     require(broker.open(12U, SourceId::Navigation, RouteType::PrimaryPcm) ==
                 PcmResult::Ok,
             "second stream opens while first callback is active");
@@ -200,10 +252,7 @@ void test_stop_waits_for_in_flight_callback() {
     std::thread callback([&]() {
         callback_result.store(broker.write(21U, samples, 1U), std::memory_order_release);
     });
-
-    while (backend.writes.load(std::memory_order_acquire) == 0U) {
-        std::this_thread::yield();
-    }
+    while (backend.writes.load(std::memory_order_acquire) == 0U) std::this_thread::yield();
 
     require(broker.stop(21U) == PcmResult::WouldBlock,
             "stop closes admission but does not stop backend during an active write");
@@ -220,7 +269,7 @@ void test_stop_waits_for_in_flight_callback() {
     require(backend.stops.load() == 1U, "backend stop runs exactly once");
     require(broker.close(21U) == PcmResult::Ok, "stream closes after callback drain");
 }
- 
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -240,6 +289,7 @@ void test_backend_error_propagation() {
 
 int main() {
     test_complete_lifecycle();
+    test_capture_and_hfp_bidirectional_routes();
     test_invalid_order_and_arguments();
     test_fixed_capacity();
     test_callback_write_while_opening_another_stream();

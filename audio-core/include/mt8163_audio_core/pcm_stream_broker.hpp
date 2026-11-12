@@ -15,30 +15,32 @@ constexpr std::size_t kMaxPcmWriteFrames = 2048U;
 static_assert(std::atomic<std::uint32_t>::is_always_lock_free,
               "32-bit atomics must be lock-free on the target ABI");
 
-// Control-plane view. Do not retain pointers into broker-owned storage.
 struct PcmStreamRecord {
     std::uint32_t handle{0U};
     PcmBackend::StreamToken backend_token{0U};
     SourceId source{SourceId::None};
     RouteType route{RouteType::None};
+    PcmDirection direction{PcmDirection::Playback};
     PcmConfig config{};
     PcmStreamState state{PcmStreamState::Closed};
 };
 
 // Fixed-capacity lifecycle adapter. Lifecycle calls and get_record() belong
-// to one serialized control context. write() may run concurrently with opening
-// or configuring other slots. stop() closes the callback admission gate; if a
-// backend write is still in flight it returns WouldBlock and must be retried.
-// Backend write() must be bounded and nonblocking.
+// to one serialized control context. Playback writes and capture reads may
+// run concurrently with control operations on other slots. stop() closes
+// transfer admission; if a transfer is in flight it returns WouldBlock.
 class PcmStreamBroker {
 public:
     explicit PcmStreamBroker(PcmBackend& backend) noexcept : backend_(backend) {}
 
-    PcmResult open(std::uint32_t handle, SourceId source, RouteType route) noexcept;
+    PcmResult open(std::uint32_t handle, SourceId source, RouteType route,
+                   PcmDirection direction = PcmDirection::Playback) noexcept;
     PcmResult configure(std::uint32_t handle, const PcmConfig& config) noexcept;
     PcmResult start(std::uint32_t handle) noexcept;
     PcmResult write(std::uint32_t handle, const std::int16_t* interleaved,
                     std::size_t frame_count) noexcept;
+    PcmResult read(std::uint32_t handle, std::int16_t* interleaved,
+                   std::size_t frame_count) noexcept;
     PcmResult stop(std::uint32_t handle) noexcept;
     PcmResult close(std::uint32_t handle) noexcept;
 
@@ -50,12 +52,12 @@ private:
         std::atomic<std::uint32_t> handle{0U};
         std::atomic<std::uint32_t> backend_token{0U};
         std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
-        // High bit admits callback writers; low bits count in-flight writes.
-        // A single atomic word makes admission and stop's gate-close race-free.
-        std::atomic<std::uint32_t> write_gate{0U};
+        // High bit admits realtime transfers; low bits count in-flight reads/writes.
+        std::atomic<std::uint32_t> transfer_gate{0U};
         std::atomic<std::uint32_t> generation{0U};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
+        PcmDirection direction{PcmDirection::Playback};
         PcmConfig config{};
     };
 
