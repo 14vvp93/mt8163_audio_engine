@@ -114,8 +114,9 @@ The HAL's capture-handler factory compares the input stream source field
 against `0x7CE` (decimal 1998, Android `AUDIO_SOURCE_FM_TUNER`). When its
 additional handler-selection guards permit the FM path, it constructs
 `AudioALSACaptureHandlerFMRadio`. `AudioALSAStreamIn::open()` calls this
-factory, and the input stream's read path dispatches through the selected
-capture handler. The FM handler's `open()` obtains the singleton
+factory. In `AudioALSAStreamIn::read()`, the HAL loads the selected handler
+from the stream object and dispatches its virtual `read(buffer, bytes)`
+method. The FM handler's `open()` obtains the singleton
 `AudioALSACaptureDataProviderFMRadio` and constructs an
 `AudioALSACaptureDataClient` for the stream attributes. This proves a real
 AudioRecord/input-stream FM capture route, not just the existence of an
