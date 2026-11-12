@@ -172,10 +172,10 @@ PcmResult EndpointPcmBackend::transfer(StreamToken token, std::int16_t* buffer,
     const PcmResult result = direction == PcmDirection::Playback
         ? ops_.write(ops_.context, slot->native_handle, buffer, frame_count)
         : ops_.read(ops_.context, slot->native_handle, buffer, frame_count);
-    slot->transfer_busy.clear(std::memory_order_release);
     if (result == PcmResult::Xrun || result == PcmResult::DeviceLost) {
         slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
+    slot->transfer_busy.clear(std::memory_order_release);
     return result;
 }
 
@@ -216,10 +216,10 @@ PcmResult EndpointPcmBackend::stop(StreamToken token) noexcept {
         return PcmResult::InvalidState;
     }
     const PcmResult result = ops_.stop(ops_.context, slot->native_handle);
-    slot->transfer_busy.clear(std::memory_order_release);
     slot->state.store(state_value(result == PcmResult::Ok ? PcmStreamState::Stopped
                                                           : PcmStreamState::Failed),
                       std::memory_order_release);
+    slot->transfer_busy.clear(std::memory_order_release);
     return result;
 }
 
@@ -239,8 +239,9 @@ PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
         return PcmResult::InvalidState;
     }
     const PcmResult result = ops_.close(ops_.context, slot->native_handle);
-    slot->transfer_busy.clear(std::memory_order_release);
     if (result == PcmResult::Ok) {
+        // Invalidate identity before releasing the gate. A callback that was
+        // already waiting on this slot must not enter a closed native handle.
         slot->token.store(0U, std::memory_order_release);
         slot->native_handle = 0U;
         slot->config = PcmConfig{};
@@ -249,6 +250,7 @@ PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
     } else {
         slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
+    slot->transfer_busy.clear(std::memory_order_release);
     return result;
 }
 
