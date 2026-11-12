@@ -799,7 +799,7 @@ int main() {
         };
         check(!input_emulator.write(invalid_input_gain_frame) &&
               input_emulator.journal().size() == input_journal_before_invalid,
-              "input gain parser rejects channel IDs outside 0..6 atomically");
+              "input gain parser rejects channel IDs outside 0..5 atomically");
 
         const DriverCommand select_input_one{
             0x01, 1, {1, 0, 0, 0}};
