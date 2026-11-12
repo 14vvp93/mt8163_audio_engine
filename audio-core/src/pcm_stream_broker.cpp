@@ -109,7 +109,8 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
 PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
     Slot* slot = find_control(handle);
     if (slot == nullptr) return PcmResult::NotOpen;
-    const PcmStreamState state = slot->state.load(std::memory_order_acquire);
+    const PcmStreamState state = static_cast<PcmStreamState>(
+        slot->state.load(std::memory_order_acquire));
     if (state == PcmStreamState::Stopped) return PcmResult::Ok;
     if (state != PcmStreamState::Started) return PcmResult::InvalidState;
 
@@ -138,7 +139,8 @@ PcmResult PcmStreamBroker::close(std::uint32_t handle) noexcept {
         slot->route = RouteType::None;
         slot->config = PcmConfig{};
     } else {
-        slot->state.store(PcmStreamState::Failed, std::memory_order_release);
+        slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
+                          std::memory_order_release);
     }
     return result;
 }
