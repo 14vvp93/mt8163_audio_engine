@@ -110,7 +110,10 @@ The new `audio-core/` library is now part of the `pcm-dsp` CMake build:
 - The actual MuteSnapshot publisher is instantiated by an Android compile probe; ARMv7 CI confirms 32-bit atomics are lock-free for the target ABI.
 - `cd3313_compat` maps AudioCore owner masks to recovered CD3313 master/input reason bits. RadioScan and RadioPacketMute remain distinct internally while safely aggregating onto legacy radio reason bit 2.
 - `SessionRegistry` provides 16 fixed-capacity session slots and a validated Requested/Active/Suspended/Stopping/Failed lifecycle.
-- The module is control-plane only; it performs no HAL, Binder, ALSA, ioctl, I2C or GPIO operations.
+- `AudioCore` now coordinates session lifecycle, mute ownership and audio mode, then publishes a compact generation-stamped snapshot to the PCM plane.
+- `HardwareCommandBroker` is owned by AudioCore. It accepts semantic source selection and master/per-source mute commands, validates inputs, permits only one attached backend and propagates backend errors. It does not encode CD3313 ioctl numbers or wire framing.
+- The broker has a host fake-backend test. No production backend is attached; no `/dev/audiomux` open, ioctl, I2C, GPIO or mixer operation is implemented or performed.
+- The module remains control-plane only; it performs no HAL, Binder, ALSA PCM, ioctl, I2C or GPIO operations.
 
 ## Test and validation status
 
@@ -147,4 +150,10 @@ No live ioctl, I2C write, GPIO change, mixer write, audio-setting change or phys
 
 ## Next implementation work
 
-In parallel with the remaining read-only gates, begin host-testable AudioCore foundations from `UNIFIED_AUDIO_CORE_ARCHITECTURE.md`: typed source/session state, route model, owner-based mute arbitration and hardware-broker interfaces. Preserve the existing PCM/DSP core. Do not integrate factory control writes or begin destructive cutover until the ABI and rollback gates are closed.
+1. Add an evidence-based route model and session-to-route validation without conflating FM direct I2S with FM capture, A2DP with HFP/SCO, or analog CD3313 inputs with PCM streams.
+2. Implement a fake-tested PCM backend contract and lifecycle adapter; do not guess ALSA device names or channel topology.
+3. Recover and validate the exact CD3313 request ABI before writing a production hardware backend.
+4. Build the factory-named `/vendor/lib/hw/audio.primary.mt8163.so` HAL shell against Android 9 headers and verify its required HAL symbols/SONAME before connecting the AudioCore.
+5. Continue read-only target runtime discovery for actual DSP module ownership, process FDs, selected policy XML and active FM/HFP routes.
+
+Preserve the existing PCM/DSP core. Do not integrate factory control writes or begin destructive cutover until ABI, runtime ownership and rollback gates are closed.
