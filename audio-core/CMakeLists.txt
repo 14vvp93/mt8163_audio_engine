@@ -5,6 +5,7 @@ add_library(mt8163_audio_core STATIC
     src/route_policy.cpp
     src/audio_core.cpp
     src/hardware_broker.cpp
+    src/pcm_backend_contract.cpp
     src/snapshot_publisher_compile_check.cpp
 )
 target_include_directories(mt8163_audio_core PUBLIC include)
@@ -36,6 +37,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(mt8163_audio_core_session_tests PRIVATE mt8163_audio_core)
     target_compile_options(mt8163_audio_core_session_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME mt8163_audio_core_session_tests COMMAND mt8163_audio_core_session_tests)
+
+    add_executable(mt8163_audio_core_pcm_contract_tests tests/pcm_backend_contract_test.cpp)
+    target_link_libraries(mt8163_audio_core_pcm_contract_tests PRIVATE mt8163_audio_core)
+    target_compile_options(mt8163_audio_core_pcm_contract_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME mt8163_audio_core_pcm_contract_tests COMMAND mt8163_audio_core_pcm_contract_tests)
 
     find_package(Threads REQUIRED)
     add_executable(mt8163_audio_core_snapshot_tests tests/snapshot_publisher_test.cpp)
