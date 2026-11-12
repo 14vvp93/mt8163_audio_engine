@@ -1,0 +1,75 @@
+name: Firmware audio configuration audit
+
+on:
+  push:
+    paths:
+      - "reference-materials/firmware-dumps/**"
+      - ".github/workflows/firmware-audio-config-audit.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect-firmware-archives:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install archive tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Extract firmware archives and collect audio configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="reference-materials/firmware-dumps"
+          OUT="$GITHUB_WORKSPACE/build/firmware-audio-audit"
+          EXTRACT="$RUNNER_TEMP/firmware-extract"
+          mkdir -p "$OUT/config" "$EXTRACT"
+          : > "$OUT/archive-report.txt"
+
+          for archive in \
+            "$ROOT/files.zip" \
+            "$ROOT/files2.zip.001" \
+            "$ROOT/lib.zip.001" \
+            "$ROOT/vendor_lib.zip.001"; do
+            if [[ -f "$archive" ]]; then
+              echo "=== $archive ===" | tee -a "$OUT/archive-report.txt"
+              7z l "$archive" >> "$OUT/archive-report.txt" 2>&1 || true
+              dest="$EXTRACT/$(basename "$archive" | sed 's/\.001$//; s/\.zip$//')"
+              mkdir -p "$dest"
+              7z x -y -bd "-o$dest" "$archive" >> "$OUT/archive-report.txt" 2>&1 || echo "EXTRACTION_ERROR: $archive" | tee -a "$OUT/archive-report.txt"
+            fi
+          done
+
+          echo "=== Candidate configuration files ===" | tee -a "$OUT/archive-report.txt"
+          find "$EXTRACT" -type f \( \
+            -iname 'audio_effects.xml' -o \
+            -iname 'audio_effects.conf' -o \
+            -iname 'audio_policy_configuration*.xml' -o \
+            -iname 'audio_policy.conf' -o \
+            -iname 'audio_device.xml' -o \
+            -iname 'mixer_paths*.xml' -o \
+            -iname 'build.prop' -o \
+            -iname 'default.prop' \
+          \) -print | sort | tee "$OUT/config-file-list.txt"
+
+          while IFS= read -r file; do
+            [[ -f "$file" ]] || continue
+            rel="${file#"$EXTRACT"/}"
+            safe="$(printf '%s' "$rel" | tr '/' '_')"
+            cp "$file" "$OUT/config/$safe"
+          done < "$OUT/config-file-list.txt"
+
+          echo "=== Audio effect / stream references ===" >> "$OUT/archive-report.txt"
+          grep -RniE 'postprocess|stream type="music"|music|effect name|library name|uuid' "$OUT/config" >> "$OUT/archive-report.txt" || true
+
+          test -s "$OUT/config-file-list.txt"
+
+      - name: Upload firmware audio configuration audit
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-firmware-audio-config-audit
+          path: build/firmware-audio-audit/
+          if-no-files-found: error
+          retention-days: 30
