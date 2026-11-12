@@ -9,12 +9,14 @@
 namespace cd3313 {
 struct CommandSpec {
     std::uint8_t id;
-    // Minimum accepted by the recovered driver command-length table.
+    // Conservative minimum from static command-length evidence; vendor callback
+    // acceptance is not fully reconciled for every command.
     std::uint16_t minimum_size_words;
     // Minimum needed to safely contain all arguments read by the handler.
     std::uint16_t required_size_words;
 };
 
+// Conservative host-side allowlist, not a complete vendor-build protocol spec.
 const std::vector<CommandSpec>& known_write_commands();
 
 // Static 8-byte payload returned by the driver's read-direction ioctl ID 0xF0.
