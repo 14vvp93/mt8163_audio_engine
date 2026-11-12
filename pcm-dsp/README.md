@@ -10,7 +10,8 @@ This library is an independent, host-buildable C++17 DSP core. It is not yet con
 - 44.1 kHz and 48 kHz;
 - 10 configurable RBJ biquad bands: peaking, low/high shelf, second-order HPF/LPF;
 - preamp, balance, linked stereo peak limiter;
-- bit-exact bypass and no heap allocation in the processing method.
+- bit-exact bypass and no heap allocation in the processing method;
+- stable parameter changes use parallel old/new IIR banks with an output crossfade; normalized denominator coefficients are never linearly interpolated.
 
 ### Four-channel Float32 foundation
 
