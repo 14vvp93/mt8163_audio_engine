@@ -21,8 +21,8 @@ This is an integration scaffold, not a device-ready installation:
   https://github.com/14march93/mt8163_audio_engine/actions/runs/43164128647/artifacts/13919371684;
 - no full Android platform-tree build has been run and no effect has been loaded
   on the head unit;
-- the UUID and post-process descriptor still need validation against the
-  target ROM's effect factory and exact audio_effects.xml schema.
+- target ROM factory behavior, loaded XML copy/schema and runtime stream
+  classification still require device-specific validation.
 
 ## Effect identity
 
@@ -96,6 +96,44 @@ The module is vendor-side and installs under vendor/lib/soundfx/ or the
 corresponding 64-bit directory selected by the platform build.
 Building this module alone does not register or activate it.
 
+## AOSP Android 9 integration contract — statically verified
+
+The Android 9 r61 build inputs used by the ABI workflow are the matching
+platform headers. The framework-side integration contract was also checked
+against AOSP:
+
+- The v2.0 XML schema explicitly allows
+  `<postprocess><stream type="music"><apply effect="..."/></stream></postprocess>`.
+  The `effect/@uuid` field is the implementation UUID, not the generic type
+  UUID. The schema therefore does not require the descriptor type to be
+  POST_PROC.
+- `AudioPolicyEffects::addOutputSessionEffects()` selects the postprocess
+  list by legacy output stream, creates the effect on that audio session and
+  output, then enables the processor. This is the framework attachment point
+  for the Music mapping.
+- `AudioFlinger::EffectChain` recognizes `EFFECT_FLAG_TYPE_INSERT` and
+  `EFFECT_FLAG_INSERT_LAST` as a valid software-chain insertion preference.
+  The effect is processed in the AudioFlinger chain; this is distinct from
+  `EFFECT_FLAG_TYPE_POST_PROC`, which is the HAL post-processing path.
+- With `EFFECT_FLAG_DEVICE_IND` and `EFFECT_FLAG_AUDIO_MODE_IND`, AudioFlinger
+  forwards `EFFECT_CMD_SET_DEVICE` and `EFFECT_CMD_SET_AUDIO_MODE`. The
+  adapter implements both commands and gates processing to the normal mode
+  and supported output masks.
+- `EFFECT_FLAG_INPUT_DIRECT` and `EFFECT_FLAG_OUTPUT_DIRECT` describe direct
+  buffer access by the effect; they do not advertise hardware offload.
+
+This confirms that the proposed XML Music attachment plus a TYPE_INSERT /
+INSERT_LAST descriptor is coherent with the AOSP software effect architecture.
+It does not prove that the target ROM retained unmodified AOSP behavior, loads
+the expected XML file, classifies navigation prompts as a separate stream, or
+delivers the expected device masks. Those remain target-specific gates.
+
+AOSP references:
+- https://android.googlesource.com/platform/hardware/interfaces/+/b5433136dd099d533e866028367ba4ed829fab02/audio/effect/2.0/xml/audio_effects_conf_V2_0.xsd
+- https://android.googlesource.com/platform/frameworks/av/+/e3c46b0a49d045fa38d35e5cf7ad4becaacbbed6/services/audiopolicy/service/AudioPolicyEffects.cpp
+- https://android.googlesource.com/platform/frameworks/av/+/725dfe9/services/audioflinger/AudioFlinger.cpp
+- https://android.googlesource.com/platform/system/media/+/a8cff157ff0ed02fa7e29438f4889a9933c37768/audio/include/system/audio_effect.h
+
 ## Registration gate — intentionally not done
 
 The intended policy entry is a stream postprocess mapping for Music, but the
@@ -109,8 +147,8 @@ mono fold.
 
 Before adding the effect to the target ROM's effect configuration:
 
-1. Inspect the exact target audio_effects.xml and confirm the framework
-   accepts a postprocess effect for the music stream.
+1. Inspect the exact target audio_effects.xml loaded at runtime and confirm
+   the framework accepts a postprocess effect for the music stream.
 2. Confirm the ROM's EffectsFactory accepts the descriptor's
    EFFECT_FLAG_TYPE_INSERT and EFFECT_FLAG_INSERT_LAST combination.
 3. Confirm AudioPolicyEffects creates the effect on the intended Music
