@@ -69,9 +69,9 @@ jobs:
       - name: Fuzz parser and encoder
         run: |
           mkdir -p build/cd3313-corpus
-          printf '\\x00\\x10\\x01\\x40\\x28\\x00\\x00\\x00' > build/cd3313-corpus/master-volume
-          printf '\\x00\\x15\\x04\\x40\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00' > build/cd3313-corpus/four-channel
-          printf '\\x00\\x09\\x01\\x40\\x01\\x00\\x00\\x00' > build/cd3313-corpus/special-09
+          printf '\x00\x10\x01\x40\x28\x00\x00\x00' > build/cd3313-corpus/master-volume
+          printf '\x00\x15\x04\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' > build/cd3313-corpus/four-channel
+          printf '\x00\x09\x01\x40\x01\x00\x00\x00' > build/cd3313-corpus/special-09
           build/cd3313-fuzz/cd3313_protocol_fuzzer \
             build/cd3313-corpus \
             -max_total_time=45 \
