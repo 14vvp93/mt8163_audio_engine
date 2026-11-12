@@ -62,6 +62,7 @@ struct EffectContext {
     std::array<ParameterSlot, 3> slots{};
     std::atomic<int> published_slot{0};
     std::atomic<bool> framework_enabled{false};
+    std::atomic<std::uint32_t> active_process_calls{0U};
     std::atomic<bool> configured{false};
     std::atomic<bool> supported_config{false};
     std::atomic<bool> bypass_copy_compatible{false};
@@ -156,7 +157,10 @@ bool supported_format(std::uint8_t format) {
 }
 
 bool configure_effect(EffectContext* context, const effect_config_t& config) {
-    if (context->framework_enabled.load(std::memory_order_acquire)) return false;
+    if (context->framework_enabled.load(std::memory_order_acquire) ||
+        context->active_process_calls.load(std::memory_order_acquire) != 0U) {
+        return false;
+    }
     context->config = config;
     const auto& in = config.inputCfg;
     const auto& out = config.outputCfg;
@@ -229,6 +233,13 @@ std::int32_t process_effect(effect_handle_t self,
                             audio_buffer_t* out_buffer) {
     auto* context = context_from_handle(self);
     if (context == nullptr) return -EINVAL;
+    context->active_process_calls.fetch_add(1U, std::memory_order_acq_rel);
+    struct CallbackGuard {
+        EffectContext* context;
+        ~CallbackGuard() {
+            context->active_process_calls.fetch_sub(1U, std::memory_order_release);
+        }
+    } callback_guard{context};
     if (!context->framework_enabled.load(std::memory_order_acquire)) {
         return -ENODATA;
     }
