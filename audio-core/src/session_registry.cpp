@@ -1,4 +1,5 @@
 #include "mt8163_audio_core/session_registry.hpp"
+#include "mt8163_audio_core/route_policy.hpp"
 
 namespace mt8163_audio_core {
 
@@ -41,6 +42,7 @@ bool SessionRegistry::valid_transition(SessionState current,
 bool SessionRegistry::open(std::uint32_t handle, SourceId source,
                            RouteType route) noexcept {
     if (handle == 0U || !valid_source(source) || !valid_route(route) ||
+        validate_source_route(source, route) != RouteValidation::Supported ||
         find(handle) != nullptr) {
         return false;
     }
