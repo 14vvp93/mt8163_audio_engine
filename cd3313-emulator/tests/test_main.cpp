@@ -16,8 +16,8 @@ int main() {
     try {
         check(known_write_commands().size() == 12,
               "expected 12 recovered command specifications");
-        constexpr std::array<std::uint8_t, 14> accepted_dispatch_ids{{
-            0x01, 0x03, 0x04, 0x10, 0x11, 0x12, 0x15,
+        constexpr std::array<std::uint8_t, 15> accepted_dispatch_ids{{
+            0x01, 0x03, 0x04, 0x09, 0x10, 0x11, 0x12, 0x15,
             0x20, 0x55, 0x56, 0x5C, 0xA3, 0xF0, 0xF1
         }};
         for (const auto id : accepted_dispatch_ids) {
@@ -200,6 +200,12 @@ int main() {
         }
         check(unsafe_encode_rejected,
               "encoder refuses payloads that would trigger hardened-usercopy bounds failure");
+        check(static_cast<bool>(parse_driver_command(
+                  {0x00, 0x09, 0x01, 0x40, 0, 0, 0, 0})),
+              "recovered special 0x09 dispatch branch requires one complete word");
+        check(parse_driver_command({0x00, 0x09, 0x00, 0x40}).error ==
+                  ParseError::SizeFieldTooSmall,
+              "special 0x09 rejects a zero-word frame");
         check(static_cast<bool>(parse_driver_command(
                   {0x00, 0x56, 0x01, 0x40, 0, 0, 0, 0})),
               "special 0x56 dispatcher branch");
