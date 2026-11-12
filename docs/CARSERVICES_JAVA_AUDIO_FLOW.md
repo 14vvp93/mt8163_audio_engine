@@ -67,11 +67,11 @@ These planes interact, but they are not interchangeable. Keep their interfaces s
 
 The Java mute call-site inventory, FM inputPath payloads, current paired CD3313 selector table, and HAL endpoint-name branches have now been resolved in the later sections of this document. Remaining work is narrower:
 
-1. Analyze the firmware's FM tuner kernel modules (`fmradio_drv.ko` and any external tuner drivers) to identify the exact owner of `/dev/fm` and confirm the ioctl metadata ABI.
-2. Determine which Audio Policy file the target image actually loads; the supplied system and vendor XML variants differ on FM Tuner In.
-3. Resolve runtime numeric ALSA card/PCM indexes from the active AudioALSADeviceParser inventory.
-4. Locate the board DT/DTBO or schematic to verify pinmux and physical wires between the FM tuner, GPIO source switches, CD3313, and AP I2S.
-5. Keep real-device control writes disabled; continue with static analysis and read-only validation only.
+1. Confirm the expected policy file and FM patch state on the live target. Static loader analysis and file inventory point to `/vendor/etc/audio_policy_configuration.xml`; the actual AudioPolicyService-loaded path has not been observed.
+2. Resolve runtime numeric ALSA card/PCM indexes from `/proc/asound/cards` and `/proc/asound/pcm`; the HAL discovers these dynamically.
+3. Capture the live `/proc/fm`, `fm_cust.cfg` search locations, Device Tree, and pinctrl state. The extracted image has no `fm_cust.cfg`, DTB/DTBO, or boot image.
+4. Verify physical wiring between the MT6627 I2S pins, AP I2S, and the separate CD3313 RADIO / Source 3 input. The logical selector mapping is confirmed; the PCB traces are not.
+5. Keep real-device control writes disabled; use the read-only collector and validation only.
 
 ## Detailed ACC transition handling
 
@@ -142,7 +142,7 @@ In sendFreq(), the code waits 120 ms after muting before calling nativeSetFreq()
 
 The FM mute-status handler decodes the relevant boolean from bit 0x02 of a radio MCU packet, calls setInputPathMute(0, decodedFlag, 2), and sends the corresponding MCU mute mask. The scan path also uses reason 2, but for a separate operation. Therefore the numeric reason alone is not enough to identify why the radio path is muted.
 
-The driver command 0x04 is known to receive the Java payload shape [inputPath, mute, reason], but the mapping from Java path ID 0 to a physical CD3313 source remains unproven. Keep that mapping explicitly unresolved until the matching cd3313.ko handler is disassembled and checked against runtime routing.
+The driver command 0x04 receives the Java payload shape [inputPath, mute, reason]. The exact paired `cd3313.ko` confirms Java path ID 0 → logical channel 0 (`RADIO`) → selector code 2 → CD3313 Source 3. What remains unproven is the physical PCB wire feeding Source 3 and whether it carries the same FM signal as the AP-side I2S route.
 
 
 ## Audio HAL and policy cross-check (FM path)
@@ -155,7 +155,7 @@ The supplied firmware contains two different Audio Policy XML candidates:
 - `system/audio_policy_configuration.xml` is a different policy variant; it attaches Built-In Back Mic instead and has no FM Tuner In device or route.
 - The vendor `audio_policy.conf` also includes `AUDIO_DEVICE_IN_FM_TUNER` in the primary module's attached input devices.
 
-The static dump does not prove which policy file is selected by the running image. Therefore the vendor FM route is a firmware candidate, not runtime proof. Neither policy file proves that the Android FM Tuner In path is physically the same signal as CD3313 logical RADIO / Source 3. Keep the `/dev/fm`, HAL PCM, CD3313 `/dev/audiomux`, and Audio Policy planes distinct.
+The policy-manager binary and full file scan indicate `/vendor/etc/audio_policy_configuration.xml` is the expected selection: no ODM policy XML or A2DP-offload-disabled special XML was found, and the vendor XML contains FM Tuner In while the system XML does not. The live AudioPolicyService-loaded path is still unobserved. Neither policy file proves that Android FM Tuner In is physically the same signal as CD3313 logical RADIO / Source 3. Keep the `/dev/fm`, HAL PCM, CD3313 `/dev/audiomux`, and Audio Policy planes distinct.
 
 ## CD3313 driver confirmation: mute reasons and input-path IDs
 
