@@ -1,4 +1,4 @@
-# Android 9 stereo post-process effect wrapper
+# Android 9 per-stream stereo software insert effect
 
 ## Status
 
@@ -22,8 +22,9 @@ This is an integration scaffold, not a device-ready installation:
 - Implementation UUID: 8e5f3c12-7b4d-4a91-9c62-1f08a7d35e20
 - Effect type: standard OpenSL ES Equalizer type UUID
   0bed4300-ddd6-11db-8f34-0002a5d5c51b
-- Descriptor mode: output post-process, direct buffers, device and audio-mode
-  indication; no offload capability is advertised.
+- Descriptor mode: software INSERT effect, placed last in its output-session
+  chain, with direct buffers and device/audio-mode indication; no offload
+  capability is advertised.
 
 ## Supported processing contract
 
@@ -88,14 +89,25 @@ Building this module alone does not register or activate it.
 
 ## Registration gate — intentionally not done
 
+The intended policy entry is a stream postprocess mapping for Music, but the
+library descriptor deliberately uses TYPE_INSERT. In Android 9,
+AudioPolicyEffects::addOutputSessionEffects() creates the configured effect on
+the stream's audio session. An INSERT descriptor is handled by AudioFlinger’s
+software effect chain; a TYPE_POST_PROC descriptor can instead be forwarded
+to the audio HAL through audio_stream_out::add_audio_effect. We need the
+software insert path so the stereo effect runs before the MTK HAL's speaker
+mono fold.
+
 Before adding the effect to the target ROM's effect configuration:
 
 1. Inspect the exact target audio_effects.xml and confirm the framework
    accepts a postprocess effect for the music stream.
 2. Confirm the ROM's EffectsFactory accepts the descriptor's
-   EFFECT_FLAG_TYPE_POST_PROC combination.
+   EFFECT_FLAG_TYPE_INSERT and EFFECT_FLAG_INSERT_LAST combination.
 3. Confirm AudioPolicyEffects creates the effect on the intended Music
-   output session and that the effect receives device and audio-mode updates.
+   output session and AudioFlinger processes it in the software session chain
+   (not through the HAL add_audio_effect callback). Confirm device and
+   audio-mode updates reach the effect.
 4. Confirm navigation prompts are not unintentionally classified into the
    same Music stream on this ROM.
 5. Confirm speaker and wired output masks as delivered by the vendor framework.
