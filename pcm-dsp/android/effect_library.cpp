@@ -173,29 +173,30 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
         context->active_process_calls.load(std::memory_order_acquire) != 0U) {
         return false;
     }
-    context->config = config;
+
     const auto& in = config.inputCfg;
     const auto& out = config.outputCfg;
-
+    constexpr std::uint32_t required_mask =
+        EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS | EFFECT_CONFIG_FORMAT;
     const bool fields_present =
-        (in.mask & (EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS |
-                    EFFECT_CONFIG_FORMAT)) ==
-            (EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS |
-             EFFECT_CONFIG_FORMAT) &&
-        (out.mask & (EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS |
-                     EFFECT_CONFIG_FORMAT)) ==
-            (EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS |
-             EFFECT_CONFIG_FORMAT);
+        (in.mask & required_mask) == required_mask &&
+        (out.mask & required_mask) == required_mask;
 
+    // SET_CONFIG is transactional: reject layouts that cannot be safely
+    // processed or copied before replacing the last known-good configuration.
     const bool same_layout = fields_present &&
+        in.samplingRate != 0U &&
         in.samplingRate == out.samplingRate &&
         in.channels == out.channels && in.format == out.format;
-    context->bypass_copy_compatible.store(same_layout &&
-        audio_channel_count_from_out_mask(
-            static_cast<audio_channel_mask_t>(out.channels)) > 0U &&
-        bytes_per_sample(out.format) > 0U, std::memory_order_release);
-    const bool same_stream = same_layout &&
-        in.samplingRate == out.samplingRate &&
+    const std::size_t output_channels = same_layout
+        ? audio_channel_count_from_out_mask(
+              static_cast<audio_channel_mask_t>(out.channels))
+        : 0U;
+    const std::size_t sample_bytes = same_layout
+        ? bytes_per_sample(out.format) : 0U;
+    if (output_channels == 0U || sample_bytes == 0U) return false;
+
+    const bool same_stream =
         in.channels == AUDIO_CHANNEL_OUT_STEREO &&
         out.channels == AUDIO_CHANNEL_OUT_STEREO &&
         supported_format(in.format);
@@ -206,10 +207,13 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
         supported = context->engine.configure(in.samplingRate);
     }
 
+    // Commit only after every mandatory field and the bypass layout pass.
+    context->config = config;
+    context->bypass_copy_compatible.store(true, std::memory_order_release);
     context->supported_config.store(supported, std::memory_order_release);
     context->configured.store(true, std::memory_order_release);
     context->reset_requested.store(true, std::memory_order_release);
-    return true; // Unsupported but valid streams are deliberately bypassed.
+    return true; // Valid but unsupported streams are deliberately bypassed.
 }
 
 std::size_t bytes_per_sample(std::uint8_t format) {
