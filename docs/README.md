@@ -87,6 +87,6 @@ Use this page as the navigation map for the project. The documents remain groupe
 - `cd3313-emulator/` — offline CD3313 protocol/state model and host tests.
 - `kernel/cd3313/` — CD3313 rewrite plan and future kernel implementation.
 - `pcm-dsp/` — PCM/DSP code, JNI bridge, tests and benchmarks.
-- `reference-materials/` — original firmware archives, immutable reference binaries and curated extracted audio materials.
+- `reference-materials/` — original firmware archives, immutable reference binaries and the complete organized extracted filesystem tree.
 - `scripts/repository/` — reproducible repository-maintenance utilities.
 - `tools/` — diagnostic and reverse-engineering helper scripts.
