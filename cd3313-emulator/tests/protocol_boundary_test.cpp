@@ -222,6 +222,8 @@ int main() {
 
         require(encode_rejects({0xFEU, 1U, {0U, 0U, 0U, 0U}}),
                 "encoder must reject unknown command IDs");
+        require(encode_rejects({0x09U, 1U, {41U, 0U, 0U, 0U}}),
+                "encoder must reject a master-volume maximum above 40");
         require(encode_rejects({0x10U, 1U, {0U, 0U, 0U}}),
                 "encoder must reject payload-size mismatch");
         require(encode_rejects({0x15U, 4U, {0U, 0U, 0U, 0U}}),
