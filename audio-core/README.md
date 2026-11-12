@@ -5,6 +5,7 @@ This directory contains the first host-testable primitives for the unified MT816
 ## Current scope
 
 - Stable source and route identifiers.
+- Fixed-capacity multi-session registry with an explicit lifecycle state machine.
 - Named mute owners independent from legacy CD3313 reason numbers.
 - Separate master and per-source mute domains.
 - Explicit mapping from AudioCore mute owners to the paired CD3313 legacy reason masks.
@@ -15,7 +16,7 @@ The mute arbiter is a control-plane object. A future AudioCore control context w
 
 ## Validation
 
-The CMake target `mt8163_audio_core_tests` covers independent mute owners, master/source scope, idempotent set/clear behavior and invalid identifiers. It is included in the `pcm-dsp` host CMake test suite.
+The CMake targets `mt8163_audio_core_tests` and `mt8163_audio_core_session_tests` cover independent mute owners, master/source scope, CD3313 reason aggregation, session lifecycle, duplicate handles, fixed capacity and invalid identifiers. They are included in the `pcm-dsp` host CMake test suite.
 
 ## Not implemented yet
 
