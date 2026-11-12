@@ -159,9 +159,13 @@ bool apply_command(const DriverCommand& command, EmulatorState& state,
         }
         return true;
     }
+    case 0x09: {
+        state.master_volume_max = read_le32(payload, 0);
+        return state.master_volume_max <= 40U;
+    }
     case 0x10: {
         const std::uint32_t step = read_le32(payload, 0);
-        if (step > 40U) return false;
+        if (step > 40U || step > state.master_volume_max) return false;
         state.master_volume_step = step;
         state.master_volume_register_value = calculate_master_volume_register(
             step, state.master_volume_percentage.value_or(100U));
