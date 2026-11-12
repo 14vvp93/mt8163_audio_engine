@@ -55,6 +55,14 @@ void test_control_state_is_published() {
     require(snapshot->session_count == 1U, "session count is published");
     require(snapshot->active_session_count == 1U,
             "active session count is published");
+    require(snapshot->sessions[0].handle == 11U,
+            "session handle is published to the PCM plane");
+    require(snapshot->sessions[0].source == SourceId::LocalMedia,
+            "session source is published to the PCM plane");
+    require(snapshot->sessions[0].route == RouteType::PrimaryPcm,
+            "session route is published to the PCM plane");
+    require(snapshot->sessions[0].state == SessionState::Active,
+            "session lifecycle is published to the PCM plane");
     require(snapshot->master_mute_owners == (1U << 0U),
             "master mute owner mask is published");
     require(snapshot->source_mute_owners[
