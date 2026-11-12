@@ -45,6 +45,15 @@ int main() {
               "active FM route is processed in normal audio mode");
         check(output != input, "FM EQ changes the signal");
 
+        auto disabled_parameters = parameters;
+        disabled_parameters.enabled = false;
+        std::fill(output.begin(), output.end(), 0);
+        result = adapter.process(input.data(), output.data(), kFrames,
+                                 disabled_parameters, true, true);
+        check(result == pcm_dsp::FmProcessResult::Bypassed,
+              "disabled DSP bypasses");
+        check(output == input, "disabled DSP bypass is bit-exact");
+
         std::fill(output.begin(), output.end(), 0);
         result = adapter.process(input.data(), output.data(), kFrames,
                                  parameters, false, true);
