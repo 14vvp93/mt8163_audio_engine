@@ -27,8 +27,9 @@ struct PcmStreamRecord {
 
 // Fixed-capacity lifecycle adapter. Lifecycle calls and get_record() belong
 // to one serialized control context. write() may run concurrently with opening
-// or configuring other slots. Before stop()/close(), the owner must quiesce
-// this stream's callback. Backend write() must be bounded and nonblocking.
+// or configuring other slots. stop() closes the callback admission gate; if a
+// backend write is still in flight it returns WouldBlock and must be retried.
+// Backend write() must be bounded and nonblocking.
 class PcmStreamBroker {
 public:
     explicit PcmStreamBroker(PcmBackend& backend) noexcept : backend_(backend) {}
@@ -49,6 +50,9 @@ private:
         std::atomic<std::uint32_t> handle{0U};
         std::atomic<std::uint32_t> backend_token{0U};
         std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
+        // High bit admits callback writers; low bits count in-flight writes.
+        // A single atomic word makes admission and stop's gate-close race-free.
+        std::atomic<std::uint32_t> write_gate{0U};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
         PcmConfig config{};
