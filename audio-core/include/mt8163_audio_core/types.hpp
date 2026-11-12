@@ -47,6 +47,8 @@ enum class MuteOwner : std::uint8_t {
     RadioRetune,
     RadioScan,
     RadioPacketMute,
+    RadioStartupMute,
+    RadioUserMute,
     UserRequest,
     SafetyInterlock,
     Count
