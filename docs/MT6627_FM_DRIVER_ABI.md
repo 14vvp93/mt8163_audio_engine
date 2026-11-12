@@ -46,7 +46,7 @@ The sample-rate enum is independently confirmed in the HAL:
 | 2 | 48,000 Hz |
 | 3 | Error |
 
-The kernel `fm_ops_ioctl()` branch for `0xC004F521` copies **12 bytes** from userspace and passes the three words to `fm_i2s_set()`. That function validates the first field, then invokes a callback stored in the FM core structure at offset `0x8c`, passing the three values. If that callback pointer is null, `fm_i2s_set()` immediately returns **-1002**; it does not apply the requested I2S settings. The MT6627 low-ops registration fills the adjacent I2S-info getter at offset `0x90` and the five-field audio-info getter at `0xc0`, but does not fill the setter slot at `0x8c`. The setter callback's provider therefore remains an important open question; the cross-module symbol scan is being used to determine whether another module supplies it.
+The kernel `fm_ops_ioctl()` branch for `0xC004F521` copies **12 bytes** from userspace and passes the three words to `fm_i2s_set()`. That function validates the first field, then invokes a callback stored in the FM core structure at offset `0x8c`, passing the three values. If that callback pointer is null, `fm_i2s_set()` immediately returns **-1002**; it does not apply the requested I2S settings. The MT6627 low-ops registration fills the adjacent I2S-info getter at offset `0x90` and the five-field audio-info getter at `0xc0`, but does not fill the setter slot at `0x8c`. The cross-module scan of the extracted `.ko` set found no other module importing `fm_low_ops_register` or `fm_i2s_set`; this module export table exposes only `g_dbg_level`, not the setter interface. No provider for the `0x8c` callback slot was found. Treat the slot as unregistered in the static image unless target-side evidence shows otherwise.
 
 **ABI quirk:** this ioctl also encodes `_IOC_SIZE=4`, while the kernel copies 12 bytes. The HAL supplies all three words.
 
@@ -93,11 +93,11 @@ The focused inventory of the supplied firmware tree found no `.dts`, `.dtsi`, `.
 
 **Still open**
 
-- The concrete implementation registered at the FM core's I2S-set callback offset `0x8c`.
-- The runtime values of `fm_config` on the target board.
+- Whether the FM-core I2S-set callback at offset `0x8c` is populated at runtime; no provider was found in the extracted module set.
+- Whether the 48 kHz setter request succeeds on the target; the HAL ignores the ioctl return.
 - The selected Audio Policy XML at runtime.
 - Numeric ALSA card/PCM indexes discovered by AudioALSADeviceParser.
-- Physical pinmux and board-level wiring from the tuner to CD3313 Source 3 and/or AP I2S.
+- Physical pinmux and board-level wiring for the AP I2S route and the separate CD3313 RADIO input.
 
 No real-device ioctl writes, I²C writes, GPIO changes, or route changes were performed.
 
@@ -129,7 +129,7 @@ Do not label these raw values as `CMB_STUB_AIF_0..3` yet: the upstream MediaTek 
 
 **Important build finding:** the exact binary's `wmt_plat_i2s_ctrl()` checks the I2S CK/WS/DAT GPIO definitions, but the compiled function contains the warning path “FM digital mode is not set” / “no I2S GPIO settings should be modified by combo driver” and does not contain the I2S pinctrl/GPIO operations present in the reference source's `#if defined(FM_DIGITAL_INPUT) || defined(FM_DIGITAL_OUTPUT)` branch. This is strong evidence that the WMT build was compiled without those FM digital-mode flags; its combo-driver I2S pin control is effectively a no-op for FM in this build.
 
-This materially shifts the static assessment toward an **analog FM line-in/out configuration**, consistent with the CD3313 logical RADIO channel (channel 0 → Source 3). It still does not prove the live `aud_path` value, which AIF state is actually selected at runtime, or the physical wire from the MT6627 analog output to CD3313 Source 3. Those require read-only target observation or board-level documentation.
+The WMT build missing dynamic I2S pinctrl does **not** establish an analog route. The paired MT6627 driver advertises `aud_path=1`, I2S state enabled, master mode, 32 kHz, and `FM_I2S_PAD_CONN`; this points to a non-merge I2S route whose SoC pinmux may be fixed by board configuration, bootloader, or device tree. The supplied dump lacks DT/DTBO/boot images, so actual pinmux and wiring remain unresolved. Keep this HAL I2S path separate from the CD3313 logical RADIO analog input/mute path until board-level evidence correlates them.
 
 
 ## Audio Policy custom extension: source of FM_DIRECT_CONTROL
@@ -158,3 +158,25 @@ The 48,001 threshold is consistent with a sample-rate decision. This identifies 
 `isFMDirectMode()` returns true only when three patch fields match: field offset 28 equals 1, field offset `0xd60` equals 1, and the device field at offset `0xc4` equals `0x80002000` (`AUDIO_DEVICE_IN_FM_TUNER`). Thus the direct-mode predicate is explicitly tied to an FM Tuner input patch.
 
 This completes the static chain: Audio Policy custom extension selects `FM_DIRECT_CONTROL` for an FM Tuner patch → HAL stores the boolean → when true, `AudioALSAFMController::setFmEnable()` forces the FM chip sample rate to 48 kHz and uses its direct-connection control path. The extension's rate threshold and the HAL's 48 kHz override are both binary-verified. The actual runtime patch and selected policy XML still need target-side confirmation.
+
+## MT6627 init-time audio metadata selection
+
+The exact paired `fmradio_drv.ko` (Build ID `f72539936358601db1fe2f208c10d091af454968`, SHA-256 `17e03615cee4850bd65fa5a69074f767e7f33821cc99a0ff8e40d71b5ddfdaba`) does not leave the five audio metadata words at zero. Its `fm_dev_init()` path special-cases FM chip ID `0x6627`, selects configuration class 1 from its chip table, and calls `fm_cust_config_setup()`. For class 1 or 2, that routine writes the five fields in this order:
+
+| Field | Value | HAL interpretation |
+|---|---:|---|
+| `aud_path` | 1 | Valid non-analog, non-merge path |
+| `i2s_state` | 1 | I2S state flag set |
+| I2S mode | 0 | Master |
+| I2S sample-rate enum | 0 | 32,000 Hz |
+| I2S pad | 0 | `FM_I2S_PAD_CONN` |
+
+The HAL explicitly rejects `FM_AUD_ANALOG=0`, treats `aud_path=2` as merge, and `aud_path=3` as error. Therefore the MT6627 class-1 metadata selects the **non-merge FM I2S path**; the HAL endpoint branch is `FM_I2S_Playback` / `FM_I2S_Capture`, initially reporting 32 kHz, master mode, and CONN pad selection.
+
+At init, `fm_cust_config_setup(NULL)` also requests firmware file `fm_cust.cfg` through the kernel firmware loader. The parser recognized keys are FM RX/TX tuning thresholds (RSSI, deemphasis, PAMD, MR, ATDC, PRX, SMG); they do not overwrite the five audio metadata fields above. The customer config file therefore affects tuner calibration, not the selected audio path.
+
+### I2S sample-rate setter limitation
+
+The MT6627 low-ops registration fills the I2S-info getter and audio-info getter, but leaves the setter callback slot at FM-core offset `0x8c` unfilled. The module scan found no other `.ko` provider. When that pointer is null, `fm_i2s_set()` returns `-1002` for ioctl `0xC004F521`.
+
+The primary HAL `SetFmChipSampleRate(48000)` logs the ioctl result but does not propagate it: after successfully opening `/dev/fm`, it returns success even if the ioctl itself failed. The direct PCM setup separately obtains its PCM rate from `GetFmChipSamplingRate()`. Consequently, a HAL request to change the chip to 48 kHz is **not proof** that the tuner changed from its class-1 default of 32 kHz; if the setter callback remains null, the PCM path can still be configured from the reported 32 kHz value.
