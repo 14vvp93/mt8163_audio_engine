@@ -67,14 +67,14 @@ The four-channel requirement can only be connected safely after one of these is 
 
 The eventual adapter must:
 
-- leave the stock MTK HAL and its routing/device lifecycle intact;
+- preserve the factory HAL's verified stream, device-routing, power-sequencing and call-path contracts in the factory-named replacement HAL; do not leave the stock HAL as a second audio-state owner;
 - default to bypass until explicitly enabled;
 - reject unsupported formats without modifying the input buffer;
 - preserve the original output on DSP failure (or use a proven fail-open copy path);
 - never process capture/microphone or call/SCO streams in the first release;
 - avoid loading or mutating CD3313 register state from the PCM callback;
 - use a control-thread-to-audio-thread immutable profile handoff;
-- expose a hard disable/recovery mechanism that does not require replacing the vendor HAL.
+- expose a hard disable/recovery mechanism inside the replacement HAL and retain a verified factory-image rollback path.
 
 No HAL replacement, AudioFlinger hook, global effect registration, or live CD3313 write should be attempted on the strength of the current static evidence alone.
 
@@ -94,7 +94,7 @@ The Java test wrapper serializes its methods and is not a model for the producti
 
 ## 6. Current decision
 
-Proceed with static call-site and buffer-layout recovery. Do not create a guessed HAL hook or claim four-channel system integration yet. The next implementation should be the smallest adapter that matches a proven native buffer contract, not a speculative replacement for the vendor audio stack.
+Proceed with static call-site and buffer-layout recovery while building the unified engine behind factory-compatible artifact identities. The production primary HAL target is `/vendor/lib/hw/audio.primary.mt8163.so`; do not emit a project-named runtime substitute or retain the factory HAL as a parallel owner after cutover. Do not create a guessed PCM adapter or claim four-channel system integration: the proven Normal speaker boundary is stereo/mono-folded, while the physical downstream split remains unresolved. Any AudioFlinger INSERT effect is a diagnostic prototype only and is not the product architecture. The replacement HAL must preserve every supported factory route and explicitly reject or bypass unverified routes until their contracts are recovered.
 
 
 ## 7. Newly correlated CD3313 four-speaker control path
