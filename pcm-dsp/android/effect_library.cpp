@@ -326,7 +326,7 @@ std::int32_t process_effect(effect_handle_t self,
     context->was_processing = ok;
     release_parameters(context, slot_index);
     if (!ok) {
-        copy_bypass(input, output, format);
+        copy_bypass(context, input, output, format);
         context->engine.reset();
         context->was_processing = false;
     }
