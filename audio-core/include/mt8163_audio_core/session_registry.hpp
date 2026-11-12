@@ -38,6 +38,7 @@ public:
     const SessionRecord* find(std::uint32_t handle) const noexcept;
     std::size_t count(SessionState state) const noexcept;
     std::size_t size() const noexcept;
+    const std::array<SessionRecord, kMaxAudioSessions>& records() const noexcept;
 
 private:
     static bool valid_source(SourceId source) noexcept;
