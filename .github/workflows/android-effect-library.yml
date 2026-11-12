@@ -1,0 +1,67 @@
+name: Android 9 stereo effect library ABI build
+
+on:
+  push:
+    paths:
+      - "pcm-dsp/android/**"
+      - "pcm-dsp/src/engine.cpp"
+      - "pcm-dsp/include/pcm_dsp/engine.hpp"
+      - "pcm-dsp/Android.mk"
+      - ".github/workflows/android-effect-library.yml"
+  pull_request:
+    paths:
+      - "pcm-dsp/android/**"
+      - "pcm-dsp/src/engine.cpp"
+      - "pcm-dsp/include/pcm_dsp/engine.hpp"
+      - "pcm-dsp/Android.mk"
+      - ".github/workflows/android-effect-library.yml"
+  workflow_dispatch:
+
+jobs:
+  android9-armv7-effect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Android NDK r27c
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - name: Fetch Android 9 platform headers
+        run: |
+          mkdir -p platform
+          git clone --depth 1 --branch android-9.0.0_r61 https://android.googlesource.com/platform/hardware/libhardware platform/hardware/libhardware
+          git clone --depth 1 --branch android-9.0.0_r61 https://android.googlesource.com/platform/system/media platform/system/media
+          git clone --depth 1 --branch android-9.0.0_r61 https://android.googlesource.com/platform/system/core platform/system/core
+
+      - name: Compile vendor effect library for ARMv7
+        run: |
+          mkdir -p build/android9-armv7
+          CXX="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi28-clang++"
+          "$CXX" -std=c++17 -O2 -fPIC -shared -Wall -Wextra -Werror -fvisibility=hidden \
+            -I pcm-dsp/include \
+            -isystem platform/hardware/libhardware/include \
+            -isystem platform/system/media/audio/include \
+            -isystem platform/system/core/include \
+            -isystem platform/system/core/libcutils/include \
+            pcm-dsp/android/effect_library.cpp pcm-dsp/src/engine.cpp \
+            -o build/android9-armv7/libmt8163_stereo_effect.so
+
+      - name: Verify ARM ELF and exported effect factory symbol
+        run: |
+          readelf -h build/android9-armv7/libmt8163_stereo_effect.so | grep -E "Class:|Machine:"
+          readelf -Ws build/android9-armv7/libmt8163_stereo_effect.so | grep -E " AELI$"
+
+      - name: Upload ARMv7 effect library
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-android9-stereo-effect-armv7
+          path: build/android9-armv7/libmt8163_stereo_effect.so
+          if-no-files-found: error
+          retention-days: 30
