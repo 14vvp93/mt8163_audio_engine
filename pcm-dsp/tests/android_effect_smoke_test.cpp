@@ -140,6 +140,16 @@ int main() {
     require(output[0] > 1500 && output[0] < 2600,
             "PCM16 preamp is applied in the software insert");
 
+    // AudioFlinger continues processing an INSERT effect during STOPPING.
+    // The final block must remain dry while -ENODATA ends the effect tail.
+    send_command(handle, EFFECT_CMD_DISABLE);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == -ENODATA,
+            "framework disable reports completed effect tail");
+    require(output == input,
+            "framework disable transition preserves bit-exact dry PCM");
+    send_command(handle, EFFECT_CMD_ENABLE);
+
     // Explicit DSP-off must be bit-exact bypass.
     set_u32(handle, 1U, 0U);
     std::fill(output.begin(), output.end(), 0);
