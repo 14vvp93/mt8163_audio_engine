@@ -91,6 +91,16 @@ global output-mix effect: it can target the legacy Music stream without
 intentionally attaching the same effect to Ring, Alarm, Notification or
 Voice Call streams.
 
+Important distinction: the XML "postprocess" section selects which effect to
+attach for a stream; it does not require the effect descriptor itself to use
+EFFECT_FLAG_TYPE_POST_PROC. For this project the descriptor must use
+EFFECT_FLAG_TYPE_INSERT (with INSERT_LAST) so AudioFlinger processes the
+effect in the software session chain before handing PCM to the HAL.
+A TYPE_POST_PROC descriptor follows a different path: AudioFlinger forwards
+it through audio_stream_out::add_audio_effect, which delegates processing to
+the vendor HAL and does not prove that stereo is preserved before the MTK
+mono fold.
+
 This is still a legacy stream-type boundary. Android 9 automotive usage
 mapping and OEM policy may map navigation guidance or other usages to the
 Music stream, so the exact target stream classification must be checked on
@@ -150,8 +160,9 @@ contract:
    effect and postprocess/global-effect registration syntax.
 3. Confirm whether the build loads effects from `/vendor/etc`,
    `/system/etc`, or both, and whether vendor effect libraries are allowed.
-4. Trace the target's output-mix effect creation, selected output thread,
-   format negotiation, channel count and buffer size.
+4. Trace the target's Music output-session effect creation, selected output
+   thread, format negotiation, channel count and buffer size. Verify the
+   descriptor uses TYPE_INSERT and stays in the AudioFlinger software chain.
 5. Verify the effect receives stereo frames before the HAL mono fold.
 6. Implement and test the standard effect command/state lifecycle, including
    enable/disable, device, mode, reset, parameter changes and teardown.
@@ -182,9 +193,10 @@ XML registration, system image or device configuration was modified.
 
 ## 7. Recommended direction
 
-Prioritize a small Android effect-library prototype around the stereo engine,
-registered first as a `music` postprocess effect if the vendor's Android 9
-AudioPolicyEffects implementation supports the recovered v2.0 configuration.
+Prioritize the Android effect-library prototype around the stereo engine,
+registered through the `music` postprocess stream mapping but with a
+`TYPE_INSERT` descriptor so the effect runs in AudioFlinger's software session
+chain. Confirm this behavior against the target vendor's Android 9 framework.
 Use a global output-mix attachment only if the stream-specific route is
 unavailable and its wider scope is explicitly accepted. Do not patch
 `audio.primary.mt8163.so`.
