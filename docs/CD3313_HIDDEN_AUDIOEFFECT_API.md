@@ -118,7 +118,7 @@ cd3313.ko dispatcher. The strongest correlations are:
 | setBassBoost | 85 | 0x55 | Exact command ID; driver uses the second word for bass transition |
 | setLoud | 86 | 0x56 | Exact command ID; driver uses the first word as loudness enable/state |
 | setTreble | 92 | 0x5C | Exact command ID; driver uses the second word for treble transition |
-| setSubWoofer | 163 | 0xA3 | Exact command ID; driver toggles GPIO 409 from the first word |
+| setSubWoofer | 163 | 0xA3 | Exact command ID; vendor callback requests raw GPIO 409 from the first word |
 
 This confirms that the hidden setBalance(fl,fr,rl,rr) API is the userspace
 four-output level interface for the CD3313. It is not a four-channel PCM
@@ -127,7 +127,9 @@ interface.
 The driver also supports command 0x04 for per-input mute, 0x10 for
 master-volume step, 0x11 for master-mute reason, 0x12 for volume percentage,
 0x01 for input selection, and 0x20 for input mixing. The Java ExtAudioMuxer
-class exposes matching builders for these commands.
+class exposes matching builders for these commands. The paired vendor module
+also contains the 0x09 branch described above; the older standalone command
+map is not authoritative for that addition.
 
 ### Important unsupported API calls
 
@@ -144,9 +146,7 @@ identifiers, even though the Java API exposes them:
 - 0xA1 low crossover;
 - 0xA2 high crossover.
 
-The driver also has no recovered write-dispatch case for command 0x09,
-which the separate ExtAudioMuxer.setMasterVolumeMax() wrapper emits.
-Do not treat these Java methods as working CD3313 features on this firmware.
+The older standalone command map did not include command 0x09. Direct disassembly of the firmware-paired vendor module confirms a 0x09 callback branch that reads one word and stores it in a global field, but its semantics remain unresolved. Do not claim that setMasterVolumeMax() has a verified CD3313 effect.
 Their IDs may belong to another chip variant or a shared vendor interface.
 
 For the commands the driver does implement, the payload semantics are
@@ -170,7 +170,7 @@ The Java ExtAudioMuxer wrapper emits:
 | setMasterVolumeIndex(...) | 0x10 | one volume-step integer |
 | setMasterMute(mute, reason) | 0x11 | [mute, reason] |
 | setMastVolumePercentage(percent) | 0x12 | [percent] |
-| setMasterVolumeMax(value) | 0x09 | [value] |
+| setMasterVolumeMax(value) | 0x09 | [value] — vendor callback branch exists; semantic effect unresolved |
 
 The input-source priority recovered from DoAudioMux() is:
 
@@ -254,7 +254,7 @@ A cross-layer comparison exposes two important size mismatches. The Java/Binder 
 
 For 0x03 and 0x12, the Java array length alone cannot satisfy the recovered kernel dispatcher threshold if the native layer copies exactly that many words and sets the size field to the array length. The missing JNI implementation must therefore be inspected to determine whether it pads the payload, uses a fixed command-specific size, or applies another framing rule. The kernel's second 0x12 word is retained as opaque data by the emulator; its value and meaning are not established.
 
-For 0x15, the inverse hazard exists: the kernel's length table accepts a two-word size field even though the handler reads four words. A safe native bridge must enforce four complete words regardless of the driver's weaker minimum.
+For 0x15, the inverse hazard exists: the paired vendor callback accepts a size field greater than one (two words) even though it reads four words. It range-checks all four loaded indices against 0..15, but a short frame can still supply missing words from stale slab memory. A safe native bridge must enforce four complete words regardless of the driver's weaker minimum.
 
 These are cross-layer facts, not evidence of the native bridge's actual behavior. Do not infer padding values, ioctl size fields, or the low request-number byte until the JNI provider is recovered. The emulator's typed builders deliberately construct safe kernel-side frames and must not be treated as a byte-for-byte reproduction of the Java arrays.
 
