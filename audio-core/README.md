@@ -14,7 +14,7 @@ This directory contains the first host-testable primitives for the unified MT816
 - Shared legacy radio reason 2 remains asserted until both RadioScan and RadioPacketMute owners release it.
 - Fixed-size state with no dynamic allocation in the mute arbiter.
 
-The mute arbiter is a control-plane object. One serialized AudioCore control context owns mutations. It creates immutable snapshots and publishes them through SnapshotPublisher. The publisher uses three fixed slots and 32-bit atomics; readers have a fixed retry bound, the writer never waits, and a failed acquisition must reuse the previous block snapshot. The publisher is single-writer and multi-reader; it does not make MuteArbiter itself thread-safe.
+The mute arbiter is a control-plane object. One serialized AudioCore control context owns mutations. It creates immutable snapshots and publishes them through SnapshotPublisher. The publisher uses three fixed slots and 32-bit atomics; a non-blocking writer gate rejects concurrent publishers, readers have a fixed retry bound, the writer never waits, and a failed acquisition must reuse the previous block snapshot. Android ARMv7 CI verifies the actual MuteSnapshot publisher instantiation and the lock-free 32-bit atomic requirement. The publisher is single-writer and multi-reader; it does not make MuteArbiter itself thread-safe.
 
 ## Validation
 
