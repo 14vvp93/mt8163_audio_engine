@@ -86,7 +86,8 @@ The host parser preserves an explicitly supplied fifth word and does not synthes
 
 ## 6. Closure items
 
-- [ ] Reconcile the complete vendor callback control flow, including channel/gain value checks for `0x03` and remaining branch-specific side effects.
+- [x] Decode the `0x03` channel/gain branch: channel -1 and 6 are rejected, channel 7+ is not bounded before indexing the seven-byte array, and gain is masked to two bits.
+- [ ] Reconcile remaining command-specific side effects and correlate all accepted caller values.
 - [ ] Inventory all Java/Binder callers and their exact arrays.
 - [ ] Confirm vendor `__check_object_size` and hardened-usercopy behavior from the exact kernel source/config.
 - [ ] Preserve strict complete-payload checks in the replacement parser.
