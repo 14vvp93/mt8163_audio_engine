@@ -102,6 +102,16 @@ int main() {
                        0x02, 0, 0, 0, 0x03, 0, 0, 0,
                        0x78, 0x56, 0x34, 0x12}),
               "typed input-gain builder preserves the opaque third word");
+        bool rejected_input_gain_none = false;
+        try { (void)make_input_gain_command(6U, 0U); }
+        catch (const std::invalid_argument&) { rejected_input_gain_none = true; }
+        check(rejected_input_gain_none,
+              "typed input-gain builder rejects the NONE channel");
+        bool rejected_input_gain_overflow = false;
+        try { (void)make_input_gain_command(7U, 0U); }
+        catch (const std::invalid_argument&) { rejected_input_gain_overflow = true; }
+        check(rejected_input_gain_overflow,
+              "typed input-gain builder rejects channel indices above the array");
         check(encode_driver_command(make_input_mute_command(1, true, 16)) ==
                   std::vector<std::uint8_t>(
                       {0x00, 0x04, 0x03, 0x40,
