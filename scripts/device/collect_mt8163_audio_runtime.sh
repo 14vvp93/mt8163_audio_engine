@@ -41,7 +41,7 @@ run_device_read() {
 cat > "$OUT_DIR/README.txt" <<EOF2
 MT8163 read-only runtime inventory
 Root access: $ROOT_AVAILABLE
-Device serial: ${ANDROID_SERIAL:-adb default}
+Device selector: ${ANDROID_SERIAL:+explicit serial provided}${ANDROID_SERIAL:-adb default}
 
 This collector writes files only on the host. It does not open or write
 /dev/audiomux, /dev/carstatus or /dev/fm; it does not issue ioctls, I2C
