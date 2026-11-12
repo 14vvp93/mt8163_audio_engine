@@ -27,7 +27,7 @@ The callback decodes the command type from the header and reads payload words fr
 | `0x10` master volume | Reads first payload word | Checks count is nonzero |
 | `0x11` master mute reason | Reads two payload words | Checks count > 1 |
 | `0x12` volume percentage | Reads payload | Checks count > 1 |
-| `0x15` four output levels | Reads four payload words at +4, +8, +12, +16 | **Checks only count > 1; under-validates the four-word payload** |
+| `0x15` four output levels | Reads four payload words at +4, +8, +12, +16 | **Checks only count > 1; under-validates payload length. The paired vendor callback range-checks all four indices against 0..15.** |
 | `0x20` mixing mode | Reads payload | Checks count > 2 |
 | `0x55` bass | Reads payload | Checks count > 1 |
 | `0x56` loudness/equalizer control | Reads payload word at +4 | **No visible minimum-length check before read** |
@@ -66,7 +66,7 @@ These should be fixed by parsing a bounded local copy with an explicit terminato
 
 - asynchronous command queue; ioctl does not report DSP/I2C completion;
 - no visible payload-size check for `0x03`, `0x09`, `0x56` and `0xA3`;
-- `0x15` reads four words but validates only a count greater than one;
+- `0x15` reads four words but validates only a count greater than one; the paired vendor callback additionally checks every loaded index is <= 15.
 - read/status path reports cached state rather than I2C readback;
 - raw write path has persistent-position and maximum-length termination risks;
 - the vendor build's normal and raw I2C write helpers do retry and validate one-byte transfer success (see [module variant comparison](CD3313_MODULE_VARIANT_DIFF.md)).
