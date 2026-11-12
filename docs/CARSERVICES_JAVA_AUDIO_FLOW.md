@@ -106,19 +106,7 @@ When the accepted ACC value is one, the same 2,500 ms delayed transition invokes
 
 The delayed unmute handler checks that ACC is still ON before sending mute=10000 and calling ExtAudioMuxer.setMasterMute(false, 2). The OFF path explicitly removes this pending message. This establishes reason value 2 at both the immediate ACC-OFF mute and delayed ACC-ON unmute call sites.
 
-### Engineering implications for mt8163_tools
-
-1. Treat the kernel event as a hint to reread state, not as the state payload itself. The service's uevent callback does exactly that.
-2. Preserve an initial read after boot and after observer registration; do not rely only on edges.
-3. Debounce state changes and cancel stale delayed work when a newer value arrives. The firmware uses a 2,500 ms delayed ACC transition.
-4. Keep ACC state separate from power-off scheduling. The default delayed sleep is 30 seconds, configurable through power_down_afteraccoff.
-5. For the app, do not copy the firmware's power, USB, mute, or sleep side effects. Only consume the state and expose the required automation behavior.
-6. The firmware's sendBroadcastAsUser action is emitted from onAccStatusInner, after the 2,500 ms delay, rather than directly in the kernel uevent callback. Therefore the Android broadcast is not necessarily an immediate ACC edge notification.
-
-These timings and actions are firmware observations, not a recommendation to reproduce its power-control behavior in the utility app. Validate actual timing on the target device before changing the app's current polling fallback.
-
-
-## Complete setMasterMute call-site inventory
+### Complete setMasterMute call-site inventory
 
 A search of the complete carservices VDEX disassembly finds seven Java call sites for ExtAudioMuxer.setMasterMute(boolean, int). They group into three independent control sources:
 
