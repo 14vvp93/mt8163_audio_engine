@@ -44,7 +44,7 @@ The following runs completed successfully against the full extracted tree:
 - [Primary HAL analysis — 43201246997](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201246997)
 - [CD3313 userspace client scan — 43201256048](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201256048)
 
-A deeper full-library/VDEX/FM analysis is running separately; its result must be recorded only after completion.
+The full-library/VDEX/FM analysis completed successfully in [run 43201322049](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201322049), scanning 1,117 native ARM objects. The HEQ decompile workflow also passed in [run 43201591594](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201591594) using the committed APK chunks.
 
 ## Branch and permission notes
 
