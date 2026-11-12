@@ -142,7 +142,9 @@ void test_backend_error_propagation() {
     require(broker.configure(4U, PcmConfig{48000U, 2U, 256U}) ==
                 PcmResult::BackendFailure,
             "configure error propagated");
-    require(broker.find(4U)->state == PcmStreamState::Failed,
+    PcmStreamRecord failed_record{};
+    require(broker.get_record(4U, &failed_record) &&
+            failed_record.state == PcmStreamState::Failed,
             "failed stream state recorded");
     require(broker.close(4U) == PcmResult::Ok, "failed stream can be closed");
 }
