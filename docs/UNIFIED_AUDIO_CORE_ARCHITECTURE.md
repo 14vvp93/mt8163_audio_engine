@@ -1,0 +1,205 @@
+# Unified MT8163 Audio Core — architecture proposal
+
+Status: approved product direction; architecture baseline, not implementation complete.
+Target: MT8163 / Android 9 / ARM32 / vendor kernel 4.9.117.
+
+## 1. Product invariant
+
+MT8163 Audio Engine replaces the factory vendor audio implementation as one coherent system. It is not a global INSERT effect, an app-side DSP, or a second controller layered over the factory stack.
+
+There is exactly one authoritative owner for:
+- source/session state and source priority;
+- route selection and route transitions;
+- master and per-source mute arbitration;
+- logical and hardware volume state;
+- DSP profile and processing state;
+- CD3313 command sequencing and completion/error tracking;
+- vehicle events that affect audio behavior.
+
+Android AudioFlinger, AudioPolicyService, ALSA and kernel drivers remain infrastructure/contracts where possible. They must not independently own a second copy of vendor audio policy.
+
+## 2. Deployment boundary
+
+### AudioCore runtime
+
+Place the authoritative AudioCore state machine and PCM graph in the replacement primary audio HAL process. This keeps PCM buffers in-process and avoids Binder/IPC on the real-time path. The HAL owns one AudioCore instance for its lifetime.
+
+Control clients must be thin proxies. They submit typed events to the HAL control interface; they do not maintain shadow source, mute, volume or DSP state. The exact Android 9-compatible control transport is an implementation gate: evaluate the existing HAL set_parameters/vendor extension path and a small vendor HIDL control interface against the captured framework and service call sites. Do not introduce a second stateful daemon.
+
+### Android framework boundary
+
+- Keep AudioFlinger and public Android audio APIs intact unless a proven vendor contract requires a narrow compatibility change.
+- Replace factory-specific AudioPolicyManager extensions and service hooks progressively, preserving standard device/patch contracts.
+- The replacement HAL must expose the required output/input streams and patch behavior to Android policy.
+- Factory Java/Binder clients become migration inputs only. They must not continue sending CD3313 commands after the new broker takes ownership.
+
+### Kernel boundary
+
+Retain ALSA and the target kernel facilities where possible. The CD3313 driver is a transport/device layer, not the owner of audio policy. The new HAL hardware broker is the only userspace owner of CD3313 command sequencing.
+
+## 3. Logical architecture
+
+```text
+Android framework / AudioPolicyService
+              | stream, device, patch, mode events
+              v
+      Replacement Primary HAL
+              |
+       +------v-------------------------------+
+       |              AudioCore              |
+       |                                      |
+       | SourceRegistry / SessionManager      |
+       | RouteGraph / RouteTransition         |
+       | MuteArbiter / VolumeModel             |
+       | ProfileManager / DSP control          |
+       | HardwareCommandBroker                 |
+       |                                      |
+       +-----------+--------------------------+
+                   |
+          +--------+---------+
+          |                  |
+          v                  v
+    PCM graph/DSP       Hardware adapters
+    mixer/resampler     CD3313 / vehicle state
+          |                  |
+          v                  v
+     ALSA PCM/I2S       /dev/audiomux, /dev/carstatus
+```
+
+The diagram shows ownership boundaries, not a claim that every source is already a PCM node. FM direct I2S and some telephony routes require dedicated adapters until a verified PCM boundary is available.
+
+## 4. Core modules and contracts
+
+| Module | Sole responsibility | Must not do |
+|---|---|---|
+| SourceRegistry | Register source identity, capabilities, format and lifecycle | Write chip registers or make route decisions independently |
+| SessionManager | Own active stream sessions, priorities and lifecycle | Duplicate AudioPolicyService's generic device model |
+| RouteGraph | Select source-to-output path and perform atomic route transitions | Change CD3313 state outside HardwareCommandBroker |
+| PcmGraph | Process PCM blocks, resample, mix and route channels | Allocate, block, perform Binder or issue I2C/ioctl in callback |
+| DSP/ProfileManager | Own active profile, DSP parameters and transitions | Maintain a second profile copy in UI/service |
+| MuteArbiter | Own named mute reasons for master and individual sources | Use one mutable boolean or clear another owner's reason |
+| VolumeModel | Separate stream gain, master gain, analog output attenuation and source gain | Treat CD3313 FL/FR/RL/RR attenuation as four-channel PCM |
+| HardwareCommandBroker | Serialize typed CD3313 operations, track queued/completed/failed state | Accept raw unvalidated command arrays from arbitrary clients |
+| VehicleStateAdapter | Convert ACC/reverse/telephone/silence signals into typed events | Own audio mute policy or PCM route state |
+| AndroidPolicyAdapter | Translate framework stream/device/patch/mode events | Become a second vendor source-priority controller |
+
+## 5. Event and real-time model
+
+### Control plane
+
+All state changes enter as typed events, for example:
+- SourceRequested / SourceStarted / SourceStopped;
+- OutputDeviceChanged / InputDeviceChanged / AudioModeChanged;
+- AccChanged / ReverseChanged / TelephoneStateChanged;
+- MuteOwnerAdded / MuteOwnerRemoved;
+- VolumeChanged / ProfileChanged;
+- HardwareCommandCompleted / HardwareCommandFailed.
+
+A dedicated HAL control context validates events and updates AudioCore state. Route and chip operations are serialized there. UI/service proxies receive status snapshots, not authority to write the hardware.
+
+### PCM plane
+
+The audio callback consumes immutable, prevalidated processing/routing snapshots. It performs bounded work only: no heap allocation, mutex, Binder, filesystem access, ioctl, I2C or logging that can block. Control changes are published at block boundaries using a bounded queue or a verified lock-free snapshot mechanism.
+
+PCM processing failure must fail open to the last safe route where possible. Unsupported formats/routes are explicitly bypassed, never silently reinterpreted.
+
+## 6. Source and route model
+
+Do not collapse all audio sources into one enum or assume all sources enter the same PCM callback. Represent source identity separately from transport/route type.
+
+| Source class | Factory evidence | Initial replacement handling |
+|---|---|---|
+| Local media / navigation / notifications | Android primary PCM stream; Normal HAL handler | PCM session adapters; distinguish media, navigation and notification policy |
+| Bluetooth A2DP | Separate A2DP route; PCM16 stereo 44.1 kHz policy; offload control also exists | Dedicated adapter; process only when PCM is actually owned by the replacement and offload is false |
+| HFP/SCO | Separate HFP client, SCO and Voice handlers; 8/16 kHz profiles; microphone and echo-reference path | Dedicated telephony adapter; initially preserve/bypass until downlink, uplink, clock and echo contracts are complete |
+| FM direct | AudioPatch controls FM_I2S_Playback; no userspace PCM write loop in recovered direct path | Dedicated direct-route adapter or deliberate redesign to a verified PCM source; never claim Music INSERT coverage |
+| FM capture | AUDIO_SOURCE_FM_TUNER → FM_I2S_Capture capture provider/fanout | Separate PCM input adapter if chosen as the audible path; prove how it reaches output |
+| AUX / AUX2 / DAB / RADIO | CD3313 logical analog input selection and source mute | Hardware-source sessions controlled by AudioCore; distinguish analog mux selection from Android PCM sessions |
+| Reverse / ONSTAR | Legacy source-priority and vehicle state | Safety-priority route policy; exact output signal and takeover behavior require target validation |
+
+The recovered CD3313 source-priority order is retained only as a compatibility reference: HFP, reverse, ONSTAR, RADIO/RDS, AUX, A2DP, MUSIC, AUX2, DAB, fallback NONE. It is not automatically the new universal priority policy. AudioCore must model emergency/telephony priority separately from user-selected media and overlay streams.
+
+## 7. Mute and volume semantics
+
+### Mute
+
+Internally, use named owners/tokens rather than vendor numeric reason values. Maintain separate domains:
+- global master mute owners;
+- per-source/per-input mute owners;
+- stream-local mute/duck state;
+- safety/emergency mute state.
+
+Removing an owner clears only that owner's token. ACC, SilenceMode, HFP voice transition, radio retune/scan and radio packet mute must not accidentally clear one another.
+
+Compatibility mapping to the paired CD3313 firmware:
+
+| Legacy behavior | CD3313 reason index | Internal owner name |
+|---|---:|---|
+| ACC master mute | 2 | ACC_POWER_STATE |
+| SilenceMode master mute | 1 | SILENCE_MODE |
+| temporary SilenceMode transition mute | 24 | SILENCE_TRANSITION |
+| Bluetooth voice master mute | 3 | BLUETOOTH_CALL_TRANSITION |
+| selected-input effective mute reflected to master | 31 (reserved) | SELECTED_INPUT_MUTE_BRIDGE |
+
+Radio input-path reasons 1, 2, 4 and 16 are a separate per-input bitmask domain; they must not be confused with global master reasons using the same integer.
+
+### Volume
+
+Keep at least four distinct controls:
+1. Android stream/session gain;
+2. AudioCore master digital gain/limiting;
+3. CD3313 master analog volume;
+4. CD3313 per-output analog attenuation FL/FR/RL/RR.
+
+CD3313 does not expose verified readback for all these values. Hardware state therefore has explicit UNKNOWN / REQUESTED / CONFIRMED states. A cached register image is not physical readback.
+
+## 8. PCM topology and four-channel gate
+
+The captured Android policy declares primary PCM16 stereo at 44.1/48 kHz. The ordinary Normal HAL path also configures two-channel ALSA output. On speaker routes, the HAL may fold L/R to mono and duplicate it before its MTK post-processing callback.
+
+The MTK post-process callback is only called from Normal playback and is after that speaker fold. Voice, HFP/SCO, HDMI, FM transmitter and capture are distinct paths. Therefore it is not the final integration point for a quad engine.
+
+The DSP core may continue to support FL/FR/RL/RR internally, but do not synthesize four channels by duplicating stereo and call that hardware support. Before enabling quad output, prove the board's downstream PCM/TDM/I2S topology, actual ALSA channel count and physical speaker mapping. Until then the HAL-facing ingress is stereo and downstream output topology remains an explicit adapter gate.
+
+## 9. Hardware broker contract
+
+The broker accepts typed operations, validates all arguments against the exact paired CD3313 ABI, serializes them on a control thread, and reports distinct states:
+- REQUESTED — accepted by AudioCore;
+- QUEUED — accepted by kernel ioctl/event queue;
+- COMPLETED — driver reports operation completion;
+- FAILED — a confirmed transport/driver error;
+- UNKNOWN — no reliable completion or readback is available.
+
+The JNI extra-word discrepancy is unresolved. Do not reproduce the vendor JNI frame, invent padding or issue guessed requests. First replace the unsafe native transport with a safe typed ABI whose command-specific sizes are validated by host tests and a compatible kernel implementation.
+
+## 10. Migration and cutover sequence
+
+1. Finish static ownership map and exact Android 9/vendor compatibility contract.
+2. Implement AudioCore state types, source/session registry, route model and mute arbitration as host-testable code.
+3. Connect existing PCM/DSP core through a bounded PCM graph; keep current verified DSP tests intact.
+4. Implement CD3313 broker/emulator contract and safe kernel/user ABI. Hardware writes remain disabled until reviewed.
+5. Implement replacement primary HAL and Android policy adapter with explicit source-specific route handlers.
+6. Integrate A2DP, FM direct/capture and HFP/SCO one route at a time with fallback and regression tests.
+7. Retire factory service/JNI/AudioPolicy/AudioFlinger vendor hooks only when each behavior has a replacement owner and rollback.
+8. Validate on the target head unit and compare every route against the factory behavior before final cutover.
+
+## 11. Acceptance gates
+
+- Exactly one source/route/mute/volume/DSP state authority.
+- No factory process continues writing CD3313 after broker cutover.
+- No raw chip command is issued from UI, service or PCM callback.
+- PCM callback is bounded, allocation-free and free of blocking IPC/device I/O.
+- Media, navigation, notification, A2DP, HFP/SCO, FM, AUX/DAB and vehicle events have explicit route behavior.
+- Unsupported routes and offload fail open safely.
+- Quad output is enabled only after board/ALSA topology is proven.
+- Every route has host tests, Android build evidence and target-device evidence separately.
+- Rollback restores the previous HAL/policy and hardware-safe state without concurrent factory/new ownership.
+
+## Related documents
+
+- [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md)
+- [Phase 1 audit baseline](PHASE1_AUDIT_BASELINE.md)
+- [Factory defect and risk register](FACTORY_DEFECTS.md)
+- [Product goal](MT8163_AUDIO_ENGINE_GOAL.md)
+- [Android integration gate](ANDROID_AUDIO_INTEGRATION_GATE.md)
+- [PCM DSP core](../pcm-dsp/README.md)
