@@ -108,6 +108,43 @@ and the FM capture provider selects `FM_I2S_Capture`. The paired MT6627
 driver reports I2S enabled, master mode, 32 kHz and `FM_I2S_PAD_CONN`.
 The HAL resolves ALSA card/PCM indexes dynamically from procfs.
 
+### Stock FM tuner control versus PCM transport
+
+The extracted FM control libraries were cross-checked separately from the
+primary audio HAL:
+
+- `libcarservices_jni.so`: Build ID
+  `bf391e545edd2e482b72cd8a431d1c59`. It contains the
+  `android::register_android_radio_RadioService()` JNI registration,
+  `nativeSetPower` and other RadioService native-method names, and tuner
+  control routines including `MainThread::RadioPowerUp()`,
+  `RadioFreqSet()`, `RadioStart()` and `RadioPowerDown()`. Its strings
+  include `/dev/fmradio` and `/dev/fm`.
+- `libfmjni.so`: Build ID
+  `4459396f1ba98c792e0635454be1aa33`. It exports the FM tuner command API
+  (`FMR_pwr_up`, `FMR_pwr_down`, `FMR_tune`, `FMR_seek`,
+  `FMR_set_mute`, RDS and signal-quality routines).
+- Neither library's dynamic imports expose Android `AudioRecord`,
+  `AudioTrack`, or `AudioSystem` PCM-stream APIs. This is consistent with
+  these JNI libraries controlling the tuner rather than carrying the audible
+  PCM stream; it is not a substitute for observing the running app.
+
+The policy extension's `fm_addAudioPatch()` recognizes the FM Tuner input
+patch (device mask `0x80002000`) and maintains its FM patch state. The
+primary HAL's FM-specific `createAudioPatch()` branch then drives the
+`AudioALSAFMController::setFmEnable()` lifecycle, which uses the dedicated
+FM direct-connection controller. This is the strongest static evidence for
+the stock FM-to-output route: a policy AudioPatch feeding the direct
+`FM_I2S_Playback` endpoint, rather than an app-owned AudioTrack PCM loop.
+
+The `AUDIO_SOURCE_FM_TUNER` input-stream capture handler described below is
+a separate software capture path. It can deliver FM PCM to an input client,
+but the current firmware evidence does not show the stock RadioService
+consuming that stream to play FM. Therefore the new `FmPcmAdapter` is useful
+for a future software bridge, but it cannot affect the stock direct FM
+AudioPatch until that route is deliberately changed or a confirmed buffer
+boundary is found inside the direct path.
+
 ### Newly verified software capture boundary
 
 The HAL's capture-handler factory compares the input stream source field
