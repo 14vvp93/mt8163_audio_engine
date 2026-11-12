@@ -87,7 +87,7 @@ whether the relevant input value is greater than zero.
 | Java API | Command ID | Integer array sent |
 |---|---:|---|
 | setBalance(fl, fr, rl, rr) | **0x15 (21)** | [fl, fr, rl, rr] |
-| setInputGain(channel, gain) | **0x03 (3)** | [channel, gain] |
+| setInputGain(channel, gain) | **0x03 (3)** | [channel, gain] — safe replacement range: channel 0..5, gain 0..3 |
 | setBassBoost(value, extra) | **0x55 (85)** | [value>0, value, extra, 10] |
 | setLoud(value) | **0x56 (86)** | [value>0, value, INT_MAX] |
 | setTreble(value, extra) | **0x5C (92)** | [value>0, value, extra, 10] |
