@@ -370,6 +370,47 @@ jobs:
           print(f"Scanned {len(candidates)} init/config text files; found {len(matches)} module-load references")
           PY
 
+      - name: Search firmware for FM direct-control clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=firmware-analysis/board-audio-routing
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          root = Path("firmware-analysis")
+          out = Path("firmware-analysis/board-audio-routing/fm-parameter-callers.txt")
+          extensions = {".apk", ".jar", ".dex", ".vdex", ".odex", ".so", ".xml", ".conf", ".rc", ".prop"}
+          rx = re.compile(
+              r"FM_DIRECT_CONTROL|fm_direct_control|FM_I2S_Playback|FM_I2S_Capture|"
+              r"MRGRX_PLayback|MRGRX_CAPTURE|FM_IOCTL_GET_AUDIO_INFO|FM_IOCTL_I2S_SETTING",
+              re.IGNORECASE,
+          )
+          scanned = 0
+          hits = 0
+          with out.open("w") as report:
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() not in extensions:
+                      continue
+                  if "board-audio-routing" in path.parts or "fm-tuner-drivers" in path.parts:
+                      continue
+                  try:
+                      if path.stat().st_size > 50 * 1024 * 1024:
+                          continue
+                      result = subprocess.run(
+                          ["strings", "-a", "-n", "5", str(path)],
+                          text=True, capture_output=True, errors="replace",
+                      )
+                  except (OSError, subprocess.SubprocessError):
+                      continue
+                  scanned += 1
+                  for line in result.stdout.splitlines():
+                      if rx.search(line):
+                          report.write(f"{path}: {line[:1000]}\\n")
+                          hits += 1
+          print(f"Scanned {scanned} firmware binaries/configs; found {hits} FM direct-control or endpoint string hits")
+          PY
+
       - name: Upload FM tuner driver analysis
         uses: actions/upload-artifact@v6
         with:
