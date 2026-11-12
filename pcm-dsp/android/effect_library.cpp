@@ -280,7 +280,7 @@ std::int32_t process_effect(effect_handle_t self,
             context->engine.reset();
             context->was_processing = false;
         }
-        copy_bypass(input, output, format);
+        copy_bypass(context, input, output, format);
         release_parameters(context, slot_index);
         return 0;
     }
