@@ -25,6 +25,7 @@ This register tracks defects and unresolved architectural risks found while reco
 | CARSTATUS-AUDIO-001 | `carstatus.ko` | `update_mute` contains a `filp_open` relocation and the `/dev/audiomux` path | Recover the exact operation and determine whether this kernel-to-userspace device dependency is active |
 | FRAMEWORK-AUDIO-001 | `libaudioflinger.so` / `libaudiopolicymanagerdefault.so` | Both reference `/dev/audiomux` and `/dev/carstatus` | Recover exact call sites and callers; replace factory-specific hooks without breaking Android framework APIs |
 | HFP-COMPAT-001 | Primary HAL / HFP vendor libraries / NVRAM | HFP downlink/uplink, echo-reference threads, HFP HIDL methods and `AUDIO_HFP_PARAM_STRUCT` are present | Map full call/microphone path, sample-rate/volume controls, echo reference and parameter persistence |
+| AUDIO-EFFECT-CONFIG-001 | Android effect scaffold | SET_CONFIG checks `framework_enabled` and `active_process_calls` separately before replacing the non-atomic effect config and reconfiguring the engine. This is not itself an atomic exclusion protocol if command/process callbacks can overlap. | Verify Android 9 AudioFlinger command/process serialization for this effect lifecycle. If overlap is permitted, implement a bounded non-blocking config publication/engine quiescence protocol and add a concurrent regression test. Do not classify as a confirmed runtime defect until framework contract is checked |
 
 ## Evidence sources
 
