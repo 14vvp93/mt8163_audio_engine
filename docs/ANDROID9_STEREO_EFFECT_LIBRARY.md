@@ -14,10 +14,11 @@ This is an integration scaffold, not a device-ready installation:
   not registered or loaded by the target ROM;
 - Android 9 r61 platform-header ARMv7 cross-compilation passes with
   -Wall -Wextra -Werror; the resulting ELF is 32-bit ARM and exports AELI;
-- host smoke tests pass for library descriptor/create/release, PCM16 gain,
-  DSP-off bit-exact bypass, unsupported-rate/device bypass, and Float32 adapter;
-- current ARMv7 artifact (built from commit 99e5a1bb) is available at
-  https://github.com/14march93/mt8163_audio_engine/actions/runs/43163930667/artifacts/13919416178;
+- host smoke tests pass for descriptor/create/release, default-disabled bypass,
+  PCM16 gain, DSP-off bypass, unsupported-rate/device bypass, offload and
+  in-call bypass, plus the Float32 adapter;
+- current ARMv7 artifact (built from commit 6b6a23eb) is available at
+  https://github.com/14march93/mt8163_audio_engine/actions/runs/43164128647/artifacts/13919371684;
 - no full Android platform-tree build has been run and no effect has been loaded
   on the head unit;
 - the UUID and post-process descriptor still need validation against the
