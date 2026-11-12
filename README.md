@@ -2,6 +2,15 @@
 
 Reverse-engineering and development project for an improved audio system on MediaTek MT8163 / Android 9.
 
+## Repository ownership
+
+This is the **private canonical project repository**: product source code, build definitions, tests, engineering documentation and reviewed findings live here.
+
+Firmware data and heavy firmware-only analysis live in the public [`14vvp93/public_calculations`](https://github.com/14vvp93/public_calculations) repository. Its `firmware/` directory contains approved raw dumps, the SHA-256-verified extracted firmware tree and provenance manifests. Reusable GitHub Actions workers run there and return results as artifacts to this repository.
+
+Firmware is no longer stored in this private repository. See [repository structure](docs/REPOSITORY_STRUCTURE.md) and [firmware dataset migration](docs/public-compute/FIRMWARE_DATASET_LAYOUT.md).
+
+
 ## Agreed product goal
 
 The target is one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation end to end. HAL integration, policy/routing, audio core, PCM/mixer/DSP, source and state management, and CD3313 hardware control are internal subsystems of this one product—not separate products and not an add-on over the factory engine.
