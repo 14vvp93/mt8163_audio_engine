@@ -8,6 +8,7 @@ This directory contains the first host-testable primitives for the unified MT816
 - Fixed-capacity multi-session registry with an explicit lifecycle state machine.
 - Named mute owners independent from legacy CD3313 reason numbers.
 - Separate master and per-source mute domains.
+- Detached, read-only MuteSnapshot values for publishing state toward the PCM plane.
 - Explicit mapping from AudioCore mute owners to the paired CD3313 legacy reason masks.
 - Shared legacy radio reason 2 remains asserted until both RadioScan and RadioPacketMute owners release it.
 - Fixed-size state with no dynamic allocation in the mute arbiter.
