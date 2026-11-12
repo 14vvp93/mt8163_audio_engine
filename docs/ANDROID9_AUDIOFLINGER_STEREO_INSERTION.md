@@ -104,9 +104,9 @@ mono fold.
 This is still a legacy stream-type boundary. Android 9 automotive usage
 mapping and OEM policy may map navigation guidance or other usages to the
 Music stream, so the exact target stream classification must be checked on
-the device. The current extracted vendor `audio_effects.xml` is documented
-as containing stock AOSP libraries/effects; its exact postprocess section and
-loaded version must be inspected before adding any entry.
+the device. The extracted vendor `audio_effects.xml` declares stock AOSP libraries/effects
+but contains no active postprocess stream chains. Its exact schema version and
+loaded copy still need verification before adding a new Music mapping.
 
 AOSP references:
 - Audio effects v2.0 XML schema, including the `postprocess/music` element:
