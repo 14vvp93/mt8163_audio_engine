@@ -24,6 +24,33 @@ This is an integration scaffold, not a device-ready installation:
 - target ROM factory behavior, loaded XML copy/schema and runtime stream
   classification still require device-specific validation.
 
+## Target firmware effect configuration audit — 2026-11-12
+
+The repository firmware archive audit completed successfully for `files.zip`,
+`files2.zip.001`, `lib.zip.001` and `vendor_lib.zip.001`. It recovered
+`files/vendor/audio_effects.xml` and the matching `files2/vendor/audio_effects.xml`
+copy (identical content, 5,832 bytes).
+
+Verified configuration facts:
+
+- XML root declares Audio Effects configuration version 2.0.
+- The active library list points to the standard stock wrappers under the
+  vendor sound-effects directory: bundle, reverb, visualizer, downmix,
+  loudness enhancer and dynamics processing.
+- The active effects list contains only the corresponding stock effects.
+- There is no active `<postprocess>` element. The Music postprocess example
+  in lines 89–99 is XML-commented documentation, not an enabled chain.
+- The file does not register `libmt8163_stereo_effect.so` or implementation
+  UUID `8e5f3c12-7b4d-4a91-9c62-1f08a7d35e20`.
+
+This is a confirmed firmware-archive baseline, not proof of the exact file
+currently loaded by AudioPolicyService on a running unit. The target's runtime
+configuration path and any overlay/vendor modifications still require a
+read-only device diagnostic.
+
+The audit artifact is available at:
+https://github.com/14march93/mt8163_audio_engine/actions/runs/43167408077
+
 ## Effect identity
 
 - Library module: libmt8163_stereo_effect
