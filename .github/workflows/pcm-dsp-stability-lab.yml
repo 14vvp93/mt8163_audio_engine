@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "pcm-dsp/**"
+      - "audio-core/**"
       - ".github/workflows/pcm-dsp-stability-lab.yml"
   pull_request:
     paths:
       - "pcm-dsp/**"
+      - "audio-core/**"
       - ".github/workflows/pcm-dsp-stability-lab.yml"
   workflow_dispatch:
 
