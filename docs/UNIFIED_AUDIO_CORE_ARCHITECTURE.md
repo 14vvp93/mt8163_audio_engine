@@ -97,11 +97,11 @@ This registry is control-plane bookkeeping only. It does not choose priorities, 
 
 ### Initial AudioCore coordinator implementation
 
-The first coordinator now composes the fixed-capacity SessionRegistry, MuteArbiter and AudioMode into one control-state owner. It exposes typed session lifecycle and mute/mode mutations and publishes a compact, pointer-free AudioCoreSnapshot through the existing three-slot publisher.
+The first coordinator now composes the fixed-capacity SessionRegistry, MuteArbiter, AudioMode and a single HardwareCommandBroker into one control-state owner. It exposes typed session lifecycle and mute/mode mutations and publishes a compact, pointer-free AudioCoreSnapshot through the existing three-slot publisher.
 
 The snapshot carries a generation, master/per-source mute-owner masks, mode and session counts. Mutations are serialized by the HAL control context; they never perform hardware I/O. Each mutation attempts publication. If all inactive slots are pinned, the control state remains committed, the snapshot is marked dirty and the control loop must retry publication. The PCM reader uses a bounded handle acquisition and retains its previous snapshot for a block if acquisition fails.
 
-Host coordinator tests cover initial state, state publication, generation progression, owner-scoped mute clearing, session open/active/close and invalid modes. This is the first state coordinator, not yet a RouteGraph, priority policy, PCM graph, HAL implementation or CD3313 broker. It must be linked into the factory-named `/vendor/lib/hw/audio.primary.mt8163.so` replacement when that HAL implementation is ready.
+Host coordinator tests cover initial state, state publication, generation progression, owner-scoped mute clearing, session open/active/close and invalid modes. The broker accepts only semantic source-selection and master/per-source mute commands, validates them and forwards them to one attached backend from the serialized control context. It intentionally does not define CD3313 ioctl values or framing. This is the first state coordinator and hardware-command boundary, not yet a RouteGraph, priority policy, PCM graph, factory HAL implementation or CD3313 transport backend. It must be linked into the factory-named `/vendor/lib/hw/audio.primary.mt8163.so` replacement when that HAL implementation is ready.
 
 ## 5. Event and real-time model
 
