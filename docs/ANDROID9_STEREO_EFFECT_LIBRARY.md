@@ -12,8 +12,10 @@ This is an integration scaffold, not a device-ready installation:
   libraries only and has no active postprocess stream chains;
 - no audio_effects.xml or product makefile has been changed, so the effect is
   not registered or loaded by the target ROM;
-- the first Android 9 header/ARMv7 cross-compile exposed two bypass-call errors,
-  which have been fixed; the corrected CI build is pending;
+- Android 9 r61 platform-header cross-compilation for ARMv7 now passes;
+  the resulting ELF is 32-bit ARM and exports the required AELI symbol;
+- the successful CI artifact is available at
+  https://github.com/14march93/mt8163_audio_engine/actions/runs/43163522616/artifacts/13918638940;
 - no full Android platform-tree build has been run and no effect has been loaded
   on the head unit;
 - the UUID and post-process descriptor still need validation against the
