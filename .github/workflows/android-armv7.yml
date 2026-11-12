@@ -71,7 +71,7 @@ jobs:
           name: mt8163-audio-engine-android-armv7
           path: |
             build/android-armv7/libmt8163_pcm_dsp.a
-            build/android-armv7/libmt8163_audio_core.a
+            build/android-armv7/audio-core-build/libmt8163_audio_core.a
             build/android-armv7/libmt8163_audio_jni.so
           if-no-files-found: error
           retention-days: 30
