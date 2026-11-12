@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "reference-materials/extracted/vendor/lib/hw/audio.primary.mt8163.so"\n      - "reference-materials/extracted/vendor/lib/**/*.so"
+      - "reference-materials/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+      - "reference-materials/extracted/vendor/lib/**/*.so"
       - ".github/workflows/analyze-audio-hal.yml"
   workflow_dispatch:
 
