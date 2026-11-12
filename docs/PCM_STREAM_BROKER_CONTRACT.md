@@ -2,7 +2,7 @@
 
 Date: 2026-11-12  
 Branch: `work/pcm-backend`  
-Status: host-test candidate; CI is running for the latest changes; no ALSA/device backend
+Status: host-test candidate; CI required for the callback-admission update; no ALSA/device backend
 
 ## Components
 
@@ -19,17 +19,19 @@ The supported sequence is:
 
 - `open` accepts only source/route pairs validated by the evidence-gated route policy and PCM transport routes.
 - `configure` accepts only PCM16 with one or two channels and nonzero rate/period. It does not claim every rate is supported by every endpoint; the future platform backend must validate its recovered endpoint capabilities.
-- `start` requires a configured stream.
+- `start` requires a configured stream and opens callback admission only after the backend starts successfully.
 - `write` requires a started stream, non-null interleaved buffer and 1..2048 frames per call.
-- `stop` is idempotent after a successful stop.
-- `close` refuses an active stream. The HAL must first quiesce the callback and stop the stream.
+- `stop` atomically closes callback admission. If an already admitted backend write remains in flight, it returns `WouldBlock`; the control owner retries after the callback returns. The backend stop operation is not called until the in-flight count reaches zero.
+- `close` refuses a started stream and checks that no broker-admitted write remains in flight.
 - Capacity is fixed at 16; exhaustion is reported as `CapacityExceeded`.
 
-## Realtime boundary
+## Realtime boundary and shutdown protocol
 
-The broker performs a bounded fixed-array lookup over atomically published 32-bit handle/state/token fields and does not allocate or lock. The callback does not read control-plane-only route/configuration fields, so opening a different slot does not race with an active callback. The backend's `write` must be nonblocking/bounded and must not perform device discovery, recovery, synchronous logging or allocation. It reports `WouldBlock`, `Xrun` or `DeviceLost` to the caller; recovery belongs to the control plane.
+Each slot has one lock-free 32-bit admission word: the high bit means callback admission is open and the low 31 bits count admitted writers. A callback uses compare/exchange to acquire a writer count only while the gate is open, calls the bounded backend write, then decrements the count. No allocation, mutex, condition variable or blocking wait is introduced in the callback path.
 
-Lifecycle operations are serialized by the HAL control owner. The HAL must quiesce the audio callback before changing or destroying a stream record. Concurrent lifecycle calls and callback use without that quiescence contract are not supported.
+The control thread closes the gate with an atomic bit operation. This linearizes the race: a callback either increments the count before gate closure and is drained, or observes the closed gate and never enters the backend. `stop` returns `WouldBlock` while the count is nonzero; retrying after the writer exits performs the backend stop. The callback is not required to be externally joined before this broker-level stop, but the HAL must still prevent use-after-destruction of the broker itself and must serialize lifecycle calls.
+
+The backend's `write` must be nonblocking/bounded and must not perform device discovery, recovery, synchronous logging or allocation. It reports `WouldBlock`, `Xrun` or `DeviceLost` to the caller; recovery belongs to the control plane.
 
 ## Explicit non-goals
 
@@ -42,10 +44,10 @@ Lifecycle operations are serialized by the HAL control owner. The HAL must quies
 
 ## Validation required next
 
-1. Host CI for broker lifecycle, capacity, invalid order, error propagation, and callback concurrency while another stream opens.
+1. Host CI for broker lifecycle, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight callback.
 2. ARMv7 compile using the Android NDK.
 3. Add endpoint capability negotiation after exact ALSA runtime topology is collected.
-4. Add the HAL callback-quiescence/lifetime owner before wiring the broker to real streams.
+4. Add the HAL owner/lifetime protocol before wiring the broker to real streams.
 5. Add a production ALSA backend only after Android 9 libasound/tinyalsa usage and device endpoints are verified.
 
 A passing host test is not Android HAL or device validation.
