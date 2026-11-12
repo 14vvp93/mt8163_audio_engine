@@ -739,6 +739,7 @@ public final class MainActivity extends Activity {
                 if (db < -18.0f || db > 18.0f) return false;
             }
         }
+        // Validate every UI-exposed range before native apply or visible state mutation.
         float preflightBalance = values[133], preflightFader = values[134];
         int order = Math.round(values[137]);
         if (Math.abs(preflightBalance) > 1.0f || Math.abs(preflightFader) > 1.0f ||
