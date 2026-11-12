@@ -14,6 +14,7 @@ on:
   pull_request:
     paths:
       - "pcm-dsp/android/**"
+      - "pcm-dsp/tests/android_effect_smoke_test.cpp"
       - "pcm-dsp/src/engine.cpp"
       - "pcm-dsp/include/pcm_dsp/engine.hpp"
       - "pcm-dsp/Android.mk"
