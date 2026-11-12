@@ -129,6 +129,10 @@ primary audio HAL:
   these JNI libraries controlling the tuner rather than carrying the audible
   PCM stream; it is not a substitute for observing the running app.
 
+The extracted FM JNI and policy-extension binaries are available in the
+firmware audit artifact:
+https://github.com/14march93/mt8163_audio_engine/actions/runs/43170784980/artifacts/13922186760
+
 The policy extension's `fm_addAudioPatch()` recognizes the FM Tuner input
 patch (device mask `0x80002000`) and maintains its FM patch state. The
 primary HAL's FM-specific `createAudioPatch()` branch then drives the
