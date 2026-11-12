@@ -64,7 +64,7 @@ struct EffectContext {
     std::atomic<bool> framework_enabled{false};
     std::atomic<bool> configured{false};
     std::atomic<bool> supported_config{false};
-    bool bypass_copy_compatible{false};
+    std::atomic<bool> bypass_copy_compatible{false};
     std::atomic<bool> reset_requested{false};
     std::atomic<std::uint32_t> output_device{0U};
     std::atomic<std::uint32_t> audio_mode{AUDIO_MODE_NORMAL};
@@ -156,6 +156,7 @@ bool supported_format(std::uint8_t format) {
 }
 
 bool configure_effect(EffectContext* context, const effect_config_t& config) {
+    if (context->framework_enabled.load(std::memory_order_acquire)) return false;
     context->config = config;
     const auto& in = config.inputCfg;
     const auto& out = config.outputCfg;
@@ -172,10 +173,10 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
 
     const bool same_layout = fields_present &&
         in.channels == out.channels && in.format == out.format;
-    context->bypass_copy_compatible = same_layout &&
+    context->bypass_copy_compatible.store(same_layout &&
         audio_channel_count_from_out_mask(
             static_cast<audio_channel_mask_t>(out.channels)) > 0U &&
-        bytes_per_sample(out.format) > 0U;
+        bytes_per_sample(out.format) > 0U, std::memory_order_release);
     const bool same_stream = same_layout &&
         in.samplingRate == out.samplingRate &&
         in.channels == AUDIO_CHANNEL_OUT_STEREO &&
@@ -241,7 +242,7 @@ std::int32_t process_effect(effect_handle_t self,
         input.frameCount != output.frameCount) {
         return -EINVAL;
     }
-    if (!context->bypass_copy_compatible) return -EINVAL;
+    if (!context->bypass_copy_compatible.load(std::memory_order_acquire)) return -EINVAL;
 
     const std::uint8_t format = context->config.outputCfg.format;
     const bool route_allowed =
@@ -641,7 +642,6 @@ std::int32_t command_effect(effect_handle_t self,
         if (reply_size != nullptr) *reply_size = 0U;
     } else if (command_code == EFFECT_CMD_SET_DEVICE ||
                command_code == EFFECT_CMD_SET_AUDIO_MODE ||
-               command_code == EFFECT_CMD_OFFLOAD ||
                command_code == EFFECT_CMD_RESET) {
         if (reply_size != nullptr) *reply_size = 0U;
     } else {
