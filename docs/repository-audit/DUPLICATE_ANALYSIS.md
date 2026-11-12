@@ -1,31 +1,26 @@
-# Duplicate and redundancy analysis
+# Duplicate and redundancy analysis — 2026-11-12
 
-## Confirmed archive-level redundancy
+## Current repository separation
 
-The archive inventory records 36 files in `files.zip` and 324 files in `files2.zip`. Comparing SHA-256 hashes of every extracted member shows that **all 36 files from `files.zip` occur byte-for-byte in `files2.zip`**.
+The 48 identical firmware-related Git blobs previously present in both repositories have been consolidated into the public firmware repository. The current private main tree contains no firmware dumps, extracted firmware, ZIP archives or firmware binaries.
 
-Therefore:
-- `files2.zip` is the canonical, larger reference set.
-- `files.zip` does not provide a distinct binary or configuration revision.
-- Its contents must not be treated as a second firmware version.
-- The smaller `files.zip` archive was removed from the tracked repository (3.2 MiB saved); the matching content remains available in `files2.zip`.
+The public repository is now the sole current source of firmware data:
+- 1,386 extracted files (578,175,653 bytes);
+- 22 standalone raw dumps (44,050,240 bytes);
+- three manifests, including the full HEQ APK chunk manifest.
 
-## Exact duplicate groups inside the archives
+## Confirmed archive-level redundancy and deletion
 
-The inventory identified repeated content in these categories:
+The earlier archive audit found that all 36 files in the former `files.zip` were byte-identical to members in `files2.zip`. That archive was a redundant subset, not a distinct firmware revision.
 
-- System/vendor copies of `r_submix_audio_policy_configuration.xml` and `usb_audio_policy_configuration.xml` are byte-identical.
-- `AudioParamOptions.xml` at the vendor root and under `vendor/audio_param/` is byte-identical.
-- `AudioInputSource.apk`, `.odex` and `.vdex` appear both at the system root and under the nested AudioInputSource directory with identical hashes.
-- Several framework JAR stubs share identical tiny contents (183 or 200 bytes). These are not complete framework implementations.
-- Many audio HAL/effect binaries in `files2.zip` are byte-identical to the copies in `files.zip` and/or `vendor_lib.zip`.
+After the complete extracted dataset was copied to the public repository and all 1,386 file sizes and SHA-256 values were verified, the 26 original split ZIP volumes (349,781,724 bytes) were removed from the current working trees of both repositories.
+
+The public extracted tree is the canonical durable representation. The HEQ APK remains as three verified chunks, with a manifest containing the full APK SHA-256 and individual chunk hashes.
 
 ## Same name does not mean duplicate
 
-The archive contains different builds of similarly named libraries. In particular, the files with a literal ` (2)` suffix in the flattened `files2.zip` system listing correspond to the non-VNDK system library copies, while the unsuffixed files correspond to VNDK-28 copies. Their hashes and sizes differ. They must be placed into their correct system/lib versus system/lib/vndk-28 locations, not deleted or overwritten based on basename.
+Different builds of similarly named libraries must remain separate where their SHA-256 or original System/Vendor/VNDK path differs. The extracted manifest preserves source archive member names and canonical destination paths. No files were deduplicated solely by basename.
 
-The curated extraction uses the original directory structure from `lib.zip` for these system and VNDK variants.
+## History and storage caveat
 
-## Deletion policy
-
-Only a complete archive-level subset with a matching SHA-256 for every member is eligible for removal. Individual same-hash files in different firmware paths are retained in the archive inventory, because their original locations may be meaningful. Original archives are retained unless a separate cleanup decision is documented.
+This cleanup changes current branch trees but does not rewrite Git history. Old firmware blobs remain reachable through historical commits. A history rewrite would require a separately approved force-push and coordinated recloning; it has not been performed.
