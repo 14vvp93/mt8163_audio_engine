@@ -43,9 +43,9 @@ void AudioCore::clear_mute_owner(MuteOwner owner) noexcept {
     publish_after_mutation();
 }
 
-void AudioCore::attach_hardware_backend(
+bool AudioCore::attach_hardware_backend(
     HardwareBackend* backend) noexcept {
-    hardware_broker_.attach(backend);
+    return hardware_broker_.attach(backend);
 }
 
 HardwareResult AudioCore::dispatch_hardware_command(
