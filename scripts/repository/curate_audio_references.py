@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Promote the complete non-HEQ firmware extraction into a stable filesystem tree.
+"""Promote the complete retained firmware extraction into a stable filesystem tree.
 
 The 32 shared-library files in files2.zip are exact SHA-256 duplicates of
 libraries in lib.zip or vendor_lib.zip. They are represented at their proper
@@ -137,12 +137,12 @@ def main() -> None:
 
     rows.sort(key=lambda row: row["path"])
     manifest = {
-        "purpose": "Complete persistent extraction of all retained archive sets except the 161 MiB HEQ APK, which exceeds GitHub's 100 MiB per-file limit.",
+        "purpose": "Complete persistent extraction of all retained archive sets; the HEQ APK is stored as GitHub-safe chunks.",
         "source_archives": [
             "reference-materials/firmware-dumps/files2.zip.001-.003",
             "reference-materials/firmware-dumps/lib.zip.001-.004",
             "reference-materials/firmware-dumps/vendor_lib.zip.001-.002",
-            "reference-materials/heq/HEQ.zip.001-.017 (HEQ.apk remains in the source archive and full extraction artifact)",
+            "reference-materials/heq/HEQ.zip.001-.017 (HEQ.apk is also committed as chunks under reference-materials/extracted/heq/)",
         ],
         "files2_shared_library_deduplication": {
             "files2_shared_library_count": len(files2_so),
@@ -167,7 +167,7 @@ This is the persistent, organized extraction of the retained firmware archives.
 
 The 32 shared-library files listed in files2.zip were byte-identical to files already represented by lib.zip or vendor_lib.zip. They are stored once at their canonical system/lib, system/lib/vndk-28 or vendor/lib paths. The former files.zip was a fully identical 36-file subset of files2.zip and was removed.
 
-The 161 MiB HEQ.apk is the only archive member not committed as an ordinary Git file because it exceeds GitHub's 100 MiB per-file limit. Its 17 original split volumes remain in reference-materials/heq/, and the extracted APK is available in the full-extraction CI artifact.
+The 161 MiB HEQ.apk is committed as three GitHub-safe chunks under heq/. Reassemble with the command in heq/README.md. The original 17 split volumes remain unchanged in reference-materials/heq/.
 
 All original archive parts and the reference kernel module remain unchanged. These files are offline reverse-engineering inputs; do not install or load them on a device.
 """
