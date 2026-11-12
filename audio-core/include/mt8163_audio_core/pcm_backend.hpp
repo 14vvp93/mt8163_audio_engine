@@ -22,7 +22,8 @@ enum class PcmResult : std::uint8_t {
     NotOpen,
     InvalidState,
     BackendFailure,
-    BufferTooLarge
+    BufferTooLarge,
+    CapacityExceeded
 };
 
 enum class PcmStreamState : std::uint8_t {
