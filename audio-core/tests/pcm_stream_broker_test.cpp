@@ -159,6 +159,12 @@ void test_callback_write_while_opening_another_stream() {
         }
     });
 
+    while (backend.writes.load(std::memory_order_acquire) == 0U &&
+           !failed.load(std::memory_order_relaxed)) {
+        std::this_thread::yield();
+    }
+    require(!failed.load(std::memory_order_relaxed), "callback starts successfully");
+
     // This mutates a different fixed slot while the callback repeatedly scans
     // the slot table. The callback path must observe only atomic slot metadata.
     require(broker.open(12U, SourceId::Navigation, RouteType::PrimaryPcm) ==
