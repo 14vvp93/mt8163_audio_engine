@@ -108,6 +108,30 @@ and the FM capture provider selects `FM_I2S_Capture`. The paired MT6627
 driver reports I2S enabled, master mode, 32 kHz and `FM_I2S_PAD_CONN`.
 The HAL resolves ALSA card/PCM indexes dynamically from procfs.
 
+### Newly verified software capture boundary
+
+The primary HAL also contains a concrete FM capture data path:
+
+- `AudioALSACaptureDataProviderFMRadio::readThread()` reads PCM from its
+  capture PCM handle into an 8 KiB stack buffer using the HAL's PCM-read
+  wrapper.
+- It then calls `AudioALSACaptureDataProviderBase::provideCaptureDataToAllClients()`,
+  which iterates attached capture clients and invokes their data callback.
+- `AudioALSACaptureHandlerFMRadio::read()` delegates to its provider/client
+  interface to return captured data to the caller.
+
+Thus the FM capture path does expose PCM samples in software memory before
+they are delivered to capture clients. This is a potential DSP insertion
+boundary, subject to identifying which clients attach and whether the active
+FM-to-speaker AudioPatch consumes this capture stream.
+
+By contrast, `AudioALSAFMController::setFmDirectConnection_l()` opens and
+starts the separate `FM_I2S_Playback` PCM endpoint for the direct connection;
+that function itself does not process a PCM buffer. Keep the direct playback
+path and the software capture/fanout path distinct. Do not assume the capture
+provider is the audible speaker path merely because both use the FM I2S
+interface.
+
 These are two distinct pieces of evidence: an Audio Policy FM input route and
 a dedicated HAL/ALSA FM I2S endpoint. Until the active FM app-to-HAL call path
 is traced on the target, do not assume they are the same route or that the
