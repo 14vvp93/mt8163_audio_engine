@@ -4,7 +4,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## Project direction and status
 
-- [Repository migration readiness](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.
+- [Repository migration readiness](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.\n- [Public compute worker](PUBLIC_COMPUTE_WORKER.md) — repository ownership, worker invocation and artifact handoff.
 
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — workflow inventory, branch pinning and follow-up review.
 
