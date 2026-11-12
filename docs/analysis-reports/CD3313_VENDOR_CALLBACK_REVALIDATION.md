@@ -36,7 +36,7 @@ The table below records the exact size-field guard visible in this vendor callba
 | ID | Vendor callback guard | Words read | Host-side safe policy |
 |---|---|---|---|
 | `0x01` | size > 0 | +4 | Require 1 word |
-| `0x03` | no visible size guard | +4, +8 | Require the conservative 3-word threshold; do not infer vendor acceptance of short frames |
+| `0x03` | no visible size guard | +4, +8 | Require 3 complete words; replacement additionally restricts channel 0..6 and gain 0..3 |
 | `0x04` | size > 2 | +4, +8, +12 | Require 3 words |
 | `0x09` | no visible size guard | +4 | Sets `volume_max`; default is 40 and `set_master_volume()` uses it as the upper bound |
 | `0x10` | size > 0 | +4 | Require 1 word |
@@ -74,7 +74,7 @@ The exact vendor callback has no visible size-field guard before these loads:
 
 The host parser must continue to require complete words for these commands, even where the factory callback does not. This is a deliberate fail-closed replacement contract, not an attempt to reproduce the factory's unsafe short-frame behavior.
 
-For `0x03`, the old 12-pair table records a three-word threshold, while the vendor callback's optimized branch contains no visible local length guard before its two loads. Keep the host parser's three-word threshold as a conservative policy until the complete vendor control flow and all callers are reconciled. Do not describe it as a proven vendor callback minimum.
+For `0x03`, the old 12-pair table records a three-word threshold, while the vendor callback's optimized branch contains no visible local length guard before its two loads. Keep the host parser's three-word threshold as a conservative policy; do not describe it as a proven vendor callback minimum. The replacement also validates channel 0..6 and gain 0..3 before accepting the command. These are fail-closed host constraints derived from the seven-entry channel state and two-bit gain field; they are not claimed as proven vendor-side checks.
 
 ## 5. JNI compatibility
 
