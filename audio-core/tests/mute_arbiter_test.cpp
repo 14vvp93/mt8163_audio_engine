@@ -82,6 +82,24 @@ void test_idempotence_and_validation() {
             "invalid source is not reported muted");
 }
 
+
+void test_snapshot_is_immutable_value() {
+    MuteArbiter mute;
+    mute.set_master(MuteOwner::AccPowerState, true);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioRetune, true);
+    const auto published = mute.snapshot();
+    mute.set_master(MuteOwner::AccPowerState, false);
+    mute.set_source(SourceId::FmRadio, MuteOwner::RadioRetune, false);
+    const auto current = mute.snapshot();
+    require(published.master_muted(), "published snapshot retains master mute");
+    require(published.source_muted(SourceId::FmRadio),
+            "published snapshot retains local source mute");
+    require(!current.source_muted(SourceId::LocalMedia),
+            "new snapshot reflects cleared master mute");
+    require(!current.source_muted(SourceId::FmRadio),
+            "new snapshot reflects cleared source mute");
+}
+
 void test_cd3313_legacy_reason_mapping() {
     MuteArbiter mute;
     mute.set_master(MuteOwner::AccPowerState, true);
@@ -129,6 +147,7 @@ int main() {
     test_clear_owner_is_scoped();
     test_idempotence_and_validation();
     test_cd3313_legacy_reason_mapping();
+    test_snapshot_is_immutable_value();
     std::cout << "AudioCore mute arbiter tests passed\n";
     return 0;
 }
