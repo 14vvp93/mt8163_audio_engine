@@ -1,4 +1,4 @@
-name: Scan vendor archive for CD3313 userspace clients
+name: Scan extracted firmware for CD3313 userspace clients
 
 on:
   workflow_dispatch:
