@@ -82,6 +82,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Reference archive extraction utility](../scripts/repository/prepare_reference_archives.py)
 - [Complete firmware reference tree builder](../scripts/repository/curate_audio_references.py)
 - [HEQ APK chunk reassembler and SHA-256 verifier](../scripts/repository/reassemble_heq_apk.py)
+- [Offline Markdown link checker](../scripts/repository/check_markdown_links.py)
 
 ## Repository areas
 
