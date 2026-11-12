@@ -145,17 +145,24 @@ than its name suggests: it returns true when the patch has exactly one source,
 one sink, and source device mask `0x80002000` (FM Tuner In). It does not inspect
 PCM buffers or prove a hardware-direct data path. `fm_addAudioPatch()`
 recognizes that FM Tuner input patch and maintains its FM patch state. The
-primary HAL's FM-specific `createAudioPatch()` branch then drives the
+primary HAL's FM-specific `createAudioPatch()` branch drives
+`AudioALSAStreamManager::setFmEnable()`: it first calls the disable tuple
+`(false, false, false, 0)`, then the enable tuple `(true, true, true, 0)`.
+The manager forwards this into
+`AudioALSAFMController::setFmEnable()`, whose enable path invokes
+`setFmDirectConnection_l()`. That function resolves `FM_I2S_Playback`
+through the ALSA device parser, calls `pcm_open()`, checks readiness, and
+calls `pcm_start()`; there is no `pcm_write()` call in this function. This
+is the strongest static evidence for the stock FM-to-output route: a policy
+AudioPatch feeding the direct `FM_I2S_Playback` endpoint, rather than an
+app-owned AudioTrack PCM loop.
+
 The policy method named `setFMIndirectMode(rate)` is also
 semantically ambiguous: it sends `FM_DIRECT_CONTROL=1` below 48,001 Hz and
 `0` at/above that threshold. The HAL stores this key in the boolean queried
 by `checkFmNeedUseDirectConnectionMode()`. Do not infer “indirect” playback
 from the policy method name alone; the consumer and route call path determine
 what the flag actually selects.
-`AudioALSAFMController::setFmEnable()` lifecycle, which uses the dedicated
-FM direct-connection controller. This is the strongest static evidence for
-the stock FM-to-output route: a policy AudioPatch feeding the direct
-`FM_I2S_Playback` endpoint, rather than an app-owned AudioTrack PCM loop.
 
 The `AUDIO_SOURCE_FM_TUNER` input-stream capture handler described below is
 a separate software capture path. It can deliver FM PCM to an input client,
