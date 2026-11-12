@@ -1,14 +1,13 @@
-name: Test CD3313 protocol emulator
-
-# Covers the ioctl model and the /dev/audiomux character-device read/write model.
+name: Test CD3313 protocol and safety
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration/beta-0.1]
     paths:
       - "cd3313-emulator/**"
       - ".github/workflows/test-cd3313-emulator.yml"
   pull_request:
+    branches: [main, integration/beta-0.1]
     paths:
       - "cd3313-emulator/**"
       - ".github/workflows/test-cd3313-emulator.yml"
@@ -19,6 +18,7 @@ permissions:
 
 jobs:
   host-tests:
+    name: host-tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -31,17 +31,46 @@ jobs:
         run: ctest --test-dir build/cd3313 --output-on-failure
 
   sanitizer-tests:
+    name: sanitizer-tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - name: Configure with AddressSanitizer and UndefinedBehaviorSanitizer
-        run: >-
-          cmake -S cd3313-emulator -B build/cd3313-sanitized
-          -DCMAKE_BUILD_TYPE=Debug
-          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
-          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+        run: |
+          cmake -S cd3313-emulator -B build/cd3313-sanitized \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
       - name: Build
         run: cmake --build build/cd3313-sanitized --parallel 2
       - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: ctest --test-dir build/cd3313-sanitized --output-on-failure
+
+  libfuzzer:
+    name: libfuzzer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure Clang libFuzzer target
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -S cd3313-emulator -B build/cd3313-fuzz \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCD3313_BUILD_FUZZER=ON
+      - name: Build fuzzer
+        run: cmake --build build/cd3313-fuzz --target cd3313_protocol_fuzzer --parallel 2
+      - name: Fuzz parser and encoder
+        run: |
+          mkdir -p build/cd3313-corpus
+          build/cd3313-fuzz/cd3313_protocol_fuzzer \
+            build/cd3313-corpus \
+            -max_total_time=45 \
+            -timeout=5 \
+            -rss_limit_mb=2048
