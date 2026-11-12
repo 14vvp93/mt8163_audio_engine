@@ -23,6 +23,23 @@ the tuner driver, CD3313 input selection, or unrelated audio routes.
    Current static evidence does not show that the stock RadioService consumes
    the capture stream to play FM.
 
+## FM_DIRECT_CONTROL is not a software-route switch
+
+The policy extension's `setFMIndirectMode(rate)` sends
+`FM_DIRECT_CONTROL=1` for values below 48,001 and `0` for values at or
+above 48,001. The primary HAL stores this value in the boolean returned by
+`checkFmNeedUseDirectConnectionMode()`. When true, the FM enable path asks
+the tuner driver to use 48 kHz; the paired MT6627 driver's rate-setter
+callback is unpopulated, so that ioctl may return `-1002` and the HAL ignores
+the result.
+
+Crucially, the FM AudioPatch enable path separately calls
+`setFmDirectConnection_l(true, ...)`, which opens and starts
+`FM_I2S_Playback`. The disable tuple calls the same controller with its
+first argument false. Therefore `FM_DIRECT_CONTROL` is a rate/control flag,
+not a proven selector between direct hardware playback and software PCM
+playback. Changing it is not an approved way to activate the DSP bridge.
+
 ## Candidate software route
 
 The only currently demonstrated userspace PCM boundary is the FM capture
@@ -60,4 +77,3 @@ control for switching that patch to the software route.
 No vendor HAL, policy XML, kernel module, system partition or device setting
 has been modified. Host tests and ARMv7 compilation validate the adapter
 component only; they do not validate the FM speaker route on the target.
-
