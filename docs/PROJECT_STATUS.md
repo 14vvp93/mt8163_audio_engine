@@ -83,7 +83,7 @@ Latest host-side CI for the new foundation:
 - [Repository integrity — run 43254056300](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254056300) — success.
 - Host CTest run includes 13 tests, all passed.
 
-Android ARMv7 build compiled the AudioCore static library successfully in run 43253777747, but the added verification step initially looked in the wrong archive directory and failed. The archive path was corrected and the updated ARMv7 workflow is running as [run 43254125094](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094); final ELF verification and artifact upload are pending.
+Android ARMv7 build and verification — [run 43254125094](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094) — success. All three AudioCore object files (mute arbiter, CD3313 compatibility mapper and session registry) were verified as ELF32 ARM, and the three-library artifact was uploaded: [mt8163-audio-engine-android-armv7](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094/artifacts/13959708693). An earlier verification-path error was corrected before this successful run.
 
 Evidence classification:
 - **HOST VERIFIED:** AudioCore mute/compatibility and session-registry tests, PCM/DSP tests, stability lab and performance benchmark.
