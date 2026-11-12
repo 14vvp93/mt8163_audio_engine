@@ -14,19 +14,19 @@ void check(bool condition, const char* message) {
 int main() {
     using namespace cd3313;
     try {
-        check(known_write_commands().size() == 12,
+        check(known_write_commands().size() == 11,
               "expected 12 recovered command specifications");
-        constexpr std::array<std::uint8_t, 15> accepted_dispatch_ids{{
+        constexpr std::array<std::uint8_t, 14> accepted_dispatch_ids{{
             0x01, 0x03, 0x04, 0x09, 0x10, 0x11, 0x12, 0x15,
-            0x20, 0x55, 0x56, 0x5C, 0xA3, 0xF0, 0xF1
+            0x20, 0x55, 0x56, 0x5C, 0xA3, 0xF1
         }};
         for (const auto id : accepted_dispatch_ids) {
             check(is_dispatch_command(id),
                   "every recovered normal/special command ID is dispatched");
         }
-        constexpr std::array<std::uint8_t, 11> enum_only_write_ids{{
+        constexpr std::array<std::uint8_t, 12> enum_only_write_ids{{
             0x02, 0x50, 0x57, 0x58, 0x59, 0x5B,
-            0x60, 0xA0, 0xA1, 0xA2, 0x7F
+            0x60, 0xA0, 0xA1, 0xA2, 0x7F, 0xF0
         }};
         for (const auto id : enum_only_write_ids) {
             check(!is_dispatch_command(id),
