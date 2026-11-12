@@ -4,6 +4,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## Project direction and status
 
+- [Repository structure and file-placement rules](REPOSITORY_STRUCTURE.md) — canonical map of the repository and cleanup conventions.
+
 - [Product goal and replacement scope](MT8163_AUDIO_ENGINE_GOAL.md) — agreed goal: one integrated engine replacing the factory vendor audio implementation.
 - [Project status](PROJECT_STATUS.md) — evidence-backed progress, blockers and next steps.
 - [Repository cleanup report](repository-audit/REPOSITORY_CLEANUP_REPORT.md) — repository layout, archive handling and cleanup decisions.
