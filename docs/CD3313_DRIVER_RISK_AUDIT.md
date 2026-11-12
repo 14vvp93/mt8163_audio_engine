@@ -15,7 +15,7 @@ Primary evidence:
 | ID | Finding | Confidence | Potential effect |
 |---|---|---|---|
 | R1 | Ioctl slab object is 256 bytes, but the copy cap is 256 bytes after a 4-byte header | High, conditional on vendor hardened-usercopy implementation | A 64-word-or-larger payload can exceed the slab object and trigger a kernel BUG |
-| R2 | Commands 0x56 and 0xA3 read one payload word without a size check | High | Zero-word requests consume stale slab data and can toggle loudness or subwoofer GPIO |
+| R2 | Commands 0x03, 0x09, 0x56 and 0xA3 load payload words without a size check | High | Short requests consume stale slab data; effects include input gain, volume limit, loudness and raw GPIO state |
 | R3 | Command 0x15 validates only a two-word minimum but reads four words | High | Two/three-word requests consume stale payload words |
 | R4 | The paired vendor module range-checks all four 0x15 indices against 0..15 before table access; the earlier no-check claim is not valid for this build | High | The remaining confirmed issue is short-payload stale-word consumption, not out-of-range table indexing |
 | R5 | Raw write() uses a 12-byte zeroed buffer, copies up to all 12 bytes, then calls kstrtouint() without adding a terminator | High, assuming the Linux 4.9.117 helper behavior | A full 12-byte valid-hex input can make the parser inspect beyond the local buffer |
@@ -23,6 +23,7 @@ Primary evidence:
 | R7 | The older standalone raw-write path ignores transfer status; the paired vendor build checks exact one-byte success and retries up to five times before updating cache | High for the variant difference | Do not attribute the standalone cache-consistency defect to the paired vendor module |
 | R8 | ioctl write returns success after queueing; callback result and post_event_delayed() result are not propagated | High | Userspace cannot treat ioctl success as proof that a command ran |
 | R9 | cmd_read() reports cached register bytes and software state, not hardware readback | High | A stale cache can look like successful hardware state |
+| R10 | Command 0x03 rejects channel -1 and 6 but does not bound values above 6 before indexing the 7-byte `channel_gain` array | High | Channel values 7+ can write beyond the array into adjacent global state |
 
 ## Details and evidence
 
@@ -35,19 +36,19 @@ In upstream Linux 4.9.117, __check_object_size() checks heap-object bounds and r
 
 If the vendor kernel retains this behavior, size_field >= 64 (256 payload bytes) exceeds the 256-byte object by four bytes and can trigger a kernel BUG. The maximum payload that fits after the header is 252 bytes (63 words). The emulator now rejects payloads above 252 bytes with UnsafePayloadSize. The exact vendor helper implementation still needs source-level confirmation.
 
-### R2 — commands 0x56 and 0xA3 short payloads
+### R2 — commands 0x03, 0x09, 0x56 and 0xA3 short payloads
 
-These IDs are not in cmd_len_list. Their event_callback() branches load the first payload word at +4 without validating the size field. cmd_ioctl() does not zero the slab object. With size_field=0, the callback consumes whatever value was already in that slab slot:
-- 0x56 changes the loudness bit.
-- 0xA3 changes raw GPIO 409.
-
-The emulator requires one complete 32-bit word and intentionally does not reproduce stale-memory behavior.
+The paired vendor callback has no visible size-field guard before these payload reads. `0x03` reads two words (+4 and +8); `0x09`, `0x56` and `0xA3` each read one word (+4). cmd_ioctl() does not zero the slab object. Short successful copies can therefore leave missing words sourced from stale slab contents. The replacement parser requires complete payloads and intentionally does not reproduce stale-memory behavior.
 
 ### R3/R4 — command 0x15
 
 The command-length table requires two words, and the callback checks only size_field > 1, but it then loads four 32-bit values at +4, +8, +12, and +16. Missing values in a two/three-word request are stale slab contents.
 
 The paired vendor module compares each of the four unsigned indices against 15 before indexing the 16-entry cd3313_speaker table. The previous no-range-check statement is superseded by the direct vendor callback disassembly. The short-payload problem remains: a two- or three-word frame passes the driver's size check, then the callback reads four words. The emulator requires four complete words and validates all four indices.
+
+### R10 — command 0x03 channel index can exceed channel_gain
+
+In the paired vendor `event_callback` branch for command `0x03` (0x1820..0x1858), the callback rejects channel `-1` and channel `6`. It does not reject channel values greater than 6 before using the channel value as an offset into the seven-byte `channel_gain` object at `.data + 0x28`. Values 7+ can therefore write beyond the array into adjacent global state. The gain value is masked with `& 3`; the replacement accepts only 0..3 and only channels 0..5. This is a replacement-side validation, not a claim that the factory callback has equivalent bounds checks.
 
 ### R5/R6/R7 — raw write()
 
