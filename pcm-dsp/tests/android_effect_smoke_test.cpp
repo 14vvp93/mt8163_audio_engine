@@ -117,8 +117,6 @@ int main() {
     send_command(handle, EFFECT_CMD_INIT);
     configure(handle, 48000U, AUDIO_FORMAT_PCM_16_BIT);
     set_route(handle, AUDIO_DEVICE_OUT_SPEAKER);
-    set_u32(handle, 1U, 1U); // DSP enabled
-    set_float(handle, 2U, 6.0F); // +6 dB preamp
 
     std::vector<std::int16_t> input(128U, 1000);
     std::vector<std::int16_t> output(128U, 0);
@@ -128,6 +126,15 @@ int main() {
     out_buffer.raw = output.data();
     in_buffer.frameCount = 64U;
     out_buffer.frameCount = 64U;
+
+    // Framework attachment alone must not activate DSP processing.
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "default-disabled DSP bypass succeeds");
+    require(output == input, "default effect state is bit-exact bypass");
+
+    set_u32(handle, 1U, 1U); // DSP enabled
+    set_float(handle, 2U, 6.0F); // +6 dB preamp
+    std::fill(output.begin(), output.end(), 0);
     require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
             "PCM16 stereo process succeeds");
     require(output[0] > 1500 && output[0] < 2600,
@@ -154,6 +161,30 @@ int main() {
     require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
             "unsupported output device bypass succeeds");
     require(output == input, "unsupported output device bypass is bit-exact");
+
+    // Offload and non-normal modes must also bypass bit-exactly.
+    configure(handle, 48000U, AUDIO_FORMAT_PCM_16_BIT);
+    set_route(handle, AUDIO_DEVICE_OUT_SPEAKER);
+    set_u32(handle, 1U, 1U);
+    effect_offload_param_t offload{};
+    offload.isOffload = true;
+    send_command(handle, EFFECT_CMD_OFFLOAD, sizeof(offload), &offload);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "offload bypass succeeds");
+    require(output == input, "offload bypass is bit-exact");
+    offload.isOffload = false;
+    send_command(handle, EFFECT_CMD_OFFLOAD, sizeof(offload), &offload);
+    std::uint32_t in_call_mode = AUDIO_MODE_IN_CALL;
+    send_command(handle, EFFECT_CMD_SET_AUDIO_MODE, sizeof(in_call_mode),
+                 &in_call_mode, false);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "in-call mode bypass succeeds");
+    require(output == input, "in-call mode bypass is bit-exact");
+    std::uint32_t normal_mode = AUDIO_MODE_NORMAL;
+    send_command(handle, EFFECT_CMD_SET_AUDIO_MODE, sizeof(normal_mode),
+                 &normal_mode, false);
 
     // Float32 adapter uses the same stereo core and fixed-size scratch.
     configure(handle, 48000U, AUDIO_FORMAT_PCM_FLOAT);
