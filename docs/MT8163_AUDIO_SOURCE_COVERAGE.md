@@ -140,8 +140,11 @@ https://github.com/14march93/mt8163_audio_engine/actions/runs/43170784980/artifa
 The paired policy-extension binary `libaudiopolicycustomextensions.so`
 has Build ID `f471dbca5ef93ec7e59d87999c3053f9` and SHA-256
 `9f4b6940d241a4bc6517214f1fc3fd0b3d69964f54aaa04e5ceb836d47d04afb`.
-The policy extension's `fm_addAudioPatch()` recognizes the FM Tuner input
-patch (device mask `0x80002000`) and maintains its FM patch state. The
+The policy extension's `isFMDirectMode()` predicate is more limited
+than its name suggests: it returns true when the patch has exactly one source,
+one sink, and source device mask `0x80002000` (FM Tuner In). It does not inspect
+PCM buffers or prove a hardware-direct data path. `fm_addAudioPatch()`
+recognizes that FM Tuner input patch and maintains its FM patch state. The
 primary HAL's FM-specific `createAudioPatch()` branch then drives the
 `AudioALSAFMController::setFmEnable()` lifecycle, which uses the dedicated
 FM direct-connection controller. This is the strongest static evidence for
