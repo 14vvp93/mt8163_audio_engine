@@ -67,7 +67,7 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 ## Development constraints
 
 - Target platform: MT8163, Android 9, ARM 32-bit.
-- DSP foundations: PCM16 stereo compatibility core and four-channel Float32 FL/FR/RL/RR core at 44.1/48 kHz, subject to runtime negotiation.
+- DSP foundations: PCM16 stereo core at 32/44.1/48 kHz (including the MT6627 FM base rate) and four-channel Float32 FL/FR/RL/RR core at 44.1/48 kHz, subject to runtime negotiation.
 - Keep Bluetooth SCO, voice calls, microphone capture and other non-music paths bypassed until explicitly mapped.
 - Do not assume every policy-declared route is active on every head unit.
 - Do not guess vendor ioctl structures, ACF/HCF parameter layouts, or NVRAM formats.
