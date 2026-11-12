@@ -10,7 +10,7 @@ The audit covers the tracked tree, project documentation, source/test layout, wo
 
 | Area | Responsibility | Decision |
 |---|---|---|
-| `.github/workflows/` | CI, binary analysis, host tests, Android builds and archive workflows | Keep; remove obsolete single-archive extractor after replacement is verified |
+| `.github/workflows/` | CI, binary analysis, host tests, Android builds and archive workflows | Keep; obsolete single-archive extractor has been removed |
 | `android-test/` | Android bring-up and API probe app | Keep; test utility, not production engine |
 | `cd3313-emulator/` | Host-side protocol/state emulator and tests | Keep; useful reference for the driver rewrite |
 | `docs/` | Reverse-engineering, architecture, integration and test evidence | Keep; use `docs/README.md` as the navigation index |
@@ -22,7 +22,7 @@ The audit covers the tracked tree, project documentation, source/test layout, wo
 
 ## Archive extraction results
 
-All five archive sets were assembled where split, CRC-tested, safely extracted and inventoried in GitHub Actions run [43197649691](https://github.com/14march93/mt8163_audio_engine/actions/runs/43197649691).
+The four remaining archive sets were assembled where split, CRC-tested, safely extracted and inventoried in GitHub Actions run [43198951304](https://github.com/14march93/mt8163_audio_engine/actions/runs/43198951304). The initial five-set run [43197649691](https://github.com/14march93/mt8163_audio_engine/actions/runs/43197649691) also verified the now-removed redundant files.zip.
 
 - 1,452 files extracted.
 - 563.23 MiB total uncompressed content.
@@ -47,7 +47,7 @@ The full expansion is intentionally not committed indiscriminately. It includes 
 4. Keep the full HEQ APK in the source archive and full-extraction artifact; do not try to commit a 161 MiB single file.
 5. Do not delete binary libraries merely because their names look unrelated. They may be dependencies of the vendor HAL. Preserve the full vendor library set until dependency analysis proves an item can be dropped.
 6. Remove only confirmed redundant repository-level files or obsolete workflows, and record each such removal here.
-7. Do not commit build outputs, temporary extraction directories, generated APKs, or CI caches unless they are intentional release artifacts.
+7. The redundant `files.zip` archive (all 36 members byte-identical to files2.zip) and the superseded `.github/workflows/unpack-files.yml` workflow have been removed.\n8. Do not commit build outputs, temporary extraction directories, generated APKs, or CI caches unless they are intentional release artifacts.
 
 ## Safety and reproducibility
 
