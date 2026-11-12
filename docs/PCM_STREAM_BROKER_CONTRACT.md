@@ -27,9 +27,9 @@ The supported sequence is:
 
 ## Realtime boundary and shutdown protocol
 
-Each slot has one lock-free 32-bit admission word: the high bit means callback admission is open and the low 31 bits count admitted writers. A callback uses compare/exchange to acquire a writer count only while the gate is open, calls the bounded backend write, then decrements the count. No allocation, mutex, condition variable or blocking wait is introduced in the callback path.
+Each slot has a lock-free 32-bit admission word and a 32-bit generation counter. The admission word's high bit means callback admission is open and its low 31 bits count admitted writers. The generation increments whenever a closed slot is opened again; callbacks capture it before matching the handle and verify it again after acquiring admission, rejecting callbacks delayed across slot reuse. A callback uses compare/exchange to acquire a writer count only while the gate is open, calls the bounded backend write, then decrements the count. No allocation, mutex, condition variable or blocking wait is introduced in the callback path.
 
-The control thread closes the gate with an atomic bit operation. This linearizes the race: a callback either increments the count before gate closure and is drained, or observes the closed gate and never enters the backend. `stop` returns `WouldBlock` while the count is nonzero; retrying after the writer exits performs the backend stop. The callback is not required to be externally joined before this broker-level stop, but the HAL must still prevent use-after-destruction of the broker itself and must serialize lifecycle calls.
+The control thread closes the gate with an atomic bit operation. This linearizes the race: a callback either increments the count before gate closure and is drained, or observes the closed gate and never enters the backend. `stop` returns `WouldBlock` while the count is nonzero; retrying after the writer exits performs the backend stop. The callback is not required to be externally joined before this broker-level stop. The generation check also rejects a callback invocation that captured the prior slot generation before close/reopen. The HAL must still prevent use-after-destruction of the broker itself and must serialize lifecycle calls.
 
 The backend's `write` must be nonblocking/bounded and must not perform device discovery, recovery, synchronous logging or allocation. It reports `WouldBlock`, `Xrun` or `DeviceLost` to the caller; recovery belongs to the control plane.
 
@@ -44,7 +44,7 @@ The backend's `write` must be nonblocking/bounded and must not perform device di
 
 ## Validation required next
 
-1. Host CI for broker lifecycle, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight callback.
+1. Host CI for broker lifecycle, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight callback, and delayed callback rejection after slot reuse.
 2. ARMv7 compile using the Android NDK.
 3. Add endpoint capability negotiation after exact ALSA runtime topology is collected.
 4. Add the HAL owner/lifetime protocol before wiring the broker to real streams.
