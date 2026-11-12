@@ -36,6 +36,35 @@ bool encode_rejects(const cd3313::DriverCommand& command) {
         return true;
     }
 }
+
+std::vector<std::uint8_t> make_legacy_jni_frame(
+    std::uint8_t id, const std::vector<std::uint32_t>& arguments,
+    std::uint32_t initialized_padding_word) {
+    const auto size_words = static_cast<std::uint16_t>(arguments.size() + 1U);
+    auto frame = make_frame(
+        id, size_words, (arguments.size() + 1U) * 4U);
+    std::size_t offset = 4U;
+    const auto append_word = [&](std::uint32_t value,
+                                 std::vector<std::uint8_t>& output,
+                                 std::size_t& cursor) {
+        for (unsigned shift = 0U; shift < 32U; shift += 8U) {
+            output[cursor++] = static_cast<std::uint8_t>(value >> shift);
+        }
+    };
+    for (const auto value : arguments) {
+        append_word(value, frame, offset);
+    }
+    append_word(initialized_padding_word, frame, offset);
+    return frame;
+}
+
+std::uint32_t read_word(const std::vector<std::uint8_t>& bytes,
+                        std::size_t offset) {
+    return static_cast<std::uint32_t>(bytes[offset]) |
+        (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |
+        (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U) |
+        (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+}
 }
 
 int main() {
@@ -130,15 +159,43 @@ int main() {
                     "special dispatch commands must reject truncated payloads");
         }
 
-        const auto legacy_jni_balance = make_frame(0x15U, 5U, 20U);
-        const auto parsed_legacy_jni_balance =
-            parse_driver_command(legacy_jni_balance);
-        require(static_cast<bool>(parsed_legacy_jni_balance),
-                "legacy JNI framing with one initialized compatibility word must parse");
-        require(parsed_legacy_jni_balance.command->payload.size() == 20U &&
-                    encode_driver_command(*parsed_legacy_jni_balance.command) ==
-                        legacy_jni_balance,
-                "legacy JNI compatibility word must be preserved without an over-read");
+        constexpr std::uint32_t kInitializedJniPadding = 0xA5C39E71U;
+        const std::vector<std::pair<std::uint8_t, std::vector<std::uint32_t>>>
+            legacy_jni_calls{
+                {0x03U, {2U, 1U}},
+                {0x04U, {1U, 0U, 0U}},
+                {0x09U, {40U}},
+                {0x10U, {20U}},
+                {0x11U, {0U, 2U}},
+                {0x12U, {75U}},
+                {0x15U, {0U, 4U, 8U, 12U}},
+                {0x20U, {1U, 32U, 0U}},
+                {0x55U, {1U, 7U, 0U, 10U}},
+                {0x56U, {1U, 40U, 0x7FFFFFFFU}},
+                {0x5CU, {1U, 7U, 0U, 10U}},
+                {0xA3U, {1U, 100U, 0U, 10U}}
+            };
+        for (const auto& call : legacy_jni_calls) {
+            const auto frame = make_legacy_jni_frame(
+                call.first, call.second, kInitializedJniPadding);
+            const auto parsed = parse_driver_command(frame);
+            require(static_cast<bool>(parsed),
+                    "known Java/Binder command arrays must parse with initialized JNI padding");
+            require(parsed.command->size_field == call.second.size() + 1U,
+                    "legacy JNI size field must be array length plus one word");
+            require(parsed.command->payload.size() ==
+                        (call.second.size() + 1U) * 4U,
+                    "legacy JNI payload must contain exactly one initialized extra word");
+            for (std::size_t i = 0U; i < call.second.size(); ++i) {
+                require(read_word(parsed.command->payload, i * 4U) == call.second[i],
+                        "legacy JNI argument words must retain their original order");
+            }
+            require(read_word(parsed.command->payload, call.second.size() * 4U) ==
+                        kInitializedJniPadding,
+                    "legacy JNI compatibility word must be explicit and preserved");
+            require(encode_driver_command(*parsed.command) == frame,
+                    "legacy JNI frame must round-trip without synthesizing or dropping padding");
+        }
 
         for (std::size_t word = 0U; word < 4U; ++word) {
             auto invalid_index = make_frame(0x15U, 4U, 16U);
