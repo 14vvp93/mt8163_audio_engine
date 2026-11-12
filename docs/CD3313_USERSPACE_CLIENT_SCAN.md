@@ -120,3 +120,8 @@ The exact request formula and its extra-word discrepancy are recorded in
 [CD3313_IOCTL_ABI.md](CD3313_IOCTL_ABI.md). The extra copied word has no
 established value, so this is not yet authorization to implement or execute
 a direct device client. No live ioctl or hardware command has been sent.
+
+
+## HEQ application callsite value audit
+
+The recovered HEQ APK callsites and their concrete argument domains are documented in [CD3313_HEQ_CALLER_AUDIT.md](analysis-reports/CD3313_HEQ_CALLER_AUDIT.md). This confirms the startup replay path for treble, bass, four-channel balance, loudness and subwoofer. It does not establish that this is the only app/service caller in the complete firmware; the remaining VDEX callsites still require a full class-level inventory.
