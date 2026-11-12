@@ -48,7 +48,7 @@ private:
     struct Slot {
         std::atomic<std::uint32_t> handle{0U};
         std::atomic<std::uint32_t> backend_token{0U};
-        std::atomic<PcmStreamState> state{PcmStreamState::Closed};
+        std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
         PcmConfig config{};
