@@ -77,7 +77,7 @@ int main() {
                     "each command must reject trailing payload bytes");
         }
 
-        for (const std::uint8_t id : {0x56U, 0xA3U}) {
+        for (const std::uint8_t id : {0x09U, 0x56U, 0xA3U}) {
             const auto valid = make_frame(id, 1U, 4U);
             require(static_cast<bool>(parse_driver_command(valid)),
                     "special dispatch commands must accept one complete word");
