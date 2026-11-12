@@ -1,8 +1,8 @@
-name: Reassemble and analyze firmware library archives
+name: Analyze all extracted firmware libraries and CD3313
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/cd3313-driver-rewrite]
     paths:
       - ".github/workflows/analyze-firmware-libraries.yml"
       - "reference-materials/firmware-dumps/files2.zip.*"
