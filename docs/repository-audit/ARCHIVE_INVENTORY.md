@@ -6,7 +6,6 @@ Original archives and split parts remain unchanged in `reference-materials/`.
 
 | Archive set | Status | Files | Expanded size | Main file types |
 |---|---:|---:|---:|---|
-| `files.zip` | OK | 36 | 3.2 MiB | `.0-service-mediatek`: 1, `.conf`: 2, `.rc`: 2, `.so`: 11, `.xml`: 19, `[no extension]`: 1 |
 | `files2.zip` | OK | 324 | 122.9 MiB | `.0-service-mediatek`: 1, `.apk`: 3, `.art`: 24, `.conf`: 2, `.jar`: 60, `.mp3`: 1, `.oat`: 23, `.odex`: 38, `.ogg`: 29, `.prof`: 3, `.rc`: 3, `.rel`: 23, `.so`: 32, `.vdex`: 61, `.xml`: 19, `[no extension]`: 2 |
 | `HEQ.zip` | OK | 1 | 161.0 MiB | `.apk`: 1 |
 | `lib.zip` | OK | 766 | 176.2 MiB | `.bc`: 5, `.so`: 761 |
