@@ -64,6 +64,7 @@ struct EffectContext {
     std::atomic<bool> framework_enabled{false};
     std::atomic<bool> configured{false};
     std::atomic<bool> supported_config{false};
+    bool bypass_copy_compatible{false};
     std::atomic<bool> reset_requested{false};
     std::atomic<std::uint32_t> output_device{0U};
     std::atomic<std::uint32_t> audio_mode{AUDIO_MODE_NORMAL};
@@ -147,6 +148,8 @@ bool supported_device(std::uint32_t device) {
     return device != 0U && (device & ~allowed) == 0U;
 }
 
+std::size_t bytes_per_sample(std::uint8_t format);
+
 bool supported_format(std::uint8_t format) {
     return format == AUDIO_FORMAT_PCM_16_BIT ||
            format == AUDIO_FORMAT_PCM_FLOAT;
@@ -167,11 +170,16 @@ bool configure_effect(EffectContext* context, const effect_config_t& config) {
             (EFFECT_CONFIG_SMP_RATE | EFFECT_CONFIG_CHANNELS |
              EFFECT_CONFIG_FORMAT);
 
-    const bool same_stream = fields_present &&
+    const bool same_layout = fields_present &&
+        in.channels == out.channels && in.format == out.format;
+    context->bypass_copy_compatible = same_layout &&
+        audio_channel_count_from_out_mask(
+            static_cast<audio_channel_mask_t>(out.channels)) > 0U &&
+        bytes_per_sample(out.format) > 0U;
+    const bool same_stream = same_layout &&
         in.samplingRate == out.samplingRate &&
         in.channels == AUDIO_CHANNEL_OUT_STEREO &&
         out.channels == AUDIO_CHANNEL_OUT_STEREO &&
-        in.format == out.format &&
         supported_format(in.format);
 
     bool supported = false;
@@ -233,6 +241,7 @@ std::int32_t process_effect(effect_handle_t self,
         input.frameCount != output.frameCount) {
         return -EINVAL;
     }
+    if (!context->bypass_copy_compatible) return -EINVAL;
 
     const std::uint8_t format = context->config.outputCfg.format;
     const bool route_allowed =
