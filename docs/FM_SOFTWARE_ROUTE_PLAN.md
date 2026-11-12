@@ -77,3 +77,34 @@ control for switching that patch to the software route.
 No vendor HAL, policy XML, kernel module, system partition or device setting
 has been modified. Host tests and ARMv7 compilation validate the adapter
 component only; they do not validate the FM speaker route on the target.
+
+
+## Policy-extension call-site boundary — 2026-11-12
+
+A second pass over the exact paired
+`libaudiopolicycustomextensions.so` confirms that
+`AudioPolicyManagerCustomImpl::setFMIndirectMode(unsigned int)` is installed
+in the custom policy-manager vtable at address point offset `+0xf4`
+(relocation slot `0x1a09c`). The method itself builds an AudioParameter and
+sends `FM_DIRECT_CONTROL` through the policy client's `setParameters`
+callback. Its threshold comparison is literal: `rate < 48001` sends 1;
+otherwise it sends 0.
+
+The extension's own disassembly contains a PLT entry for this method but no
+resolved direct internal call site. This is consistent with invocation
+through the custom policy-manager virtual interface; the exact framework
+caller and the semantic meaning of the integer passed at that call site are
+not recovered from this extension binary alone. Do not promote the likely
+sample-rate interpretation into a confirmed call-site fact.
+
+The same binary has separate FM hooks for AudioPatch collection add/remove,
+FM activity/direct-activity predicates, and output-device routing signals.
+Those hooks manage patch lifecycle and app/output routing state; they do not
+establish a software PCM playback bridge. In particular, the existence of
+`fm_signalAPProutingFromSetOutputDevice()` is not evidence that the FM
+capture-provider buffer feeds the active output.
+
+**Updated conclusion:** there is still no statically proven, supported switch
+that replaces the stock `FM_I2S_Playback` AudioPatch with the capture-stream
+software path. Keep `FM_DIRECT_CONTROL` untouched and retain the target-side
+read-only diagnostic gate before any integration change.
