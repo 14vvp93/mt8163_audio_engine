@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/analyze-firmware-libraries.yml"
-      - "reference-materials/firmware-dumps/files.zip"
       - "reference-materials/firmware-dumps/files2.zip.*"
       - "reference-materials/firmware-dumps/lib.zip.*"
       - "reference-materials/firmware-dumps/vendor_lib.zip.*"
