@@ -97,8 +97,8 @@ int main() {
             }
         }
 
-        // Change filter parameters between blocks. The engine interpolates
-        // normalized coefficients across the next block rather than stepping.
+        // Filter updates run old/new stable IIR banks in parallel and
+        // crossfade their outputs; denominator coefficients are never lerped.
         engine.reset();
         Parameters transition;
         transition.enabled = true;
@@ -109,7 +109,38 @@ int main() {
               "initial transition filter processes");
         transition.bands[0].frequency_hz = 5000.0F;
         check(engine.process(tone.data(), filtered.data(), 2048U, transition),
-              "updated filter coefficients transition across block");
+              "dual-bank filter transition processes");
+
+        // Repeated extreme changes on the stereo engine must not create
+        // runaway internal states or full-scale bursts from a quiet signal.
+        engine.reset();
+        std::vector<std::int16_t> quiet(256U * 2U);
+        std::vector<std::int16_t> quiet_out(quiet.size());
+        for (std::size_t frame = 0; frame < 256U; ++frame) {
+            const auto sample = static_cast<std::int16_t>(100.0F * std::sin(
+                2.0F * 3.14159265358979323846F * 997.0F *
+                static_cast<float>(frame) / 48000.0F));
+            quiet[frame * 2U] = sample;
+            quiet[frame * 2U + 1U] = sample;
+        }
+        Parameters stress;
+        stress.enabled = true;
+        stress.limiter_enabled = false;
+        for (int block = 0; block < 500; ++block) {
+            auto& band = stress.bands[0];
+            band.enabled = true;
+            band.type = static_cast<FilterType>(block % 5);
+            band.frequency_hz = 20.0F * std::pow(
+                900.0F, static_cast<float>(block % 100) / 99.0F);
+            band.gain_db = (block % 2 == 0) ? 18.0F : -18.0F;
+            band.q = (block % 3 == 0) ? 10.0F : 0.707F;
+            check(engine.process(quiet.data(), quiet_out.data(), 256U, stress),
+                  "stereo extreme transition processes");
+            for (const auto sample : quiet_out) {
+                check(std::abs(static_cast<int>(sample)) < 10000,
+                      "stereo filter transition remains bounded for quiet input");
+            }
+        }
 
 
         // Four-channel Float32 engine: bit-exact bypass and independent gains.
