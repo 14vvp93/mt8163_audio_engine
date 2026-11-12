@@ -9,6 +9,7 @@ namespace mt8163_audio_core {
 
 class MuteSnapshot {
 public:
+    MuteSnapshot() noexcept = default;
     bool master_muted() const noexcept;
     bool source_muted(SourceId source) const noexcept;
     std::uint32_t master_owner_mask() const noexcept;
