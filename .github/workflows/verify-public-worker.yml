@@ -1,0 +1,11 @@
+name: Verify public worker integration
+on:
+  push:
+    paths:
+      - ".github/workflows/verify-public-worker.yml"
+jobs:
+  verify:
+    uses: 14vvp93/public_calculations/.github/workflows/worker-analyze-cd3313.yml@main
+    with:
+      source_ref: main
+    secrets: inherit
