@@ -103,6 +103,8 @@ AOSP references:
   https://android.googlesource.com/platform/hardware/interfaces/+/b5433136dd099d533e866028367ba4ed829fab02/audio/effect/2.0/xml/audio_effects_conf_V2_0.xsd
 - AudioPolicyEffects output-session attachment:
   https://android.googlesource.com/platform/frameworks/av/+/e3c46b0a49d045fa38d35e5cf7ad4becaacbbed6/services/audiopolicy/service/AudioPolicyEffects.cpp
+- Standard effect commands and notification flags:
+  https://android.googlesource.com/platform/system/media/+/a8cff157ff0ed02fa7e29438f4889a9933c37768/audio/include/system/audio_effect.h
 
 The output-mix chain remains an alternative for a deliberately global effect.
 AOSP orders `AUDIO_SESSION_OUTPUT_MIX` after track-specific chains and before
@@ -155,6 +157,12 @@ contract:
    enable/disable, device, mode, reset, parameter changes and teardown.
 7. Confirm that profile updates are published from a control thread and that
    the process callback has no allocations, locks, logging or blocking calls.
+8. If the descriptor advertises device/mode notifications, implement
+   `EFFECT_CMD_SET_DEVICE` and `EFFECT_CMD_SET_AUDIO_MODE`; set
+   `EFFECT_FLAG_DEVICE_IND` and `EFFECT_FLAG_AUDIO_MODE_IND` respectively.
+   The initial processing gate must be closed outside normal audio mode and
+   for unsupported output devices. Treat any offload state as bypass unless a
+   separate offload implementation is deliberately validated.
 
 The exact vendor effect configuration and AudioFlinger runtime state are not
 fully established by the extracted static archive. No effect library,
