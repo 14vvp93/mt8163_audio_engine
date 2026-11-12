@@ -130,3 +130,31 @@ Do not label these raw values as `CMB_STUB_AIF_0..3` yet: the upstream MediaTek 
 **Important build finding:** the exact binary's `wmt_plat_i2s_ctrl()` checks the I2S CK/WS/DAT GPIO definitions, but the compiled function contains the warning path “FM digital mode is not set” / “no I2S GPIO settings should be modified by combo driver” and does not contain the I2S pinctrl/GPIO operations present in the reference source's `#if defined(FM_DIGITAL_INPUT) || defined(FM_DIGITAL_OUTPUT)` branch. This is strong evidence that the WMT build was compiled without those FM digital-mode flags; its combo-driver I2S pin control is effectively a no-op for FM in this build.
 
 This materially shifts the static assessment toward an **analog FM line-in/out configuration**, consistent with the CD3313 logical RADIO channel (channel 0 → Source 3). It still does not prove the live `aud_path` value, which AIF state is actually selected at runtime, or the physical wire from the MT6627 analog output to CD3313 Source 3. Those require read-only target observation or board-level documentation.
+
+
+## Audio Policy custom extension: source of FM_DIRECT_CONTROL
+
+The firmware-wide string scan found `FM_DIRECT_CONTROL` in the primary HAL and in the separate ARM library `libaudiopolicycustomextensions.so` (the only additional binary hit). Exact identity:
+
+- Build ID: `f471dbca5ef93ec7e59d87999c3053f9`
+- SHA-256: `9f4b6940d241a4bc6517214f1fc3fd0b3d69964f54aaa04e5ceb836d47d04afb`
+- Workflow artifact: `mt8163-board-audio-routing-evidence`, run `43124452351`, file `policy-extension/libaudiopolicycustomextensions.so`.
+
+The stripped library still exports these relevant symbols:
+
+- `AudioPolicyManagerCustomImpl::setFMIndirectMode(unsigned int)` at VMA `0x0000df80`, size 272 bytes. Its vtable entry is at `0x001a09c` (vptr-relative offset `+0xf4`).
+- `AudioPolicyManagerCustomImpl::isFMDirectMode(android::sp<AudioPatch> const&)` at VMA `0x0000ce88`, size 40 bytes.
+- The library also implements `fm_addAudioPatch()` and `fm_removeAudioPatch()`.
+
+`setFMIndirectMode(rate_like_value)` constructs an `AudioParameter`, adds integer key `FM_DIRECT_CONTROL`, serializes it, and sends it through the Audio Policy client's `setParameters` callback. Its branch is exact:
+
+| Argument | Parameter sent |
+|---:|---:|
+| less than 48,001 | `FM_DIRECT_CONTROL=1` |
+| 48,001 or greater | `FM_DIRECT_CONTROL=0` |
+
+The 48,001 threshold is consistent with a sample-rate decision. This identifies the policy extension—not RadioService or an app—as the source of the parameter in the analyzed firmware.
+
+`isFMDirectMode()` returns true only when three patch fields match: field offset 28 equals 1, field offset `0xd60` equals 1, and the device field at offset `0xc4` equals `0x80002000` (`AUDIO_DEVICE_IN_FM_TUNER`). Thus the direct-mode predicate is explicitly tied to an FM Tuner input patch.
+
+This completes the static chain: Audio Policy custom extension selects `FM_DIRECT_CONTROL` for an FM Tuner patch → HAL stores the boolean → when true, `AudioALSAFMController::setFmEnable()` forces the FM chip sample rate to 48 kHz and uses its direct-connection control path. The extension's rate threshold and the HAL's 48 kHz override are both binary-verified. The actual runtime patch and selected policy XML still need target-side confirmation.
