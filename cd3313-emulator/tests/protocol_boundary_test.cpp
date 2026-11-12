@@ -91,14 +91,13 @@ int main() {
                         "each command must reject a size below its recovered minimum");
             }
 
-            if (spec.required_size_words > spec.minimum_size_words) {
+            for (std::uint16_t words = spec.minimum_size_words;
+                 words < spec.required_size_words; ++words) {
                 const auto below_required = make_frame(
-                    spec.id,
-                    static_cast<std::uint16_t>(spec.required_size_words - 1U),
-                    static_cast<std::size_t>(spec.required_size_words - 1U) * 4U);
+                    spec.id, words, static_cast<std::size_t>(words) * 4U);
                 require(parse_driver_command(below_required).error ==
                             ParseError::InsufficientArgumentData,
-                        "each command must reject a payload shorter than handler reads");
+                        "each command must reject every size that omits handler arguments");
             }
 
             auto truncated = valid;
