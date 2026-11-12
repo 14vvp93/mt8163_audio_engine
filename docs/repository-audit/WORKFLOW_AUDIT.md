@@ -32,7 +32,8 @@ The repository now contains 17 retained workflows:
 - Removed `reassemble-heq.yml`: HEQ is now committed as three verified APK chunks; decompilation reads those chunks directly and no longer needs to reassemble/extract the source ZIP.
 - Updated the primary HAL analysis and CD3313 client scan to read `reference-materials/extracted/`, not the deleted `files.zip`.
 - Reworked the firmware audio configuration audit to validate the committed manifest and XML directly instead of partially extracting split archives.
-- Removed all stale `files.zip` references from workflow files.\n- Added an offline Markdown link checker and a dedicated repository-integrity workflow.
+- Removed all stale `files.zip` references from workflow files.
+- Added an offline Markdown link checker and a dedicated repository-integrity workflow.
 - Corrected the archive audit's branch handling: checkout, concurrency, rebase and push now use the triggering ref rather than always writing to the feature branch.
 - The remaining workflows have distinct build, test, reverse-engineering or validation purposes. No workflow installs firmware or writes to the target device.
 
