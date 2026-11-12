@@ -37,8 +37,8 @@ jobs:
 
       - name: Promote audio-relevant files into the repository
         run: |
-          python3 scripts/repository/curate_audio_references.py \\
-            --expanded "$RUNNER_TEMP/mt8163-reference-expanded" \\
+          python3 scripts/repository/curate_audio_references.py \
+            --expanded "$RUNNER_TEMP/mt8163-reference-expanded" \
             --destination reference-materials/extracted
 
       - name: Upload extracted reference tree for inspection
