@@ -1,0 +1,67 @@
+name: Audit and extract reference archives
+
+on:
+  push:
+    branches:
+      - feature/cd3313-driver-rewrite
+    paths:
+      - "scripts/repository/prepare_reference_archives.py"
+      - ".github/workflows/audit-reference-archives.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reference-archive-audit-feature
+  cancel-in-progress: false
+
+jobs:
+  extract-and-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out working branch
+        uses: actions/checkout@v5
+        with:
+          ref: feature/cd3313-driver-rewrite
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract every complete reference ZIP set
+        run: |
+          python3 scripts/repository/prepare_reference_archives.py \
+            --root . \
+            --extract-root "$RUNNER_TEMP/mt8163-reference-expanded" \
+            --markdown docs/repository-audit/ARCHIVE_INVENTORY.md \
+            --json docs/repository-audit/archive-inventory.json
+
+      - name: Upload extracted reference tree for inspection
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-reference-materials-expanded
+          path: ${{ runner.temp }}/mt8163-reference-expanded/
+          if-no-files-found: error
+          compression-level: 1
+          retention-days: 30
+
+      - name: Upload archive inventory
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-reference-archive-inventory
+          path: |
+            docs/repository-audit/ARCHIVE_INVENTORY.md
+            docs/repository-audit/archive-inventory.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Commit reproducible archive inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/repository-audit/ARCHIVE_INVENTORY.md docs/repository-audit/archive-inventory.json
+          if git diff --cached --quiet; then
+            echo "Archive inventory is unchanged."
+          else
+            git commit -m "docs: record reference archive inventory"
+            git push origin HEAD:feature/cd3313-driver-rewrite
+          fi
