@@ -76,7 +76,7 @@ The exact vendor callback has no visible size-field guard before these loads:
 
 The host parser must continue to require complete words for these commands, even where the factory callback does not. This is a deliberate fail-closed replacement contract, not an attempt to reproduce the factory's unsafe short-frame behavior.
 
-For `0x03`, the old 12-pair table records a three-word threshold, while the vendor callback's optimized branch contains no visible local length guard before its two loads. Keep the host parser's three-word threshold as a conservative policy; do not describe it as a proven vendor callback minimum. The replacement also validates channel 0..6 and gain 0..3 before accepting the command. These are fail-closed host constraints derived from the seven-entry channel state and two-bit gain field; they are not claimed as proven vendor-side checks.
+For `0x03`, the old 12-pair table records a three-word threshold, while the vendor callback's optimized branch contains no visible local length guard before its two loads. Keep the host parser's three-word threshold as a conservative policy; do not describe it as a proven vendor callback minimum. The callback rejects channel `-1` and channel `6`, but it does not reject channel values greater than 6 before using the value as an index into the seven-byte `channel_gain` array (`.data + 0x28`). Values 7+ can therefore write beyond that array into adjacent global state. The replacement accepts only channels 0..5. The callback masks gain with `& 3` and has a special sentinel comparison; the replacement accepts only gain 0..3. These are fail-closed host constraints, not a claim that the factory validates the same ranges.
 
 ## 5. JNI compatibility
 
