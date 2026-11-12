@@ -36,9 +36,6 @@ jobs:
           out.mkdir(exist_ok=True)
           archives = []
 
-          if (root / "files.zip").is_file():
-              archives.append(("files", [root / "files.zip"]))
-
           for first in sorted(root.glob("*.zip.001")):
               stem = first.name[:-4]  # remove .001
               parts = sorted(root.glob(stem + ".*"))
