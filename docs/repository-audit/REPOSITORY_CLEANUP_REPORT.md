@@ -1,76 +1,71 @@
-# Repository cleanup and organization report
+# Repository cleanup report — 2026-11-12
 
-## Scope
+## Final ownership model
 
-Audit target: `14march93/mt8163_audio_engine`, working branch `feature/cd3313-driver-rewrite`.
+- Private project: `14vvp93/mt8163_audio_engine` — product source code, build definitions, tests, engineering documentation and reviewed findings.
+- Public data/compute: `14vvp93/public_calculations` — approved firmware files, extracted firmware, SHA-256 manifests, heavy-analysis scripts, tests and reusable GitHub Actions workers.
 
-The audit covers the tracked tree, project documentation, source/test layout, workflows, and all supplied ZIP archive sets. Original firmware inputs are treated as evidence and are not edited in place.
+The public repository no longer contains project documentation, reports or product implementation code. The private repository no longer contains firmware dumps, extracted firmware or archive volumes in its current branch trees.
 
-After cleanup, the working branch contains 1,577 tracked files. Their raw checked-out size is approximately 928.88 MiB; most of that is the retained firmware evidence plus the complete extracted filesystem tree, not generated build output. This is a raw tree total, not the compressed Git repository size.
+## Current tree inventory
 
-## Current tracked layout
+| Repository | Current tracked files | Firmware files | Status |
+|---|---:|---:|---|
+| Private `mt8163_audio_engine` main | 145 | 0 | Code and documentation only |
+| Public `public_calculations` main | 1,431 | 1,411 | Firmware data and compute infrastructure |
 
-| Area | Responsibility | Decision |
-|---|---|---|
-| `.github/workflows/` | CI, binary analysis, host tests, Android builds and archive workflows | Keep; obsolete single-archive extractor removed; stale archive triggers corrected |
-| `android-test/` | Android bring-up and API probe app | Keep; test utility, not production engine |
-| `cd3313-emulator/` | Host-side protocol/state emulator and tests | Keep; useful reference for the driver rewrite |
-| `docs/` | Reverse-engineering, architecture, integration and test evidence | Keep; use `docs/README.md` as the navigation index |
-| `kernel/cd3313/` | CD3313 rewrite plan and future implementation | Keep |
-| `pcm-dsp/` | DSP library, Android JNI bridge, tests and benchmarks | Keep |
-| `reference-materials/` | Original firmware archives and complete extracted filesystem tree | Keep original inputs immutable; use `reference-materials/extracted/` for direct analysis |
-| `scripts/repository/` | Reproducible archive processing and curation scripts | Keep |
-| `tools/` | ADB diagnostics and local firmware scanners | Keep |
+Public firmware inventory:
 
-## Archive extraction results
+| Dataset | Files | Bytes |
+|---|---:|---:|
+| Extracted firmware | 1,386 | 578,175,653 |
+| Standalone raw dumps | 22 | 44,050,240 |
+| Machine-readable manifests | 3 | — |
+| Original split ZIP volumes removed | 26 | 349,781,724 |
 
-The four retained archive sets were assembled where split, CRC-tested, safely extracted and inventoried in GitHub Actions run [43198951304](https://github.com/14march93/mt8163_audio_engine/actions/runs/43198951304). The current full-tree promotion was completed in [43200636495](https://github.com/14march93/mt8163_audio_engine/actions/runs/43200636495).
+The extracted tree includes the System/Vendor filesystem and three HEQ APK chunks. The HEQ chunks are not ZIP archives; they are retained because they reconstruct the original 168,811,733-byte APK and each chunk is individually hash-verified.
 
-- **1,416 archive members** extracted from the four retained archive sets.
-- **Approximately 559.99 MiB** total uncompressed archive content.
-- No retained archive set failed CRC or path-safety checks.
-- The persistent filesystem tree contains **1,386 files (551.39 MiB)** after removing 32 byte-identical .so copies from the flattened files2 listing and representing the 161 MiB HEQ APK as three GitHub-safe chunks.
-- The persistent tree contains 1,041 system files, 342 vendor files and 3 HEQ APK chunks.
-- The machine-readable manifest records each destination, source archive member, byte size and SHA-256.
-- The complete raw extraction is also uploaded as workflow artifact `mt8163-reference-materials-expanded` with 30-day retention.
+## Verified transfer and deletion
 
-The extracted tree is committed under `reference-materials/extracted/`. It includes all 766 files from `lib.zip`, all 325 files from `vendor_lib.zip`, every non-.so member from `files2.zip`, and the complete HEQ APK bytes split into three chunks. The 32 shared libraries from files2.zip were verified byte-identical to copies in the two library archives and are represented at their canonical system/vendor paths instead of duplicated.
+The one-time import workflow copied all 1,386 extracted firmware files from the former private location into the public repository. It verified each destination file's size and SHA-256 against the private source manifest before committing.
 
-## Confirmed redundancy
+- Import run: [43236544152](https://github.com/14vvp93/public_calculations/actions/runs/43236544152) — success.
+- Source commit: `44e132c8ac299ebfd58831232ec6b6f64ae8f769`.
+- Extracted manifest: `firmware/manifests/mt8163-extracted.json`.
+- Raw dump provenance: `firmware/manifests/mt8163-source-import.json`.
+- HEQ manifest: `firmware/manifests/heq-apk.json`.
 
-- Every one of the 36 files in the former `files.zip` had a byte-identical SHA-256 match in the larger `files2.zip` set. It was a redundant subset, not a distinct firmware revision, and has been removed.
-- `files2.zip` contains repeated copies of some files under alternate paths. Some are exact copies; some similarly named system/VNDK libraries are different builds and must not be collapsed by filename alone.
-- Some vendor audio HAL libraries appear identically in `files2.zip` and `vendor_lib.zip`. The vendor library archive preserves their actual `lib/hw` or `lib` placement.
-- Framework JAR entries in the partial `files2.zip` dump are tiny stubs (183–200 bytes); they are retained as evidence, while the meaningful compiled framework content is in OAT/VDEX/ART files.
+After verification, the 26 original split ZIP volumes were removed from the current working trees. The complete private `reference-materials/` directory was removed from the current private main branch. The obsolete private firmware-analysis workflows and archive-processing project scripts were also removed. Documentation and reports formerly stored in the public repository were copied into the private documentation tree before public cleanup.
 
-## Cleanup decisions
+## Workflow migration
 
-1. Keep source code, tests, analysis documents, CI workflows and diagnostic tools.
-2. Keep the original retained split archives and reference kernel module unchanged.
-3. Persist the full extracted system and vendor library trees and all remaining files2 members in filesystem layout.
-4. Split the 161 MiB HEQ APK into three files below GitHub's 100 MiB per-file limit; keep its original 17 archive volumes unchanged.
-5. Do not delete binary libraries merely because their names look unrelated. They may be dependencies of the vendor HAL.
-6. Remove only confirmed redundant repository-level files or obsolete workflows, and record each such removal here.
-7. Removed the redundant `files.zip` archive (all 36 members byte-identical to files2.zip) and superseded `.github/workflows/unpack-files.yml` workflow.
-8. Added a root `.gitignore` for generated build, analysis, extraction and editor files. The committed firmware reference tree is not ignored.
-9. Updated audio HAL and CD3313 client analysis workflows to use the extracted tree instead of the removed `files.zip` input.
+All nine firmware workers now read only from the public firmware dataset. They no longer check out the private project or require a private read token.
 
-## Safety and reproducibility
+End-to-end worker validation: [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570) — all nine jobs passed.
 
-- Archive extraction rejects path traversal and symlink entries.
-- Extraction is hash-aware and repeatable.
-- Every committed extracted file is recorded with its source archive member and SHA-256 in `reference-materials/extracted/manifest.json`.
-- The three HEQ APK chunks have individual hashes and a full APK hash in `reference-materials/extracted/heq/HEQ_APK_MANIFEST.json`.
-- Firmware inputs remain read-only research material; nothing in this cleanup process writes to a device.
-- Deletion is based on content identity and documented use, not filename guesses.
+Compute validation: [43239612147](https://github.com/14vvp93/public_calculations/actions/runs/43239612147) — both `verify` and `audio-inventory` passed.
 
-## Additional firmware findings
+Public infrastructure validation: [43239765157](https://github.com/14vvp93/public_calculations/actions/runs/43239765157) — passed.
 
-The full binary scan covered 1,117 native ARM objects. It identified direct factory `/dev/audiomux` and `/dev/carstatus` references inside `libcarservices_jni.so`, `libaudiopolicymanagerdefault.so` and `libaudioflinger.so`; three alternative DSP modules (`cd3313.ko`, `fy7604.ko`, `ak7604.ko`) expose an audiomux misc-device design; `carstatus.ko` has an unresolved audiomux interaction; and the primary HAL contains a substantial HFP call-audio path with NVRAM-backed parameters. These findings are recorded in [FIRMWARE_ANALYSIS_SUMMARY.md](FIRMWARE_ANALYSIS_SUMMARY.md) and [FACTORY_DEFECTS.md](../FACTORY_DEFECTS.md).
+Private documentation/link integrity: [43240367918](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43240367918) — passed.
 
-## Remaining work
+## Branch cleanup
 
-- Repository-wide Markdown link check passed: 173 local links across 61 Markdown files (sparse-checkout/Git-tree run 43203584442).
-- Continue call-graph and dependency-closure analysis, especially framework-level audiomux access and the primary HAL dependency graph.
-- Confirm which alternative DSP kernel module is selected on the target board.
-- Keep target-device validation separate from static and host-side evidence.
+The current trees of all four private branches were checked and cleaned:
+
+- `main`
+- `feature/cd3313-driver-rewrite`
+- `archive/14march93-main`
+- `ci/validate-sound-profile-fixes`
+
+No current branch tree contains `reference-materials/`, firmware archive volumes, or the old standalone firmware binaries. The unique CI-branch source change was preserved; its firmware files and duplicate firmware-analysis workflows were removed.
+
+## Remaining caveats
+
+1. **Git history was not rewritten.** Deleted archives and firmware blobs remain in historical commits. The current working trees are clean, but GitHub's stored repository size may not shrink materially until an approved history rewrite and force-push are performed. That operation is intentionally not done because it changes commit IDs and affects every clone/fork.
+2. The unused Actions secret `SOURCE_REPO_READ_TOKEN` is no longer referenced by either repository's current workflows. Remove it manually from Actions secrets in both repositories; the available GitHub connection does not expose secret deletion.
+3. The earlier Android test APK build dependency-resolution failure is separate from repository cleanup and remains a build-system follow-up.
+
+## Final decision
+
+The current branch contents now follow the requested separation: private code and documentation; public firmware and heavy compute. The public extracted dataset and all nine workers have been verified. No firmware-only files remain in the current private branch trees, and no original ZIP archives remain in the current public main tree.
