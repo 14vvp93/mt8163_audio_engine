@@ -406,7 +406,7 @@ jobs:
                   scanned += 1
                   for line in result.stdout.splitlines():
                       if rx.search(line):
-                          report.write(f"{path}: {line[:1000]}\\n")
+                          report.write(f"{path}: {line[:1000]}\n")
                           hits += 1
           print(f"Scanned {scanned} firmware binaries/configs; found {hits} FM direct-control or endpoint string hits")
           PY
