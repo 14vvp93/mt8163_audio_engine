@@ -1,0 +1,104 @@
+#include "mt8163_audio_core/audio_core.hpp"
+
+#include <cstdlib>
+#include <iostream>
+
+using mt8163_audio_core::AudioCore;
+using mt8163_audio_core::AudioMode;
+using mt8163_audio_core::MuteOwner;
+using mt8163_audio_core::RouteType;
+using mt8163_audio_core::SessionState;
+using mt8163_audio_core::SourceId;
+
+namespace {
+
+void require(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << "FAIL: " << message << '\n';
+        std::exit(1);
+    }
+}
+
+void test_initial_snapshot() {
+    AudioCore core;
+    auto snapshot = core.try_acquire_snapshot();
+    require(static_cast<bool>(snapshot), "initial snapshot is available");
+    require(snapshot->generation == 0U, "initial generation is zero");
+    require(snapshot->mode == AudioMode::Normal, "initial mode is normal");
+    require(snapshot->session_count == 0U, "initial session count is zero");
+    require(snapshot->master_mute_owners == 0U,
+            "initial master mute is clear");
+}
+
+void test_control_state_is_published() {
+    AudioCore core;
+    require(core.open_session(11U, SourceId::LocalMedia,
+                              RouteType::PrimaryPcm),
+            "media session opens");
+    require(core.transition_session(11U, SessionState::Active),
+            "media session becomes active");
+    require(core.set_master_mute(MuteOwner::AccPowerState, true),
+            "ACC master mute is accepted");
+    require(core.set_source_mute(SourceId::Navigation,
+                                 MuteOwner::UserRequest, true),
+            "navigation mute is accepted");
+    require(core.set_mode(AudioMode::InCall), "call mode is accepted");
+
+    auto snapshot = core.try_acquire_snapshot();
+    require(static_cast<bool>(snapshot), "published snapshot is available");
+    require(snapshot->generation == 5U,
+            "each state mutation advances snapshot generation");
+    require(snapshot->session_count == 1U, "session count is published");
+    require(snapshot->active_session_count == 1U,
+            "active session count is published");
+    require(snapshot->master_mute_owners == (1U << 0U),
+            "master mute owner mask is published");
+    require(snapshot->source_mute_owners[
+                static_cast<std::size_t>(SourceId::Navigation)] == (1U << 9U),
+            "source mute owner mask is published");
+    require(snapshot->mode == AudioMode::InCall,
+            "audio mode is published");
+    require(!core.snapshot_dirty(), "successful publication clears dirty flag");
+}
+
+void test_owner_scoped_clear_and_close() {
+    AudioCore core;
+    require(core.set_master_mute(MuteOwner::AccPowerState, true),
+            "ACC mute is set");
+    require(core.set_master_mute(MuteOwner::SilenceMode, true),
+            "silence mute is set");
+    core.clear_mute_owner(MuteOwner::AccPowerState);
+    require(core.mute_arbiter().master_muted(),
+            "clearing ACC does not clear silence owner");
+    require(core.open_session(22U, SourceId::BluetoothA2dp,
+                              RouteType::A2dpPcm),
+            "A2DP session opens");
+    require(core.close_session(22U), "A2DP session closes");
+    auto snapshot = core.try_acquire_snapshot();
+    require(snapshot->master_mute_owners == (1U << 1U),
+            "remaining mute owner is preserved in snapshot");
+    require(snapshot->session_count == 0U,
+            "closed session is removed from snapshot");
+}
+
+void test_invalid_mode_and_session() {
+    AudioCore core;
+    require(!core.set_mode(static_cast<AudioMode>(0xFFU)),
+            "invalid audio mode is rejected");
+    require(!core.open_session(0U, SourceId::LocalMedia,
+                               RouteType::PrimaryPcm),
+            "invalid session handle is rejected");
+    require(core.mode() == AudioMode::Normal,
+            "invalid mode does not alter state");
+}
+
+}  // namespace
+
+int main() {
+    test_initial_snapshot();
+    test_control_state_is_published();
+    test_owner_scoped_clear_and_close();
+    test_invalid_mode_and_session();
+    std::cout << "AudioCore coordinator tests passed\n";
+    return 0;
+}
