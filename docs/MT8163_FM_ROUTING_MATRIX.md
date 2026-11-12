@@ -155,3 +155,6 @@ The `/dev/fm` owner and its nonstandard ioctl copy sizes are documented in [MT66
 
 
 The paired `wmt_drv.ko` (Build ID `c2e5f3477920471011b2d929be212100b0d41ff8`; SHA-256 `90d31e43f4883f9e3cf707cc0ae351672afa2c57ab98d7c866b7efd0d1fb1e8b`) contains a dedicated `wmt_plat_i2s_ctrl()` entry in its platform GPIO-control function table. That routine checks `gpio_ctrl_info` offsets `0x240`, `0x26c`, and `0x298`, reporting missing I2S CK, WS, or data-clock pin definitions. The actual pin values are not present in the supplied extracted tree because no DT/DTBO/boot image was found. See [MT6627_FM_DRIVER_ABI.md](MT6627_FM_DRIVER_ABI.md).
+
+
+The firmware module inventory includes several alternative tuner drivers (`qn8027`, `qn8035`, `si475x`, `tda7708LX`) alongside `fmradio_drv.ko`. The latter has a `depends=wmt_drv` dependency and exactly implements the HAL's `/dev/fm` ioctl values. The extracted init/config scan found no explicit module-load command, so the intended provider is identified statically but its live loaded state remains to be checked on the target.
