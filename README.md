@@ -55,6 +55,7 @@ Per-speaker PEQ or delay cannot be claimed through CD3313 alone.
 - [MTK filter-manager lifecycle and route selection](docs/MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md)
 - [ATCI ACF/HCF parameter protocol](docs/AUDIOCMD_ATCI_ACF_HCF_PROTOCOL.md)
 - [Android audio integration gate](docs/ANDROID_AUDIO_INTEGRATION_GATE.md)
+- [DSP insertion-point decision](docs/MT8163_DSP_INSERTION_POINT_DECISION.md)
 - [MTK audio command service / ACF path](docs/MTK_AUDIO_COMMAND_SERVICE.md)
 - [HEQ APK static analysis](docs/HEQ_APK_ANALYSIS.md)
 - [HEQ decompiled algorithm analysis](docs/HEQ_ALGORITHM_ANALYSIS.md)
