@@ -252,3 +252,24 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - [ ] Confirm the vendor kernel's `__check_object_size` / hardened-usercopy implementation and configuration.
 - [ ] Reconcile every command ID and ensure the host allowlist is complete without importing standalone-only behavior.
 - [ ] Keep production transport detached; no physical-device or hardware-write validation has been performed.
+
+
+### P0-A follow-up — command semantics and write allowlist hardening
+
+- Recovered `0x09` semantics from the paired vendor module's DWARF symbol/dataflow: it sets `volume_max`, default 40; `set_master_volume()` rejects requested steps above this value.
+- Added `make_master_volume_max_command()`, parser/encoder validation for 0..40, and `EmulatorState::master_volume_max` with default 40. The emulator now rejects a volume step above the configured maximum. This prevents a replacement-side out-of-bounds volume-table index that the factory callback does not visibly guard against when `volume_max` is set above 40.
+- Added parser/encoder checks for `0x03`: channel 0..6 and gain 0..3. These are safe replacement constraints; the optimized vendor callback's complete channel/gain validation remains under review.
+- Removed write-direction `0xF0` from the write allowlist. Its read-direction operation is the separate fixed 8-byte chip-ID query; the vendor write branch performs no valid write operation. The host allowlist now has 11 write commands plus separately handled `0x09`, `0x56` and `0xA3`.
+- Added regression tests for `0x09` maximum bounds, volume steps above the configured maximum, invalid `0x03` channel/gain, and rejection of `0xF0` in the write parser/encoder/emulator.
+- CI run [43304787779](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43304787779) at code commit `8fee63d1` reports host tests PASS and ASAN/UBSAN PASS. Seeded libFuzzer is still running at this update; do not mark the complete safety workflow green until its result is available.
+- The previous test failures were traced to outdated test expectations (first, an emulator fixture reused state after testing the new volume limit; then, a test still attempted to encode an invalid input-gain command and a write-direction `0xF0`). Both fixtures were corrected to exercise the parser directly and isolate state.
+- Current documentation head at this update: `32de3e98a6099edd5c2a693d97fbfd95898d251f`.
+
+### Remaining P0-A closure items
+
+- [ ] Complete the `0x03` optimized callback channel/gain control-flow review and reconcile all accepted caller values.
+- [ ] Complete the Java/Binder caller inventory with exact method-to-command mapping and argument values, including the legacy extra JNI word.
+- [ ] Decide whether the replacement JNI bridge keeps a separately allocated, initialized compatibility word or adopts a new bounded ABI.
+- [ ] Confirm vendor `__check_object_size` and hardened-usercopy behavior from exact kernel source/config.
+- [ ] Reconcile all command IDs and branch-local side effects against the paired vendor build; keep production transport detached.
+- [ ] No target ABI, board topology, hardware I/O or device validation is complete.
