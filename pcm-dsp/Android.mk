@@ -9,6 +9,7 @@ LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/include \
     hardware/libhardware/include \
     system/media/audio/include \
+    system/core/include \
     system/core/libcutils/include
 LOCAL_CPPFLAGS := -std=c++17 -Wall -Wextra -Werror -fvisibility=hidden
 LOCAL_SHARED_LIBRARIES := liblog
