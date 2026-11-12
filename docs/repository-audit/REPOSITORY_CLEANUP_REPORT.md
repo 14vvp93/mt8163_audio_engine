@@ -6,6 +6,8 @@ Audit target: `14march93/mt8163_audio_engine`, working branch `feature/cd3313-dr
 
 The audit covers the tracked tree, project documentation, source/test layout, workflows, and all supplied ZIP archive sets. Original firmware inputs are treated as evidence and are not edited in place.
 
+After cleanup, the working branch contains 1,577 tracked files. Their raw checked-out size is approximately 928.88 MiB; most of that is the retained firmware evidence plus the complete extracted filesystem tree, not generated build output. This is a raw tree total, not the compressed Git repository size.
+
 ## Current tracked layout
 
 | Area | Responsibility | Decision |
