@@ -14,6 +14,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Repository structure and file-placement rules](REPOSITORY_STRUCTURE.md) — canonical map of the repository and cleanup conventions.
 
 - [Product goal and replacement scope](MT8163_AUDIO_ENGINE_GOAL.md) — agreed goal: one integrated engine replacing the factory vendor audio implementation.
+- [Phase 1 audit baseline](PHASE1_AUDIT_BASELINE.md) — consolidated firmware, framework and hardware findings.
+- [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md) — factory control/data-plane owners, mute arbitration and replacement responsibilities.
 - [Factory defect and risk register](FACTORY_DEFECTS.md) — confirmed static defects, unresolved cross-stack risks and closure criteria.
 - [Project status](PROJECT_STATUS.md) — evidence-backed progress, blockers and next steps.
 - [Repository cleanup report](repository-audit/REPOSITORY_CLEANUP_REPORT.md) — repository layout, archive handling and cleanup decisions.
