@@ -43,7 +43,7 @@ public:
 // Single-control-thread only: no mutex, allocation, retry or hidden worker.
 class HardwareCommandBroker {
 public:
-    void attach(HardwareBackend* backend) noexcept;
+    bool attach(HardwareBackend* backend) noexcept;
     HardwareResult dispatch(const HardwareCommand& command) noexcept;
     bool has_backend() const noexcept;
 
