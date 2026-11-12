@@ -112,6 +112,7 @@ AudioCoreSnapshot AudioCore::make_snapshot(
             mute_arbiter_.source_owner_mask(source);
     }
     result.mode = mode_;
+    result.sessions = sessions_.records();
     result.session_count = static_cast<std::uint8_t>(sessions_.size());
     result.active_session_count = static_cast<std::uint8_t>(
         sessions_.count(SessionState::Active));
