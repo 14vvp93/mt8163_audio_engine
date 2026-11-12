@@ -86,11 +86,13 @@ void test_cd3313_legacy_reason_mapping() {
     MuteArbiter mute;
     mute.set_master(MuteOwner::AccPowerState, true);
     mute.set_master(MuteOwner::SilenceMode, true);
+    mute.set_master(MuteOwner::SilenceTransition, true);
     mute.set_master(MuteOwner::BluetoothCallTransition, true);
     const std::uint32_t expected_master =
         (std::uint32_t{1U} << 2U) |
         (std::uint32_t{1U} << 1U) |
-        (std::uint32_t{1U} << 3U);
+        (std::uint32_t{1U} << 3U) |
+        (std::uint32_t{1U} << 24U);
     require(cd3313_master_reason_mask(mute.master_owner_mask()) == expected_master,
             "master owners map to recovered CD3313 reason bits");
 
