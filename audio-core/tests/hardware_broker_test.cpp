@@ -9,7 +9,7 @@ namespace {
 
 void require(bool condition, const char* message) {
     if (!condition) {
-        std::cerr << "FAIL: " << message << '\\n';
+        std::cerr << "FAIL: " << message << '\n';
         std::exit(1);
     }
 }
@@ -135,6 +135,6 @@ int main() {
     test_semantic_commands_reach_backend();
     test_invalid_commands_never_reach_backend();
     test_backend_failure_is_propagated();
-    std::cout << "Hardware broker tests passed\\n";
+    std::cout << "Hardware broker tests passed\n";
     return 0;
 }
