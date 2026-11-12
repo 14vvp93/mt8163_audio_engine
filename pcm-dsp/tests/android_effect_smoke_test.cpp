@@ -42,6 +42,19 @@ void send_command(effect_handle_t handle,
     }
 }
 
+std::int32_t command_status(effect_handle_t handle,
+                             std::uint32_t code,
+                             std::uint32_t size,
+                             void* data) {
+    std::int32_t status = -999;
+    std::uint32_t reply_size = sizeof(status);
+    const std::int32_t transport =
+        (*handle)->command(handle, code, size, data, &reply_size, &status);
+    require(transport == 0, "effect command transport status");
+    require(reply_size == sizeof(status), "effect command reply size");
+    return status;
+}
+
 void set_u32(effect_handle_t handle, std::uint32_t id, std::uint32_t value) {
     std::array<std::uint8_t, offsetof(effect_param_t, data) + 8U> bytes{};
     auto* parameter = reinterpret_cast<effect_param_t*>(bytes.data());
@@ -140,6 +153,20 @@ int main() {
             "PCM16 stereo process succeeds");
     require(output[0] > 1500 && output[0] < 2600,
             "PCM16 preamp is applied in the software insert");
+
+    // A malformed replacement must not poison the last known-good config.
+    send_command(handle, EFFECT_CMD_DISABLE);
+    auto invalid_config = make_config(48000U, AUDIO_FORMAT_PCM_16_BIT);
+    invalid_config.outputCfg.samplingRate = 44100U;
+    require(command_status(handle, EFFECT_CMD_SET_CONFIG,
+                           sizeof(invalid_config), &invalid_config) == -EINVAL,
+            "mismatched SET_CONFIG is rejected");
+    send_command(handle, EFFECT_CMD_ENABLE);
+    std::fill(output.begin(), output.end(), 0);
+    require((*handle)->process(handle, &in_buffer, &out_buffer) == 0,
+            "processing continues after rejected configuration");
+    require(output[0] > 1500 && output[0] < 2600,
+            "rejected configuration preserves the previous active layout");
 
     // AudioFlinger continues processing an INSERT effect during STOPPING.
     // The final block must remain dry while -ENODATA ends the effect tail.
