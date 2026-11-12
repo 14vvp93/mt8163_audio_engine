@@ -228,3 +228,23 @@ The numeric ALSA card/PCM indexes are not statically encoded in `audio_device.xm
 The latest full-tree scan (workflow [run 43126583592](https://github.com/14march93/mt8163_audio_engine/actions/runs/43126583592)) found no `/odm/etc` policy XML and no `audio_policy_configuration_a2dp_offload_disabled.xml`; it found the standard vendor and system XML copies. The two Bluetooth property names exist in the policy manager and Bluetooth libraries, but no explicit values were found in the extracted `.prop` files. Since the special XML is absent and the vendor standard XML exists ahead of the system fallback, `/vendor/etc/audio_policy_configuration.xml` is the expected policy file. This is a static selection conclusion, not a live `dumpsys` observation.
 
 The same scan found no `fm_cust.cfg` file and no user-space `/proc/fm` writer. The MT6627 driver requests `fm_cust.cfg` through `request_firmware()`; if unavailable at runtime, only tuner threshold overrides are missing—the class-1 audio metadata remains as described above.
+## Stage completion status
+
+### Static firmware reconstruction complete
+- [x] Java `RadioService` FM mute path: inputPath 0 → CD3313 logical channel 0 (`RADIO`).
+- [x] Current paired CD3313 selector mapping: `RADIO` / `DAB` → Source 3; `AUX` / `AUX2` → Source 1; `ARM` → Source 2; `EXBT` → Source 4 (no external input pins).
+- [x] MT6627 init metadata: class 1, `aud_path=1`, I2S enabled, master, 32 kHz, pad `CONN`.
+- [x] Primary HAL branch: non-merge `FM_I2S_Playback` / `FM_I2S_Capture`; merge branch names also recovered.
+- [x] HAL sample-rate setter limitation: setter callback is unpopulated, ioctl returns `-1002`, HAL masks the result; PCM config reads current driver rate.
+- [x] Expected policy file: `/vendor/etc/audio_policy_configuration.xml`; vendor contains FM Tuner In, system copy does not.
+- [x] Runtime ALSA lookup mechanism: parser reads `/proc/asound/cards` and `/proc/asound/pcm`.
+- [x] Read-only ADB collector extended to capture the missing runtime evidence and pinctrl/Device Tree state.
+
+### Target-side validation still pending
+- [ ] Capture `/proc/asound/cards` and `/proc/asound/pcm` to resolve numeric card/PCM indexes.
+- [ ] Capture `dumpsys media.audio_policy` and `getprop` to verify the live policy and FM direct-control state.
+- [ ] Read `/proc/fm` and search common firmware locations for `fm_cust.cfg` on the actual unit.
+- [ ] Capture Device Tree and pinctrl state to identify the SoC I2S pads.
+- [ ] Correlate the physical FM tuner outputs with the AP I2S route and CD3313 RADIO input.
+
+The repository now contains the read-only collector at `tools/collect_mt8163_audio_diag.ps1`. It does not change device state. The remaining items require a live ADB connection to the head unit; static firmware artifacts cannot supply runtime ALSA indexes or prove physical board wiring.
