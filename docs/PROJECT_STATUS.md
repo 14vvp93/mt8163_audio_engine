@@ -87,7 +87,7 @@ Latest CI for the AudioCore foundation:
 
 Android ARMv7 build and verification — [run 43254584008](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254584008) — success. The mute arbiter (including MuteSnapshot), CD3313 compatibility mapper and session registry objects were verified as ELF32 ARM. The Android artifact was uploaded by the earlier verified package run [43254125094](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254125094).
 
-A read-only target inventory script is now available at [collect_mt8163_audio_runtime.sh](../scripts/device/collect_mt8163_audio_runtime.sh). It records modules, ALSA devices, policy candidates, audio services and process FDs without opening the vendor device nodes or changing hardware state. It has only been syntax-checked on the host; it has not been run on the physical head unit.
+A read-only target inventory script is now available at [collect_mt8163_audio_runtime.sh](../scripts/device/collect_mt8163_audio_runtime.sh). It records modules, ALSA devices, policy candidates, audio services and process FDs without opening the vendor device nodes or changing hardware state. Its Bash syntax check passed locally and in [Repository integrity run 43254908636](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43254908636); it has not been run on the physical head unit.
 
 Evidence classification:
 - **HOST VERIFIED:** AudioCore mute/compatibility and session-registry tests, PCM/DSP tests, stability lab and performance benchmark.
