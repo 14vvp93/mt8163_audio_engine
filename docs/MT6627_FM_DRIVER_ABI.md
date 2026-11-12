@@ -100,3 +100,8 @@ The focused inventory of the supplied firmware tree found no `.dts`, `.dtsi`, `.
 - Physical pinmux and board-level wiring from the tuner to CD3313 Source 3 and/or AP I2S.
 
 No real-device ioctl writes, I²C writes, GPIO changes, or route changes were performed.
+
+
+## Module dependency and runtime-load qualification
+
+The paired `fmradio_drv.ko` contains the module dependency string `depends=wmt_drv`, consistent with its use of the WMT connectivity/platform layer. The supplied init/config text scan found comments in both the vendor audio-HAL service RC and system audioserver RC stating that the `media` group is needed for `/dev/fm`. However, the scan found no explicit `insmod`, `modprobe`, or `modules.load` entry for `fmradio_drv.ko` or the alternative tuner modules in the extracted init/config set. The presence of the module and its exact matching ioctl ABI identifies the intended provider, but does not prove that this module is loaded on a live target. The other tuner modules (`qn8027.ko`, `qn8035.ko`, `si475x.ko`, `tda7708LX.ko`) are also present; their presence alone does not establish that they are selected or active.
