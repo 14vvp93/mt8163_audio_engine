@@ -38,7 +38,7 @@ The table below records the exact size-field guard visible in this vendor callba
 | `0x01` | size > 0 | +4 | Require 1 word |
 | `0x03` | no visible size guard | +4, +8 | Require the conservative 3-word threshold; do not infer vendor acceptance of short frames |
 | `0x04` | size > 2 | +4, +8, +12 | Require 3 words |
-| `0x09` | no visible size guard | +4 | Require 1 word; semantics remain opaque |
+| `0x09` | no visible size guard | +4 | Sets `volume_max`; default is 40 and `set_master_volume()` uses it as the upper bound |
 | `0x10` | size > 0 | +4 | Require 1 word |
 | `0x11` | size > 1 | +4, +8 | Require 2 words |
 | `0x12` | size > 1 | +4 | Require 2 words; second word remains unresolved |
@@ -51,7 +51,7 @@ The table below records the exact size-field guard visible in this vendor callba
 | `0xF0` write direction | no payload read; size-zero error branch | none | Do not model as a write operation; read-direction `0xF0` is a separate 8-byte static identifier query |
 | `0xF1` | size > 0 | +4 | Require 1 word |
 
-Unknown command IDs are dropped by the callback's default path after the queued object is freed. The special `0x56` and `0xA3` branches are outside the 12-entry command-length table. The `0x09` branch is present in this vendor build and stores the supplied word into a global field at the observed data offset; its user-visible semantics are not yet established.
+Unknown command IDs are dropped by the callback's default path after the queued object is freed. The special `0x56` and `0xA3` branches are outside the 12-entry command-length table. The `0x09` branch stores the supplied word into the `volume_max` data symbol at `.data + 0x5c`. The paired `set_master_volume()` function loads this field and rejects requested steps above it. The initial `.data` value is 40. Because the volume lookup table contains 41 entries (indices 0..40), the replacement validates `volume_max <= 40` before accepting the command; the factory callback itself does not visibly enforce that upper bound.
 
 ## 3. Corrected command 0x15 finding
 
@@ -84,7 +84,7 @@ The host parser preserves an explicitly supplied fifth word and does not synthes
 
 ## 6. Closure items
 
-- [ ] Reconcile the complete vendor callback control flow, including channel/gain value checks for `0x03`, all command IDs and branch-specific side effects.
+- [ ] Reconcile the complete vendor callback control flow, including channel/gain value checks for `0x03` and remaining branch-specific side effects.
 - [ ] Inventory all Java/Binder callers and their exact arrays.
 - [ ] Confirm vendor `__check_object_size` and hardened-usercopy behavior from the exact kernel source/config.
 - [ ] Preserve strict complete-payload checks in the replacement parser.
