@@ -1,104 +1,59 @@
-# GitHub Actions workflow audit
+# GitHub Actions workflow audit — 2026-11-12
 
-Audit branch: `feature/cd3313-driver-rewrite`
+## Repository ownership
 
-## Current inventory
+- Private `14vvp93/mt8163_audio_engine`: product builds, host tests, Android tests, repository integrity and operator-facing entry points.
+- Public `14vvp93/public_calculations`: firmware-only heavy analysis and compute workflows.
 
-The repository now contains 17 retained workflows:
+## Public reusable workers
 
-| Workflow | Responsibility |
-|---|---|
-| `analyze-audio-hal.yml` | Primary MT8163 Audio HAL ELF/symbol/relocation/disassembly and XML analysis |
-| `analyze-cd3313-ioctl.yml` | Focused CD3313 ioctl ABI analysis |
-| `analyze-cd3313.yml` | Full CD3313 module static analysis |
-| `analyze-firmware-images.yml` | Firmware image and device-tree inspection |
-| `analyze-firmware-libraries.yml` | Full library, VDEX/carservices, CD3313 and FM/WMT analysis |
-| `android-armv7.yml` | ARMv7 Android native build and DSP benchmark |
-| `android-effect-library.yml` | Android 9 effect library ABI build |
-| `audit-reference-archives.yml` | Archive integrity, full extraction, persistent filesystem tree and HEQ chunk verification |
-| `build-android-test-apk.yml` | Android bring-up/test APK build |
-| `decompile-heq.yml` | HEQ APK decompilation directly from committed, hash-verified APK chunks |
-| `firmware-audio-config-audit.yml` | Extracted firmware manifest/hash/XML and audio configuration validation |
-| `pcm-dsp-performance.yml` | DSP performance benchmark |
-| `pcm-dsp-stability-lab.yml` | DSP stability and stress tests |
-| `repository-integrity.yml` | Offline validation of local Markdown links |
-| `scan-audiomux-clients.yml` | Search extracted firmware for CD3313 userspace clients |
-| `test-cd3313-emulator.yml` | CD3313 emulator host and sanitizer tests |
-| `test-pcm-dsp.yml` | PCM DSP host tests |
+The nine public firmware workers read inputs from the public repository's own checkout. They do not check out private source code and do not require `SOURCE_REPO_READ_TOKEN`.
 
-## Confirmed cleanup
+| Workflow | Responsibility | Validation |
+|---|---|---|
+| `worker-analyze-audio-hal.yml` | HAL ELF, symbols, relocations, disassembly | Passed |
+| `worker-analyze-cd3313-ioctl.yml` | CD3313 ioctl ABI | Passed |
+| `worker-analyze-cd3313.yml` | CD3313 module static analysis | Passed |
+| `worker-analyze-firmware-images.yml` | Boot, recovery and DTBO inspection | Passed |
+| `worker-analyze-firmware-libraries.yml` | Extracted libraries, VDEX, CD3313 and FM/WMT analysis | Passed |
+| `worker-audit-firmware-integrity.yml` | SHA-256 manifest and HEQ APK verification | Passed |
+| `worker-decompile-heq.yml` | HEQ APK reassembly and JADX analysis | Passed |
+| `worker-firmware-audio-config-audit.yml` | Firmware manifest, XML and audio config audit | Passed |
+| `worker-scan-audiomux-clients.yml` | CD3313/audiomux userspace-client scan | Passed |
 
-- Removed `unpack-files.yml`: it only extracted the redundant `files.zip` archive and was superseded by the full archive pipeline.
-- Removed `reassemble-heq.yml`: HEQ is now committed as three verified APK chunks; decompilation reads those chunks directly and no longer needs to reassemble/extract the source ZIP.
-- Updated the primary HAL analysis and CD3313 client scan to read `reference-materials/extracted/`, not the deleted `files.zip`.
-- Reworked the firmware audio configuration audit to validate the committed manifest and XML directly instead of partially extracting split archives.
-- Removed all stale `files.zip` references from workflow files.
-- Added an offline Markdown link checker and a dedicated repository-integrity workflow.
-- Corrected the archive audit's branch handling: checkout, concurrency, rebase and push now use the triggering ref rather than always writing to the feature branch.
-- The remaining workflows have distinct build, test, reverse-engineering or validation purposes. No workflow installs firmware or writes to the target device.
+The nine-job end-to-end validation completed successfully in [run 43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
 
-## Workflow verification
+## Public compute entry point
 
-The following runs completed successfully against the full extracted tree:
+`compute.yml` exposes bounded tasks:
 
-- [Archive extraction, tree promotion and HEQ chunk verification — 43201056884](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201056884)
-- [Firmware manifest/hash/XML audit — 43201262083](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201262083)
-- [Primary HAL analysis — 43201246997](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201246997)
-- [CD3313 userspace client scan — 43201256048](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201256048)
+- `inventory`
+- `verify`
+- `all-light`
+- `audio-inventory`
 
-The full-library/VDEX/FM analysis completed successfully in [run 43201322049](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201322049), scanning 1,117 native ARM objects. The HEQ decompile workflow also passed in [run 43201591594](https://github.com/14march93/mt8163_audio_engine/actions/runs/43201591594) using the committed APK chunks.
+The two full compute validation tasks passed in [run 43239612147](https://github.com/14vvp93/public_calculations/actions/runs/43239612147).
 
-- [Repository integrity / Markdown link check — 43203584442](https://github.com/14march93/mt8163_audio_engine/actions/runs/43203308565): 173 local links across 61 tracked Markdown files passed using sparse checkout and the Git tree.
+## Infrastructure checks
 
-## Branch and permission notes
+- Public YAML parsing, Python compilation, firmware-tool tests and CLI help checks passed in [run 43239765157](https://github.com/14vvp93/public_calculations/actions/runs/43239765157).
+- Private Markdown link integrity passed in [run 43240367918](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43240367918).
 
-- Archive audit requires `contents: write` because it commits the generated manifest and extracted tree. All analysis-only workflows should use read-only permissions.
-- The archive audit now uses the triggering Git ref, so a run on main does not accidentally write to the feature branch.
-- Firmware/HAL analysis workflows are enabled on main and the current feature branch where useful. Build/test workflows retain their pull-request triggers where applicable.
-- Some specialized CD3313 and firmware-image workflows remain main/manual-triggered; they are not needed for this cleanup validation.
+## Removed from private project
 
-## Scope limitation
+The nine duplicated firmware-analysis workflows were removed from the private repository after their public equivalents passed end-to-end. The private repository retains product-owned Android builds, DSP/emulator tests, stability/performance tests, repository integrity and the two manual entry points that call public workers.
 
-This is a structural and execution audit of the retained workflows, their inputs and their latest cleanup-related runs. It is not a complete third-party action supply-chain audit or a guarantee that every workflow has passed on every branch.
+## Removed from public compute repository
 
+- The one-time private-firmware import workflow and its approval marker were removed after successful synchronization.
+- The obsolete archive-audit worker was replaced by the extracted-firmware integrity worker.
+- Temporary worker-validation harnesses and trigger files were removed after the successful test run.
+- Public project docs, analysis reports and placeholder analysis directories were moved to or consolidated in the private documentation tree.
 
-## Fresh portability pass — 2026-11-12
+## Security and operating notes
 
-A file-level pass was repeated across the 16 retained workflow files on
-`feature/cd3313-driver-rewrite`.
-
-- No workflow contains a hard-coded `14march93/mt8163_audio_engine` or
-  `14vvp93/mt8163_audio_engine` repository target in its executable workflow logic.
-- No workflow pins checkout or push operations to the old feature branch.
-- `audit-reference-archives.yml` is the only retained workflow found to push commits.
-  It checks out `${{ github.ref }}`, scopes concurrency to that ref, and pushes to
-  `${GITHUB_REF_NAME}`; it is therefore branch-portable. It requires
-  `contents: write`; analysis-only workflows should remain read-only.
-- Branch filters intentionally limit automatic runs. The current feature branch is
-  explicitly included in `analyze-audio-hal.yml`,
-  `analyze-firmware-libraries.yml`, `decompile-heq.yml`,
-  `firmware-audio-config-audit.yml`, and `scan-audiomux-clients.yml`.
-  `analyze-firmware-images.yml` and `test-cd3313-emulator.yml` are main-only.
-  These are trigger filters, not hard-coded checkout targets; manual dispatch remains
-  available where declared.
-- `android-effect-library.yml` pins its AOSP source checkout to
-  `android-9.0.0_r61`. `analyze-firmware-images.yml` clones mkbootimg without a
-  pinned commit, and `analyze-firmware-libraries.yml` clones vdexExtractor without
-  a pinned commit; these are reproducibility follow-ups.
-- Retained workflows use major-version action tags such as `actions/checkout@v5`.
-  Full-SHA action pinning and a third-party supply-chain review remain separate work.
-
-## Separation plan for the public compute repository
-
-The public compute worker is initialized at
-`14vvp93/public_calculations`. The following reverse-engineering and firmware-data
-jobs are compute candidates: HAL/CD3313/firmware-image/library analysis, archive
-inventory and extraction, HEQ decompilation, firmware audio-config audit, and
-audiomux-client scanning. Product build/release jobs and product-facing tests should
-remain indexed by the canonical product repository until their source checkout and
-artifact contracts are deliberately moved. Do not duplicate the authoritative
-product implementation in the worker repository.
-
-Moving a job is not complete merely because its YAML is copied. Its input paths,
-source ref, tool versions, artifact schema, permissions, output retention, and
-report destination must be adapted and tested in the worker repository.
+- Public workers require only read access to their own public repository checkout.
+- No current worker references `SOURCE_REPO_READ_TOKEN`.
+- Keep public workflow permissions read-only unless a specific reviewed workflow needs a write permission.
+- Generated reports and large intermediate files are Actions artifacts; neither repository is automatically modified by analysis jobs.
+- The unused `SOURCE_REPO_READ_TOKEN` Actions secret should be manually removed from both repositories.
