@@ -9,7 +9,7 @@ This document is based on the ARM32 cd3313.ko analysis artifact produced by focu
 - Embedded source unit: drivers/misc/cd3313/cd3313.c
 - Kernel target identified by the existing reconstruction: Linux 4.9.117+.
 
-This is static reverse engineering. The event-queue implementation is imported from another kernel component and is not present in this module. No physical head-unit validation has been performed.
+This is static reverse engineering. The event-queue implementation is imported from another kernel component and is not present in this module. No physical head-unit validation has been performed. This document describes the standalone reference module identified by SHA-256 above, not the firmware-paired vendor candidate. For the paired vendor callback, use [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md).
 
 ## 1. ioctl request-word layout
 
@@ -62,7 +62,7 @@ The event_callback() branches for 0x56 (loudness) and 0xA3 (subwoofer GPIO) load
 
 This is an uninitialized-heap-data use in the callback path. It is not a confirmed privilege escalation or arbitrary memory disclosure, but it is a real malformed-request hazard. The emulator deliberately rejects 0x56 and 0xA3 frames that do not contain one complete 32-bit payload word; it does not reproduce the driver's stale-memory behavior.
 
-The 0x15 four-channel level handler has a related but separate mismatch: the callback checks only that the size field is greater than one before loading four 32-bit indices at offsets +4, +8, +12, and +16. A two- or three-word request therefore leaves one or two indices sourced from stale slab contents. Direct disassembly of the firmware-paired vendor module confirms that it then range-checks all four unsigned values against 15 before indexing the 16-entry cd3313_speaker table. The earlier claim that this vendor build lacked index checks was incorrect. The emulator imposes the stricter safe contract: four complete words, every index in 0..15.
+The 0x15 four-channel level handler has a related but separate mismatch: the callback checks only that the size field is greater than one before loading four 32-bit indices at offsets +4, +8, +12, and +16. A two- or three-word request therefore leaves one or two indices sourced from stale slab contents. In this standalone reference build, no complete 0..15 validation of all four values was found before table use. The firmware-paired vendor module differs: direct disassembly confirms it range-checks all four unsigned values against 15 before indexing the 16-entry cd3313_speaker table. The emulator imposes the safe contract for both variants: four complete words, every index in 0..15.
 
 
 
@@ -94,7 +94,7 @@ The DWARF cmd_len_list is exactly 12 (command ID, minimum size-field) pairs:
 
 These are thresholds on the size field, not exact argument counts. Several handlers consume fewer words than the threshold. One handler consumes more:
 
-- 0x15 reads four 32-bit speaker indices at offsets +4/+8/+12/+16, but the vendor callback checks only that the size field is greater than one. A two- or three-word frame can therefore leave missing arguments in stale slab memory. The paired vendor callback range-checks all four loaded indices against 0..15. The host parser deliberately requires four complete words and rejects shorter frames.
+- 0x15 reads four 32-bit speaker indices at offsets +4/+8/+12/+16, but this standalone callback checks only that the size field is greater than one. A two- or three-word frame can therefore leave missing arguments in stale slab memory. The paired vendor callback additionally range-checks all four loaded indices against 0..15. The host parser deliberately requires four complete words and rejects shorter frames for both variants.
 - 0x03 has a 3-word threshold but the optimized handler consumes the first two words.
 - 0x20 has a 3-word threshold but the optimized handler consumes only the first word.
 - 0x12 has a 2-word threshold although the optimized handler's state update uses the first word; the second word's purpose remains unresolved.
