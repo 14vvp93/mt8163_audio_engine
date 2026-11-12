@@ -16,6 +16,7 @@ AUDIO_VENDOR_CONFIG = {
     "audio_device.xml", "audio_effects.xml", "audio_em.xml", "audio_policy.conf",
     "audio_policy_configuration.xml", "audio_policy_volumes.xml",
     "audiocmdservice_atci", "audiocmdservice_atci.rc",
+    "android.hardware.audio@4.0-service-mediatek", "android.hardware.audio@4.0-service-mediatek.rc",
     "media_codecs_google_audio.xml", "media_codecs_mediatek_audio.xml",
 }
 
