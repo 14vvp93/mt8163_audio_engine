@@ -16,6 +16,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Archive inventory](repository-audit/ARCHIVE_INVENTORY.md) — complete extraction results and file-type counts.
 - [Duplicate analysis](repository-audit/DUPLICATE_ANALYSIS.md) — byte-identical files and redundant source archive findings.
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — retained workflows, cleanup decisions and verified runs.
+- [Firmware binary analysis summary](repository-audit/FIRMWARE_ANALYSIS_SUMMARY.md) — framework device-node hooks, alternative DSP modules, carstatus and HFP findings.
 
 ## CD3313 hardware and driver
 
