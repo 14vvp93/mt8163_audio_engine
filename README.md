@@ -19,7 +19,7 @@ Firmware is no longer stored in this private repository. See [repository structu
 
 The target is one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation end to end. HAL integration, policy/routing, audio core, PCM/mixer/DSP, source and state management, and CD3313 hardware control are internal subsystems of this one product—not separate products and not an add-on over the factory engine.
 
-The authoritative scope, ownership rules, priorities, replacement boundary, and definition of done are documented in [Project Roadmap](docs/PROJECT_ROADMAP.md) and [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). That goal supersedes the earlier interim approach described in the historical implementation notes below. Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
+The owner-approved decisions are: full replacement of factory vendor audio logic; one DSP engine covering all supported sources and directions with route-specific processing graphs; retain factory components and immutable artifacts for compatibility/rollback, without allowing competing runtime ownership. The authoritative details are in [Architecture Decisions — Full Replacement, All-Source DSP and Factory Retention](docs/ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md), [Project Roadmap](docs/PROJECT_ROADMAP.md) and [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
 
 ## Historical research notes (not the current product target)
 
