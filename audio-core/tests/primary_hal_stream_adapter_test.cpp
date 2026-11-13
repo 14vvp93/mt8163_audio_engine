@@ -283,6 +283,7 @@ int main() {
         adapter.audio_core().sessions().find(handle);
     CHECK(suspended_session != nullptr &&
           suspended_session->state == SessionState::Suspended);
+    const SessionToken old_playback_session = output.session();
     CHECK(output.close() == PcmResult::Ok);
     CHECK(!output.configured());
     CHECK(!output.started());
@@ -292,6 +293,13 @@ int main() {
     CHECK(adapter.open(handle, SourceId::Microphone,
                        RouteType::PrimaryCapturePcm,
                        PcmDirection::Capture) == PcmResult::Ok);
+    const SessionToken new_capture_session = adapter.token_for(handle);
+    CHECK(new_capture_session.valid());
+    CHECK(new_capture_session.handle == old_playback_session.handle);
+    CHECK(new_capture_session.generation != old_playback_session.generation);
+    CHECK(adapter.underlying().configure(old_playback_session, config) ==
+          PcmResult::NotOpen);
+    CHECK(adapter.underlying().close(old_playback_session) == PcmResult::NotOpen);
     PcmByteStreamAdapter input(adapter.underlying(), adapter.token_for(handle), PcmDirection::Capture);
     CHECK(input.configure(config) == PcmResult::Ok);
     CHECK(input.start() == PcmResult::Ok);
