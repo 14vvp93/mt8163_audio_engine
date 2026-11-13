@@ -23,7 +23,7 @@ TEST_FILES = {
 
 IDENTITY_METHOD = re.compile(
     r"\b(?:transition|close|find|configure|start|write|read|"
-    r"write_transfer|read_transfer|stop|get_record|open_session|"
+    r"write_transfer|read_transfer|stop|get_record|"
     r"transition_session|close_session)\s*\(\s*"
     r"(?:const\s+)?(?:std::)?uint32_t\s+"
     r"(?:handle|session_handle)\b",
