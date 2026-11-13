@@ -58,31 +58,34 @@ Do not widen a factory C ABI handle, reinterpret a pointer, or change Android fr
 
 ## Repository consumer audit (2026-11-14)
 
-The current repository-wide implementation surface is limited to these layers:
+The generation-bearing token has been propagated through the internal control and PCM lifecycle APIs:
 
-| Layer | Current raw-handle use | Required migration |
+| Layer | Implemented contract | Regression coverage |
 |---|---|---|
-| `SessionRegistry` | `open/find/transition/close(uint32_t)` | Assign and validate complete token |
-| `AudioCore` | `open_session/transition_session/close_session(uint32_t)` | Return token from open; require token for mutations |
-| `PrimaryHalStreamAdapter` | `open/configure/start/read/write/stop/close(uint32_t)` | Return token to stream owner and require it for every operation |
-| `PcmStreamBroker` | Slot lookup and callback transfer keyed by `uint32_t` | Store/compare complete token at control and transfer boundaries |
-| `AudioCoreSnapshot` / `SessionRecord` | Snapshot publishes only `handle` | Publish complete token |
-| Host tests | Direct raw-handle calls across registry, coordinator, broker and adapter tests | Add same-handle-reopen stale-token regression at every layer |
+| `SessionRegistry` | Raw handle only at open; all lookup/transition/close operations require `SessionToken` | Same-handle reopen, foreign registry, mismatched/default token, slot reuse and sequence exhaustion |
+| `AudioCore` | Open returns token through output parameter; mutations require token | Snapshot publishes full token; stale token cannot mutate/close replacement |
+| `PrimaryHalStreamAdapter` | Open returns token through output parameter; all stream operations require token | Stale adapter token rejected after same-handle reopen |
+| `PcmStreamBroker` | All control and transfer APIs require token; records retain full token | Stale token rejected after same-handle reopen; transfer gate remains 32-bit lock-free |
+| `PcmByteStreamAdapter` | Stores and forwards complete token | Byte callbacks cannot resolve a replacement by raw handle |
+| `AudioCoreSnapshot` / `SessionRecord` | Publish complete token | Coordinator snapshot assertions |
+| Host tests | Production broker/adapter APIs are token-only; raw handle wrappers exist only in test harnesses to preserve lifecycle scenario readability | Stale-token regressions at registry, coordinator, broker and adapter layers |
 
-The production `primary-hal/src/primary_hal.cpp` bootstrap does not currently call AudioCore or the adapter. The Android effect/JNI sources also have no AudioCore session-lifecycle callsites. This is useful boundary evidence: the internal token migration can be completed before wiring the factory HAL ABI, without changing recovered Android C callback signatures.
+The generation is composed of a process-unique registry epoch and a monotonic per-registry sequence. The callback path does not perform 64-bit atomic operations: it first acquires the lock-free 32-bit transfer gate, then reads the immutable session generation. Close cannot change that generation until admitted callbacks drain.
 
-Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently in host tests; production integration remains absent. The migration must nevertheless convert the broker API itself rather than relying on the adapter as the only guard.
+The production `primary-hal/src/primary_hal.cpp` bootstrap does not currently call AudioCore or the adapter. The Android effect/JNI sources also have no AudioCore session-lifecycle callsites. The internal token migration therefore remains isolated from recovered Android C callback signatures and the factory HAL ABI.
+
+Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently limited to host tests; production integration remains absent.
 
 ## Migration order
 
-1. Add `SessionToken` and token equality/value validation.
-2. Convert `SessionRegistry` and its tests.
-3. Convert `AudioCore`, snapshots and coordinator tests.
-4. Convert `PcmStreamBroker` and broker tests.
-5. Convert `PrimaryHalStreamAdapter` and adapter tests.
-6. Search the complete repository for raw session-handle lifecycle calls; remove every internal raw-handle mutation path.
-7. Run host tests, AudioCore/PCM ThreadSanitizer, Android ARMv7 build and repository-integrity checks against the exact resulting commit.
-8. Only then permit the HAL integration workstream to consume the token API.
+1. Add `SessionToken` and value semantics. **Implemented.**
+2. Convert `SessionRegistry`, global registry epoch allocation and lifecycle tests. **Implemented.**
+3. Convert `AudioCore`, snapshots and coordinator tests. **Implemented.**
+4. Convert `PcmStreamBroker`, callback admission validation and broker tests. **Implemented; final TSAN confirmation pending.**
+5. Convert `PrimaryHalStreamAdapter`, `PcmByteStreamAdapter` and adapter tests. **Implemented; final TSAN confirmation pending.**
+6. Audit the complete repository for raw-handle mutation paths and remove every internal occurrence. **Final audit pending.**
+7. Run full host tests, ThreadSanitizer, Android ARMv7 build and repository-integrity checks against the exact final commit. **In progress.**
+8. Only then permit HAL integration to consume the token API. **Blocked on steps 6–7.**
 
 ## Automated P1 gate
 
@@ -90,12 +93,12 @@ The repository includes [AudioCore P1 Session Identity Gate](../.github/workflow
 
 The workflow has five required checks:
 
-1. Public API contract: verifies the generation-bearing token shape, propagation through all four public layers, absence of raw numeric-handle lifecycle overloads, and presence of stale-token/same-handle-reuse and generation-exhaustion regression coverage.
+1. Public API contract: verifies the generation-bearing token shape, propagation through all four public layers, absence of raw numeric-handle mutation overloads (the external correlation handle remains allowed only at open), and presence of stale-token/same-handle-reuse and generation-exhaustion regression coverage.
 2. Full host build and CTest suite.
 3. Full AudioCore/DSP ThreadSanitizer build and test suite.
 4. Android ARMv7 / API 28 cross-build and ELF architecture checks.
 5. Repository Markdown/workflow integrity.
 
-The final `P1 COMPLETE` job succeeds only when every required job succeeds. Until the API migration and required tests are implemented, the contract check is expected to fail. This is intentional: the workflow is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
+The final `P1 COMPLETE` job succeeds only when every required job succeeds. The workflow is expected to remain red until the full regression suite and all verification jobs pass. It is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
 
 No device validation is implied by this host/API contract.
