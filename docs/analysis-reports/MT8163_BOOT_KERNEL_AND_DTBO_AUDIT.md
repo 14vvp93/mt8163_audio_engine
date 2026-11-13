@@ -186,3 +186,17 @@ The three vendor modules share the `/dev/audiomux` misc-device name, but their v
 The recovered init script requests `cd3313.ko`, then `ak7604.ko`, then `fy7604.ko`. Therefore a plausible sequence is that the CD3313 module attempts to claim `/dev/audiomux` first if a device at address `0x44` acknowledges the one-byte write; the later drivers perform their own existence checks. This is a **static hypothesis**, not a runtime finding. It does not prove that CD3310EO ACKs the byte, that the module loads, or that any CD3313 command is compatible with CD3310EO.
 
 This comparison explains why a CD3313-named module may be present in a CD3310EO unit's firmware without establishing silicon identity. No module was loaded and no I2C operation was issued.
+
+
+## 10. Shared GPIO ownership and probe ordering — 2026-11-13
+
+A further disassembly pass found a second ordering dependency beyond the shared `/dev/audiomux` name.
+
+- The CD3313 `dsp_probe` first completes its one-byte I2C write check. On success it requests GPIO IDs `0x189` and `0x199` (among other GPIOs), then proceeds toward `misc_register`.
+- The AK7604 `dsp_probe` requests `0x189`, `0x182` and `0x199`. It checks each `gpio_request` result and exits its probe on a negative result. Its `ak7604_check_exist` call occurs only after these GPIO requests.
+- The FY7604 `dsp_probe` requests the same `0x189`, `0x182` and `0x199` IDs, checks each request result, and calls `fy7604_check_exist` only after the GPIO requests succeed.
+- The init script inserts CD3313 first, then AK7604, then FY7604 (lines 563–565 of the extracted `init.mt8163.rc`).
+
+Therefore, if the CD3313 probe succeeds and retains the shared GPIO requests, the later AK7604/FY7604 probes can fail at GPIO acquisition before their chip-existence checks. Combined with the shared misc-device name, this creates a strong static explanation for why CD3313 is the first candidate to own the audio-mux endpoint on this firmware.
+
+This is still conditional: the CD3313 probe must first receive a successful one-byte I2C transfer at its configured address, and runtime module/probe logs are unavailable. The disassembly does not prove that the physical CD3310EO acknowledged the write or that CD3313 register commands work on it. Do not attempt to verify this with a live I2C write.
