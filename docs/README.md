@@ -50,7 +50,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 ## MT8163 platform, HAL and vendor stack
 
 - [Primary Audio HAL analysis](MT8163_AUDIO_HAL_ANALYSIS.md)
-- [Android 9 ARM32 primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md) — pinned PPR1.180610.011 / AOSP r3 structure reference, offsets and unresolved vendor binary facts.
+- [Android 9 ARM32 primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md) — pinned PPR1.180610.011 / AOSP r3 reference, recovered factory device/stream wrappers, vtables and remaining anomalies.
+- [ARM32 ABI layout mirror](../audio-hal-abi/include/mt8163_android9_abi_layout32.h) — compile-time 32-bit layout model for factory module, device and stream wrappers.
 - [Audio HAL reconstruction](MT8163_AUDIO_HAL_RECONSTRUCTION.md)
 - [Vendor audio DSP stack](MT8163_VENDOR_AUDIO_DSP_STACK.md)
 - [MTK audio lifecycle](MT8163_MTK_AUDIO_LIFECYCLE.md)
@@ -93,6 +94,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [ADB audio and Device Tree diagnostics collector](../tools/README.md)
 - [Offline Markdown link checker](../scripts/repository/check_markdown_links.py)
 - [Primary HAL ELF/ABI audit](../tools/audit_primary_hal_binary.sh)
+- [Android APS2 relocation/vtable decoder](../tools/audit_android_packed_relocations.py)
+- [HAL ABI layout test](../audio-hal-abi/CMakeLists.txt)
 
 ## Repository areas
 
