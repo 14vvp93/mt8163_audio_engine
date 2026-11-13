@@ -110,7 +110,7 @@ Firmware archives and extracted firmware are maintained in `14vvp93/public_calcu
 - Android ARMv7 static-library/JNI build workflow.
 - Android 9 effect-library ABI scaffold and host smoke tests.
 - Non-installable Android 9 / ARM32 Primary HAL bootstrap with exported `HMI`, factory wrapper layout assertions and a fail-closed module-open entry point.
-- NDK r27c cross-build of the bootstrap verified as ELF32 ARM with factory SONAME and a 128-byte `GLOBAL DEFAULT` `HMI` symbol; see [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This does not satisfy the complete factory-HAL build gate.
+- NDK r27c cross-build of the bootstrap verified as ELF32 ARM with factory SONAME and a 128-byte `GLOBAL DEFAULT` `HMI` symbol; see [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This verifies the factory ABI reference only; the factory HAL remains the retained runtime component.
 - Read-only device diagnostics collectors.
 - Static FM direct-I2S/capture, A2DP and HFP/SCO route investigations.
 
@@ -161,7 +161,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 **Exit gate:** lifecycle, concurrency and error recovery are sanitizer-clean; backend endpoints are based on measured target evidence, not guessed indexes.
 
-### P2 — Recover and build the factory-compatible Android 9 primary HAL
+### P2 — Preserve the factory HAL and build a narrow Android 9 integration adapter
 
 - [x] Add CI workflow to fetch the immutable factory HAL artifact from `public_calculations` and verify its expected size/SHA-256 before audit.
 - [x] Verify factory artifact identity, ELF32 ARM EABI5, exported `HMI`, SONAME and dynamic dependencies in GitHub Actions.
@@ -309,7 +309,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 2. Resolve Android 9 vendor linker namespace configuration and pin the matching ALPS/MediaTek headers.
 3. Trace external callers and semantics of private device-tail callbacks.
 4. Run the read-only target diagnostic collector and record runtime ownership/topology.
-5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
+5. Implement the narrow selected-profile integration adapter and compile it for ARM32 without hardware writes; do not replace the retained factory primary HAL.
 6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
 7. [x] Add a DSP-visibility policy separate from source/transport route validity; verify system sounds, A2DP offload, HFP/SCO bridge, microphone echo-reference, FM direct/capture and analog-only input classifications. Next: integrate the first verified media route at the stereo-preserving boundary.
 8. Add every source adapter incrementally, including A2DP with DSP-visible PCM, FM direct/capture, analog-input digitization where hardware supports it, complete HFP/SCO, microphone/uplink and echo-reference paths. No source class is permanently excluded from final DSP scope.
