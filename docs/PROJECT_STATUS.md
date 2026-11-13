@@ -134,11 +134,11 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Factory ELF/HMI/APS2 audit, stream-method and stream-manager disassembly, full shared-library scan (1,052 libraries), and MediaTek HIDL 4.1 bridge disassembly: PASS — [run 43400741972](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972/artifacts/14024862263).
-- AudioCore TSAN: PASS on feature HEAD `09b42d6893a36874961784f57817c299d9838779` — [run 43401220686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220686).
-- PCM Stream Broker TSAN: PASS on the same feature HEAD — [run 43401220580](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220580).
-- Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on the same feature HEAD — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
-- Repository Integrity: PASS on feature commit `5c6340c9395d3554756de3455b903edc8fceabc1` — [run 43400360902](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400360902). Later changes add ABI assertions/C test and documentation; no production runtime HAL was introduced.
+- Factory ELF/HMI/APS2 audit, stream/manager disassembly, 1,052-library symbol/string scan, MediaTek HIDL 4.1 bridge, HIDL service executable, ATCI executable and init registration: PASS — [run 43401616001](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401616001). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401616001/artifacts/14024364994).
+- AudioCore TSAN: PASS on feature commit `f430d39c126551d882f4d810b250e091c202ae10` — [run 43401615897](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401615897).
+- PCM Stream Broker TSAN: PASS on the same feature commit — [run 43401615795](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401615795).
+- Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on feature commit `09b42d6893a36874961784f57817c299d9838779` — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
+- Repository Integrity: PASS on feature commit `7921fd8432c12226ad5eda4952a111160e92618a` — [run 43401448779](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401448779). Later changes are workflow/docs only.
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
 
