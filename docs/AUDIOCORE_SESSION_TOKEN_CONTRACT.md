@@ -1,6 +1,6 @@
 # AudioCore Session Token Contract
 
-**Status:** proposed implementation contract for P1; raw-handle API remains in place until the migration is complete.
+**Status:** P1 implementation in progress; SessionRegistry, AudioCore, PcmStreamBroker and PrimaryHalStreamAdapter now use generation-bearing tokens. Final verification and remaining audit gates are still open.
 
 ## Problem
 
@@ -29,7 +29,7 @@ struct SessionToken {
 
 ## API propagation
 
-The migration must be atomic at the source/API level; do not leave a raw-handle mutation overload available as an alternate path.
+The migration must be atomic at the source/API level; do not leave a raw-handle mutation overload available as an alternate path. A raw correlation handle is accepted only at the open boundary.
 
 1. `SessionRegistry::open` accepts the external handle and returns the assigned `SessionToken` through an output parameter. `transition`, `close` and `find` accept only `SessionToken`.
 2. `SessionRecord` and `AudioCoreSnapshot` publish the complete token, not a handle-only identity.
