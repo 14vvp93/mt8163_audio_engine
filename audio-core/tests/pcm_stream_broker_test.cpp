@@ -500,7 +500,7 @@ void test_same_handle_reopen_rejects_stale_session_token() {
             "stale token cannot start replacement");
     require(broker.write(old_session, samples, 1U) == PcmResult::NotOpen,
             "stale token cannot write to replacement");
-    require(broker.read(old_session, const_cast<std::int16_t*>(samples), 1U) ==
+    require(broker.read(old_session, samples, 1U) ==
                 PcmResult::NotOpen,
             "stale token cannot read from replacement");
     require(broker.write_transfer(old_session, samples, 1U).result ==
