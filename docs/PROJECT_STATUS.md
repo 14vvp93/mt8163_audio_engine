@@ -2,7 +2,7 @@
 
 Updated: 2026-11-13  
 Reviewed historical audit baseline: `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-Current implementation HEAD at status update: `e33c75234b629a1efb7f225d8a606b557e6ddcb8`
+Current implementation HEAD at status update: `1ea6178a8de43f7b959e703a907b86480d66f580`
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This status file is a concise snapshot only. Do not use older execution logs to select priorities.
 
@@ -14,7 +14,7 @@ Final replacement target remains:
 
 `/vendor/lib/hw/audio.primary.mt8163.so`
 
-Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux kernel driver (`cd3313.ko`). Historical documents using CD3310EO are superseded by the user's latest explicit correction and must be reconciled without rewriting their forensic history.
+Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux kernel driver (`cd3313.ko`). Historical hardware labels are superseded by the canonical terminology above and must be reconciled without rewriting unrelated forensic findings.
 
 ## Implemented foundations
 
@@ -39,12 +39,11 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 
 ## Current CI evidence
 
-- PCM stream-broker ThreadSanitizer: [run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298) — PASS, including the new repeated handle-reuse test.
-- AudioCore ThreadSanitizer: [run 43375007312](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007312) — PASS.
-- PCM DSP host tests: [run 43375007291](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007291) — PASS.
-- Android ARMv7 build and DSP benchmark: [run 43375007287](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007287) — PASS.
-- PCM DSP stability/performance: [runs 43375007331 and 43375007550](https://github.com/14vvp93/mt8163_audio_engine/actions) — PASS.
-- These results apply to code commit `9ee683c`; subsequent commits are documentation/collector changes. The expanded collector also passed PCM broker TSAN [run 43375203331](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375203331) and repository integrity [run 43375253089](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375253089).
+- PCM stream-broker ThreadSanitizer: [run 43375546258](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546258) — PASS, including repeated same-handle close/reopen stress.
+- AudioCore ThreadSanitizer: [run 43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004) — PASS, including dirty snapshot retry with all slots pinned.
+- PCM DSP performance benchmark: [run 43375546124](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546124) — PASS.
+- PCM DSP host tests, stability lab and Android ARMv7 build were running at the last check and are not yet marked as passed.
+- Earlier collector-only changes passed PCM broker TSAN [run 43375203331](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375203331) and repository integrity [run 43375253089](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375253089).
 - No complete primary HAL build or device validation is claimed.
 
 ## Safety state
@@ -54,9 +53,10 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 - Keep unsupported routes/formats on bit-transparent bypass.
 - Preserve factory originals and rollback hashes.
 
-## Latest P1 change
+## Latest P1 changes
 
-The PCM broker no longer reads non-atomic stream direction metadata before transfer admission. This closes a lifecycle race window where a callback could inspect direction while close/reopen reset the same slot. A repeated same-handle close/reopen stress test passed under TSAN.
+- PCM broker direction metadata is read only after transfer admission. The repeated same-handle close/reopen stress test passed under TSAN.
+- AudioCore snapshot backpressure now has a dedicated regression: all three slots are pinned, a mutation commits while publication is blocked, then retry after a slot release publishes the latest complete state. This passed AudioCore TSAN.
 
 ## P0 collector update
 
@@ -64,4 +64,4 @@ The PowerShell collector now records PCM substream status, device-node metadata,
 
 ## Next action
 
-Run the read-only target inventory from [tools/README.md](../tools/README.md), then share the generated ZIP after reviewing private log/property data. Continue host-side HAL ABI recovery without speculative hardware operations.
+Run the read-only target inventory from [tools/README.md](../tools/README.md), then share the generated ZIP after reviewing private log/property data. Continue host-side HAL ABI recovery without speculative hardware operations. The current AudioCore and PCM broker race regressions are verified; target inventory remains the P0 external evidence gate.
