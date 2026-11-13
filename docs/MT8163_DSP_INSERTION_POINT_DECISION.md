@@ -110,8 +110,11 @@ Whichever option is selected, a production adapter must:
 5. Use preallocated bounded scratch; no heap allocation, mutex, logging, or
    blocking operation in the real-time callback.
 6. Publish immutable parameter snapshots from a control thread.
-7. Bypass calls, SCO, microphone/capture, FM, HDMI, and unknown handlers
-   until each route is separately mapped.
+7. Use a safe temporary bypass for calls, SCO, microphone/capture, FM, HDMI,
+   and unknown handlers at this specific adapter until their dedicated routes
+   are mapped. The final product must provide DSP-visible processing graphs
+   for every supported source and direction; this media adapter is not the
+   permanent telephony/capture insertion point.
 8. Keep CD3313 control operations out of the PCM callback.
 9. Provide a hard disable/recovery path independent of replacing the vendor
    HAL.
