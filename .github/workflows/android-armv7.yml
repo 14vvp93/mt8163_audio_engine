@@ -11,11 +11,10 @@ on:
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
-      - ".github/workflows/android-armv7.yml"
   workflow_dispatch:
 
 concurrency:
-  group: android-armv7-${{ github.ref }}
+  group: android-armv7-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
