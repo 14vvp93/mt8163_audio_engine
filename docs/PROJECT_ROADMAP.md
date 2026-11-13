@@ -390,3 +390,10 @@ The MT8163 Audio Engine is complete only when:
 - PCM DSP host tests passed on [commit 5161fa5](https://github.com/14vvp93/mt8163_audio_engine/commit/5161fa519c65d84c73bc26446e4748d63a0c8802) (run [43474868715](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868715)) and final code HEAD [fb5a00e](https://github.com/14vvp93/mt8163_audio_engine/commit/fb5a00e0a1d38aed71571cd3b2db41773d90e509) (run [43474875981](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474875981)).
 - Android ARMv7 cross-build and ELF verification passed on both commits: [run 43474868710](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868710) and [run 43474876012](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474876012).
 - TSAN workflows are manual-dispatch workflows and were not triggered by these code commits. No hardware tests or hardware writes were performed.
+
+### 2026-11-14 — AudioCore session identity audit
+
+- Added regression coverage proving that a closed session's old handle cannot mutate or close a different session after its registry slot is reused with a different handle. Commit: `b794a08e66032df4ce3da44a0c533e7692014e99`.
+- Static review found an unresolved identity limitation: `SessionRegistry` accepts caller-supplied 32-bit handles. If a caller closes a session and later reopens a new session using the exact same numeric handle, a delayed operation carrying the old value is indistinguishable from an operation for the new session.
+- This cannot be fixed by an internal slot generation alone while the public API continues to accept and compare only the raw 32-bit handle. Before HAL integration, define a generation-bearing session token (or a rigorously enforced globally unique handle allocator) and propagate it through AudioCore and every adapter. Do not silently widen or reinterpret the current handle ABI without auditing all consumers.
+- The new regression test does not claim to solve same-value handle reuse. P1 remains open until the token contract and end-to-end stale-operation tests are implemented.
