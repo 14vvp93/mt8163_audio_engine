@@ -164,7 +164,8 @@ Do not fill these values from the AOSP reference table. They must be recovered f
 - ELF32 and ARM machine identity;
 - ARM EABI5 flags;
 - exported `HMI` in the dynamic symbol table;
-- SONAME, dependencies, program headers and exported symbols for manual review.
+- build ID, program/section headers, SONAME, dependencies, symbol versions, relocations and exported symbols for manual review;
+- a warning when the artifact size or SHA-256 differs from the recorded factory baseline.
 
 This tool is static evidence only. It does not establish callback semantics, runtime linker compatibility or device behavior. Repository CI checks its shell syntax.
 
