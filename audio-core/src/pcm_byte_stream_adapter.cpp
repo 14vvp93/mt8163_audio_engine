@@ -73,7 +73,7 @@ PcmResult PcmByteStreamAdapter::start() noexcept {
     return result;
 }
 
-PcmByteTransfer PcmByteStreamAdapter::transfer(void* buffer,
+PcmByteTransfer PcmByteStreamAdapter::transfer(const void* buffer,
                                                std::size_t byte_count,
                                                PcmDirection direction) noexcept {
     if (!valid_) return {PcmResult::InvalidArgument, 0U};
@@ -88,13 +88,13 @@ PcmByteTransfer PcmByteStreamAdapter::transfer(void* buffer,
 
     const PcmResult result = direction == PcmDirection::Playback
         ? adapter_.write(handle_, static_cast<const std::int16_t*>(buffer), frames)
-        : adapter_.read(handle_, static_cast<std::int16_t*>(buffer), frames);
+        : adapter_.read(handle_, const_cast<std::int16_t*>(static_cast<const std::int16_t*>(buffer)), frames);
     return {result, result == PcmResult::Ok ? byte_count : 0U};
 }
 
 PcmByteTransfer PcmByteStreamAdapter::write(const void* buffer,
                                             std::size_t byte_count) noexcept {
-    return transfer(const_cast<void*>(buffer), byte_count, PcmDirection::Playback);
+    return transfer(buffer, byte_count, PcmDirection::Playback);
 }
 
 PcmByteTransfer PcmByteStreamAdapter::read(void* buffer,

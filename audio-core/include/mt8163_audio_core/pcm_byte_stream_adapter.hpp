@@ -37,7 +37,7 @@ public:
     PcmDirection direction() const noexcept { return direction_; }
 
 private:
-    PcmByteTransfer transfer(void* buffer, std::size_t byte_count,
+    PcmByteTransfer transfer(const void* buffer, std::size_t byte_count,
                              PcmDirection direction) noexcept;
 
     PrimaryHalStreamAdapter& adapter_;
