@@ -259,8 +259,8 @@ The 68-byte vendor tail is populated as follows:
 | 160 | `xWayPlay_Stop` |
 | 164 | `xWayPlay_Write` |
 | 168 | `xWayPlay_GetFreeBufferCount` |
-| 172 | Alternate entry into the `xWayRec_Stop` forwarding thunk; expects the C++ object pointer directly |
-| 176 | `xWayRec_Stop` forwarding thunk; resolves the C++ object from the device wrapper |
+| 172 | `xWayRec_Start` |
+| 176 | `xWayRec_Stop` |
 | 180 | `xWayRec_Read` |
 | 184 | `ReadRefFromRing` |
 | 188 | `GetVoiceUnlockULTime` |
@@ -273,7 +273,24 @@ The 68-byte vendor tail is populated as follows:
 | 216 | `clearAudioParameterChangedCallback` |
 | 220 | Pointer to the `AudioALSAHardware` singleton object |
 
-The vendor tail is not part of the public AOSP audio HAL ABI. It is a private MediaTek contract and must be preserved only if corresponding vendor clients remain in the replacement architecture. The duplicate `xWayRec_Stop` entries have different first-argument conventions and must not be collapsed without tracing their callers.
+The vendor tail is not part of the public AOSP audio HAL ABI. It is a private MediaTek contract and must be preserved only if corresponding vendor clients remain in the replacement architecture. The earlier duplicate-`xWayRec_Stop` interpretation was incorrect: the factory constructor populates distinct `xWayRec_Start` (offset 172) and `xWayRec_Stop` (offset 176) entries.
+
+#### xWay and voice-unlock callback forwarding
+
+The factory implementation bodies were disassembled in [audit run 43404049682](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43404049682). They are forwarding adapters, not independent PCM engines:
+
+| Device offset | Adapter behavior |
+|---:|---|
+| 156 | `xWayPlay_Start(int)` calls `Play2Way::GetInstance()->Start()`; the integer argument is not read by this adapter |
+| 160 | `xWayPlay_Stop()` calls `Play2Way::GetInstance()->Stop()` |
+| 164 | `xWayPlay_Write(void*, int)` forwards buffer and byte count to `Play2Way::Write` |
+| 168 | `xWayPlay_GetFreeBufferCount()` returns `Play2Way::GetFreeBufferCount()` |
+| 172 | `xWayRec_Start(int)` calls `Record2Way::GetInstance()->Start()`; the integer argument is not read by this adapter |
+| 176 | `xWayRec_Stop()` calls `Record2Way::GetInstance()->Stop()` |
+| 180 | `xWayRec_Read(void*, int)` forwards buffer and byte count to `Record2Way::Read` |
+| 184 | `ReadRefFromRing(void*, unsigned int, void*)` forwards all three arguments to `AudioVUnlockDL::ReadRefFromRing` |
+
+The factory ELF exports the implementation classes `Play2Way`, `Record2Way` and `AudioVUnlockDL`, including their singleton accessors and core methods. This establishes the internal owner behind every callback in the first eight slots. The expanded scan of 1,052 system/vendor shared libraries and the two vendor audio service executables did not identify a separate named xWay client. It cannot exclude clients that call the private device-tail offsets indirectly.
 
 The audit helper `tools/audit_android_packed_relocations.py` decodes APS2 relocations and reconstructs the C++ vtable symbol mapping. This avoids relying on `readelf -r`, which does not display the Android packed `.rel.dyn` records as ordinary REL entries.
 
