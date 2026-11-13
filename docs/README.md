@@ -24,6 +24,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## CD3313 hardware and driver
 
+- [CD3310EO identification and CD3313 compatibility boundary](CD3310EO_IDENTIFICATION_AND_COMPATIBILITY.md) — physical chip reported as CD3310EO; public datasheet not located; do not assume CD3313 driver compatibility.
+
 - [Protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
 - [Character-device read/write ABI](CD3313_CHAR_DEVICE_ABI.md)
 - [ioctl and event-queue ABI](CD3313_IOCTL_ABI.md)
@@ -40,6 +42,8 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [CD3313 host emulator](../cd3313-emulator/README.md)
 
 ## MT8163 platform, HAL and vendor stack
+
+- [MT8163 platform hardware reference](MT8163_PLATFORM_HARDWARE_REFERENCE.md) — public SoC specifications, target-firmware audio facts, limitations and open hardware evidence.
 
 - [Primary Audio HAL analysis](MT8163_AUDIO_HAL_ANALYSIS.md)
 - [Audio HAL reconstruction](MT8163_AUDIO_HAL_RECONSTRUCTION.md)
