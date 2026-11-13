@@ -47,6 +47,11 @@ struct PcmConfig {
     PcmFormat format{PcmFormat::Pcm16SignedLittleEndian};
 };
 
+struct PcmTransferResult {
+    PcmResult result{PcmResult::InvalidState};
+    std::size_t frames_transferred{0U};
+};
+
 constexpr bool is_pcm_transport_route(RouteType route) noexcept {
     switch (route) {
         case RouteType::PrimaryPcm:
@@ -105,6 +110,18 @@ public:
                             std::size_t frame_count) noexcept = 0;
     virtual PcmResult read(StreamToken token, std::int16_t* interleaved,
                            std::size_t frame_count) noexcept = 0;
+    virtual PcmTransferResult write_transfer(StreamToken token,
+                                             const std::int16_t* interleaved,
+                                             std::size_t frame_count) noexcept {
+        const PcmResult result = write(token, interleaved, frame_count);
+        return {result, result == PcmResult::Ok ? frame_count : 0U};
+    }
+    virtual PcmTransferResult read_transfer(StreamToken token,
+                                            std::int16_t* interleaved,
+                                            std::size_t frame_count) noexcept {
+        const PcmResult result = read(token, interleaved, frame_count);
+        return {result, result == PcmResult::Ok ? frame_count : 0U};
+    }
     virtual PcmResult stop(StreamToken token) noexcept = 0;
     virtual PcmResult close(StreamToken token) noexcept = 0;
 };

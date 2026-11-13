@@ -65,6 +65,11 @@ PcmResult fake_write(void* context, std::uint32_t, const std::int16_t* data,
     fake.next_write_result = PcmResult::Ok;
     return result;
 }
+PcmTransferResult fake_partial_write(void*, std::uint32_t, const std::int16_t* data,
+                                      std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
+    return {PcmResult::Ok, frames > 1U ? frames - 1U : 1U};
+}
 PcmResult fake_read(void* context, std::uint32_t, std::int16_t* data,
                     std::size_t frames) noexcept {
     auto& fake = *static_cast<FakeDevice*>(context);
@@ -299,6 +304,33 @@ void test_lifecycle_rejects_inflight_transfer() {
             "closed stream releases its backend slot");
 }
 
+void test_partial_transfer_contract() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    PcmDeviceOps ops = make_ops(fake);
+    ops.write_transfer = fake_partial_write;
+    EndpointPcmBackend backend(&endpoint, 1U, ops);
+    require(backend.valid(), "partial-transfer callback is accepted");
+
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok, "partial-transfer stream opens");
+    require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok &&
+            backend.start(token) == PcmResult::Ok, "partial-transfer stream starts");
+
+    const std::int16_t samples[8]{};
+    const PcmTransferResult partial = backend.write_transfer(token, samples, 4U);
+    require(partial.result == PcmResult::Ok && partial.frames_transferred == 3U,
+            "backend returns exact short frame count");
+    require(backend.write(token, samples, 4U) == PcmResult::BackendFailure,
+            "legacy status-only write refuses to hide a short transfer");
+    require(backend.stop(token) == PcmResult::Ok &&
+            backend.close(token) == PcmResult::Ok,
+            "partial-transfer stream closes cleanly");
+}
+
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
@@ -320,6 +352,7 @@ int main() {
     test_fm_capture_and_hfp_directions();
     test_state_and_error_boundaries();
     test_lifecycle_rejects_inflight_transfer();
+    test_partial_transfer_contract();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
     return 0;

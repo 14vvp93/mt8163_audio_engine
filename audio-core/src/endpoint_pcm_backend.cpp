@@ -5,6 +5,10 @@ namespace {
 constexpr std::uint32_t state_value(PcmStreamState state) noexcept {
     return static_cast<std::uint32_t>(state);
 }
+
+PcmTransferResult invalid_transfer(PcmResult result) noexcept {
+    return {result, 0U};
+}
 }
 
 EndpointPcmBackend::EndpointPcmBackend(const PcmEndpoint* endpoints,
@@ -14,7 +18,8 @@ EndpointPcmBackend::EndpointPcmBackend(const PcmEndpoint* endpoints,
     if (endpoints == nullptr || endpoint_count == 0U ||
         endpoint_count > kMaxPcmEndpoints || ops_.open == nullptr ||
         ops_.configure == nullptr || ops_.start == nullptr ||
-        ops_.write == nullptr || ops_.read == nullptr ||
+        (ops_.write == nullptr && ops_.write_transfer == nullptr) ||
+        (ops_.read == nullptr && ops_.read_transfer == nullptr) ||
         ops_.stop == nullptr || ops_.close == nullptr) return;
 
     for (std::size_t i = 0U; i < endpoint_count; ++i) {
@@ -145,34 +150,57 @@ PcmResult EndpointPcmBackend::start(StreamToken token) noexcept {
     return result;
 }
 
-PcmResult EndpointPcmBackend::transfer(StreamToken token, std::int16_t* buffer,
-                                       std::size_t frame_count,
-                                       PcmDirection direction) noexcept {
+PcmTransferResult EndpointPcmBackend::transfer(StreamToken token, std::int16_t* buffer,
+                                               std::size_t frame_count,
+                                               PcmDirection direction) noexcept {
     Slot* slot = find_slot(token);
-    if (slot == nullptr) return PcmResult::NotOpen;
+    if (slot == nullptr) return invalid_transfer(PcmResult::NotOpen);
     if (slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
-        return PcmResult::InvalidState;
+        return invalid_transfer(PcmResult::InvalidState);
     }
-    if (buffer == nullptr || frame_count == 0U) return PcmResult::InvalidArgument;
-    if (frame_count > kMaxEndpointPcmTransferFrames) return PcmResult::BufferTooLarge;
-    if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
+    if (buffer == nullptr || frame_count == 0U) {
+        return invalid_transfer(PcmResult::InvalidArgument);
+    }
+    if (frame_count > kMaxEndpointPcmTransferFrames) {
+        return invalid_transfer(PcmResult::BufferTooLarge);
+    }
+    if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) {
+        return invalid_transfer(PcmResult::WouldBlock);
+    }
 
-    // The slot may have been closed and reused after find_slot(). Revalidate
-    // identity and state only after acquiring the transfer gate.
     if (slot->token.load(std::memory_order_acquire) != token) {
         slot->transfer_busy.clear(std::memory_order_release);
-        return PcmResult::NotOpen;
+        return invalid_transfer(PcmResult::NotOpen);
     }
     if (slot->direction != direction ||
         slot->state.load(std::memory_order_acquire) != state_value(PcmStreamState::Started)) {
         slot->transfer_busy.clear(std::memory_order_release);
-        return PcmResult::InvalidState;
+        return invalid_transfer(PcmResult::InvalidState);
     }
 
-    const PcmResult result = direction == PcmDirection::Playback
-        ? ops_.write(ops_.context, slot->native_handle, buffer, frame_count)
-        : ops_.read(ops_.context, slot->native_handle, buffer, frame_count);
-    if (result == PcmResult::Xrun || result == PcmResult::DeviceLost) {
+    PcmTransferResult result{};
+    if (direction == PcmDirection::Playback) {
+        result = ops_.write_transfer != nullptr
+            ? ops_.write_transfer(ops_.context, slot->native_handle, buffer, frame_count)
+            : PcmTransferResult{ops_.write(ops_.context, slot->native_handle, buffer, frame_count),
+                                0U};
+    } else {
+        result = ops_.read_transfer != nullptr
+            ? ops_.read_transfer(ops_.context, slot->native_handle, buffer, frame_count)
+            : PcmTransferResult{ops_.read(ops_.context, slot->native_handle, buffer, frame_count),
+                                0U};
+    }
+
+    if (ops_.write_transfer == nullptr && direction == PcmDirection::Playback &&
+        result.result == PcmResult::Ok) result.frames_transferred = frame_count;
+    if (ops_.read_transfer == nullptr && direction == PcmDirection::Capture &&
+        result.result == PcmResult::Ok) result.frames_transferred = frame_count;
+
+    if (result.frames_transferred > frame_count ||
+        (result.result == PcmResult::Ok && result.frames_transferred == 0U)) {
+        result = invalid_transfer(PcmResult::BackendFailure);
+        slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
+    } else if (result.result == PcmResult::Xrun || result.result == PcmResult::DeviceLost) {
         slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     }
     slot->transfer_busy.clear(std::memory_order_release);
@@ -182,13 +210,29 @@ PcmResult EndpointPcmBackend::transfer(StreamToken token, std::int16_t* buffer,
 PcmResult EndpointPcmBackend::write(StreamToken token,
                                     const std::int16_t* interleaved,
                                     std::size_t frame_count) noexcept {
-    return transfer(token, const_cast<std::int16_t*>(interleaved), frame_count,
-                    PcmDirection::Playback);
+    const PcmTransferResult result = write_transfer(token, interleaved, frame_count);
+    if (result.result != PcmResult::Ok) return result.result;
+    return result.frames_transferred == frame_count ? PcmResult::Ok : PcmResult::BackendFailure;
 }
 
 PcmResult EndpointPcmBackend::read(StreamToken token,
                                    std::int16_t* interleaved,
                                    std::size_t frame_count) noexcept {
+    const PcmTransferResult result = read_transfer(token, interleaved, frame_count);
+    if (result.result != PcmResult::Ok) return result.result;
+    return result.frames_transferred == frame_count ? PcmResult::Ok : PcmResult::BackendFailure;
+}
+
+PcmTransferResult EndpointPcmBackend::write_transfer(
+    StreamToken token, const std::int16_t* interleaved,
+    std::size_t frame_count) noexcept {
+    return transfer(token, const_cast<std::int16_t*>(interleaved), frame_count,
+                    PcmDirection::Playback);
+}
+
+PcmTransferResult EndpointPcmBackend::read_transfer(
+    StreamToken token, std::int16_t* interleaved,
+    std::size_t frame_count) noexcept {
     return transfer(token, interleaved, frame_count, PcmDirection::Capture);
 }
 
@@ -240,8 +284,6 @@ PcmResult EndpointPcmBackend::close(StreamToken token) noexcept {
     }
     const PcmResult result = ops_.close(ops_.context, slot->native_handle);
     if (result == PcmResult::Ok) {
-        // Invalidate identity before releasing the gate. A callback that was
-        // already waiting on this slot must not enter a closed native handle.
         slot->token.store(0U, std::memory_order_release);
         slot->native_handle = 0U;
         slot->config = PcmConfig{};

@@ -79,24 +79,31 @@ The current core API is intentionally frame-based:
   mask.
 
 The new `PcmByteStreamAdapter` derives bytes per frame from its validated
-PCM16 `PcmConfig` and fixed direction. It rejects:
+PCM16 `PcmConfig` and fixed direction. The backend transfer contract now
+returns the actual number of frames transferred independently from the
+status, allowing a short successful transfer or a short transfer followed by
+an error to cross the byte adapter without claiming that the full request was
+completed. Legacy status-only backends retain an explicit all-or-error
+fallback. The adapter rejects:
 - null buffers;
 - zero or non-frame-aligned byte counts;
 - unsupported formats or channel counts;
 - unaligned PCM16 buffers;
 - frame counts exceeding the 2048-frame broker limit.
 
-The adapter is deliberately PCM16-only and currently relies on the backend's
-all-frames-or-error contract. It does not implement partial transfers or
-deferred error reporting. The Android direction-specific channel-mask
-conversion and stream callback tables remain separate integration work.
+The adapter is deliberately PCM16-only. It propagates partial byte counts
+alongside the backend status. The eventual Android stream wrapper must return
+a positive short byte count first and retain any accompanying error for the
+next callback, as required by the Android blocking stream contract. The
+direction-specific channel-mask conversion and stream callback tables remain
+separate integration work.
 
-The current `PcmBackend` result type reports success/failure for a requested
-frame count; it cannot represent a partial transfer. Before wiring it to
-Android `write/read`, either the platform PCM operation must guarantee
-all-requested-frames-or-error, or the backend contract must be extended to
-report the actual transferred frame count. Do not return the requested byte
-count after an unverified partial transfer.
+The `PcmBackend` transfer result now carries both status and actual frames
+transferred. Legacy implementations that only implement status-returning
+`write/read` use a compatibility fallback that treats success as a complete
+transfer. Platform adapters must use the extended callbacks whenever their
+underlying API can report partial progress. A status-only legacy caller rejects
+a short successful transfer rather than silently reporting it as complete.
 
 ## Findings against the current repository
 
@@ -104,10 +111,11 @@ count after an unverified partial transfer.
    callbacks and clears the output stream pointer. This is the correct
    fail-closed behavior while no verified endpoint/backend exists.
 2. `PrimaryHalStreamAdapter` is the C++ lifecycle bridge.
-   `PcmByteStreamAdapter` now adds a per-stream PCM16 byte/frame conversion
-   layer with callback admission and stop/close draining. Neither class owns
+   `PcmByteStreamAdapter` adds a per-stream PCM16 byte/frame conversion layer
+   with callback admission and stop/close draining. It now preserves exact
+   partial frame counts and accompanying backend errors. Neither class owns
    the Android `audio_stream_out` / `audio_stream_in` callback tables or
-   converts Android channel masks; partial transfers remain unsupported.
+   converts Android channel masks.
 3. `PcmStreamBroker` admits frame-based transfers and protects stop against
    in-flight I/O. Its lifecycle contract requires a serialized control
    context. The HAL must additionally prevent device/adapter destruction
@@ -157,7 +165,8 @@ are true:
 4. Device and stream lifetime is safe under concurrent read/write and
    serialized close/standby/stop operations.
 5. Tests cover malformed configs, overflow, non-frame-aligned byte counts,
-   partial I/O, backend errors, concurrent transfer/shutdown and slot reuse.
+   partial I/O propagation, backend errors, concurrent transfer/shutdown and
+   slot reuse. Android callback-level deferred-error tests remain outstanding.
 6. The endpoint map is derived from target runtime evidence; no card/device
    indices are inferred from factory names or enum values.
 

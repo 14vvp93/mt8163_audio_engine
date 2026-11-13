@@ -56,10 +56,23 @@ public:
         started = false;
         return PcmResult::Ok;
     }
+    PcmTransferResult write_transfer(StreamToken token, const std::int16_t* data,
+                                     std::size_t frames) noexcept override {
+        const std::size_t transfer_frames = next_transfer_frames == 0U
+            ? frames : (next_transfer_frames < frames ? next_transfer_frames : frames);
+        const PcmResult transfer_status = write(token, data, transfer_frames);
+        const PcmResult result = next_transfer_result;
+        next_transfer_frames = 0U;
+        next_transfer_result = PcmResult::Ok;
+        return {transfer_status == PcmResult::Ok ? result : transfer_status,
+                transfer_status == PcmResult::Ok ? transfer_frames : 0U};
+    }
     bool opened{false};
     bool configured{false};
     bool started{false};
     std::size_t writes{0U};
+    std::size_t next_transfer_frames{0U};
+    PcmResult next_transfer_result{PcmResult::Ok};
     PcmConfig config{};
     std::atomic<bool> block_writes{false};
     std::atomic<bool> write_entered{false};
@@ -96,6 +109,17 @@ int main() {
     CHECK(byte_write.result == PcmResult::Ok);
     CHECK(byte_write.bytes_transferred == 960U);
     CHECK(backend.writes == 240U);
+
+    backend.next_transfer_frames = 1U;
+    const PcmByteTransfer short_write = output.write(samples.data(), 16U);
+    CHECK(short_write.result == PcmResult::Ok);
+    CHECK(short_write.bytes_transferred == 4U);
+
+    backend.next_transfer_frames = 1U;
+    backend.next_transfer_result = PcmResult::Xrun;
+    const PcmByteTransfer partial_xrun = output.write(samples.data(), 16U);
+    CHECK(partial_xrun.result == PcmResult::Xrun);
+    CHECK(partial_xrun.bytes_transferred == 4U);
 
     const PcmByteTransfer misaligned_write = output.write(samples.data(), 959U);
     CHECK(misaligned_write.result == PcmResult::InvalidArgument);

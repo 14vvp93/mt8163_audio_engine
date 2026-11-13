@@ -34,12 +34,14 @@ struct PcmDeviceOps {
                       std::size_t) noexcept = nullptr;
     PcmResult (*stop)(void*, std::uint32_t) noexcept = nullptr;
     PcmResult (*close)(void*, std::uint32_t) noexcept = nullptr;
+    PcmTransferResult (*write_transfer)(void*, std::uint32_t, const std::int16_t*,
+                                        std::size_t) noexcept = nullptr;
+    PcmTransferResult (*read_transfer)(void*, std::uint32_t, std::int16_t*,
+                                       std::size_t) noexcept = nullptr;
 };
 
-// Route/direction-aware PCM adapter. The platform supplies only endpoints
-// verified from target runtime evidence. It serializes read/write callbacks
-// per stream and returns WouldBlock rather than waiting on an overlapping
-// callback. Lifecycle calls are serialized by the control plane.
+// Lifecycle calls are serialized by the control plane. Transfers are
+// non-blocking with respect to other callbacks on the same stream.
 class EndpointPcmBackend final : public PcmBackend {
 public:
     EndpointPcmBackend(const PcmEndpoint* endpoints, std::size_t endpoint_count,
@@ -53,6 +55,11 @@ public:
                     std::size_t frame_count) noexcept override;
     PcmResult read(StreamToken token, std::int16_t* interleaved,
                    std::size_t frame_count) noexcept override;
+    PcmTransferResult write_transfer(StreamToken token,
+                                     const std::int16_t* interleaved,
+                                     std::size_t frame_count) noexcept override;
+    PcmTransferResult read_transfer(StreamToken token, std::int16_t* interleaved,
+                                    std::size_t frame_count) noexcept override;
     PcmResult stop(StreamToken token) noexcept override;
     PcmResult close(StreamToken token) noexcept override;
 
@@ -74,8 +81,8 @@ private:
     Slot* find_slot(StreamToken token) noexcept;
     const Slot* find_slot(StreamToken token) const noexcept;
     StreamToken allocate_token() noexcept;
-    PcmResult transfer(StreamToken token, std::int16_t* buffer,
-                       std::size_t frame_count, PcmDirection direction) noexcept;
+    PcmTransferResult transfer(StreamToken token, std::int16_t* buffer,
+                               std::size_t frame_count, PcmDirection direction) noexcept;
 
     std::array<PcmEndpoint, kMaxPcmEndpoints> endpoints_{};
     std::size_t endpoint_count_{0U};

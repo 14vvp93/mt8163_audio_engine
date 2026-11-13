@@ -1,15 +1,26 @@
 #include "mt8163_audio_core/primary_hal_stream_adapter.hpp"
+
 namespace mt8163_audio_core {
-PrimaryHalStreamAdapter::PrimaryHalStreamAdapter(PcmBackend& backend) noexcept : streams_(backend) {}
-PcmResult PrimaryHalStreamAdapter::open(std::uint32_t handle, SourceId source, RouteType route, PcmDirection direction) noexcept {
+
+PrimaryHalStreamAdapter::PrimaryHalStreamAdapter(PcmBackend& backend) noexcept
+    : streams_(backend) {}
+
+PcmResult PrimaryHalStreamAdapter::open(std::uint32_t handle, SourceId source,
+                                        RouteType route, PcmDirection direction) noexcept {
     if (handle == 0U) return PcmResult::InvalidArgument;
-    if (validate_source_route(source, route) != RouteValidation::Supported || !is_valid_pcm_route_direction(route, direction)) return PcmResult::UnsupportedRoute;
+    if (validate_source_route(source, route) != RouteValidation::Supported ||
+        !is_valid_pcm_route_direction(route, direction)) return PcmResult::UnsupportedRoute;
     if (!audio_core_.open_session(handle, source, route)) return PcmResult::CapacityExceeded;
     const PcmResult result = streams_.open(handle, source, route, direction);
     if (result != PcmResult::Ok) (void)audio_core_.close_session(handle);
     return result;
 }
-PcmResult PrimaryHalStreamAdapter::configure(std::uint32_t handle, const PcmConfig& config) noexcept { return streams_.configure(handle, config); }
+
+PcmResult PrimaryHalStreamAdapter::configure(std::uint32_t handle,
+                                             const PcmConfig& config) noexcept {
+    return streams_.configure(handle, config);
+}
+
 PcmResult PrimaryHalStreamAdapter::start(std::uint32_t handle) noexcept {
     const PcmResult result = streams_.start(handle);
     if (result != PcmResult::Ok) return result;
@@ -19,13 +30,36 @@ PcmResult PrimaryHalStreamAdapter::start(std::uint32_t handle) noexcept {
     }
     return PcmResult::Ok;
 }
-PcmResult PrimaryHalStreamAdapter::write(std::uint32_t handle, const std::int16_t* samples, std::size_t frames) noexcept { return streams_.write(handle, samples, frames); }
-PcmResult PrimaryHalStreamAdapter::read(std::uint32_t handle, std::int16_t* samples, std::size_t frames) noexcept { return streams_.read(handle, samples, frames); }
+
+PcmResult PrimaryHalStreamAdapter::write(std::uint32_t handle,
+                                         const std::int16_t* samples,
+                                         std::size_t frames) noexcept {
+    return streams_.write(handle, samples, frames);
+}
+
+PcmResult PrimaryHalStreamAdapter::read(std::uint32_t handle,
+                                        std::int16_t* samples,
+                                        std::size_t frames) noexcept {
+    return streams_.read(handle, samples, frames);
+}
+
+PcmTransferResult PrimaryHalStreamAdapter::write_transfer(
+    std::uint32_t handle, const std::int16_t* samples, std::size_t frames) noexcept {
+    return streams_.write_transfer(handle, samples, frames);
+}
+
+PcmTransferResult PrimaryHalStreamAdapter::read_transfer(
+    std::uint32_t handle, std::int16_t* samples, std::size_t frames) noexcept {
+    return streams_.read_transfer(handle, samples, frames);
+}
+
 PcmResult PrimaryHalStreamAdapter::stop(std::uint32_t handle) noexcept {
     const PcmResult result = streams_.stop(handle);
     if (result != PcmResult::Ok) return result;
-    return audio_core_.transition_session(handle, SessionState::Suspended) ? PcmResult::Ok : PcmResult::InvalidState;
+    return audio_core_.transition_session(handle, SessionState::Suspended)
+        ? PcmResult::Ok : PcmResult::InvalidState;
 }
+
 PcmResult PrimaryHalStreamAdapter::close(std::uint32_t handle) noexcept {
     PcmStreamRecord record{};
     if (!streams_.get_record(handle, &record)) return PcmResult::NotOpen;
@@ -37,4 +71,5 @@ PcmResult PrimaryHalStreamAdapter::close(std::uint32_t handle) noexcept {
     if (result != PcmResult::Ok) return result;
     return audio_core_.close_session(handle) ? PcmResult::Ok : PcmResult::InvalidState;
 }
-}
+
+}  // namespace mt8163_audio_core

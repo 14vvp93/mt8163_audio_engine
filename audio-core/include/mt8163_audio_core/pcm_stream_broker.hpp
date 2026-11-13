@@ -25,10 +25,6 @@ struct PcmStreamRecord {
     PcmStreamState state{PcmStreamState::Closed};
 };
 
-// Fixed-capacity lifecycle adapter. Lifecycle calls and get_record() belong
-// to one serialized control context. Playback writes and capture reads may
-// run concurrently with control operations on other slots. stop() closes
-// transfer admission; if a transfer is in flight it returns WouldBlock.
 class PcmStreamBroker {
 public:
     explicit PcmStreamBroker(PcmBackend& backend) noexcept : backend_(backend) {}
@@ -41,6 +37,11 @@ public:
                     std::size_t frame_count) noexcept;
     PcmResult read(std::uint32_t handle, std::int16_t* interleaved,
                    std::size_t frame_count) noexcept;
+    PcmTransferResult write_transfer(std::uint32_t handle,
+                                     const std::int16_t* interleaved,
+                                     std::size_t frame_count) noexcept;
+    PcmTransferResult read_transfer(std::uint32_t handle, std::int16_t* interleaved,
+                                    std::size_t frame_count) noexcept;
     PcmResult stop(std::uint32_t handle) noexcept;
     PcmResult close(std::uint32_t handle) noexcept;
 
@@ -52,7 +53,6 @@ private:
         std::atomic<std::uint32_t> handle{0U};
         std::atomic<std::uint32_t> backend_token{0U};
         std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
-        // High bit admits realtime transfers; low bits count in-flight reads/writes.
         std::atomic<std::uint32_t> transfer_gate{0U};
         std::atomic<std::uint32_t> generation{0U};
         SourceId source{SourceId::None};
