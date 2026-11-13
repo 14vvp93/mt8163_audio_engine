@@ -374,3 +374,12 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - This is static analysis of the supplied firmware artifact only. It does not prove active runtime ownership, actual module bind, CD3310EO compatibility, valid hardware argument ranges or physical chip behavior. No hardware operation was performed.
 - Updated evidence report: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
 
+### P0-A follow-up — paired JNI/kernel framing and command-dispatch mismatch (2026-11-13)
+
+- Cross-checked the recovered Java wrapper map against the paired `cd3313.ko` `event_callback` dispatcher.
+- Explicit top-level callback branches are present for `0x01`, `0x03`, `0x04`, `0x09`, `0x10`, `0x11`, `0x12`, `0x15`, `0x20`, `0x55`, `0x56`, `0x5C`, `0xA3`, plus read/auxiliary IDs `0xF0` and `0xF1`.
+- Framework wrapper commands `0x50`, `0x57`, `0x58`, `0x59`, `0x5B`, `0x60`, `0xA1` and `0xA2` have no matching top-level dispatch branch in this inspected module. The module's default event path releases unrecognized events. Treat these as a framework/driver version or board-variant mismatch until another paired implementation is proven.
+- Correlated JNI and kernel framing: JNI sets the ioctl size field to Java array length + 1; kernel `cmd_ioctl` extracts that field, multiplies by four, and copies `4 * (N + 1)` bytes from the Java array pointer. This confirms a four-byte out-of-bounds source read for every `N)-element Java payload. `CONFIG_HARDENED_USERCOPY` does not validate Java array bounds.
+- The command map and mismatch are documented in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+- The framework/kernel artifact pair is still not proven to be the active path on the user's physical CD3310EO unit. Do not send any of these IDs to the physical chip. Production transport remains detached; no hardware I/O was performed.
+
