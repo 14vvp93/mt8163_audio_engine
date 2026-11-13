@@ -145,12 +145,15 @@ PcmTransferResult PcmStreamBroker::write_transfer(
         }
         const auto token = slot.backend_token.load(std::memory_order_relaxed);
         PcmTransferResult result = backend_.write_transfer(token, interleaved, frame_count);
-        slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
-        if (result.frames_transferred > frame_count ||
-            (result.result == PcmResult::Ok && result.frames_transferred == 0U)) {
-            return transfer_error(PcmResult::BackendFailure);
+        const bool invalid_result = result.frames_transferred > frame_count ||
+            (result.result == PcmResult::Ok && result.frames_transferred == 0U);
+        if (invalid_result) {
+            slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
+                             std::memory_order_release);
+            slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
         }
-        return result;
+        slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
+        return invalid_result ? transfer_error(PcmResult::BackendFailure) : result;
     }
     return transfer_error(PcmResult::NotOpen);
 }
@@ -195,12 +198,15 @@ PcmTransferResult PcmStreamBroker::read_transfer(
         }
         const auto token = slot.backend_token.load(std::memory_order_relaxed);
         PcmTransferResult result = backend_.read_transfer(token, interleaved, frame_count);
-        slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
-        if (result.frames_transferred > frame_count ||
-            (result.result == PcmResult::Ok && result.frames_transferred == 0U)) {
-            return transfer_error(PcmResult::BackendFailure);
+        const bool invalid_result = result.frames_transferred > frame_count ||
+            (result.result == PcmResult::Ok && result.frames_transferred == 0U);
+        if (invalid_result) {
+            slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
+                             std::memory_order_release);
+            slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
         }
-        return result;
+        slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
+        return invalid_result ? transfer_error(PcmResult::BackendFailure) : result;
     }
     return transfer_error(PcmResult::NotOpen);
 }
