@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -76,6 +77,7 @@ int main() {
         check(result == pcm_dsp::NormalPlaybackResult::Processed,
               "eligible primary media route is processed");
         check(output != input, "EQ must alter the eligible stereo signal");
+        const auto processed_reference = output;
         bool stereo_preserved = false;
         for (std::size_t frame = 0; frame < kFrames; ++frame) {
             if (output[frame * 2U] != output[frame * 2U + 1U]) {
@@ -134,6 +136,14 @@ int main() {
         expect_bypass(adapter, input, parameters, blocked,
                       "APDMNR tuning mode must bypass");
 
+        std::fill(output.begin(), output.end(), 0);
+        result = adapter.process(input.data(), output.data(), kFrames,
+                                 parameters, context);
+        check(result == pcm_dsp::NormalPlaybackResult::Processed,
+              "adapter can resume after a fail-open route transition");
+        check(output == processed_reference,
+              "bypass transition resets DSP state before re-entry");
+
         auto disabled_parameters = parameters;
         disabled_parameters.enabled = false;
         expect_bypass(adapter, input, disabled_parameters, context,
@@ -180,6 +190,12 @@ int main() {
                                  parameters, context);
         check(result == pcm_dsp::NormalPlaybackResult::Bypassed,
               "zero-frame buffer is a no-op bypass");
+
+        result = adapter.process(input.data(), output.data(),
+                                 std::numeric_limits<std::size_t>::max() / 4U + 1U,
+                                 parameters, context);
+        check(result == pcm_dsp::NormalPlaybackResult::InvalidBuffer,
+              "sample-count and byte-count overflow is rejected");
 
         std::vector<std::int16_t> overlapping(input.size() + 1U, 0);
         std::copy(input.begin(), input.end(), overlapping.begin());
