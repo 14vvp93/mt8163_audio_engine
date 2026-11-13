@@ -159,6 +159,39 @@ jobs:
             arm-linux-gnueabi-objdump -d -C --start-address=0x4170 --stop-address=0x4210 "$client"
           } 2>&1 | tee primary-hal-client-bridge.txt
 
+      - name: Disassemble MediaTek HIDL 4.1 bridge to legacy Primary HAL callbacks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bridge="factory-firmware/firmware/extracted/vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so"
+          interface="factory-firmware/firmware/extracted/vendor/lib/vendor.mediatek.hardware.audio@4.1.so"
+          test -s "$bridge"
+          test -s "$interface"
+          {
+            echo "===== HIDL implementation binary identity ====="
+            sha256sum "$bridge" "$interface"
+            echo
+            echo "===== HIDL implementation methods ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$bridge" |
+              grep -E 'implementation::MTKPrimaryDevice::(setupParametersCallback|getVoiceUnlockULTime|setVoiceUnlockSRC|startVoiceUnlockDL|stopVoiceUnlockDL|getVoiceUnlockDLInstance|setAudioParameterChangedCallback|clearAudioParameterChangedCallback)|implementation::Device::(setupParametersCallback|getVoiceUnlockULTime|setVoiceUnlockSRC|startVoiceUnlockDL|stopVoiceUnlockDL|getVoiceUnlockDLInstance|audioParameterChangedCallback|setAudioParameterChangedCallback|clearAudioParameterChangedCallback)' || true
+            echo
+            echo "===== Device::setupParametersCallback ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x1cadc --stop-address=0x1cc74 "$bridge"
+            echo
+            echo "===== Device parameter callback registration and teardown ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x1cc74 --stop-address=0x1ce00 "$bridge"
+            echo
+            echo "===== Device voice unlock methods ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x1d72c --stop-address=0x1d8c0 "$bridge"
+            echo
+            echo "===== MTKPrimaryDevice HIDL method forwarding ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x2633c --stop-address=0x26450 "$bridge"
+            echo
+            echo "===== HIDL interface method inventory ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$interface" |
+              grep -E 'BpHwMTKPrimaryDevice::(setupParametersCallback|getVoiceUnlockULTime|setVoiceUnlockSRC|startVoiceUnlockDL|stopVoiceUnlockDL|getVoiceUnlockDLInstance|setAudioParameterChangedCallback|clearAudioParameterChangedCallback)|IAudioParameterChangedCallback::audioParameterChangedCallback' || true
+          } 2>&1 | tee primary-hal-hidl-bridge.txt
+
       - name: Scan all extracted system and vendor shared libraries for private HAL callback references
         shell: bash
         run: |
@@ -226,5 +259,6 @@ jobs:
             primary-hal-stream-methods.txt
             primary-hal-private-client-scan.txt
             primary-hal-client-bridge.txt
+            primary-hal-hidl-bridge.txt
           if-no-files-found: error
           retention-days: 7
