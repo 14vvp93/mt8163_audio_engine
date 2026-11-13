@@ -166,7 +166,7 @@ enum mt8163_factory_vendor_callback_index {
     MT8163_VENDOR_XWAY_PLAY_STOP,
     MT8163_VENDOR_XWAY_PLAY_WRITE,
     MT8163_VENDOR_XWAY_PLAY_GET_FREE_BUFFER_COUNT,
-    MT8163_VENDOR_XWAY_REC_STOP_DIRECT,
+    MT8163_VENDOR_XWAY_REC_START,
     MT8163_VENDOR_XWAY_REC_STOP,
     MT8163_VENDOR_XWAY_REC_READ,
     MT8163_VENDOR_READ_REF_FROM_RING,
@@ -208,8 +208,38 @@ MT8163_ABI_STATIC_ASSERT(MT8163_STREAM_IN_UPDATE_SINK_METADATA == 9,
                          "audio_stream_in callback index mismatch");
 MT8163_ABI_STATIC_ASSERT(MT8163_DEVICE_SET_AUDIO_PORT_CONFIG == 22,
                          "audio_hw_device callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_PLAY_START == 0,
+                         "xWay playback start callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_PLAY_STOP == 1,
+                         "xWay playback stop callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_PLAY_WRITE == 2,
+                         "xWay playback write callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_PLAY_GET_FREE_BUFFER_COUNT == 3,
+                         "xWay playback free-buffer callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_REC_START == 4,
+                         "xWay recording start callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_REC_STOP == 5,
+                         "xWay recording stop callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_XWAY_REC_READ == 6,
+                         "xWay recording read callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_READ_REF_FROM_RING == 7,
+                         "reference-ring callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_GET_VOICE_UNLOCK_UL_TIME == 8,
+                         "voice-unlock time callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_SET_VOICE_UNLOCK_SRC == 9,
+                         "voice-unlock SRC callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_START_VOICE_UNLOCK_DL == 10,
+                         "voice-unlock start callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_STOP_VOICE_UNLOCK_DL == 11,
+                         "voice-unlock stop callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_GET_VOICE_UNLOCK_DL_INSTANCE == 12,
+                         "voice-unlock instance callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_SETUP_PARAMETERS_CALLBACK == 13,
+                         "parameter setup callback index mismatch");
+MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_SET_AUDIO_PARAMETER_CHANGED_CALLBACK == 14,
+                         "parameter-change registration callback index mismatch");
 MT8163_ABI_STATIC_ASSERT(MT8163_VENDOR_CLEAR_AUDIO_PARAMETER_CHANGED_CALLBACK == 15,
-                         "vendor callback index mismatch");
+                         "parameter-change clear callback index mismatch");
 
 MT8163_ABI_STATIC_ASSERT(sizeof(mt8163_hw_module_layout32_t) == MT8163_HW_MODULE_SIZE,
                          "hw_module_t ARM32 size mismatch");
