@@ -6,6 +6,8 @@ Stable branch: `main`
 
 > **Latest code HEAD:** `fb5a00e0a1d38aed71571cd3b2db41773d90e509`. The PCM broker now fails streams closed on terminal transfer errors, and `PrimaryHalStreamAdapter::stop()` synchronizes an active AudioCore session to `Suspended` after backend cleanup. Host PCM DSP tests and Android ARMv7 cross-build passed on this HEAD (Actions runs `43474875981` and `43474876012`). The preceding code commit `5161fa5` also passed both workflows (`43474868715`, `43474868710`).
 
+> **Latest regression coverage (2026-11-13):** commit [2f0d4f7](https://github.com/14vvp93/mt8163_audio_engine/commit/2f0d4f77f873471b5eb0149c13fed320d08e35c5) adds endpoint-backend tests for impossible transfer counts on both playback and capture. The backend must return `BackendFailure`, reject subsequent transfers, and require explicit stop/close cleanup. These tests are added but are **not yet CI-verified**; the last verified code baseline remains `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
+
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
 ## Branch model
