@@ -128,11 +128,15 @@ void test_foreign_registry_token_and_generation_exhaustion() {
     SessionRegistry first;
     SessionRegistry second;
     const SessionToken token = open_session(first, 7U);
+    const SessionToken foreign = open_session(second, 7U);
+    require(token.handle == foreign.handle &&
+            token.generation != foreign.generation,
+            "separate registries assign distinct token generations");
     require(second.find(token) == nullptr,
-            "token from another registry cannot identify a session");
+            "token from another registry cannot identify a same-handle session");
 
     SessionRegistry last_generation(
-        std::numeric_limits<std::uint64_t>::max());
+        std::numeric_limits<std::uint32_t>::max());
     const SessionToken last = open_session(last_generation, 8U);
     require(last.generation == std::numeric_limits<std::uint64_t>::max(),
             "maximum generation may be issued exactly once");
