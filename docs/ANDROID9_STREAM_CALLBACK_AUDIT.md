@@ -314,6 +314,23 @@ The current repository has no such dispatch owner. The fail-closed stream-open
 callbacks are therefore intentional. The broker and byte-adapter gates protect
 already-admitted transfers only; they do not authorize wrapper destruction.
 
+Current regression coverage in the repository:
+
+- `PcmByteStreamAdapter` tests pause an admitted output transfer and verify
+  stop/close return retryable `WouldBlock`, then succeed after the transfer
+  exits.
+- `PrimaryHalStreamAdapter` now has the corresponding capture-read race:
+  close rejects while an admitted read is blocked, later reads are rejected
+  after admission closes, and close succeeds after the read exits.
+- `PcmStreamBroker` tests cover transfer admission shutdown, stop retry, and
+  reopening the same logical handle while an earlier callback is active.
+
+These tests exercise callbacks after they have entered the adapter/broker
+admission gate. They do **not** reproduce a framework-dispatched raw callback
+paused before its first access to the stream wrapper. That pre-admission
+lifetime case still requires either verified framework-side quiescence or a
+stable dispatch owner and remains a release gate.
+
 Required deterministic tests before enabling stream callbacks:
 
 1. Pause a callback after framework dispatch but before its first wrapper
