@@ -3,7 +3,7 @@
 Date: 2026-11-13  
 Target: MT8163 / Android 9 / ARM32 EABI5  
 Factory artifact: `/vendor/lib/hw/audio.primary.mt8163.so`  
-Status: AOSP platform contract pinned to the matching Android release; vendor binary's actual API version and vendor extensions remain to be verified.
+Status: AOSP platform contract pinned; factory HMI/module/device ABI, vendor device tail, stream wrappers and APS2 vtables recovered from the SHA-256-verified binary. External vendor callback callers, exact route negotiation and linker namespace visibility remain open.
 
 ## 1. Exact platform release evidence
 
