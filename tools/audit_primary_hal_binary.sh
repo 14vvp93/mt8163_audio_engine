@@ -177,6 +177,17 @@ printf 'module author: %s\n' "$(read_cstring_at_vaddr "$author_pointer" "$rodata
 printf 'methods pointer: 0x%s\n' "$methods_pointer"
 printf 'hw_module_methods_t.open pointer: 0x%s\n' "$open_pointer"
 
+if command -v arm-linux-gnueabi-objdump >/dev/null 2>&1; then
+    echo
+    echo "===== Disassembly of factory module open() entry ====="
+    open_address=$((0x$open_pointer & ~1))
+    arm-linux-gnueabi-objdump -d \
+        --start-address="$open_address" \
+        --stop-address="$((open_address + 512))" "$binary"
+else
+    echo "WARNING: arm-linux-gnueabi-objdump unavailable; open() disassembly skipped."
+fi
+
 echo
 echo "===== Relocations targeting the HMI object ====="
 readelf -rW "$binary" | grep -E '001950[0-9a-fA-F]{2}' || true
