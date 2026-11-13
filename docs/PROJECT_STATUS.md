@@ -6,6 +6,13 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This status file is a concise snapshot only. Do not use older execution logs to select priorities.
 
+
+## Primary HAL artifact automation
+
+- Added `.github/workflows/primary-hal-binary-audit.yml` on `feature`.
+- The workflow sparsely checks out the factory `audio.primary.mt8163.so` from `14vvp93/public_calculations`, verifies its expected size and SHA-256, then runs the ELF/HMI audit script.
+- Workflow execution has not yet been observed; do not treat the binary audit as passed until its GitHub Actions run completes successfully and its output is reviewed.
+
 ## Branch model
 
 - `main` is the stable branch; no project changes were pushed to it.
