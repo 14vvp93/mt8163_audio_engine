@@ -1,3 +1,7 @@
+> **TERMINOLOGY UPDATE — 2026-11-13. Use CD3313EO for the physical IC and CD3313KO for the Linux driver (`cd3313.ko`). Any previous CD3310EO physical-identity wording in this historical analysis is superseded; protocol/driver findings remain static firmware evidence only.**
+
+---
+
 # CD3313 evidence reconciliation
 
 Date: 2026-11-12  
