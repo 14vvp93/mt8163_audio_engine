@@ -6,7 +6,7 @@
 **Working branch:** `feature`  
 **Stable branch:** `main`  
 **Latest verified AudioCore/PCM code baseline:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
-**Current feature HEAD:** `4c7bc2e63ceb64591f0720bdf6dcda5cc7f37d04` (docs/status commits may advance this independently)  
+**Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -279,10 +279,10 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### Current verified baseline
 
-- Repository Integrity: [43382264658](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264658), PASS on feature commit `4c7bc2e63ceb`.
-- AudioCore TSAN: [43382264635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264635), in progress on `4c7bc2e63ceb`.
-- PCM Stream Broker TSAN: [43382264632](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264632), in progress on `4c7bc2e63ceb`.
-- Prior feature commit `9d30241ab90d`: Repository Integrity, AudioCore TSAN and PCM Broker TSAN all PASS (runs 43382164716, 43382164693 and 43382164857).
+- Repository Integrity: [43382385597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385597), PASS on feature commit `1148555f1753`.
+- AudioCore TSAN: [43382385578](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385578), PASS on feature commit `1148555f1753`.
+- PCM Stream Broker TSAN: [43382385583](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385583), PASS on feature commit `1148555f1753`.
+- Documentation-only commits after `1148555` have separate validation runs; no source-code behavior changed in those commits.
 - Factory ELF/HMI/APS2 audit: [43381061217](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381061217), PASS.
 - Android 9 ARM32 ABI layout CMake/CTest: [43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046), PASS.
 - Earlier PCM DSP and Android ARMv7 runs are recorded in validation documents. Re-run them when relevant code changes; do not infer current code status from old run IDs.
@@ -317,6 +317,13 @@ The MT8163 Audio Engine is complete only when:
 ---
 
 ## 10. Change log
+
+### 2026-11-13 — factory route handler recovery
+
+- Confirmed output and input stream `open()` paths create route-specific handlers through `AudioALSAStreamManager`.
+- Identified playback handler classes for Normal, Voice, HFP Client, BTSCO, BTCVSD, FM Transmitter and HDMI.
+- Identified capture handler classes for Normal, Voice, FM Radio, BT and AEC.
+- Recorded that exact stream-attribute selection predicates and ALSA endpoint mappings still require method-level analysis and target runtime evidence.
 
 ### 2026-11-13 — factory Primary HAL ABI recovery
 
