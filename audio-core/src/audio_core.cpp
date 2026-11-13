@@ -6,21 +6,21 @@ AudioCore::AudioCore() noexcept
     : snapshots_(make_snapshot(0U)) {}
 
 bool AudioCore::open_session(std::uint32_t handle, SourceId source,
-                             RouteType route) noexcept {
-    if (!sessions_.open(handle, source, route)) return false;
+                             RouteType route, SessionToken* out_token) noexcept {
+    if (!sessions_.open(handle, source, route, out_token)) return false;
     publish_after_mutation();
     return true;
 }
 
-bool AudioCore::transition_session(std::uint32_t handle,
+bool AudioCore::transition_session(SessionToken token,
                                    SessionState next) noexcept {
-    if (!sessions_.transition(handle, next)) return false;
+    if (!sessions_.transition(token, next)) return false;
     publish_after_mutation();
     return true;
 }
 
-bool AudioCore::close_session(std::uint32_t handle) noexcept {
-    if (!sessions_.close(handle)) return false;
+bool AudioCore::close_session(SessionToken token) noexcept {
+    if (!sessions_.close(token)) return false;
     publish_after_mutation();
     return true;
 }
