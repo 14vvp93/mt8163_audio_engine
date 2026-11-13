@@ -401,7 +401,7 @@ void test_terminal_transfer_errors_fail_closed() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 2U, 240U};
-    const std::int16_t samples[2]{};
+    std::int16_t samples[2]{};
 
     require(broker.open(61U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
                 PcmResult::Ok, "XRUN stream opens");
@@ -441,7 +441,7 @@ void test_terminal_transfer_errors_fail_closed() {
             capture_record.state == PcmStreamState::Failed &&
             capture_record.backend_stop_required,
             "device loss marks capture failed and preserves stop requirement");
-    require(broker.read(62U, const_cast<std::int16_t*>(samples), 1U) ==
+    require(broker.read(62U, samples, 1U) ==
                 PcmResult::InvalidState,
             "capture admission closes after device loss");
     require(broker.stop(62U) == PcmResult::Ok,
