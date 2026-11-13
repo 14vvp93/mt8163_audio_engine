@@ -143,3 +143,45 @@ Whichever option is selected, a production adapter must:
 - [Normal speaker PCM format and mono-fold audit](MT8163_NORMAL_SPEAKER_PCM_FORMAT.md)
 - [MTK filter-manager lifecycle](MT8163_MTK_FILTER_MANAGER_LIFECYCLE.md)
 - [CD3313 register image and datasheet correlation](CD3313_REGISTER_IMAGE.md)
+
+
+## 10. CD3313EO analog-stage constraints
+
+The physical external processor is CD3313EO. Its manufacturer datasheet
+describes an analog signal processor with three stereo analog input pairs
+and four analog outputs. It provides input selection/gain, master volume,
+bass, treble, loudness and four independent output attenuators.
+
+This has four direct consequences for the PCM DSP integration:
+
+1. The CD3313EO is downstream analog processing/control, not a four-channel
+   PCM input endpoint. Do not connect `QuadEngine` to the Normal HAL stream
+   by inventing an FL/FR/RL/RR PCM layout.
+2. The recovered Normal HAL output is two-channel PCM. The initial production
+   DSP path must therefore be a stereo PCM16 processor at the verified
+   pre-fold boundary, with unsupported formats/routes left bit-transparent.
+3. The four CD3313 output attenuation values represent analog output-level
+   controls. They are not four independent parametric EQ chains.
+4. Tone, loudness, volume and gain ownership must be explicit. Do not stack
+   equivalent software and CD3313 stages without a documented gain budget
+   and listening/measurement evidence.
+
+Electrical/control constraints from the datasheet:
+- recommended chip supply: 6–10 V; typical 9 V; absolute maximum 10 V;
+- I2C 7-bit address: 0x44; maximum bus clock: 100 kbit/s;
+- maximum recommended input signal: 2 Vrms;
+- input gain: 0 to +11.25 dB in 3.75 dB steps;
+- master volume: 0 to -78.75 dB in 1.25 dB steps;
+- four output attenuators: 0 to -38.75 dB in 1.25 dB steps;
+- bass and treble controls: typically ±14 dB in 2 dB steps.
+
+These values constrain the analog-control design only. They do not establish
+the target board's actual supply, RC values, pin routing, amplifier gain or
+speaker wiring. Use the canonical
+[CD3313EO hardware reference](CD3313EO_HARDWARE_AND_DRIVER_REFERENCE.md)
+for pin and command details.
+
+No PCM callback may issue CD3313 ioctl/I2C commands. Any future CD3313
+control backend must run on AudioCore's serialized control context, remain
+disabled until runtime ownership and completion semantics are verified, and
+propagate transport errors without publishing unconfirmed hardware state.
