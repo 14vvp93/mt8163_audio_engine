@@ -76,6 +76,20 @@ PcmTransferResult fake_partial_write(void*, std::uint32_t, const std::int16_t* d
     return {PcmResult::Ok, frames > 1U ? frames - 1U : 1U};
 }
 
+PcmTransferResult fake_overreported_write(void*, std::uint32_t,
+                                          const std::int16_t* data,
+                                          std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
+    return {PcmResult::Ok, frames + 1U};
+}
+
+PcmTransferResult fake_overreported_read(void*, std::uint32_t,
+                                         std::int16_t* data,
+                                         std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
+    return {PcmResult::Ok, frames + 1U};
+}
+
 PcmTransferResult fake_device_lost_write(void*, std::uint32_t,
                                          const std::int16_t* data,
                                          std::size_t frames) noexcept {
@@ -419,6 +433,72 @@ void test_terminal_transfer_errors_fail_closed() {
     }
 }
 
+void test_impossible_transfer_counts_fail_closed() {
+    std::int16_t samples[4]{};
+
+    {
+        FakeDevice fake;
+        const PcmEndpoint endpoint{
+            RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+        };
+        PcmDeviceOps ops = make_ops(fake);
+        ops.write_transfer = fake_overreported_write;
+        EndpointPcmBackend backend(&endpoint, 1U, ops);
+        PcmBackend::StreamToken token = 0U;
+
+        require(backend.valid(), "overreported playback backend is valid");
+        require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                             &token) == PcmResult::Ok,
+                "overreported playback stream opens");
+        require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) ==
+                    PcmResult::Ok &&
+                backend.start(token) == PcmResult::Ok,
+                "overreported playback stream starts");
+
+        const PcmTransferResult result = backend.write_transfer(token, samples, 2U);
+        require(result.result == PcmResult::BackendFailure &&
+                    result.frames_transferred == 0U,
+                "playback frame count above request is rejected");
+        require(backend.write_transfer(token, samples, 2U).result ==
+                    PcmResult::InvalidState,
+                "invalid playback transfer closes callback admission");
+        require(backend.stop(token) == PcmResult::Ok &&
+                    backend.close(token) == PcmResult::Ok,
+                "invalid playback transfer requires stop before close");
+    }
+
+    {
+        FakeDevice fake;
+        const PcmEndpoint endpoint{
+            RouteType::PrimaryCapturePcm, PcmDirection::Capture, 0U, 0U, 0U, true
+        };
+        PcmDeviceOps ops = make_ops(fake);
+        ops.read_transfer = fake_overreported_read;
+        EndpointPcmBackend backend(&endpoint, 1U, ops);
+        PcmBackend::StreamToken token = 0U;
+
+        require(backend.valid(), "overreported capture backend is valid");
+        require(backend.open(RouteType::PrimaryCapturePcm, PcmDirection::Capture,
+                             &token) == PcmResult::Ok,
+                "overreported capture stream opens");
+        require(backend.configure(token, PcmConfig{48000U, 1U, 240U}) ==
+                    PcmResult::Ok &&
+                backend.start(token) == PcmResult::Ok,
+                "overreported capture stream starts");
+
+        const PcmTransferResult result = backend.read_transfer(token, samples, 2U);
+        require(result.result == PcmResult::BackendFailure &&
+                    result.frames_transferred == 0U,
+                "capture frame count above request is rejected");
+        require(backend.read_transfer(token, samples, 2U).result ==
+                    PcmResult::InvalidState,
+                "invalid capture transfer closes callback admission");
+        require(backend.stop(token) == PcmResult::Ok &&
+                    backend.close(token) == PcmResult::Ok,
+                "invalid capture transfer requires stop before close");
+    }
+}
+
 void test_direction_specific_ops_requirements() {
     FakeDevice fake;
     const PcmEndpoint playback_endpoint{
@@ -575,6 +655,7 @@ int main() {
     test_lifecycle_rejects_inflight_transfer();
     test_partial_transfer_contract();
     test_terminal_transfer_errors_fail_closed();
+    test_impossible_transfer_counts_fail_closed();
     test_direction_specific_ops_requirements();
     test_failed_stop_requires_retry_before_close();
     test_failed_close_can_be_retried();
