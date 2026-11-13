@@ -168,14 +168,15 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Recover close ownership: manager closes legacy C++ stream; HAL adapter frees only the C wrapper.
 - [x] Add a layout-only ARM32 ABI mirror with compile-time structure size and offset assertions; host CMake/CTest passes.
 - [x] Resolve input `set_parameters` / `get_parameters` callback addresses; both valid adapters dispatch to the expected `AudioALSAStreamIn` methods.
-- [ ] Trace the exact external callers and semantics of each vendor-only callback before retaining or replacing them.
+- [x] Identify the MediaTek HIDL 4.1 bridge and map the seven legacy callback entries at device offsets 188–216 to their HIDL methods.
+- [ ] Trace xWayPlay/xWayRec/ReadRefFromRing entries at offsets 156–184, including all external callers, duplicate xWayRec_Stop calling conventions and callback lifetime semantics.
 
 **Priority: critical product milestone**
 
 1. Reconcile the recovered `DT_NEEDED` list with the actual Android 9 linker namespace and verify the library search paths; the namespace config file is not present in the current extracted tree.
 2. Obtain/pin the matching ALPS/MediaTek vendor headers or source revision and compare private declarations with AOSP r3.
 3. Recover stream negotiation from the factory methods. **Partially complete:** output formats/rates/channel predicates, input PCM16 normalization, input channel predicate, route-specific input rate branches, handler-open dispatch and output buffer-time formula are recorded in [the ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). **Remaining:** exact stream-flag semantics, full error branches, Android-visible buffer-size contract, and vendor-header reconciliation.
-4. Trace external callers and runtime semantics for all 16 private device-tail callbacks. **Partial evidence only:** a symbol/string scan of six high-value framework/vendor client binaries found no named direct references; the ATCI parameter bridge was traced to `MTKDevicesFactoryHalInterface`, not to the private tail. Indirect callers and uncovered firmware binaries remain unresolved.
+4. Trace external callers and runtime semantics for all 16 private device-tail callbacks. **Partially recovered:** a full scan of 1,052 system/vendor shared libraries found the MediaTek HIDL 4.1 bridge. Seven legacy tail entries at offsets 188–216 are now mapped to HIDL voice-unlock and parameter-callback methods. The xWay/recording/ref-ring entries at offsets 156–184, callback lifetime semantics and indirect callers remain unresolved.
 5. Implement the typed factory-compatible HAL shell using the recovered module, device and C stream wrapper layouts; do not perform hardware writes.
 6. Link AudioCore and PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
 7. Add exact ELF/symbol/dependency/packaging gates and preserve factory originals plus rollback hashes.
