@@ -10,7 +10,8 @@ PcmTransferResult transfer_error(PcmResult result) noexcept {
 }
 }
 
-PcmStreamBroker::Slot* PcmStreamBroker::find_control(SessionToken session) noexcept {
+PcmStreamBroker::Slot* PcmStreamBroker::find_control(
+    SessionToken session) noexcept {
     if (!session.valid()) return nullptr;
     for (auto& slot : streams_) {
         if (slot.handle.load(std::memory_order_acquire) == session.handle &&
@@ -21,20 +22,25 @@ PcmStreamBroker::Slot* PcmStreamBroker::find_control(SessionToken session) noexc
 
 const PcmStreamBroker::Slot* PcmStreamBroker::find_control(
     SessionToken session) const noexcept {
-    if (handle == 0U) return nullptr;
+    if (!session.valid()) return nullptr;
     for (const auto& slot : streams_) {
-        if (slot.handle.load(std::memory_order_acquire) == handle) return &slot;
+        if (slot.handle.load(std::memory_order_acquire) == session.handle &&
+            slot.session_generation == session.generation) return &slot;
     }
     return nullptr;
 }
 
 PcmResult PcmStreamBroker::open(SessionToken session, SourceId source,
-                                RouteType route, PcmDirection direction) noexcept {
-    if (!session.valid() || find_control(session) != nullptr) return PcmResult::InvalidArgument;
+                                RouteType route,
+                                PcmDirection direction) noexcept {
+    if (!session.valid() || find_control(session) != nullptr) {
+        return PcmResult::InvalidArgument;
+    }
     if (validate_source_route(source, route) != RouteValidation::Supported ||
         !is_valid_pcm_route_direction(route, direction)) {
         return PcmResult::UnsupportedRoute;
     }
+
     Slot* free_slot = nullptr;
     for (auto& slot : streams_) {
         if (slot.state.load(std::memory_order_acquire) ==
@@ -45,10 +51,10 @@ PcmResult PcmStreamBroker::open(SessionToken session, SourceId source,
     }
     if (free_slot == nullptr) return PcmResult::CapacityExceeded;
 
-    PcmBackend::StreamToken token = 0U;
-    const PcmResult result = backend_.open(route, direction, &token);
+    PcmBackend::StreamToken backend_token = 0U;
+    const PcmResult result = backend_.open(route, direction, &backend_token);
     if (result != PcmResult::Ok) return result;
-    if (token == 0U) return PcmResult::BackendFailure;
+    if (backend_token == 0U) return PcmResult::BackendFailure;
 
     free_slot->source = source;
     free_slot->route = route;
@@ -58,7 +64,7 @@ PcmResult PcmStreamBroker::open(SessionToken session, SourceId source,
     free_slot->transfer_gate.store(0U, std::memory_order_relaxed);
     free_slot->transfer_generation.fetch_add(1U, std::memory_order_relaxed);
     free_slot->session_generation = session.generation;
-    free_slot->backend_token.store(token, std::memory_order_relaxed);
+    free_slot->backend_token.store(backend_token, std::memory_order_relaxed);
     free_slot->handle.store(session.handle, std::memory_order_release);
     free_slot->state.store(static_cast<std::uint32_t>(PcmStreamState::Open),
                            std::memory_order_release);
@@ -69,7 +75,8 @@ PcmResult PcmStreamBroker::configure(SessionToken session,
                                      const PcmConfig& config) noexcept {
     Slot* slot = find_control(session);
     if (slot == nullptr) return PcmResult::NotOpen;
-    const auto state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
+    const auto state = static_cast<PcmStreamState>(
+        slot->state.load(std::memory_order_acquire));
     if (state != PcmStreamState::Open && state != PcmStreamState::Stopped) {
         return PcmResult::InvalidState;
     }
@@ -89,13 +96,14 @@ PcmResult PcmStreamBroker::configure(SessionToken session,
 }
 
 PcmResult PcmStreamBroker::start(SessionToken session) noexcept {
-    Slot* slot = find_control(handle);
+    Slot* slot = find_control(session);
     if (slot == nullptr) return PcmResult::NotOpen;
     if (slot->state.load(std::memory_order_acquire) !=
         static_cast<std::uint32_t>(PcmStreamState::Configured)) {
         return PcmResult::InvalidState;
     }
-    slot->generation.fetch_add(1U, std::memory_order_acq_rel);
+
+    slot->transfer_generation.fetch_add(1U, std::memory_order_acq_rel);
     slot->backend_stop_required = true;
     const PcmResult result = backend_.start(
         slot->backend_token.load(std::memory_order_relaxed));
@@ -117,11 +125,14 @@ PcmTransferResult PcmStreamBroker::write_transfer(
     if (interleaved == nullptr || frame_count == 0U) {
         return transfer_error(PcmResult::InvalidArgument);
     }
-    if (frame_count > kMaxPcmWriteFrames) return transfer_error(PcmResult::BufferTooLarge);
+    if (frame_count > kMaxPcmWriteFrames) {
+        return transfer_error(PcmResult::BufferTooLarge);
+    }
 
     for (auto& slot : streams_) {
-        const auto generation = slot.transfer_generation.load(std::memory_order_acquire);
         if (slot.handle.load(std::memory_order_acquire) != session.handle) continue;
+        const std::uint32_t transfer_generation =
+            slot.transfer_generation.load(std::memory_order_acquire);
         std::uint32_t gate = slot.transfer_gate.load(std::memory_order_acquire);
         for (;;) {
             if ((gate & kTransferGateOpen) == 0U) {
@@ -134,8 +145,11 @@ PcmTransferResult PcmStreamBroker::write_transfer(
                     gate, gate + 1U, std::memory_order_acq_rel,
                     std::memory_order_acquire)) break;
         }
-        if (slot.generation.load(std::memory_order_acquire) != generation ||
-            slot.handle.load(std::memory_order_acquire) != handle) {
+
+        if (slot.transfer_generation.load(std::memory_order_acquire) !=
+                transfer_generation ||
+            slot.handle.load(std::memory_order_acquire) != session.handle ||
+            slot.session_generation != session.generation) {
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return transfer_error(PcmResult::NotOpen);
         }
@@ -148,8 +162,11 @@ PcmTransferResult PcmStreamBroker::write_transfer(
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return transfer_error(PcmResult::InvalidState);
         }
-        const auto token = slot.backend_token.load(std::memory_order_relaxed);
-        PcmTransferResult result = backend_.write_transfer(token, interleaved, frame_count);
+
+        const auto backend_token =
+            slot.backend_token.load(std::memory_order_relaxed);
+        PcmTransferResult result = backend_.write_transfer(
+            backend_token, interleaved, frame_count);
         const bool invalid_result = result.frames_transferred > frame_count ||
             (result.result == PcmResult::Ok && result.frames_transferred == 0U);
         const bool terminal_error = result.result == PcmResult::Xrun ||
@@ -157,7 +174,8 @@ PcmTransferResult PcmStreamBroker::write_transfer(
         if (invalid_result || terminal_error) {
             slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
                              std::memory_order_release);
-            slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
+            slot.transfer_gate.fetch_and(kTransferCountMask,
+                                         std::memory_order_acq_rel);
         }
         slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
         return invalid_result ? transfer_error(PcmResult::BackendFailure) : result;
@@ -168,15 +186,18 @@ PcmTransferResult PcmStreamBroker::write_transfer(
 PcmTransferResult PcmStreamBroker::read_transfer(
     SessionToken session, std::int16_t* interleaved,
     std::size_t frame_count) noexcept {
-    if (handle == 0U) return transfer_error(PcmResult::NotOpen);
+    if (!session.valid()) return transfer_error(PcmResult::NotOpen);
     if (interleaved == nullptr || frame_count == 0U) {
         return transfer_error(PcmResult::InvalidArgument);
     }
-    if (frame_count > kMaxPcmWriteFrames) return transfer_error(PcmResult::BufferTooLarge);
+    if (frame_count > kMaxPcmWriteFrames) {
+        return transfer_error(PcmResult::BufferTooLarge);
+    }
 
     for (auto& slot : streams_) {
-        const auto generation = slot.generation.load(std::memory_order_acquire);
-        if (slot.handle.load(std::memory_order_acquire) != handle) continue;
+        if (slot.handle.load(std::memory_order_acquire) != session.handle) continue;
+        const std::uint32_t transfer_generation =
+            slot.transfer_generation.load(std::memory_order_acquire);
         std::uint32_t gate = slot.transfer_gate.load(std::memory_order_acquire);
         for (;;) {
             if ((gate & kTransferGateOpen) == 0U) {
@@ -189,8 +210,11 @@ PcmTransferResult PcmStreamBroker::read_transfer(
                     gate, gate + 1U, std::memory_order_acq_rel,
                     std::memory_order_acquire)) break;
         }
-        if (slot.generation.load(std::memory_order_acquire) != generation ||
-            slot.handle.load(std::memory_order_acquire) != handle) {
+
+        if (slot.transfer_generation.load(std::memory_order_acquire) !=
+                transfer_generation ||
+            slot.handle.load(std::memory_order_acquire) != session.handle ||
+            slot.session_generation != session.generation) {
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return transfer_error(PcmResult::NotOpen);
         }
@@ -203,8 +227,11 @@ PcmTransferResult PcmStreamBroker::read_transfer(
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return transfer_error(PcmResult::InvalidState);
         }
-        const auto token = slot.backend_token.load(std::memory_order_relaxed);
-        PcmTransferResult result = backend_.read_transfer(token, interleaved, frame_count);
+
+        const auto backend_token =
+            slot.backend_token.load(std::memory_order_relaxed);
+        PcmTransferResult result = backend_.read_transfer(
+            backend_token, interleaved, frame_count);
         const bool invalid_result = result.frames_transferred > frame_count ||
             (result.result == PcmResult::Ok && result.frames_transferred == 0U);
         const bool terminal_error = result.result == PcmResult::Xrun ||
@@ -212,7 +239,8 @@ PcmTransferResult PcmStreamBroker::read_transfer(
         if (invalid_result || terminal_error) {
             slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
                              std::memory_order_release);
-            slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
+            slot.transfer_gate.fetch_and(kTransferCountMask,
+                                         std::memory_order_acq_rel);
         }
         slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
         return invalid_result ? transfer_error(PcmResult::BackendFailure) : result;
@@ -223,46 +251,48 @@ PcmTransferResult PcmStreamBroker::read_transfer(
 PcmResult PcmStreamBroker::write(SessionToken session,
                                  const std::int16_t* interleaved,
                                  std::size_t frame_count) noexcept {
-    const PcmTransferResult result = write_transfer(handle, interleaved, frame_count);
+    const PcmTransferResult result =
+        write_transfer(session, interleaved, frame_count);
     if (result.result != PcmResult::Ok) return result.result;
-    return result.frames_transferred == frame_count ? PcmResult::Ok : PcmResult::BackendFailure;
+    return result.frames_transferred == frame_count
+        ? PcmResult::Ok : PcmResult::BackendFailure;
 }
 
 PcmResult PcmStreamBroker::read(SessionToken session,
                                 std::int16_t* interleaved,
                                 std::size_t frame_count) noexcept {
-    const PcmTransferResult result = read_transfer(handle, interleaved, frame_count);
+    const PcmTransferResult result =
+        read_transfer(session, interleaved, frame_count);
     if (result.result != PcmResult::Ok) return result.result;
-    return result.frames_transferred == frame_count ? PcmResult::Ok : PcmResult::BackendFailure;
+    return result.frames_transferred == frame_count
+        ? PcmResult::Ok : PcmResult::BackendFailure;
 }
 
 PcmResult PcmStreamBroker::stop(SessionToken session) noexcept {
-    Slot* slot = find_control(handle);
+    Slot* slot = find_control(session);
     if (slot == nullptr) return PcmResult::NotOpen;
     const PcmStreamState state = static_cast<PcmStreamState>(
         slot->state.load(std::memory_order_acquire));
     if (state == PcmStreamState::Stopped) return PcmResult::Ok;
     if ((state != PcmStreamState::Started && state != PcmStreamState::Failed) ||
-        !slot->backend_stop_required) {
-        return PcmResult::InvalidState;
-    }
+        !slot->backend_stop_required) return PcmResult::InvalidState;
 
     const std::uint32_t previous = slot->transfer_gate.fetch_and(
         kTransferCountMask, std::memory_order_acq_rel);
-    slot->generation.fetch_add(1U, std::memory_order_acq_rel);
+    slot->transfer_generation.fetch_add(1U, std::memory_order_acq_rel);
     if ((previous & kTransferCountMask) != 0U) return PcmResult::WouldBlock;
 
     const PcmResult result = backend_.stop(
         slot->backend_token.load(std::memory_order_relaxed));
     if (result == PcmResult::Ok) slot->backend_stop_required = false;
-    slot->state.store(static_cast<std::uint32_t>(result == PcmResult::Ok
-                          ? PcmStreamState::Stopped : PcmStreamState::Failed),
-                      std::memory_order_release);
+    slot->state.store(static_cast<std::uint32_t>(
+        result == PcmResult::Ok ? PcmStreamState::Stopped : PcmStreamState::Failed),
+        std::memory_order_release);
     return result;
 }
 
 PcmResult PcmStreamBroker::close(SessionToken session) noexcept {
-    Slot* slot = find_control(handle);
+    Slot* slot = find_control(session);
     if (slot == nullptr) return PcmResult::NotOpen;
     if (slot->state.load(std::memory_order_acquire) ==
             static_cast<std::uint32_t>(PcmStreamState::Started) ||
@@ -294,7 +324,7 @@ PcmResult PcmStreamBroker::close(SessionToken session) noexcept {
 bool PcmStreamBroker::get_record(SessionToken session,
                                  PcmStreamRecord* out) const noexcept {
     if (out == nullptr) return false;
-    const Slot* slot = find_control(handle);
+    const Slot* slot = find_control(session);
     if (slot == nullptr) return false;
     out->session = session;
     out->backend_token = slot->backend_token.load(std::memory_order_relaxed);
@@ -302,7 +332,8 @@ bool PcmStreamBroker::get_record(SessionToken session,
     out->route = slot->route;
     out->direction = slot->direction;
     out->config = slot->config;
-    out->state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
+    out->state = static_cast<PcmStreamState>(
+        slot->state.load(std::memory_order_acquire));
     out->backend_stop_required = slot->backend_stop_required;
     return true;
 }
