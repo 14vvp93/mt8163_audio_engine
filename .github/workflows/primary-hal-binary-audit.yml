@@ -74,6 +74,34 @@ jobs:
             python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
           } 2>&1 | tee primary-hal-audit-report.txt
 
+      - name: Disassemble factory stream negotiation methods
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          objdump=arm-linux-gnueabi-objdump
+          {
+            echo "===== Factory stream negotiation symbol inventory ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$binary" |
+              grep -E 'AudioALSAStream(Out|In)::(set\(|open\(|checkOpenStream)' || true
+
+            echo
+            echo "===== AudioALSAStreamOut::set ====="
+            "$objdump" -d -C --start-address=0x8172c --stop-address=0x81c8c "$binary"
+
+            echo
+            echo "===== AudioALSAStreamOut::open ====="
+            "$objdump" -d -C --start-address=0x83d54 --stop-address=0x8405c "$binary"
+
+            echo
+            echo "===== AudioALSAStreamIn::set ====="
+            "$objdump" -d -C --start-address=0x128318 --stop-address=0x128838 "$binary"
+
+            echo
+            echo "===== AudioALSAStreamIn::open ====="
+            "$objdump" -d -C --start-address=0x12b510 --stop-address=0x12b718 "$binary"
+          } 2>&1 | tee primary-hal-stream-methods.txt
+
       - name: Preserve audited factory binary and report as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -81,5 +109,6 @@ jobs:
           path: |
             factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
             primary-hal-audit-report.txt
+            primary-hal-stream-methods.txt
           if-no-files-found: error
           retention-days: 7
