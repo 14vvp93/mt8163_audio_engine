@@ -64,6 +64,21 @@ Before sharing the ZIP, review `getprop`, `logcat_audio.txt` and the
 kernel logs for device identifiers, application names or other information
 you do not want to disclose.
 
+## Audit the factory primary HAL ELF
+
+Run this read-only audit in Linux, WSL or Git Bash against the immutable
+firmware extraction:
+
+```sh
+sh tools/audit_primary_hal_binary.sh files/vendor/audio.primary.mt8163.so
+```
+
+It verifies the factory basename, ELF shared-object type, ELF32 ARM machine,
+ARM EABI5 flags and exported `HMI` module symbol. It prints program headers,
+SONAME, dependencies and dynamic symbols for manual ABI review. A passing
+audit does not prove the exact vendor callback table or runtime linker
+compatibility. Preserve the reported SHA-256 with the firmware manifest.
+
 ## Find the CD3313 JNI native bridge
 
 The Java/Binder route is known, but the native implementation of
