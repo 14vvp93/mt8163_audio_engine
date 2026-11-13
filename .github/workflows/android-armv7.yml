@@ -1,4 +1,4 @@
-name: Android ARMv7 build and DSP benchmark
+name: Android ARMv7 cross-build
 
 on:
   push:
@@ -13,18 +13,11 @@ on:
       - ".github/workflows/android-armv7.yml"
   workflow_dispatch:
 
-jobs:
-  host-benchmark:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Configure host benchmark
-        run: cmake -S pcm-dsp -B build/benchmark -DPCM_DSP_BUILD_TESTS=OFF -DPCM_DSP_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
-      - name: Build host benchmark
-        run: cmake --build build/benchmark --parallel
-      - name: Run full-chain benchmark
-        run: ./build/benchmark/pcm_dsp_benchmark
+concurrency:
+  group: android-armv7-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   android-armv7:
     runs-on: ubuntu-24.04
     steps:
