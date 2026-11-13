@@ -381,12 +381,16 @@ void test_invalid_transfer_count_fails_closed_and_can_stop() {
             "transfer count greater than request is rejected");
     PcmStreamRecord record{};
     require(broker.get_record(51U, &record) &&
-            record.state == PcmStreamState::Failed,
-            "invalid transfer count marks stream failed");
+            record.state == PcmStreamState::Failed &&
+            record.backend_stop_required,
+            "invalid transfer count marks stream failed and requires backend stop");
     require(broker.write(51U, samples, 1U) == PcmResult::InvalidState,
             "invalid transfer count closes callback admission");
     require(broker.stop(51U) == PcmResult::Ok,
             "failed stream remains explicitly stoppable");
+    require(broker.get_record(51U, &record) &&
+            !record.backend_stop_required,
+            "successful stop clears backend stop requirement");
     require(broker.close(51U) == PcmResult::Ok,
             "failed stream closes after successful stop");
     require(backend.stops.load() == 1U && backend.closes.load() == 1U,
@@ -404,6 +408,11 @@ void test_failed_start_requires_cleanup_before_close() {
     backend.start_result = PcmResult::BackendFailure;
     require(broker.start(42U) == PcmResult::BackendFailure,
             "backend start failure is propagated");
+    PcmStreamRecord failed_record{};
+    require(broker.get_record(42U, &failed_record) &&
+            failed_record.state == PcmStreamState::Failed &&
+            failed_record.backend_stop_required,
+            "failed start publishes its backend cleanup requirement");
     require(broker.close(42U) == PcmResult::InvalidState,
             "failed start requires cleanup before close");
     require(broker.stop(42U) == PcmResult::Ok,
