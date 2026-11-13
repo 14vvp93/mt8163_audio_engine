@@ -95,6 +95,8 @@ Final replacement target:
 - [ ] Finish other input/output flag bits, the third-argument channel-mask contract, all error branches, all channel-mask combinations and vendor-header reconciliation.
 - [x] Map all 16 private device-tail slots to their internal forwarding targets: xWay playback/recording, reference-ring, voice-unlock and parameter callbacks.
 - [x] Recover xWay adapter forwarding to `Play2Way`, `Record2Way` and `AudioVUnlockDL`; correct the offset-172 entry to `xWayRec_Start` (not a duplicate stop callback).
+- [x] Recover all 16 device-tail adapter thunks: each accepts the public `audio_hw_device*`, loads the internal `AudioALSAHardware*` at offset 220 and dispatches through the recovered C++ vtable slot.
+- [ ] Confirm source-level return types and every external call site for the xWay callbacks; the adapter instructions establish argument forwarding but vendor declarations are absent.
 - [x] Recover `AudioVUnlockDL` detached worker lifecycle, condition-variable ring-buffer synchronization and mandatory stop-before-free ordering.
 - [ ] Identify all external consumers of the private tail and validate callback-in-flight draining. The 1,052-library/service scan found no separate named xWay client; indirect offset callers remain possible. The factory voice-unlock singleton is freed separately from `stopInput()`, so a replacement must enforce stop/drain-before-free.
 - [ ] Implement typed factory-compatible HAL shell with no hardware writes.
