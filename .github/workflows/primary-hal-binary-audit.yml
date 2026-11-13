@@ -55,6 +55,11 @@ jobs:
           test "$actual_size" = "$expected_size"
           test "$actual_sha" = "$expected_sha"
 
+      - name: Install ARM32 disassembler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes binutils-arm-linux-gnueabi
+
       - name: Audit ELF and exported HAL module symbol
         shell: bash
         run: |
