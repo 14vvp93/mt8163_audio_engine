@@ -1,20 +1,14 @@
 name: Build MT8163 Audio Test APK
 
 on:
-  push:
-    paths:
-      - "android-test/**"
-      - "pcm-dsp/**"
-      - ".github/workflows/build-android-test-apk.yml"
-  pull_request:
-    paths:
-      - "android-test/**"
-      - "pcm-dsp/**"
-      - ".github/workflows/build-android-test-apk.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-test-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-test-apk:
