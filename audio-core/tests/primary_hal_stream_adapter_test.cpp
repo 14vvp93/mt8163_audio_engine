@@ -47,6 +47,7 @@ public:
         return PcmResult::Ok;
     }
     PcmResult stop(StreamToken) noexcept override {
+        ++stops;
         started = false;
         return PcmResult::Ok;
     }
@@ -71,6 +72,7 @@ public:
     bool configured{false};
     bool started{false};
     std::size_t writes{0U};
+    std::size_t stops{0U};
     std::size_t next_transfer_frames{0U};
     PcmResult next_transfer_result{PcmResult::Ok};
     PcmResult start_result{PcmResult::Ok};
@@ -199,6 +201,18 @@ int main() {
     CHECK(failed_start_output.stop() == PcmResult::Ok);
     CHECK(!backend.started);
     CHECK(failed_start_output.close() == PcmResult::Ok);
+    CHECK(adapter.stream_count() == 0U);
+
+    constexpr std::uint32_t direct_failed_start_handle = 0x81630003U;
+    CHECK(adapter.open(direct_failed_start_handle, SourceId::LocalMedia,
+                       RouteType::PrimaryPcm, PcmDirection::Playback) == PcmResult::Ok);
+    CHECK(adapter.configure(direct_failed_start_handle, config) == PcmResult::Ok);
+    backend.start_result = PcmResult::BackendFailure;
+    CHECK(adapter.start(direct_failed_start_handle) == PcmResult::BackendFailure);
+    const std::size_t stops_before_close = backend.stops;
+    CHECK(adapter.close(direct_failed_start_handle) == PcmResult::Ok);
+    CHECK(backend.stops == stops_before_close + 1U);
+    CHECK(!backend.started);
     CHECK(adapter.stream_count() == 0U);
     backend.start_result = PcmResult::Ok;
     return 0;
