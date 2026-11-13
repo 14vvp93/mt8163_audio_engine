@@ -373,6 +373,15 @@ The device callbacks allocate a separate C ABI wrapper around the C++ stream imp
 | 92 | `update_sink_metadata` | `updateSinkMetadata` |
 | 96 | Private field | `legacy_in` pointer |
 
+**Stream close and ownership**
+
+The output close callback:
+1. Reads `legacy_out` from wrapper offset 120.
+2. Calls the device's `AudioALSAHardware::closeOutputStream(legacy_out)` forwarding method.
+3. Tail-calls the factory's `free@LIBC` PLT entry with the C wrapper pointer.
+
+The input close callback follows the same pattern using `legacy_in` at offset 96 and `AudioALSAHardware::closeInputStream(legacy_in)`, then frees the C wrapper. The legacy C++ stream object is handed to the AudioALSA stream manager for closure; the HAL C adapter frees only its own 124-byte or 100-byte wrapper. Do not double-free the legacy object in a replacement adapter.
+
 **Input callback mapping verified**
 
 The two parameter callbacks are independent function entries with valid prologues, despite lacking standalone dynamic symbol names:
