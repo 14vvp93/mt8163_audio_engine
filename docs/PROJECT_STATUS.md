@@ -75,6 +75,11 @@ Final replacement target:
 - [x] Fix direction metadata race by reading it only after transfer admission.
 - [x] Add repeated same-handle close/reopen stress test.
 - [x] Add snapshot backpressure regression with all publication slots pinned.
+- [x] Add a per-stream PCM16 HAL byte/frame adapter with immutable negotiated configuration.
+- [x] Validate buffer alignment, frame divisibility, direction, unsupported formats, zero lengths and the 2048-frame transfer bound.
+- [x] Add a lock-free callback admission gate so stop/close cannot race admitted byte-stream transfers.
+- [x] Test stop/retry while a byte-stream write is in flight, plus reconfiguration after successful stop.
+- [x] Include the byte adapter in both CMake and the Android Soong static-library source list.
 - [x] Prior PCM Broker and AudioCore TSAN runs passed.
 - [x] Re-ran the complete six-workflow host/ARM verification matrix on current HEAD `61259c7b72c2fda0d3ec1c8038e5c336aade38ff`; all six runs completed successfully.
 
@@ -99,7 +104,8 @@ Final replacement target:
 - [ ] Confirm source-level return types and every external call site for the xWay callbacks; the adapter instructions establish argument forwarding but vendor declarations are absent.
 - [x] Recover `AudioVUnlockDL` detached worker lifecycle, condition-variable ring-buffer synchronization and mandatory stop-before-free ordering.
 - [ ] Identify all external consumers of the private tail and validate callback-in-flight draining. The 1,052-library/service scan found no separate named xWay client; indirect offset callers remain possible. The factory voice-unlock singleton is freed separately from `stopInput()`, so a replacement must enforce stop/drain-before-free.
-- [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The valid primary open request fails closed with `-ENOSYS`; no device or hardware access is exposed.
+- [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The device shell opens, while `init_check` and stream opens fail closed with `-ENODEV`; no hardware access is exposed.
+- [x] Add the internal PCM16 byte/frame bridge and per-stream lifecycle gate; it is not yet wired into Android `audio_stream_out` / `audio_stream_in` callbacks.
 - [x] Cross-compile the bootstrap as ELF32 ARM, verify `audio.primary.mt8163.so` SONAME and exported `HMI` (`GLOBAL DEFAULT`, 128 bytes) with NDK r27c in [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This is bootstrap ABI evidence, not a complete HAL build.
 - [ ] Implement the callable `audio_hw_device` and stream callback tables plus the 16 private factory-tail callbacks; the bootstrap is not a deployable HAL.
 - [ ] Build the complete exact ARM32 HAL and verify ABI/symbol/dependency contract.
@@ -140,6 +146,8 @@ Final replacement target:
 - [ ] Package and validate final `audio.primary.mt8163.so`.
 
 ## Current CI evidence
+
+- Current feature HEAD `30a59a9539a7d36e41dd4c54eb6d5f576e2ceedf`: all eight workflows PASS — [Android ARMv7 build](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850412), [PCM Broker TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850419), [AudioCore TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850584), [Android 9 Primary HAL ARM32 ABI](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850446), [PCM DSP Stability](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850550), [PCM DSP Performance](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850452), [Repository Integrity](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850507), and [PCM DSP Core Tests](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43418850418). This verifies host tests, TSAN, ARM32 compilation/ABI bootstrap and repository checks; it does not verify a complete installable HAL or target hardware.
 
 - Current feature HEAD `61259c7b72c2fda0d3ec1c8038e5c336aade38ff`: AudioCore TSAN, PCM Stream Broker TSAN, PCM DSP Stability Lab, PCM DSP Performance Benchmark, PCM DSP Core Tests and Android ARMv7 build all PASS — [AudioCore TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132535), [PCM Broker TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132470), [Stability Lab](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132445), [Performance](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132810), [DSP tests](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132458), [ARMv7 build](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132882).
 - Android 9 ARM32 ABI layout and factory stream-contract tests: PASS on code-equivalent feature commit `0321a586ace98f9bf1e9154be449e2e4675980a2` — [run 43406307144](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307144). Includes C/C++ layout checks, stream-predicate tests and compile-time assertions for all 16 private callback indices and exact offsets 156–216.
