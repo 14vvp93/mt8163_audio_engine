@@ -75,10 +75,15 @@ this option. The four-channel Float32 engine is not a substitute: the
 recovered Normal handler is a two-channel path, and the CD3313 is a stereo
 analog-input / four-analog-output processor, not a four-channel PCM input.
 
-No upstream hook is approved yet. Before implementation, recover the exact
-producer buffer contract, route and format coverage, write-block sizes,
-lifecycle, and fail-open behavior. An AudioFlinger effect or a HAL patch must
-not be selected merely because it is a familiar integration mechanism.
+The code-level Normal-path boundary is now identified: immediately after
+`doDcRemoval()` and before `doStereoToMonoConversionIfNeed()`. The fold helper
+checks speaker-device bit `0x02` in `stream_attribute_t + 0x18`; for PCM16 and
+PCM32 it averages adjacent L/R samples and duplicates the result. This is a
+confirmed stereo-preserving location in the factory write order, but it is
+not yet an approved production hook. Before implementation, recover the exact
+producer buffer contract, all route/format coverage, write-block sizes,
+lifecycle, ownership and fail-open behavior. An AudioFlinger effect or a HAL
+patch must not be selected merely because it is a familiar integration mechanism.
 
 ### Option B: mono speaker-path enhancement
 
@@ -121,8 +126,9 @@ Whichever option is selected, a production adapter must:
   yet: speaker routes have already been folded to mono, and the remaining
   buffer contract is incomplete.
 - Continue static reverse engineering of the upstream Normal write buffer
-  producer and stream lifecycle. Then build a host-side adapter harness
-  against the recovered contract before any Android integration.
+  producer and stream lifecycle around the newly identified post-DC/pre-fold
+  boundary. Then build a host-side adapter harness against the recovered
+  contract before any Android integration.
 - Treat the CD3313's FL/FR/RL/RR attenuation as four analog output-level
   controls, separate from digital PCM channel topology.
 
