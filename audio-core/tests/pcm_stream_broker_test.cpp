@@ -474,6 +474,35 @@ void test_reopen_same_handle_while_callback_runs() {
             "callback remains safe across repeated close and reopen cycles");
 }
 
+void test_same_handle_reopen_rejects_stale_session_token() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const SessionToken old_session{0x8163U, 1U};
+    const SessionToken new_session{0x8163U, 2U};
+    const PcmConfig config{48000U, 2U, 240U};
+
+    require(broker.open(old_session, SourceId::LocalMedia,
+                        RouteType::PrimaryPcm) == PcmResult::Ok,
+            "old token opens broker stream");
+    require(broker.close(old_session) == PcmResult::Ok,
+            "old token closes broker stream");
+    require(broker.open(new_session, SourceId::LocalMedia,
+                        RouteType::PrimaryPcm) == PcmResult::Ok,
+            "same handle reopens with a new generation");
+    require(broker.configure(old_session, config) == PcmResult::NotOpen,
+            "stale token cannot configure replacement");
+    require(broker.close(old_session) == PcmResult::NotOpen,
+            "stale token cannot close replacement");
+    require(broker.configure(new_session, config) == PcmResult::Ok,
+            "replacement token remains valid");
+    PcmStreamRecord record{};
+    require(broker.get_record(new_session, &record) &&
+            record.session == new_session,
+            "broker record publishes the complete session token");
+    require(broker.close(new_session) == PcmResult::Ok,
+            "replacement closes with its current token");
+}
+
 void test_invalid_transfer_count_fails_closed_and_can_stop() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -616,6 +645,7 @@ int main() {
     test_callback_write_while_opening_another_stream();
     test_stop_waits_for_in_flight_callback();
     test_stop_failure_can_be_retried();
+    test_same_handle_reopen_rejects_stale_session_token();
     test_invalid_transfer_count_fails_closed_and_can_stop();
     test_terminal_transfer_errors_fail_closed();
     test_failed_start_requires_cleanup_before_close();
