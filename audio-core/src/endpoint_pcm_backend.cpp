@@ -1,5 +1,7 @@
 #include "mt8163_audio_core/endpoint_pcm_backend.hpp"
 
+#include <limits>
+
 namespace mt8163_audio_core {
 namespace {
 constexpr std::uint32_t state_value(PcmStreamState state) noexcept {
@@ -13,9 +15,10 @@ PcmTransferResult invalid_transfer(PcmResult result) noexcept {
 
 EndpointPcmBackend::EndpointPcmBackend(const PcmEndpoint* endpoints,
                                        std::size_t endpoint_count,
-                                       const PcmDeviceOps& ops) noexcept
-    : ops_(ops) {
-    if (endpoints == nullptr || endpoint_count == 0U ||
+                                       const PcmDeviceOps& ops,
+                                       StreamToken first_token) noexcept
+    : ops_(ops), next_token_(first_token) {
+    if (first_token == 0U || endpoints == nullptr || endpoint_count == 0U ||
         endpoint_count > kMaxPcmEndpoints || ops_.open == nullptr ||
         ops_.configure == nullptr || ops_.start == nullptr ||
         ops_.stop == nullptr || ops_.close == nullptr) return;
@@ -70,12 +73,16 @@ const EndpointPcmBackend::Slot* EndpointPcmBackend::find_slot(
 }
 
 EndpointPcmBackend::StreamToken EndpointPcmBackend::allocate_token() noexcept {
-    for (std::size_t attempt = 0U; attempt <= streams_.size(); ++attempt) {
-        StreamToken candidate = next_token_++;
-        if (next_token_ == 0U) next_token_ = 1U;
-        if (candidate != 0U && find_slot(candidate) == nullptr) return candidate;
+    if (token_exhausted_ || next_token_ == 0U) return 0U;
+
+    const StreamToken candidate = next_token_;
+    if (candidate == std::numeric_limits<StreamToken>::max()) {
+        token_exhausted_ = true;
+    } else {
+        ++next_token_;
     }
-    return 0U;
+
+    return find_slot(candidate) == nullptr ? candidate : 0U;
 }
 
 PcmResult EndpointPcmBackend::open(RouteType route, PcmDirection direction,
@@ -83,6 +90,7 @@ PcmResult EndpointPcmBackend::open(RouteType route, PcmDirection direction,
     if (token == nullptr) return PcmResult::InvalidArgument;
     *token = 0U;
     if (!valid_) return PcmResult::InvalidState;
+    if (token_exhausted_ || next_token_ == 0U) return PcmResult::CapacityExceeded;
     if (!is_valid_pcm_route_direction(route, direction)) return PcmResult::UnsupportedRoute;
     const PcmEndpoint* endpoint = find_endpoint(route, direction);
     if (endpoint == nullptr) return PcmResult::UnsupportedRoute;
