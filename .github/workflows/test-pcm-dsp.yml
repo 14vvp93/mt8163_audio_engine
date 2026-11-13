@@ -11,11 +11,10 @@ on:
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
-      - ".github/workflows/test-pcm-dsp.yml"
   workflow_dispatch:
 
 concurrency:
-  group: test-pcm-dsp-${{ github.ref }}
+  group: test-pcm-dsp-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
