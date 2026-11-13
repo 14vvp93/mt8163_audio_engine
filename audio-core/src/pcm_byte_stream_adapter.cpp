@@ -74,6 +74,7 @@ PcmResult PcmByteStreamAdapter::start() noexcept {
         (transfer_gate_.load(std::memory_order_acquire) & kTransferCountMask) != 0U) {
         return PcmResult::InvalidState;
     }
+    stop_required_.store(1U, std::memory_order_release);
     const PcmResult result = adapter_.start(handle_);
     if (result == PcmResult::Ok) {
         transfer_gate_.store(kTransferGateOpen, std::memory_order_release);
@@ -135,7 +136,7 @@ PcmByteTransfer PcmByteStreamAdapter::read(void* buffer,
 }
 
 PcmResult PcmByteStreamAdapter::stop() noexcept {
-    if (!valid_ || started_.load(std::memory_order_acquire) == 0U) {
+    if (!valid_ || stop_required_.load(std::memory_order_acquire) == 0U) {
         return PcmResult::InvalidState;
     }
     transfer_gate_.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
@@ -144,6 +145,8 @@ PcmResult PcmByteStreamAdapter::stop() noexcept {
     }
     const PcmResult result = adapter_.stop(handle_);
     if (result == PcmResult::Ok) {
+        transfer_gate_.store(0U, std::memory_order_release);
+        stop_required_.store(0U, std::memory_order_release);
         started_.store(0U, std::memory_order_release);
         configured_.store(0U, std::memory_order_release);
     }
@@ -152,7 +155,7 @@ PcmResult PcmByteStreamAdapter::stop() noexcept {
 
 PcmResult PcmByteStreamAdapter::close() noexcept {
     if (!valid_) return PcmResult::InvalidArgument;
-    if (started_.load(std::memory_order_acquire) != 0U) {
+    if (stop_required_.load(std::memory_order_acquire) != 0U) {
         const PcmResult stop_result = stop();
         if (stop_result != PcmResult::Ok) return stop_result;
     }
