@@ -171,7 +171,9 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Resolve input `set_parameters` / `get_parameters` callback addresses; both valid adapters dispatch to the expected `AudioALSAStreamIn` methods.
 - [x] Identify the MediaTek HIDL 4.1 bridge and map the seven legacy callback entries at device offsets 188–216 to their HIDL methods.
 - [x] Map all 16 private device-tail slots to internal targets, including xWay adapters forwarding to `Play2Way`/`Record2Way` and reference-ring forwarding to `AudioVUnlockDL`; correct offset 172 to `xWayRec_Start` and offset 176 to `xWayRec_Stop`.
-- [ ] Identify external consumers of the private tail and validate callback lifetime/concurrency. The full shared-library/service scan found no separate named xWay client, but indirect offset callers remain possible.
+- [x] Recover all 16 public device-tail adapter thunks and prove the `audio_hw_device*` first-argument adapter loads the internal `AudioALSAHardware*` from offset 220.
+- [x] Recover the voice-unlock detached worker, condition-variable ring path and stop-before-free requirement.
+- [ ] Identify external consumers of the private tail, confirm source-level callback return types and validate callback-in-flight draining. The full shared-library/service scan found no separate named xWay client, but indirect offset callers remain possible. The voice-unlock singleton is freed separately from `stopInput()`; a replacement must enforce stop/drain-before-free.
 
 **Priority: critical product milestone**
 
