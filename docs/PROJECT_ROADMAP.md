@@ -165,7 +165,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Recover concrete `AudioALSAStreamOut` and `AudioALSAStreamIn` C++ vtables from APS2 relocations.
 - [x] Recover Android C `audio_stream_out` / `audio_stream_in` wrapper sizes, private legacy-object offsets and callback table population.
 - [x] Add a layout-only ARM32 ABI mirror with compile-time structure size and offset assertions; host CMake/CTest passes.
-- [ ] Resolve the anomalous input `set_parameters` / `get_parameters` callback entry addresses against matching vendor source or verified call context.
+- [x] Resolve input `set_parameters` / `get_parameters` callback addresses; both valid adapters dispatch to the expected `AudioALSAStreamIn` methods.
 - [ ] Trace the exact external callers and semantics of each vendor-only callback before retaining or replacing them.
 
 **Priority: critical product milestone**
