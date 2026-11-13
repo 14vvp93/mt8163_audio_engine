@@ -19,6 +19,7 @@ enum class SourceId : std::uint8_t {
     Reverse,
     OnStar,
     Microphone,
+    SystemSound,
     Count
 };
 
