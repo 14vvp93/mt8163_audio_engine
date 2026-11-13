@@ -331,6 +331,59 @@ void test_partial_transfer_contract() {
             "partial-transfer stream closes cleanly");
 }
 
+void test_direction_specific_ops_requirements() {
+    FakeDevice fake;
+    const PcmEndpoint playback_endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    PcmDeviceOps playback_ops = make_ops(fake);
+    playback_ops.read = nullptr;
+    playback_ops.read_transfer = nullptr;
+    EndpointPcmBackend playback(&playback_endpoint, 1U, playback_ops);
+    require(playback.valid(),
+            "playback-only endpoint does not require capture callbacks");
+
+    PcmBackend::StreamToken playback_token = 0U;
+    require(playback.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                          &playback_token) == PcmResult::Ok,
+            "playback-only endpoint opens");
+    require(playback.configure(playback_token, PcmConfig{48000U, 2U, 240U}) ==
+                PcmResult::Ok &&
+            playback.start(playback_token) == PcmResult::Ok,
+            "playback-only endpoint starts");
+    const std::int16_t samples[2]{};
+    require(playback.write(playback_token, samples, 1U) == PcmResult::Ok,
+            "playback-only endpoint writes");
+    require(playback.stop(playback_token) == PcmResult::Ok &&
+            playback.close(playback_token) == PcmResult::Ok,
+            "playback-only endpoint closes");
+
+    const PcmEndpoint capture_endpoint{
+        RouteType::PrimaryCapturePcm, PcmDirection::Capture, 0U, 0U, 0U, true
+    };
+    PcmDeviceOps capture_ops = make_ops(fake);
+    capture_ops.write = nullptr;
+    capture_ops.write_transfer = nullptr;
+    EndpointPcmBackend capture(&capture_endpoint, 1U, capture_ops);
+    require(capture.valid(),
+            "capture-only endpoint does not require playback callbacks");
+
+    PcmBackend::StreamToken capture_token = 0U;
+    require(capture.open(RouteType::PrimaryCapturePcm, PcmDirection::Capture,
+                         &capture_token) == PcmResult::Ok,
+            "capture-only endpoint opens");
+    require(capture.configure(capture_token, PcmConfig{48000U, 1U, 240U}) ==
+                PcmResult::Ok &&
+            capture.start(capture_token) == PcmResult::Ok,
+            "capture-only endpoint starts");
+    std::int16_t captured[1]{};
+    require(capture.read(capture_token, captured, 1U) == PcmResult::Ok,
+            "capture-only endpoint reads");
+    require(capture.stop(capture_token) == PcmResult::Ok &&
+            capture.close(capture_token) == PcmResult::Ok,
+            "capture-only endpoint closes");
+}
+
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
@@ -353,6 +406,7 @@ int main() {
     test_state_and_error_boundaries();
     test_lifecycle_rejects_inflight_transfer();
     test_partial_transfer_contract();
+    test_direction_specific_ops_requirements();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
     return 0;

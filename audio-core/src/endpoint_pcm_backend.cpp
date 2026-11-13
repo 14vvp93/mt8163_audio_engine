@@ -18,14 +18,17 @@ EndpointPcmBackend::EndpointPcmBackend(const PcmEndpoint* endpoints,
     if (endpoints == nullptr || endpoint_count == 0U ||
         endpoint_count > kMaxPcmEndpoints || ops_.open == nullptr ||
         ops_.configure == nullptr || ops_.start == nullptr ||
-        (ops_.write == nullptr && ops_.write_transfer == nullptr) ||
-        (ops_.read == nullptr && ops_.read_transfer == nullptr) ||
         ops_.stop == nullptr || ops_.close == nullptr) return;
 
     for (std::size_t i = 0U; i < endpoint_count; ++i) {
         const auto& endpoint = endpoints[i];
         if (endpoint.enabled &&
             !is_valid_pcm_route_direction(endpoint.route, endpoint.direction)) return;
+        if (endpoint.enabled &&
+            ((endpoint.direction == PcmDirection::Playback &&
+              ops_.write == nullptr && ops_.write_transfer == nullptr) ||
+             (endpoint.direction == PcmDirection::Capture &&
+              ops_.read == nullptr && ops_.read_transfer == nullptr))) return;
         if (endpoint.enabled) {
             for (std::size_t j = 0U; j < i; ++j) {
                 if (endpoints[j].enabled && endpoints[j].route == endpoint.route &&
