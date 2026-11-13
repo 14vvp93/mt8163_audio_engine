@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <thread>
 
@@ -632,6 +633,33 @@ void test_failed_start_requires_cleanup_before_close() {
             "stream closes after failed-start cleanup");
 }
 
+void test_backend_token_exhaustion_fails_closed() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    const auto maximum = std::numeric_limits<PcmBackend::StreamToken>::max();
+    EndpointPcmBackend backend(&endpoint, 1U, make_ops(fake), maximum);
+    require(backend.valid(), "token exhaustion test backend is valid");
+
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                        &token) == PcmResult::Ok,
+            "maximum backend token is issued once");
+    require(token == maximum, "backend issues the final token value exactly");
+    require(backend.close(token) == PcmResult::Ok,
+            "final backend token closes normally");
+
+    const std::uint32_t open_calls = fake.opens;
+    token = 99U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                        &token) == PcmResult::CapacityExceeded,
+            "backend token exhaustion fails closed");
+    require(token == 0U, "exhausted open does not return a token");
+    require(fake.opens == open_calls,
+            "exhausted token allocator does not open another native stream");
+}
+
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
@@ -660,6 +688,7 @@ int main() {
     test_failed_stop_requires_retry_before_close();
     test_failed_close_can_be_retried();
     test_failed_start_requires_cleanup_before_close();
+    test_backend_token_exhaustion_fails_closed();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
     return 0;
