@@ -1,0 +1,63 @@
+name: Primary HAL factory binary audit
+
+on:
+  push:
+    branches: [main, feature]
+    paths:
+      - "tools/audit_primary_hal_binary.sh"
+      - ".github/workflows/primary-hal-binary-audit.yml"
+  pull_request:
+    paths:
+      - "tools/audit_primary_hal_binary.sh"
+      - ".github/workflows/primary-hal-binary-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: primary-hal-binary-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-factory-hal:
+    name: Audit Android 9 factory primary HAL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio engine
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/audit_primary_hal_binary.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout factory firmware artifact
+        uses: actions/checkout@v4
+        with:
+          repository: 14vvp93/public_calculations
+          ref: main
+          path: factory-firmware
+          sparse-checkout: |
+            firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+          sparse-checkout-cone-mode: false
+
+      - name: Verify immutable factory artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          test -s "$binary"
+          actual_size="$(wc -c < "$binary" | tr -d ' ')"
+          actual_sha="$(sha256sum "$binary" | awk '{print $1}')"
+          expected_size="1671852"
+          expected_sha="112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
+          printf 'Artifact size: %s\nArtifact SHA-256: %s\n' "$actual_size" "$actual_sha"
+          test "$actual_size" = "$expected_size"
+          test "$actual_sha" = "$expected_sha"
+
+      - name: Audit ELF and exported HAL module symbol
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh tools/audit_primary_hal_binary.sh \
+            factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
