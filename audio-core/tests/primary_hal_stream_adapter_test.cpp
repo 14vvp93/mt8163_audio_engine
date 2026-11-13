@@ -99,7 +99,7 @@ int main() {
     CHECK(adapter.stream_count() == 0U);
     CHECK(!backend.opened);
 
-    CHECK(adapter.open(handle, SourceId::PrimaryMicrophone,
+    CHECK(adapter.open(handle, SourceId::Microphone,
                         RouteType::PrimaryCapturePcm,
                         PcmDirection::Capture) == PcmResult::Ok);
     CHECK(adapter.configure(handle, config) == PcmResult::Ok);
