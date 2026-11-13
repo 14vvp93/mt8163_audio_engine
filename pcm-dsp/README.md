@@ -24,6 +24,25 @@ bypass. The adapter is a platform-independent PCM boundary component; it is
 not yet called by the target's vendor HAL or the direct FM_I2S AudioPatch
 playback path.
 
+### Versioned stereo playback profiles
+
+`StereoPlaybackProfile` is the versioned profile contract for the initial
+PCM16 stereo PrimaryMedia path. It carries a stable profile identifier and a
+complete immutable `Parameters` snapshot. Validation checks the schema,
+profile ID, sample rate, every EQ band (including disabled bands), filter
+types, finite values and all supported parameter ranges before processing.
+
+`NormalPlaybackPcmAdapter` accepts this profile directly. An invalid schema,
+unknown profile ID, unsupported sample rate or invalid numeric parameter
+fails open to bit-exact bypass. The existing raw-`Parameters` overload remains
+for host compatibility; production control code should use the validated
+profile overload.
+
+This is deliberately the first narrow profile, not a claim that navigation,
+notifications, A2DP, FM, HFP/SCO or capture are DSP-integrated. Those routes
+remain on verified factory handling until their own profile applicability and
+DSP-visible PCM boundaries are established.
+
 ### Normal playback pre-fold adapter scaffold
 
 `NormalPlaybackPcmAdapter` is a host-side fail-open harness for the recovered
@@ -166,7 +185,7 @@ profile storage and JNI synchronization are separate integration tasks.
 
 Enable `PCM_DSP_BUILD_ANDROID_JNI=ON` in an Android NDK CMake build to produce `libmt8163_audio_jni.so` alongside the static DSP library. The Java wrapper is in `android/java/com/mt8163/audioengine/NativeDsp.java`; include it in a test APK and package the generated ARMv7 shared library under `jniLibs/armeabi-v7a/`.
 
-The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing through `ProfiledQuadEngine`. Every control change is submitted as a complete validated `AudioProfile` snapshot and crossfaded over the default 50 ms transition. A new control update is rejected while the previous transition is pending or running; the test UI therefore commits channel gain when the user releases the slider instead of flooding the control thread during a drag. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from verified native AudioFlinger/HAL route adapters. The product requirement is DSP coverage for all supported sources and directions, including calls, microphone capture and Bluetooth HFP/SCO. Until their dedicated telephony/capture graphs are mapped and validated, use only a safe temporary fallback; do not route them through the media graph or treat the fallback as permanent exclusion.
+The bridge exposes engine creation at 44.1/48 kHz, enable/disable, per-channel gain, and interleaved FL/FR/RL/RR Float32 processing through `ProfiledQuadEngine`. Every control change is submitted as a complete validated `AudioProfile` snapshot and crossfaded over the default 50 ms transition. A new control update is rejected while the previous transition is pending or running; the test UI therefore commits channel gain when the user releases the slider instead of flooding the control thread during a drag. It is an offline/bring-up interface only: Java array pinning/copying is not a real-time audio callback strategy. Production integration must call the C++ engine directly from verified native AudioFlinger/HAL route adapters. DSP is profile-driven: enable a profile only for an explicitly supported source/route with a verified PCM boundary. Calls, microphone capture and Bluetooth HFP/SCO remain on their verified factory paths until dedicated telephony/capture profiles and integration boundaries are proven; do not route them through the media profile.
 
 ## Validation
 
