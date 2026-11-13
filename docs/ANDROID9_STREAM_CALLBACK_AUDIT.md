@@ -204,6 +204,33 @@ sent `EXIT` and joined later by `RecordThread::~RecordThread()`; as with
 FastMixer, the acknowledged idle transition is the earlier I/O quiescence
 point.
 
+### Control-plane callback serialization
+
+The exact Android 9.0.0_r3 source exposes a separate concurrency concern that
+does not invalidate the worker I/O quiescence result:
+
+- `AudioFlinger::getParameters()` holds AudioFlinger's `mLock` while it calls
+  the selected thread's `getParameters()`. Close cannot remove that thread
+  from the registry until this call returns.
+- `AudioFlinger::setParameters()` obtains a strong `ThreadBase` reference
+  under `mLock`, releases `mLock`, then calls `thread->setParameters()`.
+  `ThreadBase::setParameters()` queues a config event; the worker executes
+  `checkForNewParameter_l()` under its thread lock.
+- Output close calls `PlaybackThread::preExit()` before taking the thread
+  lock to request worker exit. `preExit()` directly invokes the HAL
+  `set_parameters("exiting=1")` callback without acquiring that thread lock.
+
+Therefore a previously admitted `setParameters()` operation can be in flight
+while close runs `preExit()`. The worker's event path and the direct
+`preExit()` callback are not proven mutually exclusive by these locks.
+`requestExitAndWait()` subsequently waits for the worker before HAL stream
+deletion, so the stream storage remains alive for worker-side callbacks, but
+the two `set_parameters` invocations may overlap. The replacement HAL must
+serialize stream control callbacks internally (without putting blocking
+serialization on the realtime read/write path), or the exact vendor framework
+must be shown to provide an additional serialization guarantee. Do not
+mistake read/write quiescence for full callback-table serialization.
+
 ### Offload async callback thread and mmap
 
 `OffloadThread::threadLoop_exit()` performs its pending flush/drain work
