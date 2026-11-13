@@ -262,9 +262,11 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### Current verified baseline
 
-- Latest AudioCore TSAN run: [43372199075](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43372199075), success on baseline HEAD `59af8ea`.
-- CD3313 protocol/safety workflow: [43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746), success on code commit `cfc20a4`; it is not a run on the documentation-only baseline HEAD.
-- Earlier PCM DSP, AudioCore and Android ARMv7 runs are recorded in the status and validation documents. Re-run them when code changes; do not infer current code status from old run IDs.
+- AudioCore TSAN: [43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) is running on the current documentation/integration commit; last completed success on this series: [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297).
+- PCM stream-broker TSAN: [43373877328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877328), success on commit `090f4d1`.
+- Repository integrity: [43373877371](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877371), success on commit `090f4d1`; validates local Markdown links and read-only collector syntax.
+- CD3313 protocol/safety: [43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746), success on code commit `cfc20a4`; it is not a run on the later documentation-only commits.
+- Earlier PCM DSP and Android ARMv7 runs are recorded in validation documents. Re-run them when relevant code changes; do not infer current code status from old run IDs.
 - No complete HAL ABI build or device validation is claimed.
 
 ## 8. Immediate execution queue
