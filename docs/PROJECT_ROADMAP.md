@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Integration branch:** `integration/beta-0.1`  
 **Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-**Current implementation HEAD:** `e33c75234b629a1efb7f225d8a606b557e6ddcb8`  
+**Current implementation HEAD at this update:** `29fa3e096f855b510d94b39926f0c11faba1d4ef`  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -44,7 +44,7 @@ Use these names consistently:
 - **CD3313KO** — Linux kernel driver; firmware file is `cd3313.ko`.
 - **`/dev/audiomux`** — device-node interface exposed by the firmware driver.
 
-This terminology follows the user's latest explicit correction. Older documents and decision records contain the previous `CD3310EO` wording. They are historical evidence and must be reconciled to this terminology; do not silently mix the two names or reinterpret old findings.
+This terminology follows the user's latest explicit correction. Some historical documents contain inconsistent hardware naming. Reconcile them to the canonical terms above; do not silently mix physical-IC and driver names or reinterpret protocol findings.
 
 The firmware dump was confirmed by the user to come from the same head unit. Firmware evidence includes the CD3313-named module, a `cd3313@44` DTBO node, alternative DSP module declarations and a shared `audiomux` registration name. Static firmware evidence does not, by itself, prove the selected overlay, successful runtime probe, active module owner or physical I2C transaction.
 
@@ -142,10 +142,10 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 **Priority: high; host-testable work can continue while P0 evidence is collected**
 
-1. Audit AudioCore's single-writer contract and enforce it at the future HAL control-executor boundary.
-2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery. **Implemented and TSAN-verified:** direction metadata access in PCM callbacks was moved behind transfer admission; a repeated same-handle close/reopen race test was added. [PCM broker TSAN run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298) passed.
-3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **PASS:** the new race regression passed under [PCM broker TSAN run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298).
-4. Ensure stop/close cannot destroy backend state while a transfer callback is active.
+1. Audit AudioCore's single-writer contract and enforce it at the future HAL control-executor boundary. **Static review complete:** current classes are deliberately single-control-thread and do not self-serialize; HAL must provide the single-writer executor.
+2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery. **Implemented and TSAN-verified:** direction metadata access in PCM callbacks was moved behind transfer admission; a repeated same-handle close/reopen race test was added. [PCM broker TSAN run 43375546258](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546258) passed.
+3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **PASS:** the new race regression passed under [PCM broker TSAN run 43375546258](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546258).
+4. Verify AudioCore snapshot dirty-state recovery when all three slots are pinned. **PASS:** regression test committed in `7b1dbc3`, verified by [AudioCore TSAN run 43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004).
 5. Implement the concrete TinyALSA/ALSA operation table only after P0 provides verified endpoint mappings.
 6. Validate period size, buffer size, channels, sample format, rate, interleaving and blocking behavior against the real endpoint.
 7. Preserve the existing passing DSP and AudioCore tests.
@@ -308,5 +308,6 @@ The MT8163 Audio Engine is complete only when:
 - Archived the old Beta 0.1 roadmap, refreshed the status/index/README, and marked legacy hardware-identity records as superseded where necessary.
 - Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
 - Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test and passed PCM broker TSAN.
+- Added an AudioCore dirty-snapshot recovery test covering all three slots pinned, mutation commit, release and retry; passed AudioCore TSAN.
 - Expanded the read-only PowerShell collector with runtime PCM status, device-node metadata, open-FD ownership and I2C driver bindings; stopped storing the ADB serial in its manifest.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
