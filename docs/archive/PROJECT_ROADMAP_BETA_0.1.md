@@ -1,4 +1,4 @@
-> **SUPERSEDED:** This is the archived Beta 0.1 execution log. It is retained for historical evidence only. Do not use it to determine current priorities or next actions. The sole current plan is [Project Roadmap](PROJECT_ROADMAP.md). Current hardware terminology is CD3313EO (physical IC) and CD3313KO (`cd3313.ko` Linux driver); historical hardware-name statements below may be obsolete.
+> **SUPERSEDED:** This is the archived Beta 0.1 execution log. It is retained for historical evidence only. Do not use it to determine current priorities or next actions. The sole current plan is [Project Roadmap](../PROJECT_ROADMAP.md). Current hardware terminology is CD3313EO (physical IC) and CD3313KO (`cd3313.ko` Linux driver); historical hardware-name statements below may be obsolete.
 
 ---
 
@@ -226,7 +226,7 @@ Start with **P0-A: identify the CD3310EO control path from the exact firmware**.
 
 ### P0-A follow-up — evidence reconciliation and CI results
 
-- Added [CD3313_EVIDENCE_RECONCILIATION.md](CD3313_EVIDENCE_RECONCILIATION.md). It identifies the vendor archive module (Build ID e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56) as the stronger installed-module candidate and explicitly separates it from the older standalone module (Build ID dae15c9eb019e9388d15cb88088c202d017ebcf0).
+- Added [CD3313_EVIDENCE_RECONCILIATION.md](../CD3313_EVIDENCE_RECONCILIATION.md). It identifies the vendor archive module (Build ID e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56) as the stronger installed-module candidate and explicitly separates it from the older standalone module (Build ID dae15c9eb019e9388d15cb88088c202d017ebcf0).
 - Recorded the static JNI framing formula: array_length + 1 words. The extra word is a confirmed over-read in the factory JNI/kernel pair; a future compatibility bridge must allocate and initialize its own extra word or deliberately revise the ABI only after caller inventory.
 - The current vendor-module ABI audit reports a special 0x09 branch. The parser now safely recognizes 0x09 as a one-word opaque command; no operation semantics or hardware behavior are inferred.
 - Recorded unresolved evidence conflicts around 0x03 minimum-length validation and the exact vendor-module command map. The older standalone dispatch map is not treated as authoritative for the installed candidate.
@@ -243,7 +243,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 ### P0-A follow-up — paired vendor callback revalidation and parser boundaries
 
 - Retrieved the exact `cd3313-current-module-analysis` artifact from public firmware worker run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570). Verified SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594` and Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`.
-- Re-read the paired vendor `cmd_ioctl` and `event_callback` disassembly directly. Added [CD3313_VENDOR_CALLBACK_REVALIDATION.md](analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md) with the exact command guard/read map and evidence identity.
+- Re-read the paired vendor `cmd_ioctl` and `event_callback` disassembly directly. Added [CD3313_VENDOR_CALLBACK_REVALIDATION.md](../analysis-reports/CD3313_VENDOR_CALLBACK_REVALIDATION.md) with the exact command guard/read map and evidence identity.
 - Corrected a prior risk-audit error: the paired vendor callback range-checks all four `0x15` indices against 0..15. The actual remaining issue is that its size check accepts two/three words before it reads four words, leaving missing values sourced from stale slab data.
 - Confirmed the paired vendor callback has no visible size-field guard before its payload reads for `0x03`, `0x09`, `0x56` and `0xA3`. The host parser continues to require complete words. The three-word `0x03` threshold remains explicitly labelled as conservative host policy, not proven vendor acceptance behavior.
 - Corrected variant-specific documentation so standalone-module defects are not incorrectly attributed to the paired vendor build. The paired vendor I2C write helpers retry and update cache only after exact one-byte transfer success.
@@ -300,7 +300,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 
 ### P0-A follow-up — application caller values and remaining evidence gaps
 
-- Added [CD3313_HEQ_CALLER_AUDIT.md](analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) from the recovered HEQ APK (`a7c6e116…`). It records concrete ASP caller values for treble, bass, loudness, subwoofer, four-channel balance and master-volume normalization, including the boot replay path.
+- Added [CD3313_HEQ_CALLER_AUDIT.md](../analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) from the recovered HEQ APK (`a7c6e116…`). It records concrete ASP caller values for treble, bass, loudness, subwoofer, four-channel balance and master-volume normalization, including the boot replay path.
 - The recovered HEQ callsites use four balance values scaled to 0..15, loudness/subwoofer enable values normalized to 0/1, and nonuniform second arguments for treble/bass/subwoofer. Do not collapse those second arguments into one assumed range.
 - `setInputGain()` and `setMasterVolumeMax()` were not found in the inspected `AspSettings` class. This is scoped to this APK slice, not proof of no other firmware callers.
 - The `0x03` callback range analysis is now documented: vendor rejects channel -1 and 6, fails to bound values 7+, and writes through a seven-byte `channel_gain` array. The replacement restricts channels to 0..5 and gains to 0..3; tests cover channel 6 and 7 rejection.
@@ -310,7 +310,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 
 ### P0-B read-only evidence update — boot kernel, DTBO and FM routing
 
-- Added [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md), based on firmware analysis run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
+- Added [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](../analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md), based on firmware analysis run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
 - Recovered the exact embedded boot-kernel config from `IKCFG_ST` / `IKCFG_ED`; boot and recovery configs are byte-identical. The kernel identifies as Linux `4.9.117+`, built by `publisher28@ubuntu128` with GCC 4.9.x on 2026-03-26.
 - Confirmed `CONFIG_MACH_MT8163=y`, `CONFIG_HARDENED_USERCOPY=y`, `CONFIG_MODULES=y`, `CONFIG_MODVERSIONS=y`, `CONFIG_SND_SOC_MT8163=y` and `CONFIG_IKCONFIG=y`. The decompressed image contains `__check_object_size` and the hardened-usercopy diagnostic string.
 - Clarified that hardened usercopy does not validate the logical length of the Java `int[]` passed to JNI. The extra-word over-read remains a real P0-A defect.
@@ -323,7 +323,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 
 ### P0-A follow-up — firmware-wide VDEX caller leads
 
-- Extended [CD3313_HEQ_CALLER_AUDIT.md](analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) with evidence from `audiomux-userspace-client-scan` artifact [13954011424](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
+- Extended [CD3313_HEQ_CALLER_AUDIT.md](../analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) with evidence from `audiomux-userspace-client-scan` artifact [13954011424](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
 - `system/framework/boot-carservices.vdex` contains `ExtAudioMuxer`, `DoAudioMux` and `SendCmdAudioMux` string-table entries. `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
 - These are leads only. No method-level VDEX callsites, command IDs or actual argument arrays have been recovered from this artifact. The full Java/Binder caller inventory remains OPEN.
 - Next action remains raw VDEX extraction/decompilation and caller-by-caller mapping. Do not implement the legacy JNI compatibility contract from string matches alone.
@@ -357,7 +357,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The CD3313 vendor module is now statically identified more precisely: Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`, source path `drivers/misc/cd3313/cd3313.c`, I2C ID `cd3313`, OF compatible `hcn,cd3313`, and `CD3313_I2C_ADDR = 68` decimal (`0x44`).
 - Recovered `dsp_probe` sends a one-byte `0x3f` I2C write and retries up to three times; the write helper calls `i2c_master_send(..., 1)`. A one-byte transfer success is sufficient for the visible probe path to continue registering `/dev/audiomux`. No explicit silicon-ID read is visible in that probe function. This does **not** prove that CD3310EO is compatible; it means the module's presence and probe success are not a reliable physical-chip identity check.
 - The downloaded firmware-library artifact contains no literal `CD3310` or `CD3310EO` text. This is a scoped negative string-search result only.
-- Updated detailed evidence in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). CD3313 protocol transport remains detached. Next work: recover CD3310EO datasheet/board-specific protocol evidence, then compare address `0x44` and probe sequence without issuing writes.
+- Updated detailed evidence in [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). CD3313 protocol transport remains detached. Next work: recover CD3310EO datasheet/board-specific protocol evidence, then compare address `0x44` and probe sequence without issuing writes.
 - No hardware I/O, module load, GPIO/mixer write or device validation performed.
 
 
@@ -366,17 +366,17 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Downloaded `audiomux-userspace-client-scan` artifact from workflow run `43238133570` (artifact SHA-256 `2f463e328bb54592bc2369a4ea25024d0b5f36601abc345504e70996c3ed1bea`).
 - `system/framework/boot-carservices.vdex` contains strings `/dev/audiomux`, `DoAudioMux`, `ExtAudioMuxer`, `ExtAudioMuxer.java`, `SendCmdAudioMux` and `cd3313`; `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
 - The scan did not recover method-level callsites, command IDs or argument arrays. These remain string-table leads, not a caller-to-driver proof. Caller inventory remains OPEN.
-- Added the evidence and scope limits to [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). Next step is method-level VDEX extraction/decompilation and correlation with the module's exact I2C/probe contract.
+- Added the evidence and scope limits to [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). Next step is method-level VDEX extraction/decompilation and correlation with the module's exact I2C/probe contract.
 
 ### P0-A follow-up — method-level VDEX and JNI caller recovery (2026-11-13)
 
 - Supersedes the earlier string-only VDEX note: the firmware-analysis artifact already contains a method-level disassembly of Android 9 `boot-carservices.vdex` (VDEX 019 / CompactDex). Recovered `ExtAudioMuxer`, `AudioEffect`, `ISourceService` and `SourceService` method bodies.
 - Recovered the static call chain: `AudioEffect.doExtAudioEffect(int,int[])` → Binder `ISourceService.doExtAudioEffect(int,int[])` → `SourceService.doExtAudioEffect` → JNI `ExtAudioMuxer.SendCmdAudioMux` → `/dev/audiomux`. Command `1000` is a special software-property path for `sys.audio.lr.balance`; other command IDs are forwarded.
-- Recovered concrete wrapper command IDs and Java array lengths: `0x01` (1), `0x03` (2), `0x04` (3), `0x09` (1), `0x10` (1), `0x11` (2), `0x12` (1), `0x15` (4), `0x20` (3), `0x50` (4), `0x55` (4), `0x56` (3), `0x57` (2), `0x58` (3), `0x59` (3), `0x5B` (4), `0x5C` (4), `0x60` (6), `0xA1` (4), `0xA2` (4), `0xA3` (4). Exact wrapper payload order and flag/sentinel construction are recorded in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+- Recovered concrete wrapper command IDs and Java array lengths: `0x01` (1), `0x03` (2), `0x04` (3), `0x09` (1), `0x10` (1), `0x11` (2), `0x12` (1), `0x15` (4), `0x20` (3), `0x50` (4), `0x55` (4), `0x56` (3), `0x57` (2), `0x58` (3), `0x59` (3), `0x5B` (4), `0x5C` (4), `0x60` (6), `0xA1` (4), `0xA2` (4), `0xA3` (4). Exact wrapper payload order and flag/sentinel construction are recorded in [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
 - Recovered direct framework callers in `SourcePolicy`, `McuService`, `CarStatusService` and a settings observer. The generic Binder method also allows a caller to submit a command and array directly, so wrapper methods alone may not be the complete command inventory.
 - The legacy JNI/kernel frame-size defect remains: native framing encodes one extra 32-bit word beyond the Java array. Recovered array lengths make the mismatch concrete but do not make it safe. Keep production transport detached; replacement must use a bounded, initialized frame or a deliberately revised ABI.
 - This is static analysis of the supplied firmware artifact only. It does not prove active runtime ownership, actual module bind, CD3310EO compatibility, valid hardware argument ranges or physical chip behavior. No hardware operation was performed.
-- Updated evidence report: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+- Updated evidence report: [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
 
 ### P0-A follow-up — paired JNI/kernel framing and command-dispatch mismatch (2026-11-13)
 
@@ -384,7 +384,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Explicit top-level callback branches are present for `0x01`, `0x03`, `0x04`, `0x09`, `0x10`, `0x11`, `0x12`, `0x15`, `0x20`, `0x55`, `0x56`, `0x5C`, `0xA3`, plus read/auxiliary IDs `0xF0` and `0xF1`.
 - Framework wrapper commands `0x50`, `0x57`, `0x58`, `0x59`, `0x5B`, `0x60`, `0xA1` and `0xA2` have no matching top-level dispatch branch in this inspected module. The module's default event path releases unrecognized events. Treat these as a framework/driver version or board-variant mismatch until another paired implementation is proven.
 - Correlated JNI and kernel framing: JNI sets the ioctl size field to Java array length + 1; kernel `cmd_ioctl` extracts that field, multiplies by four, and copies `4 * (N + 1)` bytes from the Java array pointer. This confirms a four-byte out-of-bounds source read for every `N)-element Java payload. `CONFIG_HARDENED_USERCOPY` does not validate Java array bounds.
-- The command map and mismatch are documented in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+- The command map and mismatch are documented in [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
 - The framework/kernel artifact pair is still not proven to be the active path on the user's physical CD3310EO unit. Do not send any of these IDs to the physical chip. Production transport remains detached; no hardware I/O was performed.
 
 ### P0-A follow-up — external CD3313 datasheet cross-check (2026-11-13)
@@ -394,7 +394,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The datasheet defines one-byte control commands and a 100 kbit/s maximum I2C clock. Its volume-control encoding interprets `0x3F` as −70 dB plus −8.75 dB attenuation (−78.75 dB total). This is consistent with the module's one-byte `0x3F` probe write being an initial volume attenuation command, not an ID read.
 - This independently corroborates the CD3313 driver identity and its CD3313 protocol. It does not establish CD3310EO compatibility.
 - Targeted public searches for the exact `CD3310EO` marking did not find a reliable datasheet or register map. This is not proof that no such documentation exists.
-- Updated [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) with the datasheet cross-check and source links.
+- Updated [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) with the datasheet cross-check and source links.
 - Compatibility remains UNKNOWN. No CD3313 protocol is approved for CD3310EO; no hardware I/O was performed.
 
 
@@ -405,7 +405,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The unit's firmware declares a DTBO node `cd3313@44` with `compatible = "hcn,cd3313"` and includes `cd3313.ko`; the physical IC marking remains CD3310EO. Record this as a confirmed firmware/physical-marking discrepancy.
 - This does not prove that the DTBO overlay is selected, that the driver binds successfully, or that CD3310EO accepts CD3313 commands. Runtime binding and protocol compatibility remain OPEN.
 - Next P0 action: resolve the base DTB and overlay selection path, then correlate with read-only runtime module/I2C/device-node evidence if available. Keep all CD3313 transport disconnected from the physical unit.
-- Updated evidence reports: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) and [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- Updated evidence reports: [CD3310EO_FIRMWARE_INVENTORY.md](../analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) and [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](../analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
 - No hardware I/O, module load, GPIO/mixer operation or flashing was performed.
 
 
@@ -416,7 +416,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Compared the DSP probes: AK7604 and FY7604 perform I2C response checks before registering `/dev/audiomux`; the CD3313 probe only requires a successful one-byte `0x3f` write in its visible path.
 - Init requests CD3313 first. A successful ACK at `0x44` could therefore let the CD3313 module claim the shared endpoint without proving the responding silicon is CD3313. This remains a static hypothesis; no runtime ACK, module binding or device-node ownership is established.
 - Next P0 action: keep the CD3313 transport isolated; seek read-only runtime logs/device-tree/module evidence. Do not attempt an I2C probe or send `0x3f` to the physical CD3310EO.
-- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](../analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
 - No hardware I/O or module load was performed.
 
 
@@ -426,7 +426,7 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - AK7604 and FY7604 both request `0x189`, `0x182` and `0x199`; each aborts probe on a failed GPIO request, before its chip-existence check.
 - Firmware init order is CD3313 → AK7604 → FY7604. If CD3313 succeeds first and retains the shared GPIOs, the later modules can fail before checking their ICs. This is an additional explanation for CD3313 endpoint priority, not runtime proof.
 - Keep I2C and GPIO transport disconnected. No hardware operation was performed.
-- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](../analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
 
 
 ### P0 follow-up — CD3313 GPIO ownership safety
@@ -434,4 +434,4 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The CD3313 probe uses literal GPIO IDs `0x189`, `0x199`, `396` and `0x1da`; no OF GPIO/property lookup imports are present in the inspected module.
 - It stores `gpio_request` return values but does not check them before calling descriptor/direction/value operations. A failed request can therefore be followed by an attempted GPIO manipulation.
 - Treat this as a vendor-driver ownership defect. Do not load/reload the module or toggle its GPIOs during investigation. The replacement must validate ownership and unwind on every failure.
-- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](../analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
