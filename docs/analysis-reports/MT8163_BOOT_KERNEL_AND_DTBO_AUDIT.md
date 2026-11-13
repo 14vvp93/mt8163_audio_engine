@@ -135,3 +135,54 @@ This makes the `cd3313@44` / `compatible = "hcn,cd3313"` node a direct firmware 
 Do not collapse these into a claim that the IC is actually CD3313 or that the CD3313 driver is compatible with CD3310EO. The selected overlay, live device-tree node, successful driver probe, and runtime `/dev/audiomux` owner remain unverified. The next evidence required is the base-DTB/overlay selection path plus read-only runtime module, I2C-device, driver-binding, and device-node ownership data.
 
 No hardware transaction or device operation was performed.
+
+
+## 8. Embedded base DTB and I2C2 overlay resolution — 2026-11-13
+
+A follow-up binary parse recovered the base FDT that was not included in the earlier DTBO-only summary.
+
+### Exact objects
+
+| Object | Location | Size | SHA-256 |
+|---|---:|---:|---|
+| Base DTB | `boot.img + 7,014,136` | 42,614 bytes | `b17bff1b3251882864700ca290efd6d0326997356bb98ed10a8dd8d012ae72a0` |
+| Base DTB copy | `recovery.img + 7,014,136` | 42,614 bytes | identical to boot DTB |
+| Overlay DTB | `dtbo.img + 64` | 42,594 bytes | `f2bb637e0656c8db88f3fa4a815f8b650bc59deed52502a140f93c99c74b200c` |
+
+The base DTB embedded in `boot.img` is byte-identical to the base DTB embedded in `recovery.img`. The overlay DTB in `dtbo.img` is byte-identical to the second FDT appended in `recovery.img`.
+
+The Android DTBO header reports one table entry (header size 32, entry size 32, entry count 1, entry offset 32, page size 2048). The entry points to the 42,594-byte overlay at offset 64. This is one overlay image containing multiple fragments, not one fragment or one audio device.
+
+### I2C controller state and overlay target
+
+In the base DTB, all three MT8163 I2C controllers are initially disabled:
+
+- `/soc/i2c@11007000`, phandle `0x38`
+- `/soc/i2c@11008000`, phandle `0x39`
+- `/soc/i2c@11009000`, phandle `0x3a`
+
+The overlay `__fixups__` maps symbol `i2c2` to `/fragment@11:target:0`; the base DTB phandle map resolves `i2c2` to `/soc/i2c@11009000`. Fragment 11 sets that controller's status to `okay` and adds multiple I2C child nodes.
+
+Among the children of this same I2C2 overlay fragment are:
+
+| Node | Compatible | Address | Status |
+|---|---|---:|---|
+| `cd3313@44` | `hcn,cd3313` | `0x44` | `okay` |
+| `ak7604@1c` | `hcn,ak7604` | `0x1c` | `okay` |
+| `fy7604@50` | `hcn,fy7604` | `0x50` | `okay` |
+
+The same fragment also declares several alternative FM-tuner nodes (SI4745, SI475x, TDA7786, TDA7708LX, TEF6856 and QN8027). This broad set of alternatives indicates that the overlay is multi-device/multi-variant configuration. It must not be interpreted as a physical population list. The user has confirmed that only CD3310EO is physically populated among the external audio processors.
+
+The DTBO table having one entry and the overlay containing these nodes do not establish that the bootloader selected this entry on the running unit. Runtime overlay selection and live I2C client enumeration remain unverified.
+
+## 9. Competing DSP module probe behavior — static comparison
+
+The three vendor modules share the `/dev/audiomux` misc-device name, but their visible probe checks are not equivalent.
+
+- `ak7604.ko` (SHA-256 `be362f5c5bc448f396bffbc77c460d40003bb496deb0311424c4d97bc2d54ba1`) calls `ak7604_check_exist` before `misc_register`. The check uses an I2C transfer with a write/read exchange and validates the returned byte. A zero result takes the probe failure path; `misc_register` is not reached.
+- `fy7604.ko` (SHA-256 `3a09acda96db7ab89853c37276d2bef37e3c112262bb854475baa04b31046fa5`) calls `fy7604_check_exist` before `misc_register`. The check performs an I2C read transaction and validates returned data. A zero result takes the probe failure path; `misc_register` is not reached.
+- `cd3313.ko` uses the previously documented one-byte `0x3f` write through `i2c_master_send(..., 1)`; a return value of one is sufficient for its visible probe path to continue. No silicon-ID read is visible in that probe function.
+
+The recovered init script requests `cd3313.ko`, then `ak7604.ko`, then `fy7604.ko`. Therefore a plausible sequence is that the CD3313 module attempts to claim `/dev/audiomux` first if a device at address `0x44` acknowledges the one-byte write; the later drivers perform their own existence checks. This is a **static hypothesis**, not a runtime finding. It does not prove that CD3310EO ACKs the byte, that the module loads, or that any CD3313 command is compatible with CD3310EO.
+
+This comparison explains why a CD3313-named module may be present in a CD3310EO unit's firmware without establishing silicon identity. No module was loaded and no I2C operation was issued.
