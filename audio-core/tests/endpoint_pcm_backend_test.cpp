@@ -354,7 +354,7 @@ void test_partial_transfer_contract() {
 }
 
 void test_terminal_transfer_errors_fail_closed() {
-    const std::int16_t samples[8]{};
+    std::int16_t samples[8]{};
 
     {
         FakeDevice fake;
