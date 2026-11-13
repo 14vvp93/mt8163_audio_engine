@@ -306,6 +306,80 @@ checkOpenStreamFormat, checkOpenStreamChannels, checkOpenStreamSampleRate
 
 The `AudioALSAStreamOut` constructor writes its C++ vptr at object offset 0. Therefore this implementation object is not itself the Android C `audio_stream_out` structure, whose first member is the C `audio_stream` callback table. The HAL stream adapter/wrapper and its exact C callback layout still need to be recovered from the stream-manager allocation and open/close paths. The same distinction must be verified for input streams before implementing the replacement stream ABI.
 
+### Android C stream wrapper structures recovered
+
+The device callbacks allocate a separate C ABI wrapper around the C++ stream implementation. The C++ vptr is not exposed as the Android stream pointer.
+
+**Output stream**
+
+- Allocation: `calloc(1, 124)`.
+- Public `audio_stream_out` callback table: bytes `0..119` (120 bytes).
+- Private `AudioALSAStreamOut *legacy_out`: offset `120` (`0x78`).
+- The wrapper pointer is written to the framework's `audio_stream_out **` output parameter.
+- `legacy_out` is returned by `AudioALSAHardware::openOutputStreamWithFlags`.
+
+| Offset | Android callback | Factory implementation |
+|---:|---|---|
+| 0 | `get_sample_rate` | Forward to `AudioALSAStreamOut::sampleRate` |
+| 4 | `set_sample_rate` | Logging no-op; returns 0 |
+| 8 | `get_buffer_size` | `bufferSize` |
+| 12 | `get_channels` | `channels` |
+| 16 | `get_format` | `format` |
+| 20 | `set_format` | Logging no-op; returns 0 |
+| 24 | `standby` | `standby` |
+| 28 | `dump` | Adapter implementation |
+| 32, 36 | `get_device`, `set_device` | Null |
+| 40, 44 | `set_parameters`, `get_parameters` | Adapter implementations |
+| 48, 52 | `add_audio_effect`, `remove_audio_effect` | Return `-EINVAL` |
+| 56 | `get_latency` | `latency` |
+| 60 | `set_volume` | `setVolume` |
+| 64 | `write` | `write` |
+| 68 | `get_render_position` | `getRenderPosition` |
+| 72 | `get_next_write_timestamp` | `getNextWriteTimestamp` |
+| 76 | `set_callback` | `setCallBack` |
+| 80, 84, 88, 92 | `pause`, `resume`, `drain`, `flush` | Matching C++ methods |
+| 96 | `get_presentation_position` | `getPresentationPosition` |
+| 100, 104, 108, 112 | `start`, `stop`, `create_mmap_buffer`, `get_mmap_position` | Null |
+| 116 | `update_source_metadata` | `updateSourceMetadata` |
+| 120 | Private field | `legacy_out` pointer |
+
+**Input stream**
+
+- Allocation: `calloc(1, 100)`.
+- Public `audio_stream_in` callback table: bytes `0..95` (96 bytes).
+- Private `AudioALSAStreamIn *legacy_in`: offset `96` (`0x60`).
+- The wrapper pointer is written to the framework's `audio_stream_in **` output parameter.
+
+| Offset | Android callback | Factory implementation |
+|---:|---|---|
+| 0 | `get_sample_rate` | Forward to `AudioALSAStreamIn::sampleRate` |
+| 4 | `set_sample_rate` | Logging no-op; returns 0 |
+| 8 | `get_buffer_size` | `bufferSize` |
+| 12 | `get_channels` | `channels` |
+| 16 | `get_format` | `format` |
+| 20 | `set_format` | Logging no-op; returns 0 |
+| 24 | `standby` | `standby` |
+| 28 | `dump` | Adapter implementation |
+| 32, 36 | `get_device`, `set_device` | Null |
+| 40, 44 | `set_parameters`, `get_parameters` | Suspicious entry addresses; see ABI anomaly below |
+| 48, 52 | `add_audio_effect`, `remove_audio_effect` | Matching C++ methods |
+| 56 | `set_gain` | `setGain` |
+| 60 | `read` | `read` |
+| 64 | `get_input_frames_lost` | `getInputFramesLost` |
+| 68 | `get_capture_position` | `getCapturePosition` |
+| 72, 76, 80, 84 | `start`, `stop`, `create_mmap_buffer`, `get_mmap_position` | Null |
+| 88 | `get_active_microphones` | `getActiveMicrophones` |
+| 92 | `update_sink_metadata` | `updateSinkMetadata` |
+| 96 | Private field | `legacy_in` pointer |
+
+**Input callback ABI anomaly — unresolved**
+
+The statically constructed input table places:
+- offset 40 at code address `0x0009cecc`, which is the `bx r2` instruction inside the `setGain` forwarding thunk beginning at `0x0009cec0);
+- offset 44 at `0x0009ccb8`, which branches into a cleanup block at `0x0009cc78`, rather than the apparent prologue at `0x0009ccd0).
+
+The C++ `AudioALSAStreamIn` vtable does contain `setParameters` and `getParameters` methods, but these two C adapter entries do not visibly forward to those slots. This is recorded as a factory-binary ABI anomaly, not silently corrected or treated as a proven runtime crash. The exact call convention and whether the target vendor build has a matching wrapper/source change must be reconciled before implementing input-stream compatibility.
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
