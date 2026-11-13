@@ -105,3 +105,13 @@ No guessed I2C address/register write, ioctl, module load, GPIO operation, mixer
 - Runtime `/dev/audiomux` owner: **UNKNOWN**.
 - CD3310EO register map/protocol: **UNKNOWN**.
 - Hardware/device validation: **NOT PERFORMED**.
+
+## 7. Userspace client scan — string-table leads only
+
+The `audiomux-userspace-client-scan` artifact from workflow run `43238133570` (artifact SHA-256 `2f463e328bb54592bc2369a4ea25024d0b5f36601abc345504e70996c3ed1bea`) reports these string-table hits:
+
+- `system/framework/boot-carservices.vdex`: `/dev/audiomux`, `DoAudioMux`, `ExtAudioMuxer`, `ExtAudioMuxer.java`, `SendCmdAudioMux`, and `cd3313`.
+- `system/AudioInputSource.vdex`: class descriptor `Landroid/sourceservice/ExtAudioMuxer;`.
+- The scan did not recover method-level VDEX callsites, command IDs or actual integer-array payloads. These are string-table leads only; do not infer that the named class actually sends a specific command or that its implementation matches the CD3313 module.
+
+This confirms that the framework contains an audiomux-facing client surface, but the call graph and runtime caller remain unresolved.
