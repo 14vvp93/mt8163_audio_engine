@@ -4,7 +4,7 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
-> **Latest code HEAD:** `cd1d695e5742b3d44260ffa592b4b8689f6dcbed`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
+> **Latest code HEAD:** `fb5a00e0a1d38aed71571cd3b2db41773d90e509`. The PCM broker now fails streams closed on terminal transfer errors, and `PrimaryHalStreamAdapter::stop()` synchronizes an active AudioCore session to `Suspended` after backend cleanup. Host PCM DSP tests and Android ARMv7 cross-build passed on this HEAD (Actions runs `43474875981` and `43474876012`). The preceding code commit `5161fa5` also passed both workflows (`43474868715`, `43474868710`).
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
@@ -88,7 +88,7 @@ Final replacement target:
 - [x] Test stop/retry while a byte-stream write is in flight, plus reconfiguration after successful stop.
 - [x] Include the byte adapter in both CMake and the Android Soong static-library source list.
 - [x] Prior PCM Broker and AudioCore TSAN runs passed.
-- [x] Re-ran the complete six-workflow host/ARM verification matrix on current HEAD `61259c7b72c2fda0d3ec1c8038e5c336aade38ff`; all six runs completed successfully.
+- [x] PCM DSP host tests and Android ARMv7 cross-build passed on code HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509` (Actions runs `43474875981` and `43474876012`); the preceding source commit `5161fa5` passed both workflows as well (`43474868715`, `43474868710`).
 
 ### P2 — Android 9 Primary HAL
 
@@ -176,6 +176,21 @@ Final replacement target:
 - **Latest execution caveat (2026-11-13):** workflows triggered on `07e8fae18edd39e958cc6deb78552c268ba3acf6` and `8092e1688e889b8d4750faa118dfdc444b014b23` were marked failed by GitHub, but their jobs had `runner_id=0`, an empty `runner_name`, and an empty `steps` array. Re-running the failed jobs reproduced the same pre-runner failure. Job-log retrieval returned storage `BlobNotFound`; therefore no compiler, test, TSAN, or benchmark step is known to have executed. Do not interpret these workflow conclusions as evidence of source-code test failures. The newest code changes remain unverified until a runner actually executes the workflow steps.
 
 - **Latest broker regression (2026-11-13):** commit `263825dcc080ff54983718bfd95105514cbee258` adds a test for a backend reporting more frames than requested. The expected contract is `BackendFailure`, stream state `Failed`, closed callback admission, then explicit `stop()` and `close()`. CI was triggered but all seven jobs again failed before runner assignment (`runner_id=0`, no runner name, zero executed steps); the new test has not yet executed in CI.
+
+
+### Latest lifecycle regression — 2026-11-13
+
+- Audited the interaction between `PcmStreamBroker` and `PrimaryHalStreamAdapter` after XRUN/device-loss terminal errors.
+- Found that `PrimaryHalStreamAdapter::stop()` performed backend cleanup for a failed stream but returned before moving the corresponding active AudioCore session to `Suspended`; this left published session snapshots stale until close.
+- Updated stop handling to inspect the AudioCore session state, perform backend stop, and transition only sessions that were actually `Active`. This preserves the `Requested` state for failed-start cleanup.
+- Added a regression test asserting `Active` before stop and `Suspended` after successful cleanup.
+- Host PCM DSP tests and Android ARMv7 cross-build passed on the final code HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
+
+### CI queue policy — 2026-11-13
+
+- Removed workflow-level `concurrency` cancellation blocks from all 13 workflows. New pushes no longer cancel older runs through `cancel-in-progress: true`; runs for successive commits can execute independently or wait for runner capacity.
+- Repository Integrity passed on workflow-policy commit `20ff7460c15f861461d224e422d345a983707b8c` (run `43474595132`).
+- The PCM DSP and Android ARMv7 workflows both executed successfully for commits `5161fa5` and `fb5a00e`; both commits' runs completed successfully rather than canceling earlier runs.
 
 ## PCM lifecycle audit update — 2026-11-13
 
