@@ -18,6 +18,8 @@ Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](C
 
 ## 1. Product definition
 
+**Owner-approved architecture decisions (2026-11-13):** full replacement of the factory vendor audio implementation; one DSP engine covering all supported source classes and directions; retain all factory components and immutable artifacts for compatibility/rollback without allowing competing runtime ownership. The detailed decision record is [Architecture Decisions — Full Replacement, All-Source DSP and Factory Retention](ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md).
+
 Build one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation while preserving the required Android 9 framework, HAL, kernel and application contracts.
 
 Final primary HAL artifact:
@@ -32,7 +34,8 @@ Internal modules may be separate source libraries, but they must not create comp
 
 - One owner for each audio state, route, stream lifecycle and hardware control.
 - Preserve the original firmware artifacts and hashes as immutable rollback references.
-- Keep unsupported routes/formats and DSP failures bit-transparent.
+- Keep unsupported routes/formats and DSP failures bit-transparent during migration; temporary bypass is never a permanent source-class exclusion.
+- Retain factory components and original artifacts; do not delete or overwrite them. After cutover, only one runtime owner may mutate route, mute, gain, DSP or CD3313 state.
 - The real-time PCM path must not allocate, block on mutexes, perform Binder/IPC, open devices, log synchronously, issue ioctls or access I2C/GPIO.
 - Do not infer hardware behavior from filenames, DTBO declarations, module load requests or host tests.
 - Never send guessed I2C/ioctl/GPIO/mixer commands or load modules experimentally.
@@ -202,7 +205,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 4. Verify target vendor AudioFlinger locking, effect-chain classification, session lifecycle, output-device changes, offload transitions and effect registration schema.
 5. Choose one supported production insertion point and document why it covers the intended media streams.
 6. Initially enable only verified PCM16 stereo media formats/rates.
-7. Calls, HFP/SCO and microphone capture are mandatory final-product routes, not exclusions. Until each telephony path is implemented and validated, keep it on a safe, bit-transparent factory-compatible fallback; never route it through the media DSP by assumption. The fallback is an implementation stage, not the product endpoint.
+7. Every supported source and direction must be covered by the unified DSP architecture. Use distinct playback, radio/input, telephony downlink, microphone/uplink and echo-reference graphs with route-specific validated profiles. A temporary bit-transparent fallback is allowed only until the exact route is DSP-visible and validated; it is not the final product endpoint.
 8. Measure CPU budget, callback duration, scheduling jitter, latency, clipping/headroom, DC behavior and profile-transition artifacts on the target.
 
 Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment is validated before sample access; misaligned buffers return `InvalidBuffer`. This is host-verified on code HEAD `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 tests). It does not mean the adapter is connected to the factory HAL.
@@ -216,11 +219,11 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 | Route | Existing evidence | Required implementation/validation |
 |---|---|---|
 | Local Music / Navigation / Notification | Primary Normal playback and Android policy statically mapped | First production route; PCM ownership, stream/session lifecycle, DSP and bypass |
-| Bluetooth A2DP | PCM16 stereo 44.1 kHz policy; offload path exists | Runtime offload detection, 44.1 kHz route, exact bypass when offloaded/unsupported |
+| Bluetooth A2DP | PCM16 stereo 44.1 kHz policy; offload path exists | DSP-visible PCM for every supported A2DP route; disable/redirect offload when it bypasses DSP, after validating policy and latency |
 | FM direct I2S | HAL opens a dedicated FM endpoint; no ordinary userspace PCM write loop | Preserve or deliberately redesign the direct route; do not pretend FM capture is the same path |
 | FM capture PCM | Dedicated AudioRecord capture handler/provider identified; 32 kHz adapter scaffold exists | Confirm actual consumer and audible route before enabling DSP |
-| HFP/SCO / Voice | Separate call handlers, downlink/uplink, microphone and echo-reference components | Full replacement telephony path: SCO transport, call downlink/uplink, microphone capture, echo-reference synchronization, AEC, noise suppression, AGC, sidetone, gain/mute arbitration, clock transitions, call-state lifecycle and regression tests |
-| AUX / AUX2 / DAB | Factory policy and external-input control references recovered | Confirm physical input route and whether audio is analog or PCM before choosing adapter |
+| HFP/SCO / Voice | Separate call handlers, downlink/uplink, microphone and echo-reference components | DSP-visible downlink/uplink and capture paths; SCO transport, clock/format/latency, echo-reference synchronization, AEC, noise suppression, AGC, sidetone, gain/mute arbitration, call lifecycle and regression tests |
+| AUX / AUX2 / DAB | Factory policy and external-input control references recovered | Determine whether each input is analog-only or has a verified ADC/PCM capture route. CD3313EO analog input selection alone cannot feed software DSP; do not claim coverage without digitization evidence |
 | HDMI / USB / other | Policy/handler declarations exist | Keep bypassed until exact active route and PCM contract are proven |
 
 **Exit gate:** each enabled route has a documented owner, endpoint, format, lifecycle, error behavior, tests and target-device evidence.
@@ -309,7 +312,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
 6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
 7. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
-8. Add every source adapter incrementally, including complete HFP/SCO and microphone/voice processing. Keep unverified routes on safe temporary fallback until their replacement is validated; no source class is excluded from final scope.
+8. Add every source adapter incrementally, including A2DP with DSP-visible PCM, FM direct/capture, analog-input digitization where hardware supports it, complete HFP/SCO, microphone/uplink and echo-reference paths. No source class is permanently excluded from final DSP scope.
 9. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
 
 ## 9. Definition of done
@@ -319,7 +322,9 @@ The MT8163 Audio Engine is complete only when:
 - The factory primary HAL is replaced at the exact factory path and ABI.
 - One coherent AudioCore owns audio state and control.
 - Every required route—including A2DP, HFP/SCO, voice-call uplink/downlink, microphone capture, FM, AUX/DAB and system/navigation overlays—has verified PCM/control ownership and documented lifecycle.
-- DSP preserves stereo/channel topology and has safe bypass/error behavior.
+- One DSP engine covers every required source and direction through separate playback/capture/telephony/echo-reference graphs, preserving channel topology and safe bypass/error behavior.
+- Every analog input claimed as DSP-covered has a verified ADC/PCM path; analog CD3313EO selection alone is not software DSP coverage.
+- All factory components and original artifacts are retained; factory clients cannot compete with the replacement runtime owner.
 - Hardware commands use a bounded, validated ABI with truthful completion state.
 - Factory clients cannot compete with the new owner.
 - All known defects are fixed or explicitly tracked with evidence.
