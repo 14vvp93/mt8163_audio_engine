@@ -83,6 +83,28 @@ jobs:
           TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
         run: ctest --test-dir build/p1-tsan --output-on-failure
 
+  address-undefined-sanitizer:
+    name: AudioCore AddressSanitizer and UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure ASan and UBSan
+        run: |
+          cmake -S pcm-dsp -B build/p1-asan-ubsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DPCM_DSP_BUILD_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build complete test suite
+        run: cmake --build build/p1-asan-ubsan --parallel 2
+      - name: Run complete suite under ASan and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build/p1-asan-ubsan --output-on-failure
+
   android-armv7:
     name: Android 9 ARMv7 cross-build
     runs-on: ubuntu-24.04
@@ -163,6 +185,7 @@ jobs:
       - api-contract
       - host-tests
       - thread-sanitizer
+      - address-undefined-sanitizer
       - android-armv7
       - repository-integrity
     runs-on: ubuntu-24.04
