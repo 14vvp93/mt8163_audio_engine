@@ -363,3 +363,14 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - `system/framework/boot-carservices.vdex` contains strings `/dev/audiomux`, `DoAudioMux`, `ExtAudioMuxer`, `ExtAudioMuxer.java`, `SendCmdAudioMux` and `cd3313`; `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
 - The scan did not recover method-level callsites, command IDs or argument arrays. These remain string-table leads, not a caller-to-driver proof. Caller inventory remains OPEN.
 - Added the evidence and scope limits to [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). Next step is method-level VDEX extraction/decompilation and correlation with the module's exact I2C/probe contract.
+
+### P0-A follow-up — method-level VDEX and JNI caller recovery (2026-11-13)
+
+- Supersedes the earlier string-only VDEX note: the firmware-analysis artifact already contains a method-level disassembly of Android 9 `boot-carservices.vdex` (VDEX 019 / CompactDex). Recovered `ExtAudioMuxer`, `AudioEffect`, `ISourceService` and `SourceService` method bodies.
+- Recovered the static call chain: `AudioEffect.doExtAudioEffect(int,int[])` → Binder `ISourceService.doExtAudioEffect(int,int[])` → `SourceService.doExtAudioEffect` → JNI `ExtAudioMuxer.SendCmdAudioMux` → `/dev/audiomux`. Command `1000` is a special software-property path for `sys.audio.lr.balance`; other command IDs are forwarded.
+- Recovered concrete wrapper command IDs and Java array lengths: `0x01` (1), `0x03` (2), `0x04` (3), `0x09` (1), `0x10` (1), `0x11` (2), `0x12` (1), `0x15` (4), `0x20` (3), `0x50` (4), `0x55` (4), `0x56` (3), `0x57` (2), `0x58` (3), `0x59` (3), `0x5B` (4), `0x5C` (4), `0x60` (6), `0xA1` (4), `0xA2` (4), `0xA3` (4). Exact wrapper payload order and flag/sentinel construction are recorded in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+- Recovered direct framework callers in `SourcePolicy`, `McuService`, `CarStatusService` and a settings observer. The generic Binder method also allows a caller to submit a command and array directly, so wrapper methods alone may not be the complete command inventory.
+- The legacy JNI/kernel frame-size defect remains: native framing encodes one extra 32-bit word beyond the Java array. Recovered array lengths make the mismatch concrete but do not make it safe. Keep production transport detached; replacement must use a bounded, initialized frame or a deliberately revised ABI.
+- This is static analysis of the supplied firmware artifact only. It does not prove active runtime ownership, actual module bind, CD3310EO compatibility, valid hardware argument ranges or physical chip behavior. No hardware operation was performed.
+- Updated evidence report: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
+
