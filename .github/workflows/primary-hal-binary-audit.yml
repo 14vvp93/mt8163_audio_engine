@@ -67,15 +67,19 @@ jobs:
         run: |
           set -euo pipefail
           binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
-          sh tools/audit_primary_hal_binary.sh "$binary"
-          python3 tools/audit_android_packed_relocations.py "$binary"
-          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
-          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
+          {
+            sh tools/audit_primary_hal_binary.sh "$binary"
+            python3 tools/audit_android_packed_relocations.py "$binary"
+            python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
+            python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
+          } 2>&1 | tee primary-hal-audit-report.txt
 
-      - name: Preserve audited factory binary as workflow artifact
+      - name: Preserve audited factory binary and report as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mt8163-factory-primary-hal
-          path: factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+          name: mt8163-factory-primary-hal-audit
+          path: |
+            factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+            primary-hal-audit-report.txt
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
