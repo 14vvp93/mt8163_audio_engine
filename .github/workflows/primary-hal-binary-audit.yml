@@ -265,6 +265,9 @@ jobs:
             echo "===== Record2Way::Read ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xad300 --stop-address=0xad8f0 "$binary"
             echo
+            echo "===== AudioVUnlockDL ReadRoutine thread entry ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb2adc --stop-address=0xb3170 "$binary"
+            echo
             echo "===== AudioVUnlockDL::getInstance ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xb3170 --stop-address=0xb31d4 "$binary"
             echo
