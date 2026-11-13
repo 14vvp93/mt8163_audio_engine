@@ -91,6 +91,8 @@ int main() {
 
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
                        PcmDirection::Playback) == PcmResult::Ok);
+    CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
+                       PcmDirection::Playback) == PcmResult::InvalidArgument);
     CHECK(adapter.stream_count() == 1U);
     PcmByteStreamAdapter output(adapter, handle, PcmDirection::Playback);
     PcmConfig unsupported_config = config;
