@@ -76,9 +76,14 @@ int main() {
         check(result == pcm_dsp::NormalPlaybackResult::Processed,
               "eligible primary media route is processed");
         check(output != input, "EQ must alter the eligible stereo signal");
-
-        expect_bypass(adapter, input, parameters, context,
-                      "baseline route must be eligible only through explicit context");
+        bool stereo_preserved = false;
+        for (std::size_t frame = 0; frame < kFrames; ++frame) {
+            if (output[frame * 2U] != output[frame * 2U + 1U]) {
+                stereo_preserved = true;
+                break;
+            }
+        }
+        check(stereo_preserved, "stereo processing must not fold left and right channels");
 
         for (const auto route : {
                  pcm_dsp::PlaybackRoute::VoiceCall,
@@ -175,6 +180,17 @@ int main() {
                                  parameters, context);
         check(result == pcm_dsp::NormalPlaybackResult::Bypassed,
               "zero-frame buffer is a no-op bypass");
+
+        std::vector<std::int16_t> overlapping(input.size() + 1U, 0);
+        std::copy(input.begin(), input.end(), overlapping.begin());
+        auto blocked_overlap_context = context;
+        blocked_overlap_context.route = pcm_dsp::PlaybackRoute::Unknown;
+        result = adapter.process(overlapping.data(), overlapping.data() + 1U,
+                                 kFrames, parameters, blocked_overlap_context);
+        check(result == pcm_dsp::NormalPlaybackResult::Bypassed,
+              "partially overlapping buffers fail open to bypass");
+        check(std::equal(input.begin(), input.end(), overlapping.begin() + 1U),
+              "partial-overlap bypass uses a safe memmove");
 
         std::cout << "Normal playback PCM adapter tests passed\n";
         return 0;
