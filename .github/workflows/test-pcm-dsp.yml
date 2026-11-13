@@ -2,16 +2,22 @@ name: Test PCM DSP core
 
 on:
   push:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
       - ".github/workflows/test-pcm-dsp.yml"
   pull_request:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
       - ".github/workflows/test-pcm-dsp.yml"
   workflow_dispatch:
+
+concurrency:
+  group: test-pcm-dsp-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   host-tests:
