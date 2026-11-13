@@ -280,6 +280,12 @@ jobs:
             echo "===== AudioVUnlockDL::stopInput ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xb46f0 --stop-address=0xb492c "$binary"
             echo
+            echo "===== AudioVUnlockDL::freeInstance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb49a0 --stop-address=0xb4a2c "$binary"
+            echo
+            echo "===== AudioALSAHardware voice-unlock entry points ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce7c0 --stop-address=0xce8fc "$binary"
+            echo
             echo "===== AudioVUnlockRingBuf::WriteAdvance ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xb2504 --stop-address=0xb2714 "$binary"
             echo
