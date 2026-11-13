@@ -157,7 +157,7 @@ The immutable factory artifact was fetched directly by GitHub Actions from `14vv
 - `hw_module_methods_t.open` function pointer: `0x0009b70c`
 - `dso`: null; all 25 reserved words are zero in the file image.
 
-The module metadata is decoded from the actual bytes at the `HMI` object, not inferred from AOSP defaults. The `open` function pointer has been recovered, but its implementation and returned `hw_device_t.version` still require disassembly and control-flow analysis.
+The module metadata is decoded from the actual bytes at the `HMI` object, not inferred from AOSP defaults. The `open` entry was disassembled far enough to confirm its contract: it checks the requested instance name, allocates a zeroed 224-byte device object, writes `HARDWARE_DEVICE_TAG` at offset 0, writes device API version `0x0300` (Audio HAL device API 3.0) at offset 4, and stores the module pointer at offset 8. It begins populating the common close/method slots at offsets 60 and 64 onward. The 224-byte allocation is larger than the 156-byte AOSP r3 `audio_hw_device` layout, proving a vendor-specific tail of at least 68 bytes; the complete tail and callback map remain under analysis.
 
 ## 5. Vendor-specific facts that remain unresolved
 
