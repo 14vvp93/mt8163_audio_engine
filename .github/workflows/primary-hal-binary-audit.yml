@@ -48,6 +48,8 @@ jobs:
             firmware/extracted/vendor/audio_policy.conf
             firmware/extracted/vendor/audio_device.xml
             firmware/extracted/vendor/audiocmdservice_atci
+            firmware/extracted/vendor/android.hardware.audio@4.0-service-mediatek
+            firmware/extracted/vendor/android.hardware.audio@4.0-service-mediatek.rc
           sparse-checkout-cone-mode: false
 
       - name: Verify immutable factory artifact identity
@@ -270,6 +272,39 @@ jobs:
           } >> "$report"
           cat "$report"
 
+      - name: Scan vendor audio HAL service executables and init registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="factory-firmware/firmware/extracted"
+          report="primary-hal-service-executable-scan.txt"
+          patterns='xWayPlay|xWayRec|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware|IDevicesFactory'
+          : > "$report"
+          for relative in \
+            "vendor/android.hardware.audio@4.0-service-mediatek" \
+            "vendor/audiocmdservice_atci"; do
+            file="$root/$relative"
+            echo "===== $relative =====" >> "$report"
+            if [ ! -s "$file" ]; then
+              echo "MISSING" >> "$report"
+              continue
+            fi
+            sha256sum "$file" >> "$report"
+            arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null |
+              grep -Ei "$patterns" >> "$report" || true
+            strings -a "$file" 2>/dev/null |
+              grep -Ei "$patterns" | sort -u >> "$report" || true
+          done
+          echo "===== vendor/android.hardware.audio@4.0-service-mediatek.rc =====" >> "$report"
+          if [ -s "$root/vendor/android.hardware.audio@4.0-service-mediatek.rc" ]; then
+            sha256sum "$root/vendor/android.hardware.audio@4.0-service-mediatek.rc" >> "$report"
+            grep -E 'service |interface |user |group |oneshot' \
+              "$root/vendor/android.hardware.audio@4.0-service-mediatek.rc" >> "$report"
+          else
+            echo "MISSING" >> "$report"
+          fi
+          cat "$report"
+
       - name: Preserve audited factory binary and report as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -281,5 +316,6 @@ jobs:
             primary-hal-private-client-scan.txt
             primary-hal-client-bridge.txt
             primary-hal-hidl-bridge.txt
+            primary-hal-service-executable-scan.txt
           if-no-files-found: error
           retention-days: 7
