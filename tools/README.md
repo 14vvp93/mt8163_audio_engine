@@ -81,6 +81,24 @@ recorded factory baseline. A passing audit does not prove the exact vendor
 callback table or runtime linker compatibility. Preserve the reported SHA-256
 with the firmware manifest.
 
+For the MediaTek C++ `AudioALSAHardware` vtable, decode Android's packed
+`APS2` relocations after the ELF audit:
+
+```sh
+python3 tools/audit_android_packed_relocations.py /path/to/audio.primary.mt8163.so
+```
+
+The decoder validates ELF32 little-endian ARM, parses `.dynsym` and the
+Android packed `.rel.dyn` stream, then resolves the selected vtable's
+`R_ARM_ABS32` entries to demangled C++ method names. The default target is
+`_ZTVN7android17AudioALSAHardwareE`; another exact dynamic symbol can be
+selected with `--symbol`.
+
+GitHub Actions runs both audits against the SHA-256-pinned factory artifact
+from `14vvp93/public_calculations` on the development branch. It also
+preserves the verified factory binary as a short-lived workflow artifact for
+static analysis.
+
 ## Find the CD3313 JNI native bridge
 
 The Java/Binder route is known, but the native implementation of
