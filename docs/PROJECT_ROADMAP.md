@@ -155,6 +155,9 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### P2 — Recover and build the factory-compatible Android 9 primary HAL
 
+- [x] Add CI workflow to fetch the immutable factory HAL artifact from `public_calculations` and verify its expected size/SHA-256 before audit.
+- [ ] Observe and review the first successful factory HAL binary audit run; HMI/ABI details remain unverified until then.
+
 **Priority: critical product milestone**
 
 1. Complete the factory binary audit: ELF32 ARM identity, SONAME, exported symbols, symbol versions, dependencies, relocations and linker namespace. **Tool improved:** `tools/audit_primary_hal_binary.sh` now checks ET_DYN, ARM32 EABI5, factory basename and exported `HMI`; it still needs to be run against the immutable firmware binary.
