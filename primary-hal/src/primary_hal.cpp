@@ -2,7 +2,7 @@
 
 #include <cerrno>
 #include <cstddef>
-#include <cstdint>
+#include <cstring>
 
 namespace {
 
@@ -38,22 +38,20 @@ int open_primary_device(const hw_module_t* module,
 
     *device = nullptr;
 
-    if (module == nullptr || id == nullptr ||
-        AUDIO_HARDWARE_INTERFACE == nullptr) {
+    if (module == nullptr || id == nullptr) {
         return -EINVAL;
     }
 
-    if (__builtin_strcmp(id, AUDIO_HARDWARE_INTERFACE) != 0) {
+    if (std::strcmp(id, AUDIO_HARDWARE_INTERFACE) != 0) {
         return -EINVAL;
     }
 
-    // The production device is intentionally unavailable until every public
-    // callback and private factory-tail contract has a verified implementation.
+    // Fail closed until the full device and stream contracts are implemented.
     return -ENOSYS;
 }
 
 hw_module_methods_t g_module_methods = {
-    .open = open_primary_device,
+    open_primary_device,
 };
 
 }  // namespace
