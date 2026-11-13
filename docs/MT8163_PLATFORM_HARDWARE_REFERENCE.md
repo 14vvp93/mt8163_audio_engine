@@ -48,16 +48,16 @@ Related project evidence:
 - [Normal speaker PCM format and mono-fold audit](MT8163_NORMAL_SPEAKER_PCM_FORMAT.md)
 - [Audio source coverage](MT8163_AUDIO_SOURCE_COVERAGE.md)
 - [FM routing matrix](MT8163_FM_ROUTING_MATRIX.md)
-- [CD3313 protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
+- [CD3313EO hardware and driver reference](CD3313EO_HARDWARE_AND_DRIVER_REFERENCE.md)\n- [CD3313 protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
 
 ## 3. What the public SoC specification does not tell us
 
-The public MT8163 product brief is not a complete hardware programming manual. It does not provide enough information to implement or safely modify:
+The target board uses the CD3313EO external analog audio processor, as confirmed by the project owner. Its published electrical and control characteristics are documented in [CD3313EO hardware and driver reference](CD3313EO_HARDWARE_AND_DRIVER_REFERENCE.md). Keep the SoC's digital AFE/ASoC transport distinct from this external analog processor.\n\nThe public MT8163 product brief is not a complete hardware programming manual. It does not provide enough information to implement or safely modify:
 
 - AFE register addresses, bit fields, clock trees or reset sequencing;
 - I2S/TDM pinmux, pad drive, timing, master/slave configuration or board wiring;
 - DMA descriptor layout, SRAM/DRAM buffer constraints, interrupt behavior or PCM ring details;
-- analog codec / external audio processor connections;
+- exact CD3313EO analog input/output wiring, external RC networks, supply and mute/power sequencing;
 - amplifier enable, mute GPIO polarity, power rails or pop-noise sequencing;
 - exact active ALSA card/device topology on this head unit.
 
