@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mt8163_audio_core/session_token.hpp"
 #include "mt8163_audio_core/types.hpp"
 
 #include <array>
@@ -20,22 +21,23 @@ enum class SessionState : std::uint8_t {
 };
 
 struct SessionRecord {
-    std::uint32_t handle{0U};
+    SessionToken token{};
     SourceId source{SourceId::None};
     RouteType route{RouteType::None};
     SessionState state{SessionState::Free};
 };
 
-// Fixed-capacity control-plane registry. It owns logical session identity and
-// lifecycle only; route execution and PCM transport remain separate modules.
-// Access is serialized by the AudioCore control context.
 class SessionRegistry {
 public:
-    bool open(std::uint32_t handle, SourceId source, RouteType route) noexcept;
-    bool transition(std::uint32_t handle, SessionState next) noexcept;
-    bool close(std::uint32_t handle) noexcept;
+    SessionRegistry() noexcept = default;
+    explicit SessionRegistry(std::uint64_t first_generation) noexcept;
 
-    const SessionRecord* find(std::uint32_t handle) const noexcept;
+    bool open(std::uint32_t handle, SourceId source, RouteType route,
+              SessionToken* out_token) noexcept;
+    bool transition(SessionToken token, SessionState next) noexcept;
+    bool close(SessionToken token) noexcept;
+
+    const SessionRecord* find(SessionToken token) const noexcept;
     std::size_t count(SessionState state) const noexcept;
     std::size_t size() const noexcept;
     const std::array<SessionRecord, kMaxAudioSessions>& records() const noexcept;
@@ -47,6 +49,8 @@ private:
                                  SessionState next) noexcept;
 
     std::array<SessionRecord, kMaxAudioSessions> sessions_{};
+    std::uint64_t next_generation_{1U};
+    bool generation_exhausted_{false};
 };
 
 }  // namespace mt8163_audio_core
