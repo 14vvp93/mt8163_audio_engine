@@ -11,7 +11,7 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 - `main` is the stable branch; no project changes were pushed to it.
 - `feature` is the sole active development branch.
 - Repository integrity, AudioCore TSAN and PCM broker TSAN workflows now target `main` and `feature`; legacy branch filters were removed.
-- Validation for the workflow migration is running on the current `feature` commits; results must be checked before treating the migration as verified.
+- Repository Integrity, AudioCore TSAN and PCM Stream Broker TSAN all PASS on the current branch-model documentation commit `6078830210c260faa3e8d01a87efb2556020d461`.
 
 ## Product status
 
