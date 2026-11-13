@@ -253,3 +253,20 @@ Sources:
 - Datasheet index: https://www.alldatasheet.com/datasheet-pdf/pdf/2171537/EONMIC/CD3313EO.html
 
 No hardware I/O, module loading, I2C transaction, GPIO/mixer write or device validation was performed.
+
+
+## 11. Firmware provenance confirmed by the user — 2026-11-13
+
+The user explicitly confirmed that the analyzed firmware dump from `14vvp93/public_calculations/firmware/dumps/mt8163` is from the same physical head unit whose populated audio IC is CD3310EO. Treat this as **USER-CONFIRMED FIRMWARE PROVENANCE** for this device; this is no longer merely a firmware-family or similar-board comparison.
+
+Consequences for evidence interpretation:
+
+- The `cd3313.ko` module metadata, its `hcn,cd3313` match string, and the `cd3313@44` DTBO node are now direct software artifacts from the user's unit's firmware dump.
+- The physical IC remains CD3310EO only, while the firmware names its driver/DT node CD3313. Record this as a real board-software versus physical-marking discrepancy, not as proof that either identification is wrong.
+- The supplied DTBO contains one CD3313-compatible overlay entry. Firmware provenance does not prove that this overlay is selected at boot or that the node is instantiated in the live device tree.
+- Init scripts request multiple mutually competing `/dev/audiomux` module variants. Firmware provenance does not prove which module successfully probes or owns the live device node.
+- The CD3313 probe's one-byte `0x3f` write and address `0x44` are now known to belong to this unit's firmware image. They still do not prove that CD3310EO accepts that transaction or implements the CD3313 command/register map.
+
+**Updated confidence:** same-unit firmware provenance is USER CONFIRMED; CD3313 driver identity is STATIC ELF/DWARF VERIFIED; physical IC identity is USER CONFIRMED as CD3310EO; active DTBO, runtime module binding, I2C response, and CD3310EO/CD3313 protocol compatibility remain UNKNOWN.
+
+Next read-only work should prioritize the base DTB/overlay-selection chain and all available runtime evidence. Do not send the CD3313 probe byte or any CD3313 command to the physical IC.
