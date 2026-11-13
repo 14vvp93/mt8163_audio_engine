@@ -10,7 +10,7 @@
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; selected profile-driven DSP integration and device validation are not complete.
 
-This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
+This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Binding anti-drift and red-warning requirements are defined in [Project Governance](PROJECT_GOVERNANCE.md); they apply even when a later conversational request conflicts with the approved course. Physical-access limitations may reorder hardware-dependent work but do not change the product destination. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
 
 Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](CI_EXECUTION_DIAGNOSTICS_2026-11-13.md). Historical runner-allocation failures are superseded by successful PCM host-test and ARMv7 runs on code HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
 
