@@ -205,7 +205,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 4. Verify target vendor AudioFlinger locking, effect-chain classification, session lifecycle, output-device changes, offload transitions and effect registration schema.
 5. Choose one supported production insertion point and document why it covers the intended media streams.
 6. Initially enable only verified PCM16 stereo media formats/rates.
-7. Every supported source and direction must be covered by the unified DSP architecture. Use distinct playback, radio/input, telephony downlink, microphone/uplink and echo-reference graphs with route-specific validated profiles. A temporary bit-transparent fallback is allowed only until the exact route is DSP-visible and validated; it is not the final product endpoint.
+7. DSP is profile-driven, not universally applied. Enable only validated profiles on explicitly supported and DSP-visible routes. Preserve verified factory handling for routes without an approved profile; expand coverage incrementally as route contracts are recovered.
 8. Measure CPU budget, callback duration, scheduling jitter, latency, clipping/headroom, DC behavior and profile-transition artifacts on the target.
 
 Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment is validated before sample access; misaligned buffers return `InvalidBuffer`. This is host-verified on code HEAD `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 tests). It does not mean the adapter is connected to the factory HAL.
@@ -219,7 +219,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 | Route | Existing evidence | Required implementation/validation |
 |---|---|---|
 | Local Music / Navigation / Notification | Primary Normal playback and Android policy statically mapped | First production route; PCM ownership, stream/session lifecycle, DSP and bypass |
-| Bluetooth A2DP | PCM16 stereo 44.1 kHz policy; offload path exists | DSP-visible PCM for every supported A2DP route; disable/redirect offload when it bypasses DSP, after validating policy and latency |
+| Bluetooth A2DP | PCM16 stereo 44.1 kHz policy; offload path exists | Keep factory offload/PCM handling unless a verified DSP profile and DSP-visible PCM insertion are available; do not claim DSP coverage while offloaded |
 | FM direct I2S | HAL opens a dedicated FM endpoint; no ordinary userspace PCM write loop | Preserve or deliberately redesign the direct route; do not pretend FM capture is the same path |
 | FM capture PCM | Dedicated AudioRecord capture handler/provider identified; 32 kHz adapter scaffold exists | Confirm actual consumer and audible route before enabling DSP |
 | HFP/SCO / Voice | Separate call handlers, downlink/uplink, microphone and echo-reference components | DSP-visible downlink/uplink and capture paths; SCO transport, clock/format/latency, echo-reference synchronization, AEC, noise suppression, AGC, sidetone, gain/mute arbitration, call lifecycle and regression tests |
@@ -335,10 +335,10 @@ The MT8163 Audio Engine is complete only when:
 
 ## 10. Change log
 
-### 2026-11-13 — owner-approved full replacement and all-source DSP architecture
+### 2026-11-13 — superseded architecture proposal
 
-- Accepted full replacement of factory vendor audio logic while preserving Android 9 framework contracts and required platform transports.
-- Accepted one DSP implementation covering all supported source classes and directions through route-specific playback, capture, telephony and echo-reference graphs.
+- The earlier full-replacement/all-source-DSP proposal was superseded by the owner-approved DEEP / PROFILES / RETAIN decision recorded in [the current architecture ADR](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
+- Historical route investigations remain useful evidence, but they do not establish a requirement to replace every factory path or apply DSP to every source.
 - Accepted retention of factory components and immutable rollback artifacts; explicitly prohibited competing runtime state/hardware owners.
 - Added `SystemSound` as an AudioCore source and introduced a DSP route-visibility classifier separate from transport-route validity. Analog CD3313 inputs are not treated as software-DSP-visible without a verified ADC/PCM path.
 - Verified the code-bearing commit `f50f25a`: host tests 22/22, Android ARMv7 build and PCM/HAL adapter TSAN passed. This is host/build evidence only, not device validation.
