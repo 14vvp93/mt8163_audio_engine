@@ -292,6 +292,32 @@ The factory implementation bodies were disassembled in [audit run 43404049682](h
 
 The factory ELF exports the implementation classes `Play2Way`, `Record2Way` and `AudioVUnlockDL`, including their singleton accessors and core methods. This establishes the internal owner behind every callback in the first eight slots. The expanded scan of 1,052 system/vendor shared libraries and the two vendor audio service executables did not identify a separate named xWay client. It cannot exclude clients that call the private device-tail offsets indirectly.
 
+#### Device-tail adapter ABI
+
+The constructor's callback pointers resolve to a contiguous set of 16 small ARM32 adapters at `0x0009c400`–`0x0009c4fc`. Every adapter first loads the legacy `AudioALSAHardware*` from the public device wrapper at byte offset `0xdc` (220), then dispatches through the C++ object's vtable while preserving the remaining argument registers. Thus the first argument to each private device-tail callback is the public `audio_hw_device*`, not the internal C++ object pointer.
+
+| Device offset | Adapter address | C++ vtable byte offset | Target |
+|---:|---:|---:|---|
+| 156 | `0x9c400` | `0x84` | `xWayPlay_Start(int)` |
+| 160 | `0x9c410` | `0x88` | `xWayPlay_Stop()` |
+| 164 | `0x9c420` | `0x8c` | `xWayPlay_Write(void*, int)` |
+| 168 | `0x9c430` | `0x90` | `xWayPlay_GetFreeBufferCount()` |
+| 172 | `0x9c440` | `0x94` | `xWayRec_Start(int)` |
+| 176 | `0x9c450` | `0x98` | `xWayRec_Stop()` |
+| 180 | `0x9c460` | `0x9c` | `xWayRec_Read(void*, int)` |
+| 184 | `0x9c470` | `0xa0` | `ReadRefFromRing(void*, unsigned int, void*)` |
+| 188 | `0x9c480` | `0xa4` | `GetVoiceUnlockULTime(void*)` |
+| 192 | `0x9c490` | `0xa8` | `SetVoiceUnlockSRC(unsigned int, unsigned int)` |
+| 196 | `0x9c4a0` | `0xac` | `startVoiceUnlockDL()` |
+| 200 | `0x9c4b0` | `0xb0` | `stopVoiceUnlockDL()` |
+| 204 | `0x9c4c0` | `0xbc` | `getVoiceUnlockDLInstance()` |
+| 208 | `0x9c4d0` | `0xc4` | `setupParametersCallback(...)` |
+| 212 | `0x9c4e0` | `0xc8` | `setAudioParameterChangedCallback(...)` |
+| 216 | `0x9c4f0` | `0xcc` | `clearAudioParameterChangedCallback(...)` |
+
+The C++ vtable has an internal `freeVoiceUnlockDLInstance()` method at slot `0xb4`, but no corresponding public device-tail slot. Do not misidentify it as a seventeenth callback. Return-value types for the xWay callbacks must remain tied to the actual vendor declarations or call-site evidence; the adapter thunks alone establish argument forwarding and object recovery, not C++ source-level return types.
+
+
 #### Voice-unlock worker and teardown ordering
 
 The worker lifecycle was recovered in [audit run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048):
