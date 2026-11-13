@@ -192,6 +192,33 @@ void test_invalid_order_and_arguments() {
     require(broker.close(3U) == PcmResult::Ok, "stopped stream closes");
 }
 
+void test_stop_failure_can_be_retried() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 2U, 240U};
+
+    require(broker.open(41U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok, "retry stream opens");
+    require(broker.configure(41U, config) == PcmResult::Ok,
+            "retry stream configures");
+    require(broker.start(41U) == PcmResult::Ok, "retry stream starts");
+
+    backend.stop_result = PcmResult::BackendFailure;
+    require(broker.stop(41U) == PcmResult::BackendFailure,
+            "first stop failure is propagated");
+    const std::int16_t sample = 0;
+    require(broker.write(41U, &sample, 1U) == PcmResult::InvalidState,
+            "failed stop keeps transfer admission closed");
+
+    backend.stop_result = PcmResult::Ok;
+    require(broker.stop(41U) == PcmResult::Ok,
+            "stop can be retried after a backend failure");
+    require(broker.close(41U) == PcmResult::Ok,
+            "stream closes after successful stop retry");
+    require(backend.stops.load() == 2U,
+            "backend receives both stop attempts");
+}
+
 void test_fixed_capacity() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);

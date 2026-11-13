@@ -227,7 +227,9 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
     const PcmStreamState state = static_cast<PcmStreamState>(
         slot->state.load(std::memory_order_acquire));
     if (state == PcmStreamState::Stopped) return PcmResult::Ok;
-    if (state != PcmStreamState::Started) return PcmResult::InvalidState;
+    if (state != PcmStreamState::Started && state != PcmStreamState::Failed) {
+        return PcmResult::InvalidState;
+    }
 
     const std::uint32_t previous = slot->transfer_gate.fetch_and(
         kTransferCountMask, std::memory_order_acq_rel);
