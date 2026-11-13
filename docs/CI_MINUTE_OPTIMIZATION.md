@@ -86,4 +86,4 @@ This is not a claim that every possible minute has been eliminated:
 - Android NDK installation and AOSP header acquisition still occur in relevant private builds. Caching them may help, but cache restore/save overhead and cache limits must be measured after private runners are available; no unmeasured cache layer was added.
 - Self-hosted runners or local CI can reduce dependence on GitHub-hosted private minutes, but require a maintained trusted machine and are not enabled by this change.
 
-Private branch updated: `feature` at audit commit `22bdd450ae3a73200e66d58f22a2a4e568bb00d0`. Public branch updated: `main` at audit commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1`. Private `main` was not changed.
+Private changes are on `feature`; private `main` was not changed. Public changes are on `main` at audit commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1`.
