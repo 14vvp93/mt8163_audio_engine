@@ -306,3 +306,12 @@ The three DSP module probes also overlap on GPIO ownership:
 If CD3313 succeeds first and keeps the shared GPIOs requested, AK7604 and FY7604 can fail before they even check for their respective ICs. This compounds the shared `/dev/audiomux` name collision and makes CD3313 the first candidate to claim the endpoint.
 
 This is a conditional static explanation, not proof of runtime ownership: a successful CD3313 I2C transfer, successful GPIO requests and live module binding have not been observed. No GPIO or I2C operation was performed.
+
+
+## 14. CD3313 GPIO source and request-error handling
+
+The CD3313 module's symbol imports expose legacy GPIO request/descriptor/set operations but no OF GPIO or device-property lookup helpers. Its recovered `dsp_probe` uses literal GPIO IDs `0x189`, `0x199`, `396` and `0x1da`; the module contains labels including `GPIO36_mute`, `GPIO52_subwoof` and `GPIO39_Aux_Aux2_SW`. The DTBO's `mute-gpios` and `sub-gpios` properties are not visibly consumed by this probe path.
+
+The probe stores `gpio_request` results but does not check them before proceeding to descriptor/direction/value operations. If a request fails because another consumer owns the GPIO, the module still attempts to manipulate it. This is a potential GPIO ownership defect in the vendor driver, not evidence of a specific live pin conflict.
+
+Do not load/reload this module or toggle these pins as a test. The replacement driver must obtain GPIOs through validated board configuration, check every request/result, and unwind cleanly on failure.
