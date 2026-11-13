@@ -1,0 +1,32 @@
+cc_library_static {
+    name: "libmt8163_audio_core",
+    vendor: true,
+    compile_multilib: "32",
+
+    srcs: [
+        "src/mute_arbiter.cpp",
+        "src/cd3313_compat.cpp",
+        "src/session_registry.cpp",
+        "src/route_policy.cpp",
+        "src/audio_core.cpp",
+        "src/hardware_broker.cpp",
+        "src/pcm_backend_contract.cpp",
+        "src/endpoint_pcm_backend.cpp",
+        "src/pcm_stream_broker.cpp",
+        "src/primary_hal_stream_adapter.cpp",
+        "src/snapshot_publisher_compile_check.cpp",
+    ],
+
+    export_include_dirs: [
+        "include",
+    ],
+
+    cflags: [
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-fvisibility=hidden",
+    ],
+}
