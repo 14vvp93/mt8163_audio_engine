@@ -1,3 +1,7 @@
+> **TERMINOLOGY UPDATE — 2026-11-13. Use CD3313EO for the physical IC and CD3313KO for the Linux driver (`cd3313.ko`). Previous CD3310EO physical-identity wording is superseded by the user's latest correction. DTBO and driver findings below remain static evidence; runtime binding and hardware behavior are still not inferred from names.**
+
+---
+
 # MT8163 boot kernel, embedded config and DTBO audit
 
 Date: 2026-11-13  
