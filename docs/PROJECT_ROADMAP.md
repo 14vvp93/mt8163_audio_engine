@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Working branch:** `feature`  
 **Stable branch:** `main`  
-**Latest verified AudioCore/PCM code baseline:** `fb5a00e0a1d38aed71571cd3b2db41773d90e509` (PCM host tests and Android ARMv7 cross-build PASS)  
+**Latest verified AudioCore/PCM code baseline:** `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 host tests and Android ARMv7 cross-build PASS)  
 **Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
@@ -204,6 +204,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 6. Initially enable only verified PCM16 stereo media formats/rates.
 7. Keep unsupported formats, calls, SCO, capture and unverified routes bit-transparent bypasses.
 8. Measure CPU budget, callback duration, scheduling jitter, latency, clipping/headroom, DC behavior and profile-transition artifacts on the target.
+
+Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment is validated before sample access; misaligned buffers return `InvalidBuffer`. This is host-verified on code HEAD `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 tests). It does not mean the adapter is connected to the factory HAL.
 
 **Exit gate:** independent L/R processing is proven at the selected boundary, and target runtime behavior is validated without regressions.
 
