@@ -161,6 +161,55 @@ The module metadata is decoded from the actual bytes at the `HMI` object, not in
 
 The 224-byte allocation is 68 bytes larger than the 156-byte AOSP r3 `audio_hw_device` layout. The 68-byte vendor tail therefore consists of 16 callback-sized slots (offsets 156..216) and one private hardware-object pointer (offset 220). Callback target addresses are being mapped to implementations; do not treat the vendor tail as part of the public AOSP ABI.
 
+### Factory ELF linker contract recovered
+
+The first successful binary audit also confirmed:
+
+- Android ELF note API level: `0x1c` (28).
+- SONAME: `audio.primary.mt8163.so`.
+- Dynamic flags include `BIND_NOW` (`DF_1_NOW`).
+- Symbol-version requirements observed: `LIBC` versions 2, 4 and 5, plus `LIBC_N` version 3.
+- Build ID: `f66eaf9e6ac950259f0c253be618d15a`.
+
+Exact `DT_NEEDED` set, in ELF order:
+
+```text
+libhidlbase.so
+libhidltransport.so
+libhwbinder.so
+android.hardware.power@1.0.so
+vendor.mediatek.hardware.power@2.0.so
+libcutils.so
+libutils.so
+libalsautils.so
+libbinder.so
+libhardware_legacy.so
+libhardware.so
+libblisrc_vendor.so
+libnvram.so
+libaudiosetting.so
+libcvsd_mtk.so
+libmsbc_mtk.so
+libaudioutils.so
+libaudiocomponentengine_vendor.so
+libtinyalsa.so
+libtinycompress.so
+libaudiodcrflt_vendor.so
+libtinyxml.so
+libaudiotoolkit_vendor.so
+liblog.so
+libspeech_enh_lib.so
+libladder.so
+libaedv.so
+libbluetooth_mtk_pure.so
+libc++.so
+libc.so
+libm.so
+libdl.so
+```
+
+This dependency list is a compatibility constraint, not a recommendation to link every library into the replacement. Each dependency must be classified as required framework contract, vendor service/control client, codec/transport, or implementation detail before designing the replacement's linker surface.
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
