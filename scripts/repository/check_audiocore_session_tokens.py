@@ -70,14 +70,14 @@ def main() -> int:
 
         if component in {"session_registry", "audio_core", "primary_hal_adapter"}:
             open_signature = re.compile(
-                r"\b(?:open_session|open)\s*\\(\s*std::uint32_t\s+handle"
-                r"[\s\S]{0,240}SessionToken\s*\\*\s*out_token"
+                r"\b(?:open_session|open)\s*\(\s*std::uint32_t\s+handle"
+                r"[\s\S]{0,240}SessionToken\s*\*\s*out_token"
             )
             if not open_signature.search(source):
                 fail(f"{component}: open must return the new SessionToken through out_token.")
 
         if component == "pcm_stream_broker" and not re.search(
-            r"\bopen\s*\\(\s*SessionToken\s+session", source
+            r"\bopen\s*\(\s*SessionToken\s+session", source
         ):
             fail("pcm_stream_broker: open must accept SessionToken, never a raw handle.")
 
