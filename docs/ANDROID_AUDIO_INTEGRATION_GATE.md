@@ -60,7 +60,7 @@ The four-channel requirement can only be connected safely after one of these is 
 4. Identify whether the function runs on the primary music path, and whether it is invoked for notifications, FM, USB, HDMI, or other routes.
 5. Recover filter-manager construction/registration and the lifetime/locking rules for each filter instance.
 6. Confirm whether the output buffer is in-place, separate, or partially overlapping.
-7. Establish a bypass condition for SCO, voice calls, microphone capture, and all unsupported formats/routes.
+7. Establish a safe temporary fallback for SCO, voice calls, microphone capture, and unsupported formats/routes at this specific Normal-playback adapter. The final product must provide dedicated DSP-visible telephony/capture graphs; this adapter's bypass is not a permanent product exclusion.
 8. Only then implement a thin adapter with explicit format conversion, bounded block sizes, preallocated scratch, no callback locks/allocations/logging, and exact bit-transparent bypass.
 
 ## 4. Runtime and failure-safety requirements
