@@ -6,6 +6,8 @@
 **Last known integration commit before this roadmap:** `36f159e9c29dad537123315838b3c3cea3c7d4fa`  
 **Status:** engineering platform in development; not a flashable or device-validated replacement.
 
+> **Hardware identity correction (2026-11-13): the user's physical head unit contains CD3310EO only. CD3313/AK7604/FY7604 firmware artifacts are not evidence of populated hardware on this unit. All earlier CD3313 work is retained as firmware/emulator research only and is not approved for physical transport or protocol reuse. The active CD3310EO control path is currently unidentified. This correction supersedes any earlier inference from DTBO names or init-script module lists.**
+
 This document is the single authoritative execution route for Beta 0.1. New work must follow the priority order and gates below. Update this document when evidence changes; do not create competing roadmaps.
 
 ## 1. Product definition and non-negotiable architecture
@@ -40,16 +42,16 @@ CI evidence is host/build evidence only. Previous reports recorded passing PCM/D
 
 - The complete factory-named Android 9 primary HAL has not yet been proven built with the exact factory ABI.
 - The target board's actual ALSA card/device, PCM formats, period sizes and mixer controls are not yet confirmed by device evidence.
-- The physical DSP/module population and ownership of `/dev/audiomux` are not confirmed.
+- Physical chip population is user-confirmed as CD3310EO only; the kernel/userspace control owner, `/dev/audiomux` ownership and actual I2C path remain unconfirmed.
 - CD3313 production transport is intentionally detached.
 - No target-device route, I2C write, GPIO change, mixer write, acoustic measurement or end-to-end audio validation is claimed.
 - No evidence currently justifies flashing a replacement.
 
 ## 3. Confirmed factory findings and risks
 
-### CD3313 control path
+### CD3313-named factory firmware path (not yet matched to physical CD3310EO)
 
-Static analysis of the supplied factory firmware found:
+Static analysis of the supplied factory firmware found the following defects in its CD3313-named software path. These findings apply to that firmware implementation only; they do not establish that this driver controls the physically populated CD3310EO:
 
 - JNI `SendCmdAudioMux(int, int[])` encodes one more 32-bit word than the Java array contains, creating a native over-read when the kernel copies the encoded size.
 - The driver lacks sufficient payload-length checks for commands including `0x03`, `0x09`, `0x56` and `0xA3`; command `0x15` reads four words with a weaker length threshold.
@@ -82,9 +84,11 @@ Therefore:
 
 Work strictly in this order. A later phase cannot bypass an earlier safety gate.
 
-### P0-A — CD3313 memory-safety and protocol audit
+### P0-A — identify the physical CD3310EO control path; preserve CD3313 audit as firmware-only
 
-- [ ] Map every factory command ID to exact payload length, field offsets, signedness, valid ranges and response semantics.
+- [ ] Identify the exact driver/module and userspace/HAL/JNI path that controls the physically populated CD3310EO before defining any command protocol.
+- [ ] Determine whether any CD3313-named firmware module is actually a compatible transport for CD3310EO; require direct source/disassembly evidence, not filename or DTBO inference.
+- [ ] Map every command/register operation of the proven CD3310EO path to exact payload length, field offsets, signedness, valid ranges and response semantics.
 - [ ] Reconcile Java array length, JNI framing, ioctl request and kernel copy length byte-for-byte.
 - [ ] Remove every out-of-bounds read/write, integer overflow, unchecked index and unterminated raw-write path in the replacement implementation.
 - [ ] Add positive and negative boundary tests for every command: empty, truncated, exact, oversized, invalid enum/index, null/invalid buffer where applicable.
@@ -189,7 +193,7 @@ A lower level never implies a higher one. Never claim a build, test, flash or de
 
 ## 8. Immediate next action
 
-Start with **P0-A: CD3313 memory-safety and protocol audit**. In parallel, continue read-only preparation for P0-B and inspect PCM lifecycle only where it supports the P1-A gate. Do not add new DSP features, enable hardware transport, modify factory binaries, or attempt flashing while the P0 gates remain open.
+Start with **P0-A: identify the CD3310EO control path from the exact firmware**. Continue read-only P0-B preparation and inspect PCM lifecycle only where it supports the P1-A gate. Existing CD3313 parser/emulator remains isolated firmware research. Do not send CD3313 commands to the physical unit, enable any hardware transport, modify factory binaries, or attempt flashing while the P0 gates remain open.
 
 ---
 
@@ -327,3 +331,16 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Code commit: [cfc20a4](https://github.com/14vvp93/mt8163_audio_engine/commit/cfc20a4f495eeb38b5780bd89899e4ac56b47db9).
 - The updated file was re-fetched from `integration/beta-0.1` and the corrected diagnostic was confirmed present.
 - GitHub returned no combined status contexts for this commit at verification time; no test/CI pass is claimed for this one-line diagnostic change.
+
+
+## 10. Hardware identity correction and firmware inventory — 2026-11-13
+
+- The user explicitly confirmed that the physical head unit contains **CD3310EO only**. This is the authoritative physical-population fact for this device.
+- The public firmware dump at `14vvp93/public_calculations/firmware/dumps/mt8163` contains a `kernel/cd3313.ko` binary (183,368 bytes; Git blob `5c63e6ef16f0b0e46a33eabc75fb6cd66f67afe7`). Binary content was not retrievable as UTF-8 through the GitHub connector, so no new disassembly or chip compatibility claim is made here.
+- `init.mt8163.rc` lines 563–566 request `cd3313.ko`, `ak7604.ko`, `fy7604.ko` and `si475x.ko` during boot. `factory_init.rc` lines 530–537 also request CD3313/AK7604/FY7604 variants. These are init-script requests, not proof that all modules load successfully or that any of those ICs is physically populated.
+- `ueventd.rc` line 139 assigns permissions to `/dev/audiomux`; this proves a configured device-node permission rule, not the live device-node owner, driver, or physical chip.
+- The extracted `kernel/` directory currently exposes only `cd3313.ko`. The inspected `build.prop` has no CD3310/CD3310EO/audio-processor string match. These are scoped negative findings for the inspected files, not proof that no matching code exists elsewhere in the complete firmware.
+- Initial textual searches in the indexed repositories returned no CD3310/CD3310EO hits. Binary modules, DTBs/DTBOs, proprietary libraries and compressed archives still require content-level inspection.
+- **Revised immediate action:** inventory the complete firmware tree and extract/search all vendor modules and audio libraries; inspect CD3313 module strings, symbols, I2C IDs and probe path to determine whether its name is merely legacy or whether it actually supports CD3310EO. In parallel inspect all other codec/DSP modules and device-tree compatible strings. Do not infer compatibility from module filename.
+- CD3313 protocol parser/emulator and its passing host CI remain software-only work. They are not CD3310EO protocol validation and must not be connected to the physical unit.
+- No hardware writes, module loads, GPIO/mixer changes, flashing or physical-device validation were performed.
