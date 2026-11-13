@@ -203,6 +203,10 @@ jobs:
             arm-linux-gnueabi-nm -D -C --defined-only "$binary" |
               grep -E 'AudioALSAHardware::(xWayPlay_|xWayRec_|ReadRefFromRing)' || true
             echo
+            echo "===== Play2Way, Record2Way and AudioVUnlockDL implementation symbols ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$binary" |
+              grep -E 'android::(Play2Way|Record2Way|AudioVUnlockDL)::' || true
+            echo
             echo "===== AudioALSAHardware::xWayPlay_Start ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xce564 --stop-address=0xce5a0 "$binary"
             echo
@@ -267,7 +271,7 @@ jobs:
           set -euo pipefail
           root="factory-firmware/firmware/extracted"
           report="primary-hal-private-client-scan.txt"
-          patterns='xWayPlay|xWayRec|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware'
+          patterns='xWayPlay|xWayRec|Play2Way|Record2Way|AudioVUnlockDL|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware'
           : > "$report"
           scanned=0
           matched=0
