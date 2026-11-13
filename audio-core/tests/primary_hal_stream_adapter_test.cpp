@@ -101,6 +101,17 @@ int main() {
         adapter, handle, unsupported_config, samples.data(), 4U);
     CHECK(unsupported_format.result == PcmResult::UnsupportedFormat);
     CHECK(unsupported_format.bytes_transferred == 0U);
+
+    std::array<std::uint8_t, 8U> unaligned_storage{};
+    const PcmByteTransfer unaligned_buffer = write_pcm16_bytes(
+        adapter, handle, config, unaligned_storage.data() + 1U, 4U);
+    CHECK(unaligned_buffer.result == PcmResult::InvalidArgument);
+    CHECK(unaligned_buffer.bytes_transferred == 0U);
+
+    const PcmByteTransfer empty_write = write_pcm16_bytes(
+        adapter, handle, config, samples.data(), 0U);
+    CHECK(empty_write.result == PcmResult::InvalidArgument);
+    CHECK(empty_write.bytes_transferred == 0U);
     CHECK(adapter.stop(handle) == PcmResult::Ok);
     CHECK(adapter.close(handle) == PcmResult::Ok);
     CHECK(adapter.stream_count() == 0U);
