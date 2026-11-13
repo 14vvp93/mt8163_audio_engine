@@ -78,7 +78,6 @@ DspRouteClass classify_dsp_route(SourceId source,
         case SourceId::Reverse:
         case SourceId::OnStar:
         case SourceId::None:
-        case SourceId::SystemSound:
         case SourceId::Count:
         default:
             return DspRouteClass::Unverified;
