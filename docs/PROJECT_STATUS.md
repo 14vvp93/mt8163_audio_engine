@@ -11,14 +11,16 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 
 - Added `.github/workflows/primary-hal-binary-audit.yml` on `feature`.
 - The workflow sparsely checks out the factory `audio.primary.mt8163.so` from `14vvp93/public_calculations`, verifies its expected size and SHA-256, then runs the ELF/HMI audit script.
-- Workflow execution has not yet been observed; do not treat the binary audit as passed until its GitHub Actions run completes successfully and its output is reviewed.
+- First factory audit completed successfully: exact factory size/SHA-256, ELF32 ARM EABI5, exported `HMI`, SONAME, dynamic dependencies and symbol versions were inspected.
+- Confirmed `HMI` is a 128-byte `OBJECT GLOBAL DEFAULT` in `.data` at `0x00195014`; module API `0.1`, HAL API `1.0`, module ID `audio`, name `MTK Audio HW HAL`, author `MTK`.
+- `hw_module_methods_t.open` pointer recovered as `0x0009b70c`; returned device API version and method table still need disassembly.
 
 ## Branch model
 
 - `main` is the stable branch; no project changes were pushed to it.
 - `feature` is the sole active development branch.
 - Repository integrity, AudioCore TSAN and PCM broker TSAN workflows now target `main` and `feature`; legacy branch filters were removed.
-- Repository Integrity, AudioCore TSAN and PCM Stream Broker TSAN all PASS on the current branch-model documentation commit `6078830210c260faa3e8d01a87efb2556020d461`.
+- Repository Integrity, AudioCore TSAN and PCM Stream Broker TSAN passed on branch-model commit `6078830210c260faa3e8d01a87efb2556020d461`; subsequent runs are tracked against newer `feature` commits.
 
 ## Product status
 
