@@ -46,6 +46,14 @@ PcmByteStreamAdapter::PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter,
 PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
     if (!valid_) return PcmResult::InvalidArgument;
     if (started_) return PcmResult::InvalidState;
+    if (config.sample_rate_hz == 0U ||
+        (config.channel_count != 1U && config.channel_count != 2U) ||
+        config.period_frames == 0U) {
+        return PcmResult::InvalidArgument;
+    }
+    if (config.format != PcmFormat::Pcm16SignedLittleEndian) {
+        return PcmResult::UnsupportedFormat;
+    }
     const PcmResult result = adapter_.configure(handle_, config);
     if (result == PcmResult::Ok) {
         config_ = config;
