@@ -39,6 +39,8 @@ NormalPlaybackResult NormalPlaybackPcmAdapter::process(
     constexpr std::size_t kBytesPerSample = sizeof(std::int16_t);
     constexpr std::size_t kBytesPerFrame = 2U * kBytesPerSample;
     if (input == nullptr || output == nullptr ||
+        reinterpret_cast<std::uintptr_t>(input) % alignof(std::int16_t) != 0U ||
+        reinterpret_cast<std::uintptr_t>(output) % alignof(std::int16_t) != 0U ||
         frames > std::numeric_limits<std::size_t>::max() / kBytesPerFrame) {
         return NormalPlaybackResult::InvalidBuffer;
     }
