@@ -35,34 +35,82 @@ PcmResult validate_pcm16_buffer(std::uint32_t handle,
 
 }  // namespace
 
-PcmByteTransfer write_pcm16_bytes(PrimaryHalStreamAdapter& adapter,
-                                  std::uint32_t handle,
-                                  const PcmConfig& config,
-                                  const void* buffer,
-                                  std::size_t byte_count) noexcept {
+PcmByteStreamAdapter::PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter,
+                                           std::uint32_t handle,
+                                           PcmDirection direction) noexcept
+    : adapter_(adapter), handle_(handle), direction_(direction),
+      valid_(handle != 0U &&
+             (direction == PcmDirection::Playback ||
+              direction == PcmDirection::Capture)) {}
+
+PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
+    if (!valid_) return PcmResult::InvalidArgument;
+    if (started_) return PcmResult::InvalidState;
+    const PcmResult result = adapter_.configure(handle_, config);
+    if (result == PcmResult::Ok) {
+        config_ = config;
+        configured_ = true;
+    } else {
+        config_ = PcmConfig{};
+        configured_ = false;
+    }
+    return result;
+}
+
+PcmResult PcmByteStreamAdapter::start() noexcept {
+    if (!valid_) return PcmResult::InvalidArgument;
+    if (!configured_ || started_) return PcmResult::InvalidState;
+    const PcmResult result = adapter_.start(handle_);
+    if (result == PcmResult::Ok) started_ = true;
+    return result;
+}
+
+PcmByteTransfer PcmByteStreamAdapter::transfer(void* buffer,
+                                               std::size_t byte_count,
+                                               PcmDirection direction) noexcept {
+    if (!valid_) return {PcmResult::InvalidArgument, 0U};
+    if (!configured_ || !started_ || direction != direction_) {
+        return {PcmResult::InvalidState, 0U};
+    }
+
     std::size_t frames = 0U;
-    const PcmResult validation =
-        validate_pcm16_buffer(handle, config, buffer, byte_count, &frames);
+    const PcmResult validation = validate_pcm16_buffer(
+        handle_, config_, buffer, byte_count, &frames);
     if (validation != PcmResult::Ok) return {validation, 0U};
 
-    const PcmResult result = adapter.write(
-        handle, static_cast<const std::int16_t*>(buffer), frames);
+    const PcmResult result = direction == PcmDirection::Playback
+        ? adapter_.write(handle_, static_cast<const std::int16_t*>(buffer), frames)
+        : adapter_.read(handle_, static_cast<std::int16_t*>(buffer), frames);
     return {result, result == PcmResult::Ok ? byte_count : 0U};
 }
 
-PcmByteTransfer read_pcm16_bytes(PrimaryHalStreamAdapter& adapter,
-                                 std::uint32_t handle,
-                                 const PcmConfig& config,
-                                 void* buffer,
-                                 std::size_t byte_count) noexcept {
-    std::size_t frames = 0U;
-    const PcmResult validation =
-        validate_pcm16_buffer(handle, config, buffer, byte_count, &frames);
-    if (validation != PcmResult::Ok) return {validation, 0U};
+PcmByteTransfer PcmByteStreamAdapter::write(const void* buffer,
+                                            std::size_t byte_count) noexcept {
+    return transfer(const_cast<void*>(buffer), byte_count, PcmDirection::Playback);
+}
 
-    const PcmResult result = adapter.read(
-        handle, static_cast<std::int16_t*>(buffer), frames);
-    return {result, result == PcmResult::Ok ? byte_count : 0U};
+PcmByteTransfer PcmByteStreamAdapter::read(void* buffer,
+                                           std::size_t byte_count) noexcept {
+    return transfer(buffer, byte_count, PcmDirection::Capture);
+}
+
+PcmResult PcmByteStreamAdapter::stop() noexcept {
+    if (!valid_) return PcmResult::InvalidArgument;
+    if (!started_) return PcmResult::InvalidState;
+    const PcmResult result = adapter_.stop(handle_);
+    if (result == PcmResult::Ok) started_ = false;
+    return result;
+}
+
+PcmResult PcmByteStreamAdapter::close() noexcept {
+    if (!valid_) return PcmResult::InvalidArgument;
+    const PcmResult result = adapter_.close(handle_);
+    if (result == PcmResult::Ok) {
+        config_ = PcmConfig{};
+        configured_ = false;
+        started_ = false;
+    }
+    return result;
 }
 
 }  // namespace mt8163_audio_core

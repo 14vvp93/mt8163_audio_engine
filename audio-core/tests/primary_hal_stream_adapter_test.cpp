@@ -67,72 +67,73 @@ int main() {
     std::array<std::int16_t, 480U> samples{};
 
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
-                        PcmDirection::Playback) == PcmResult::Ok);
+                       PcmDirection::Playback) == PcmResult::Ok);
     CHECK(adapter.stream_count() == 1U);
-    CHECK(adapter.configure(handle, config) == PcmResult::Ok);
-    CHECK(adapter.start(handle) == PcmResult::Ok);
-    CHECK(adapter.write(handle, samples.data(), 240U) == PcmResult::Ok);
-    CHECK(backend.writes == 240U);
+    PcmByteStreamAdapter output(adapter, handle, PcmDirection::Playback);
+    CHECK(output.configure(config) == PcmResult::Ok);
+    CHECK(output.configured());
+    CHECK(output.start() == PcmResult::Ok);
+    CHECK(output.started());
 
-    const PcmByteTransfer byte_write = write_pcm16_bytes(
-        adapter, handle, config, samples.data(), 960U);
+    const PcmByteTransfer byte_write = output.write(samples.data(), 960U);
     CHECK(byte_write.result == PcmResult::Ok);
     CHECK(byte_write.bytes_transferred == 960U);
-    CHECK(backend.writes == 480U);
+    CHECK(backend.writes == 240U);
 
-    const PcmByteTransfer misaligned_write = write_pcm16_bytes(
-        adapter, handle, config, samples.data(), 959U);
+    const PcmByteTransfer misaligned_write = output.write(samples.data(), 959U);
     CHECK(misaligned_write.result == PcmResult::InvalidArgument);
     CHECK(misaligned_write.bytes_transferred == 0U);
 
-    const PcmByteTransfer oversized_write = write_pcm16_bytes(
-        adapter, handle, config, samples.data(), 8196U);
+    const PcmByteTransfer oversized_write = output.write(samples.data(), 8196U);
     CHECK(oversized_write.result == PcmResult::BufferTooLarge);
     CHECK(oversized_write.bytes_transferred == 0U);
 
-    const PcmByteTransfer null_write = write_pcm16_bytes(
-        adapter, handle, config, nullptr, 4U);
+    const PcmByteTransfer null_write = output.write(nullptr, 4U);
     CHECK(null_write.result == PcmResult::InvalidArgument);
     CHECK(null_write.bytes_transferred == 0U);
 
     PcmConfig unsupported_config = config;
     unsupported_config.format = static_cast<PcmFormat>(99U);
-    const PcmByteTransfer unsupported_format = write_pcm16_bytes(
-        adapter, handle, unsupported_config, samples.data(), 4U);
-    CHECK(unsupported_format.result == PcmResult::UnsupportedFormat);
-    CHECK(unsupported_format.bytes_transferred == 0U);
+    CHECK(output.configure(unsupported_config) == PcmResult::UnsupportedFormat);
+    const PcmByteTransfer rejected_format = output.write(samples.data(), 4U);
+    CHECK(rejected_format.result == PcmResult::InvalidState);
+    CHECK(rejected_format.bytes_transferred == 0U);
 
+    CHECK(output.configure(config) == PcmResult::Ok);
     std::array<std::uint8_t, 8U> unaligned_storage{};
-    const PcmByteTransfer unaligned_buffer = write_pcm16_bytes(
-        adapter, handle, config, unaligned_storage.data() + 1U, 4U);
+    const PcmByteTransfer unaligned_buffer =
+        output.write(unaligned_storage.data() + 1U, 4U);
     CHECK(unaligned_buffer.result == PcmResult::InvalidArgument);
     CHECK(unaligned_buffer.bytes_transferred == 0U);
 
-    const PcmByteTransfer empty_write = write_pcm16_bytes(
-        adapter, handle, config, samples.data(), 0U);
+    const PcmByteTransfer empty_write = output.write(samples.data(), 0U);
     CHECK(empty_write.result == PcmResult::InvalidArgument);
     CHECK(empty_write.bytes_transferred == 0U);
-    CHECK(adapter.stop(handle) == PcmResult::Ok);
-    CHECK(adapter.close(handle) == PcmResult::Ok);
+
+    CHECK(output.stop() == PcmResult::Ok);
+    CHECK(output.close() == PcmResult::Ok);
+    CHECK(!output.configured());
+    CHECK(!output.started());
     CHECK(adapter.stream_count() == 0U);
     CHECK(!backend.opened);
 
     CHECK(adapter.open(handle, SourceId::Microphone,
-                        RouteType::PrimaryCapturePcm,
-                        PcmDirection::Capture) == PcmResult::Ok);
-    CHECK(adapter.configure(handle, config) == PcmResult::Ok);
-    CHECK(adapter.start(handle) == PcmResult::Ok);
-    const PcmByteTransfer byte_read = read_pcm16_bytes(
-        adapter, handle, config, samples.data(), 960U);
+                       RouteType::PrimaryCapturePcm,
+                       PcmDirection::Capture) == PcmResult::Ok);
+    PcmByteStreamAdapter input(adapter, handle, PcmDirection::Capture);
+    CHECK(input.configure(config) == PcmResult::Ok);
+    CHECK(input.start() == PcmResult::Ok);
+    const PcmByteTransfer byte_read = input.read(samples.data(), 960U);
     CHECK(byte_read.result == PcmResult::Ok);
     CHECK(byte_read.bytes_transferred == 960U);
     CHECK(samples[0] == 0);
-    CHECK(adapter.stop(handle) == PcmResult::Ok);
-    CHECK(adapter.close(handle) == PcmResult::Ok);
+    CHECK(input.write(samples.data(), 4U).result == PcmResult::InvalidState);
+    CHECK(input.stop() == PcmResult::Ok);
+    CHECK(input.close() == PcmResult::Ok);
 
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::A2dpPcm,
-                        PcmDirection::Playback) == PcmResult::UnsupportedRoute);
+                       PcmDirection::Playback) == PcmResult::UnsupportedRoute);
     CHECK(adapter.open(0U, SourceId::LocalMedia, RouteType::PrimaryPcm,
-                        PcmDirection::Playback) == PcmResult::InvalidArgument);
+                       PcmDirection::Playback) == PcmResult::InvalidArgument);
     return 0;
 }
