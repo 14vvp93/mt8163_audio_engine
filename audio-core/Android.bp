@@ -14,6 +14,7 @@ cc_library_static {
         "src/endpoint_pcm_backend.cpp",
         "src/pcm_stream_broker.cpp",
         "src/primary_hal_stream_adapter.cpp",
+        "src/pcm_byte_stream_adapter.cpp",
         "src/snapshot_publisher_compile_check.cpp",
     ],
 
