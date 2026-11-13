@@ -8,7 +8,7 @@
 **Latest verified AudioCore/PCM code baseline:** `5f5cf4547bd51cb6c7987e5e1616d8191e175e12` (stereo profile API; 22/22 host tests and Android ARMv7 cross-build PASS on descendant `66b1782c554ba22f7a2f3029e1e199ee293cf5a1`)  
 **Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
-**Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
+**Product status:** engineering foundations exist; selected profile-driven DSP integration and device validation are not complete.
 
 This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
 
@@ -189,11 +189,11 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 2. Obtain/pin the matching ALPS/MediaTek vendor headers or source revision and compare private declarations with AOSP r3.
 3. Recover stream negotiation from the factory methods. **Partially complete:** output formats/rates/channel predicates, input PCM16 normalization, input channel predicate, route-dependent input rate branches, handler-open dispatch, output flag forwarding/default behavior, 8,192-byte output buffer getter, input FAST flag and 5/20/60 ms input buffer sizing are recorded in [the ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). The input format-width table is recovered as `[2, 1, 4, 4, 0]` for enum values 1–5. **Remaining:** other flag bits, the input size callback's third-argument semantics and format-5 zero-width behavior against the framework caller, full error branches, every channel-mask combination and vendor-header reconciliation. The host reference model now tests the 8,192-byte output-duration formula, 5/20/60 ms input-duration selection, and 20 ms input-size arithmetic with checked 64-bit intermediates; the third argument remains raw until its caller semantics are recovered.
 4. Trace external callers and runtime semantics for all 16 private device-tail callbacks. **Internal targets recovered:** the eight entries at offsets 156–184 forward to `Play2Way`, `Record2Way` and `AudioVUnlockDL`; offsets 172/176 are `xWayRec_Start`/`xWayRec_Stop`. The eight entries at offsets 188–216 are mapped through the MediaTek HIDL 4.1 bridge to voice-unlock and parameter-callback methods. The service init registration path and ATCI parameter-client entry are confirmed. **Remaining:** external consumers of the xWay tail, indirect callers and callback lifetime/concurrency semantics.
-5. Implement the typed factory-compatible HAL shell using the recovered module, device and C stream wrapper layouts; do not perform hardware writes.
-6. Link AudioCore and PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
-7. Add exact ELF/symbol/dependency/packaging gates and preserve factory originals plus rollback hashes.
+5. Keep the factory primary HAL installed and active. Implement only the narrowest verified integration adapter (for example, a per-stream effect or a reviewed HAL-side insertion) required by the selected profile.
+6. Link the stereo DSP core into that adapter; do not produce a replacement primary HAL or an always-on stateful daemon as the default architecture.
+7. Verify the adapter's exact Android 9 / ARM32 ABI, linker visibility, lifecycle and packaging; preserve all factory originals and rollback hashes.
 
-**Exit gate:** a factory-named `/vendor/lib/hw/audio.primary.mt8163.so` builds for the exact Android 9 ARM32 ABI and passes symbol/dependency/contract checks. This is ABI/build verification, not device verification.
+**Exit gate:** the selected adapter builds for Android 9 ARM32 and passes its ABI/contract checks while the untouched factory primary HAL remains the active system HAL. This is build verification, not device verification.
 
 ### P3 — Select and implement the correct stereo DSP insertion point
 
@@ -247,7 +247,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 
 **Priority: final**
 
-1. Build and package the complete factory-compatible HAL and all required replacement components.
+1. Build and package the selected DSP adapter, validated profiles and only the narrowly required integration artifacts; keep the factory HAL and untouched vendor components intact.
 2. Run host tests, sanitizers, Android ABI checks and repository-integrity checks.
 3. Validate every supported route on the actual MT8163 head unit.
 4. Test simultaneous media/navigation/notification, source changes, mute reasons, ACC transitions, suspend/resume, reboot, XRUN, device loss and recovery.
@@ -256,7 +256,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 7. Test rollback to the untouched factory image.
 8. Publish a release manifest with exact hashes, ABI evidence, test reports and known limitations.
 
-**Release gate:** complete factory-named HAL, supported route parity, hardware safety, target validation and rollback are all demonstrated. No host-only result can satisfy a device gate.
+**Release gate:** selected DSP profiles work on their validated routes, untouched factory paths retain their behavior, hardware ownership is unambiguous, target validation and rollback are demonstrated. No host-only result can satisfy a device gate.
 
 ## 6. Route and subsystem ownership rules
 
