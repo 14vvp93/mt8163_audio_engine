@@ -73,6 +73,30 @@ void test_control_state_is_published() {
     require(!core.snapshot_dirty(), "successful publication clears dirty flag");
 }
 
+void test_unverified_routes_are_rejected_before_session_creation() {
+    AudioCore core;
+
+    require(!core.open_session(31U, SourceId::Reverse,
+                               RouteType::PrimaryPcm),
+            "unverified reverse route cannot create a session");
+    require(!core.open_session(32U, SourceId::LocalMedia,
+                               RouteType::A2dpPcm),
+            "local media cannot claim the A2DP transport");
+    require(!core.open_session(33U, SourceId::Microphone,
+                               RouteType::PrimaryPcm),
+            "capture source cannot claim the playback transport");
+    require(core.sessions().size() == 0U,
+            "rejected route requests do not consume session slots");
+
+    auto snapshot = core.try_acquire_snapshot();
+    require(static_cast<bool>(snapshot),
+            "snapshot remains available after rejected requests");
+    require(snapshot->generation == 0U,
+            "rejected route requests do not publish mutations");
+    require(snapshot->session_count == 0U,
+            "rejected route requests remain absent from published state");
+}
+
 void test_dirty_snapshot_retries_latest_committed_state() {
     AudioCore core;
 
@@ -180,6 +204,7 @@ void test_invalid_mode_and_session() {
 int main() {
     test_initial_snapshot();
     test_control_state_is_published();
+    test_unverified_routes_are_rejected_before_session_creation();
     test_dirty_snapshot_retries_latest_committed_state();
     test_owner_scoped_clear_and_close();
     test_invalid_mode_and_session();
