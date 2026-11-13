@@ -291,12 +291,12 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ## 8. Immediate execution queue
 
-1. Finish method-level stream negotiation analysis for factory output/input `set/open` methods.
+1. Finish output/input flag-bit semantics, full error branches and capture buffer-size recovery from factory stream methods.
 2. Resolve Android 9 vendor linker namespace configuration and pin the matching ALPS/MediaTek headers.
 3. Trace external callers and semantics of private device-tail callbacks.
 4. Run the read-only target diagnostic collector and record runtime ownership/topology.
 5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
-6. Confirm latest AudioCore and PCM Broker TSAN runs on the current feature HEAD.
+6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
 7. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
 8. Add source adapters incrementally; keep unverified routes bypassed.
 9. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
