@@ -1,3 +1,7 @@
+> **SUPERSEDED:** This is the archived Beta 0.1 execution log. It is retained for historical evidence only. Do not use it to determine current priorities or next actions. The sole current plan is [Project Roadmap](PROJECT_ROADMAP.md). Current hardware terminology is CD3313EO (physical IC) and CD3313KO (`cd3313.ko` Linux driver); historical hardware-name statements below may be obsolete.
+
+---
+
 # MT8163 Audio Engine — Canonical Project Roadmap (Beta 0.1)
 
 **Baseline date:** 2026-11-12  
