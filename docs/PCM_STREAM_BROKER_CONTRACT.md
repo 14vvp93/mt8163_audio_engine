@@ -1,7 +1,7 @@
 # PCM backend and stream broker contract
 
-Date: 2026-11-12  
-Branch: `work/pcm-backend`  
+Date: 2026-11-13  
+Branch: `feature`  
 Status: bidirectional host-test candidate; no target ALSA binding
 
 ## Components
@@ -11,6 +11,7 @@ Status: bidirectional host-test candidate; no target ALSA binding
 - `PcmDirection`: separates playback writes from capture reads; HFP/SCO has independent uplink and downlink streams.
 - `PcmConfig`: sample rate, one/two channel count, period frame count and PCM16 LE format.
 - `PcmResult`: explicit invalid-state, route, capacity, backpressure, xrun and device-loss outcomes.
+- `PcmTransferResult`: reports both the transfer status and the exact number of completed frames, including partial transfers.
 
 ## Lifecycle
 
@@ -28,6 +29,7 @@ Capture sequence:
 - `start` requires a configured stream and opens transfer admission only after the backend starts successfully.
 - `write` is valid only for playback streams; `read` is valid only for capture streams. Both require a started stream, non-null interleaved buffer and 1..2048 frames per call.
 - `stop` atomically closes transfer admission. If an already admitted read or write remains in flight, it returns `WouldBlock`; the control owner retries after the callback returns. The backend stop operation is not called until the in-flight count reaches zero.
+- `Xrun`, `DeviceLost`, and malformed transfer counts transition the broker stream to `Failed` and close callback admission. The backend stop requirement remains set until an explicit successful `stop`; `close` must not bypass that cleanup.
 - `close` refuses a started stream and checks that no broker-admitted transfer remains in flight.
 - Capacity is fixed at 16; exhaustion is reported as `CapacityExceeded`.
 
@@ -77,7 +79,7 @@ enable an output/input stream or select a hardware endpoint.
 
 ## Validation required next
 
-1. Host CI for playback/capture lifecycle, primary microphone capture, HFP downlink/uplink, capacity, invalid order, error propagation, concurrent slot opening, and stop racing an in-flight transfer.
+1. Host CI for playback/capture lifecycle, primary microphone capture, HFP downlink/uplink, capacity, invalid order, error propagation (including XRUN/device loss), concurrent slot opening, and stop racing an in-flight transfer.
 2. ARMv7 compile using the Android NDK.
 3. Add endpoint capability negotiation after exact ALSA runtime topology is collected.
 4. Add the HAL owner/lifetime protocol before wiring the broker to real streams.
