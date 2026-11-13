@@ -86,8 +86,9 @@ printf '%s\n' "$dyn_symbols" |
     grep -E '(^|[[:space:]])HMI([[:space:]]|$)|HAL_MODULE_INFO_SYM|audio_hw_device|audio_stream_out|audio_stream_in|adev_open|open_output_stream|open_input_stream|close_output_stream|close_input_stream' ||
     true
 
-if ! printf '%s\n' "$dyn_symbols" | grep -Eq '(^|[[:space:]])HMI([[:space:]]|$)'; then
-    echo "ERROR: required Android HAL module export HMI is missing from .dynsym" >&2
+if ! printf '%s\n' "$dyn_symbols" |
+    awk '$8 == "HMI" && ($5 == "GLOBAL" || $5 == "WEAK") && $6 == "DEFAULT" && $7 != "UND" { found = 1 } END { exit !found }'; then
+    echo "ERROR: HMI is not a defined GLOBAL/WEAK DEFAULT dynamic export" >&2
     exit 1
 fi
 
