@@ -155,7 +155,7 @@ author_pointer=$(read_u32_hex "$((hmi_file_offset + 16))")
 methods_pointer=$(read_u32_hex "$((hmi_file_offset + 20))")
 
 rodata_layout=$(readelf -SW "$binary" |
-    awk '$0 ~ /\\] \\.rodata[[:space:]]+PROGBITS/ { print $4, $5; exit }')
+    awk '$0 ~ /\] \.rodata[[:space:]]+PROGBITS/ { print $4, $5; exit }')
 set -- $rodata_layout
 if [ "$#" -ne 2 ]; then
     echo "ERROR: unable to locate .rodata for HMI string inspection" >&2
