@@ -231,3 +231,25 @@ The method-level framework map and the kernel callback are not a single coherent
 
 **No command from this table is approved for transmission to the physical CD3310EO.** The comparison is static analysis of the supplied firmware artifacts only.
 
+## 10. External datasheet cross-check — CD3313 only (2026-11-13)
+
+A manufacturer-branded Wuxi I-CORE CD3313 datasheet was located through the LCSC-hosted PDF mirror:
+
+- Datasheet: [CD3313, document CD3313-AX-YX-A014, version 2024-01-C1](https://datasheet.lcsc.com/lcsc/2206291101_Wuxi-I-core-Elec-CD3313EO_C3151976.pdf).
+- The document describes a four-channel analog audio processor controlled over a two-wire I2C bus.
+- Its address diagram sends the 8-bit write address `0x88`, equivalent to the 7-bit I2C address `0x44`.
+- The documented maximum I2C clock is 100 kbit/s.
+- Control data is sent as one-byte command values following the device address.
+- In the documented volume-control format, byte `0x3F` selects the `B=111` (−70 dB) and `A=111` (−8.75 dB) attenuation fields, totaling −78.75 dB.
+
+This provides an independent datasheet-level match for the CD3313 module's recovered address `0x44` and its one-byte `0x3F` probe write. The byte is consistent with a volume attenuation command; it is not a silicon-ID read. This interpretation is limited to the documented CD3313 protocol and does not establish how any other IC responds to that byte.
+
+A targeted public search for the exact marking `CD3310EO` did not locate a manufacturer datasheet, register map, or reliable board-specific protocol description. This is a search result, not proof that such documentation does not exist.
+
+**Compatibility conclusion remains unchanged:** the firmware module is the CD3313EO driver; the physical board contains CD3310EO; compatibility between them remains **UNKNOWN**. The CD3313 address, command bytes, initialization sequence and register map must not be reused for CD3310EO without independent evidence.
+
+Sources:
+- Wuxi I-CORE CD3313 datasheet PDF: https://datasheet.lcsc.com/lcsc/2206291101_Wuxi-I-core-Elec-CD3313EO_C3151976.pdf
+- Datasheet index: https://www.alldatasheet.com/datasheet-pdf/pdf/2171537/EONMIC/CD3313EO.html
+
+No hardware I/O, module loading, I2C transaction, GPIO/mixer write or device validation was performed.
