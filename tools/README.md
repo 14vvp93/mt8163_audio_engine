@@ -74,10 +74,12 @@ sh tools/audit_primary_hal_binary.sh files/vendor/audio.primary.mt8163.so
 ```
 
 It verifies the factory basename, ELF shared-object type, ELF32 ARM machine,
-ARM EABI5 flags and exported `HMI` module symbol. It prints program headers,
-SONAME, dependencies and dynamic symbols for manual ABI review. A passing
-audit does not prove the exact vendor callback table or runtime linker
-compatibility. Preserve the reported SHA-256 with the firmware manifest.
+ARM EABI5 flags and a defined, externally visible `HMI` module symbol. It prints
+program/section headers, build ID, SONAME, dependencies, symbol versions,
+relocations and dynamic symbols. It warns if size/SHA-256 differ from the
+recorded factory baseline. A passing audit does not prove the exact vendor
+callback table or runtime linker compatibility. Preserve the reported SHA-256
+with the firmware manifest.
 
 ## Find the CD3313 JNI native bridge
 
