@@ -175,7 +175,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 1. Reconcile the recovered `DT_NEEDED` list with the actual Android 9 linker namespace and verify the library search paths; the namespace config file is not present in the current extracted tree.
 2. Obtain/pin the matching ALPS/MediaTek vendor headers or source revision and compare private declarations with AOSP r3.
 3. Recover stream negotiation from the factory methods. **Partially complete:** output formats/rates/channel predicates, input PCM16 normalization, input channel predicate, route-specific input rate branches, handler-open dispatch and output buffer-time formula are recorded in [the ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). **Remaining:** exact stream-flag semantics, full error branches, Android-visible buffer-size contract, and vendor-header reconciliation.
-4. Trace external callers and runtime semantics for all 16 private device-tail callbacks.
+4. Trace external callers and runtime semantics for all 16 private device-tail callbacks. **Partial evidence only:** a symbol/string scan of six high-value framework/vendor client binaries found no named direct references; the ATCI parameter bridge was traced to `MTKDevicesFactoryHalInterface`, not to the private tail. Indirect callers and uncovered firmware binaries remain unresolved.
 5. Implement the typed factory-compatible HAL shell using the recovered module, device and C stream wrapper layouts; do not perform hardware writes.
 6. Link AudioCore and PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
 7. Add exact ELF/symbol/dependency/packaging gates and preserve factory originals plus rollback hashes.
