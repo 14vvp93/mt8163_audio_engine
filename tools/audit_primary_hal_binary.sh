@@ -108,11 +108,15 @@ printf '%s\n' "$dyn_symbols" |
     grep -E '(^|[[:space:]])HMI([[:space:]]|$)|HAL_MODULE_INFO_SYM|audio_hw_device|audio_stream_out|audio_stream_in|adev_open|open_output_stream|open_input_stream|close_output_stream|close_input_stream' ||
     true
 
-if ! printf '%s\n' "$dyn_symbols" |
-    awk '$8 == "HMI" && ($5 == "GLOBAL" || $5 == "WEAK") && $6 == "DEFAULT" && $7 != "UND" { found = 1 } END { exit !found }'; then
+hmi_export=$(printf '%s\n' "$dyn_symbols" |
+    awk '$8 == "HMI" && ($5 == "GLOBAL" || $5 == "WEAK") && $6 == "DEFAULT" && $7 != "UND" { print; found = 1 } END { if (!found) exit 1 }') || {
     echo "ERROR: HMI is not a defined GLOBAL/WEAK DEFAULT dynamic export" >&2
     exit 1
-fi
+}
+
+echo
+echo "===== Confirmed HAL module export ====="
+printf '%s\n' "$hmi_export"
 
 echo
 echo "===== All exported dynamic symbols (first 250 lines) ====="
