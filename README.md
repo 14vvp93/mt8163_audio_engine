@@ -2,6 +2,10 @@
 
 Reverse-engineering and development project for an improved audio system on MediaTek MT8163 / Android 9.
 
+**Current execution plan:** [Project Roadmap](docs/PROJECT_ROADMAP.md). This is the single source of truth for priorities, gates and project status.
+
+**Hardware terminology:** CD3313EO means the physical audio IC; CD3313KO means its Linux kernel driver (`cd3313.ko`).
+
 ## Repository ownership
 
 This is the **private canonical project repository**: product source code, build definitions, tests, engineering documentation and reviewed findings live here.
@@ -15,7 +19,7 @@ Firmware is no longer stored in this private repository. See [repository structu
 
 The target is one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation end to end. HAL integration, policy/routing, audio core, PCM/mixer/DSP, source and state management, and CD3313 hardware control are internal subsystems of this one product—not separate products and not an add-on over the factory engine.
 
-The authoritative scope, ownership rules, priorities, replacement boundary, and definition of done are documented in [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). That goal supersedes the earlier interim approach described in the historical implementation notes below. Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
+The authoritative scope, ownership rules, priorities, replacement boundary, and definition of done are documented in [Project Roadmap](docs/PROJECT_ROADMAP.md) and [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). That goal supersedes the earlier interim approach described in the historical implementation notes below. Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
 
 ## Historical research notes (not the current product target)
 
