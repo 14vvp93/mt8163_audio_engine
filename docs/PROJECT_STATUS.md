@@ -84,10 +84,11 @@ Final replacement target:
 - [x] Recover HMI, module/device API versions, device callback table and vendor tail.
 - [x] Recover stream C wrappers, callback tables, C++ stream vtables and manager ownership.
 - [x] Recover SONAME, DT_NEEDED list and symbol-version requirements.
-- [x] Add layout-only ABI mirror and CI checks.
+- [x] Add layout-only ABI mirror, compile-time offset assertions and host CI checks.
+- [x] Add executable reference tests for factory output sample-rate allowlist, input PCM16 fallback and input channel-mask predicate.
 - [ ] Obtain/pin matching ALPS/MediaTek vendor headers or source revision.
 - [ ] Recover actual Android 9 linker namespace configuration and verify every dependency is visible there.
-- [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly.
+- [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly; correct the input channel predicate against the instruction-level branch flow.
 - [x] Recover output/input handler-open dispatch and output buffer-time formula.
 - [x] Recover legacy output-open flags defaulting to zero, `openOutputStreamWithFlags()` forwarding, raw output flag storage offset and the 8,192-byte output buffer getter contract.
 - [x] Recover input `AUDIO_INPUT_FLAG_FAST` handling, the 5/20/60 ms input stream-buffer duration branches, and the separate 20 ms `getInputBufferSize()` formula with its exact format-width lookup table.
@@ -138,6 +139,7 @@ Final replacement target:
 - AudioCore TSAN: PASS on feature commit `8c60b6fc20e45a723e5c0838a2687f0312eb2974` — [run 43402659633](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659633).
 - PCM Stream Broker TSAN: PASS on the same feature commit — [run 43402659653](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659653).
 - Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on feature commit `09b42d6893a36874961784f57817c299d9838779` — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
+- Android 9 ABI + factory stream contract tests: PASS on feature HEAD `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). Three CTest tests passed, including the recovered stream predicates.
 - Repository Integrity: PASS on feature commit `5804b4053074492992d44e04b5e5121a388bc057` — [run 43402629370](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402629370). Later changes in this sequence are workflow/docs only.
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
