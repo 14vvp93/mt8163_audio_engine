@@ -156,9 +156,9 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 **Priority: critical product milestone**
 
-1. Complete the factory binary audit: ELF32 ARM identity, SONAME, exported symbols, symbol versions, dependencies, relocations and linker namespace.
+1. Complete the factory binary audit: ELF32 ARM identity, SONAME, exported symbols, symbol versions, dependencies, relocations and linker namespace. **Tool improved:** `tools/audit_primary_hal_binary.sh` now checks ET_DYN, ARM32 EABI5, factory basename and exported `HMI`; it still needs to be run against the immutable firmware binary.
 2. Recover the exact Android 9 `audio_hw_device`, output/input stream, device-open, callback, structure-layout and error contracts.
-3. Pin matching Android 9 platform/vendor headers and source revisions.
+3. **AOSP baseline pinned:** the firmware fingerprint reports `PPR1.180610.011`, matching Android 9 tag `android-9.0.0_r3`; ARM32 AOSP structure layouts and offsets are documented in [ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). Exact ALPS/MediaTek vendor headers remain unpinned.
 4. Create the replacement HAL skeleton with the factory module entry point and required symbols.
 5. Link AudioCore and the PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
 6. Add ELF, symbol, dependency and packaging checks against the factory baseline.
@@ -309,5 +309,7 @@ The MT8163 Audio Engine is complete only when:
 - Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
 - Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test and passed PCM broker TSAN.
 - Added an AudioCore dirty-snapshot recovery test covering all three slots pinned, mutation commit, release and retry; passed AudioCore TSAN.
+- Pinned the AOSP Android 9 r3 ARM32 HAL header baseline to the firmware's `PPR1.180610.011` build fingerprint; documented structure layouts and offsets while keeping vendor ABI facts explicitly unresolved.
+- Hardened the primary HAL ELF audit to check the required `HMI` dynamic export, ET_DYN, ARM32 EABI5 and factory basename; added CI shell-syntax validation.
 - Expanded the read-only PowerShell collector with runtime PCM status, device-node metadata, open-FD ownership and I2C driver bindings; stopped storing the ADB serial in its manifest.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
