@@ -2,7 +2,7 @@
 
 Updated: 2026-11-13  
 Active development branch: `feature`  
-Current feature HEAD: `4c7bc2e63ceb64591f0720bdf6dcda5cc7f37d04`  
+Active development branch: `feature`  
 Stable branch: `main`
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
@@ -128,10 +128,10 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Repository Integrity on current HEAD `4c7bc2e63ceb`: PASS — [run 43382264658](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264658).
-- AudioCore TSAN on current HEAD: in progress — [run 43382264635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264635).
-- PCM Stream Broker TSAN on current HEAD: in progress — [run 43382264632](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264632).
-- Repository Integrity, AudioCore TSAN and PCM Broker TSAN on prior feature commit `9d30241ab90d`: all PASS — runs 43382164716, 43382164693 and 43382164857.
+- Repository Integrity: PASS on feature commit `1148555f1753` — [run 43382385597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385597).
+- AudioCore TSAN: PASS on feature commit `1148555f1753` — [run 43382385578](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385578).
+- PCM Stream Broker TSAN: PASS on feature commit `1148555f1753` — [run 43382385583](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385583).
+- Later documentation-only commits are validated by separate runs; no source-code behavior changed after `1148555` in this sequence.
 - Factory ELF/HMI/APS2 audit: PASS — [run 43381061217](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381061217).
 - Android 9 ARM32 ABI layout CMake/CTest: PASS — [run 43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046).
 - PCM DSP host tests, stability/performance and Android ARMv7 build passed on the previously recorded baseline; this does not constitute a complete HAL build.
