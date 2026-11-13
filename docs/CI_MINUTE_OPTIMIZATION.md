@@ -1,22 +1,36 @@
 # GitHub Actions minute optimization
 
-## Policy
+Audit date: 2026-11-13
 
-Keep the private repository's automatic CI small and relevant. Run expensive diagnostics only on demand. Do not call reusable workflows hosted in the public repository from a private workflow: GitHub bills reusable-workflow runs to the caller repository.
+## Goals and billing boundary
+
+Keep private product CI small, relevant and branch-deduplicated. Run expensive diagnostics only on demand. Keep public firmware analysis inside `14vvp93/public_calculations`.
+
+A reusable workflow called by a private workflow is billed to the caller repository. Therefore, private workflows must not call public reusable workflows when the goal is to move compute away from the private Actions allowance. Public firmware jobs are dispatched directly in the public repository.
+
+Public workers check out only `14vvp93/public_calculations` with `persist-credentials: false`. They do not check out private product source or receive private credentials. Public artifacts and logs must contain only approved public data.
 
 ## Automatic private CI
 
 | Workflow | Trigger scope | Purpose |
 |---|---|---|
-| `test-pcm-dsp.yml` | `pcm-dsp/**`, `audio-core/**` | Primary host build and regression suite |
-| `android-armv7.yml` | `pcm-dsp/**`, `audio-core/**` | Android 9 ARMv7 cross-build only; host benchmark removed |
-| `android-effect-library.yml` | Effect-library implementation and build inputs | Android 9 effect ABI smoke test and ARMv7 build |
+| `test-pcm-dsp.yml` | `pcm-dsp/**`, `audio-core/**` | Host build and regression tests |
+| `android-armv7.yml` | `pcm-dsp/**`, `audio-core/**` | Android 9 ARMv7 cross-build |
+| `android-effect-library.yml` | Effect-library implementation and build inputs | Android effect ABI smoke test and ARMv7 build |
 | `primary-hal-arm32-abi.yml` | `primary-hal/**` | Primary HAL ARM32 ABI bootstrap |
 | `android9-hal-abi-layout.yml` | `audio-hal-abi/**` | Recovered ABI layout tests |
-| `repository-integrity.yml` | Markdown, repository scripts and audit tools | Documentation and script integrity |
+| `repository-integrity.yml` | Markdown, repository scripts, audit tools and workflow YAML | Documentation, scripts and workflow structure |
 | `test-cd3313-emulator.yml` | `cd3313-emulator/**` | Host protocol and safety tests |
 
-The PCM DSP host test suite is the default regression gate. The Android ARMv7 workflow no longer runs a second host benchmark. The Primary HAL ARM32 workflow no longer starts for AudioCore-only changes because the Android ARMv7 workflow already cross-compiles AudioCore.
+The PCM DSP host test suite is the default regression gate. The Android ARMv7 workflow no longer runs a second host benchmark. The Primary HAL ARM32 workflow does not start for AudioCore-only changes because the Android ARMv7 workflow already cross-compiles AudioCore.
+
+The Android Effect Library workflow does not run for documentation-only changes. Workflow-file edits are validated by Repository Integrity rather than starting the build/test workflow being edited.
+
+### Branch and concurrency behavior
+
+Automatic private workflows are limited to maintained branches where applicable. Pull-request filters target `main` and `feature` (CD3313 also retains `integration/beta-0.1`).
+
+Each automatic workflow uses a concurrency key based on `github.head_ref || github.ref`. A push and its pull-request event therefore share the same per-workflow branch key. A newer run cancels an obsolete in-progress run instead of allowing both to consume runner time. Different workflows and different branches remain independent.
 
 ## Manual-only private diagnostics
 
@@ -29,27 +43,47 @@ Run these only when the changed code warrants the additional validation:
 - `build-android-test-apk.yml` — Android diagnostic APK.
 - `primary-hal-binary-audit.yml` — expensive factory firmware binary audit.
 
-CD3313 host tests remain automatic for relevant changes. ASan/UBSan and libFuzzer jobs run only when that workflow is manually dispatched.
+CD3313 host tests remain automatic for relevant changes. ASan/UBSan and libFuzzer jobs run only when `test-cd3313-emulator.yml` is manually dispatched.
 
 ## Public firmware compute
 
 Run compute directly in `14vvp93/public_calculations` → Actions:
 
-- `Public firmware compute`: choose `inventory`, `verify`, `all-light` or `audio-inventory`.
-- The nine firmware-analysis workers now support direct `workflow_dispatch` in addition to `workflow_call`.
+- `Public firmware compute`: `inventory`, `verify`, `all-light` or `audio-inventory`.
+- Nine firmware-analysis workers support direct `workflow_dispatch`.
+- Each public worker has a per-ref concurrency group to cancel duplicate runs of the same worker.
+- Public infrastructure validation also deduplicates push and pull-request runs by source branch.
 
-Do not run the old private caller workflows: they were removed from this branch because reusable workflow billing follows the private caller. Direct runs in the public repository use standard public-repository runners, which do not consume the private repository's included compute allowance. Public artifacts and logs must contain only approved public data.
+The `inventory` and `all-light` task names currently execute the same inventory operation; `all-light` is retained as a compatibility alias. For `verify` and `audio-inventory`, inventory and manifest SHA-256 verification now happen in one file-reading pass instead of hashing the extracted dataset twice.
 
-## Cancellation and validation
+### Public worker I/O and artifact reductions
 
-Pushes to the same branch cancel stale in-progress runs within each workflow. This avoids spending time finishing obsolete commits. Workflow path filters prevent unrelated changes from starting build jobs.
+- The audio-HAL worker scans the canonical extracted tree in place and copies only the primary HAL binary needed as an artifact; it no longer duplicates the full extracted firmware tree.
+- The audiomux-client scanner reads the canonical extracted tree directly instead of copying it into a second workspace directory.
+- The firmware-libraries worker uses local symlinks to the canonical extracted firmware and dumps. Its artifact now contains analysis reports and focused outputs, not a second copy of the public firmware dataset.
 
-No private product source is checked out by public workers. Private builds, tests and ABI checks remain in the private repository.
+The full-dataset integrity audit and the firmware-libraries analysis still perform independent integrity checks. They are separate manual tasks with different outputs; run only the one needed for a given investigation.
 
 ## Operational rules
 
 1. Let the standard host regression suite run for PCM DSP/AudioCore changes.
-2. Run ARM32 cross-builds only when the relevant Android-facing code changes.
-3. Run TSAN, fuzzing, performance and full binary audits on demand.
-4. Prefer one run after a coherent group of commits over one run per tiny commit.
-5. Do not treat skipped/manual diagnostics as passing tests. Record which gates actually ran.
+2. Run Android cross-builds only when the corresponding Android-facing code changes.
+3. Run TSAN, fuzzing, stability, performance and full binary audits on demand.
+4. Prefer one coherent group of commits over a sequence of tiny commits.
+5. Do not dispatch several full-dataset public workers when one focused worker answers the question.
+6. Do not treat skipped/manual diagnostics as passing tests. Record which gates actually ran.
+7. Do not copy public firmware into the private repository or private product source into public workflows.
+
+## Audit findings and remaining limits
+
+The workflow definitions were reviewed in both repositories. The changes reduce redundant push/PR runs, unrelated path-triggered jobs, duplicate SHA-256 reads in the public compute workflow, unnecessary full-tree copies, and oversized analysis artifacts.
+
+This is not a claim that every possible minute has been eliminated:
+
+- GitHub's account-level Actions billing/remaining-minute dashboard is not exposed through the repository workflow API used for this audit. Exact minute savings and remaining quota cannot be calculated here.
+- At the audit time, private Actions jobs failed before runner allocation (`runner_id=0`, empty `runner_name`). This is a runner/quota availability problem, not evidence that builds or tests passed. Private code CI therefore remains unverified until a runner executes it.
+- The public infrastructure validator had a successful run on commit `3da40752f1f4ba8b5edf37019757ec42a8681db1`; later commits were still being validated when this audit was recorded. Recheck the latest run before treating the final public workflow edits as validated.
+- Android NDK installation and AOSP header acquisition still occur in relevant private builds. Caching them may help, but cache restore/save overhead and cache limits must be measured after private runners are available; no unmeasured cache layer was added.
+- Self-hosted runners or local CI can reduce dependence on GitHub-hosted private minutes, but require a maintained trusted machine and are not enabled by this change.
+
+Private branch updated: `feature`. Private `main` was not changed.
