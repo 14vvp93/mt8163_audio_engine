@@ -10,7 +10,12 @@ PcmResult PrimaryHalStreamAdapter::open(std::uint32_t handle, SourceId source,
     if (handle == 0U) return PcmResult::InvalidArgument;
     if (validate_source_route(source, route) != RouteValidation::Supported ||
         !is_valid_pcm_route_direction(route, direction)) return PcmResult::UnsupportedRoute;
-    if (!audio_core_.open_session(handle, source, route)) return PcmResult::CapacityExceeded;
+    if (audio_core_.sessions().find(handle) != nullptr) {
+        return PcmResult::InvalidArgument;
+    }
+    if (!audio_core_.open_session(handle, source, route)) {
+        return PcmResult::CapacityExceeded;
+    }
     const PcmResult result = streams_.open(handle, source, route, direction);
     if (result != PcmResult::Ok) (void)audio_core_.close_session(handle);
     return result;
