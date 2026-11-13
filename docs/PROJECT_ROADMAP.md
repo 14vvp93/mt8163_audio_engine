@@ -162,6 +162,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Disassemble `open()` far enough to confirm `hw_device_t.version = 0x0300` (API 3.0) and a 224-byte vendor-extended device allocation.
 - [x] Recover the complete 224-byte device layout and map standard callbacks plus the 68-byte vendor tail through the `AudioALSAHardware` vtable.
 - [x] Add an APS2 packed-relocation decoder so vtable mappings are reproducible from the factory ELF.
+- [x] Recover concrete `AudioALSAStreamOut` and `AudioALSAStreamIn` C++ vtables from APS2 relocations.
+- [ ] Recover the separate Android C `audio_stream_out` / `audio_stream_in` wrapper structures, callback tables and object ownership from stream-manager open/close paths.
 - [ ] Trace the exact external callers and semantics of each vendor-only callback before retaining or replacing them.
 
 **Priority: critical product milestone**
