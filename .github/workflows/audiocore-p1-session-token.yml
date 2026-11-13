@@ -201,15 +201,17 @@ jobs:
           API: ${{ needs.api-contract.result }}
           HOST: ${{ needs.host-tests.result }}
           TSAN: ${{ needs.thread-sanitizer.result }}
+          ASAN_UBSAN: ${{ needs.address-undefined-sanitizer.result }}
           ARMV7: ${{ needs.android-armv7.result }}
           INTEGRITY: ${{ needs.repository-integrity.result }}
         run: |
           set -euo pipefail
-          printf 'API=%s HOST=%s TSAN=%s ARMV7=%s INTEGRITY=%s\n' \
-            "$API" "$HOST" "$TSAN" "$ARMV7" "$INTEGRITY"
+          printf 'API=%s HOST=%s TSAN=%s ASAN_UBSAN=%s ARMV7=%s INTEGRITY=%s\n' \
+            "$API" "$HOST" "$TSAN" "$ASAN_UBSAN" "$ARMV7" "$INTEGRITY"
           test "$API" = success
           test "$HOST" = success
           test "$TSAN" = success
+          test "$ASAN_UBSAN" = success
           test "$ARMV7" = success
           test "$INTEGRITY" = success
           echo "P1 COMPLETE: all required offline gates passed."
