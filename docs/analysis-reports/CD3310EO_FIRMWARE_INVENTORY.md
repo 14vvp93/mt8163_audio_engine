@@ -270,3 +270,25 @@ Consequences for evidence interpretation:
 **Updated confidence:** same-unit firmware provenance is USER CONFIRMED; CD3313 driver identity is STATIC ELF/DWARF VERIFIED; physical IC identity is USER CONFIRMED as CD3310EO; active DTBO, runtime module binding, I2C response, and CD3310EO/CD3313 protocol compatibility remain UNKNOWN.
 
 Next read-only work should prioritize the base DTB/overlay-selection chain and all available runtime evidence. Do not send the CD3313 probe byte or any CD3313 command to the physical IC.
+
+
+## 12. Base-DTB resolution and competing DSP probe checks — 2026-11-13
+
+The base FDT was recovered from the exact `boot.img` in the user's confirmed firmware dump:
+
+- Embedded at byte offset `7,014,136`; FDT size 42,614 bytes.
+- SHA-256: `b17bff1b3251882864700ca290efd6d0326997356bb98ed10a8dd8d012ae72a0`.
+- The same base FDT occurs at the same offset in `recovery.img` and is byte-identical.
+- The `dtbo.img` contains one overlay table entry. Its FDT payload starts at offset 64, is 42,594 bytes, and has SHA-256 `f2bb637e0656c8db88f3fa4a815f8b650bc59deed52502a140f93c99c74b200c`. The same payload is appended to `recovery.img`.
+
+Base DTB I2C controllers 0, 1 and 2 are disabled until overlay application. Overlay fragment 11 is linked by the `i2c2` fixup to base node `/soc/i2c@11009000` (base phandle `0x3a`). It enables that controller and adds `cd3313@44`, `ak7604@1c` and `fy7604@50`, all marked `status = "okay"`. It also lists several alternative FM tuner nodes. This is a multi-device/multi-variant overlay, not proof that all listed ICs are populated or that the bootloader selected this entry.
+
+A separate static disassembly comparison establishes different probe policies:
+
+- `ak7604.ko` calls `ak7604_check_exist` before `misc_register`; the check performs an I2C write/read exchange and validates returned data. A failed check exits the probe before device-node registration.
+- `fy7604.ko` calls `fy7604_check_exist` before `misc_register`; the check performs an I2C read and validates returned data. A failed check exits before device-node registration.
+- `cd3313.ko` performs a one-byte `0x3f` write and proceeds when `i2c_master_send(..., 1)` reports one byte transferred. No silicon-ID read is visible in that probe function.
+
+The init script requests CD3313 before AK7604 and FY7604. This creates a plausible, unverified scenario in which CD3313 registers the shared `/dev/audiomux` endpoint if the physical device at `0x44` acknowledges the one-byte write, even if the physical marking is CD3310EO. The acknowledgement and runtime registration have not been observed. This is not approval to send the byte or any CD3313 command to the physical chip.
+
+Updated technical detail and exact hashes are recorded in [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md). No module was loaded and no hardware I/O was performed.
