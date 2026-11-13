@@ -15,7 +15,7 @@ if [ ! -f "$binary" ] || [ ! -r "$binary" ]; then
     exit 2
 fi
 
-for tool in readelf sha256sum basename; do
+for tool in readelf sha256sum basename awk wc tr grep sed; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: required tool not found: $tool" >&2
         exit 2
