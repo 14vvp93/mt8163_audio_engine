@@ -423,3 +423,11 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Firmware init order is CD3313 → AK7604 → FY7604. If CD3313 succeeds first and retains the shared GPIOs, the later modules can fail before checking their ICs. This is an additional explanation for CD3313 endpoint priority, not runtime proof.
 - Keep I2C and GPIO transport disconnected. No hardware operation was performed.
 - Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+
+
+### P0 follow-up — CD3313 GPIO ownership safety
+
+- The CD3313 probe uses literal GPIO IDs `0x189`, `0x199`, `396` and `0x1da`; no OF GPIO/property lookup imports are present in the inspected module.
+- It stores `gpio_request` return values but does not check them before calling descriptor/direction/value operations. A failed request can therefore be followed by an attempted GPIO manipulation.
+- Treat this as a vendor-driver ownership defect. Do not load/reload the module or toggle its GPIOs during investigation. The replacement must validate ownership and unwind on every failure.
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
