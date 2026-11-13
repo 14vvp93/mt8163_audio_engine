@@ -8,8 +8,6 @@ on:
       - "pcm-dsp/include/pcm_dsp/engine.hpp"
       - "pcm-dsp/Android.mk"
       - "pcm-dsp/tests/android_effect_smoke_test.cpp"
-      - "docs/ANDROID9_STEREO_EFFECT_LIBRARY.md"
-      - "docs/ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md"
       - ".github/workflows/android-effect-library.yml"
   pull_request:
     paths:
@@ -22,6 +20,10 @@ on:
       - "docs/ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md"
       - ".github/workflows/android-effect-library.yml"
   workflow_dispatch:
+
+concurrency:
+  group: android-effect-library-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android9-armv7-effect:
