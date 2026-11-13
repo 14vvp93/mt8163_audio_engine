@@ -158,7 +158,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Add CI workflow to fetch the immutable factory HAL artifact from `public_calculations` and verify its expected size/SHA-256 before audit.
 - [x] Verify factory artifact identity, ELF32 ARM EABI5, exported `HMI`, SONAME and dynamic dependencies in GitHub Actions.
 - [x] Recover `HMI` object address/size, module API 0.1, HAL API 1.0, module ID/name/author and `methods->open` pointer.
-- [ ] Disassemble `open()` and recover returned `hw_device_t.version` plus complete device method table.
+- [x] Disassemble `open()` far enough to confirm `hw_device_t.version = 0x0300` (API 3.0) and a 224-byte vendor-extended device allocation.
+- [ ] Recover the complete 224-byte device layout and map all method callbacks, including the vendor-specific tail.
 
 **Priority: critical product milestone**
 
