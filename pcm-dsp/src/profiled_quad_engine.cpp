@@ -80,7 +80,8 @@ bool ProfiledQuadEngine::transition_pending() const {
 
 bool ProfiledQuadEngine::process(const float* input, float* output,
                                  std::size_t frames, float* sub_output) {
-    if (sample_rate_hz_ == 0U || input == nullptr || output == nullptr) {
+    if (sample_rate_hz_ == 0U || input == nullptr || output == nullptr ||
+        frames > static_cast<std::size_t>(-1) / kOutputChannelCount) {
         return false;
     }
     const int active = active_slot_.load(std::memory_order_acquire);
@@ -90,8 +91,6 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
     const bool running_target_needs_sub = current_target >= 0 &&
         profiles_[static_cast<std::size_t>(current_target)]
             .routing.bass_management_enabled;
-    // A merely pending target may wait for a sub buffer; an active transition
-    // cannot safely continue without one.
     if ((active_needs_sub || running_target_needs_sub) && sub_output == nullptr) {
         return false;
     }
@@ -100,23 +99,23 @@ bool ProfiledQuadEngine::process(const float* input, float* output,
     while (offset < frames) {
         const std::size_t chunk = std::min(
             kProfileTransitionMaxFrames, frames - offset);
-        process_chunk(input + offset * kOutputChannelCount,
-                      output + offset * kOutputChannelCount,
-                      chunk, sub_output != nullptr ? sub_output + offset : nullptr);
+        if (!process_chunk(input + offset * kOutputChannelCount,
+                           output + offset * kOutputChannelCount,
+                           chunk, sub_output != nullptr ? sub_output + offset : nullptr)) {
+            return false;
+        }
         offset += chunk;
     }
     return true;
 }
 
-void ProfiledQuadEngine::process_chunk(const float* input, float* output,
-                                      std::size_t frames, float* sub_output) {
+bool ProfiledQuadEngine::process_chunk(const float* input, float* output,
+                                       std::size_t frames, float* sub_output) {
     if (transition_target_.load(std::memory_order_relaxed) < 0) {
         const int pending_candidate = pending_slot_.load(std::memory_order_acquire);
         const bool pending_needs_sub = pending_candidate >= 0 &&
             profiles_[static_cast<std::size_t>(pending_candidate)]
                 .routing.bass_management_enabled;
-        // A profile requiring a subwoofer buffer must remain queued until the
-        // caller supplies that buffer; never start a half-configured transition.
         if (pending_candidate >= 0 && (!pending_needs_sub || sub_output != nullptr)) {
             const int pending = pending_slot_.exchange(-1, std::memory_order_acq_rel);
             if (pending >= 0) {
@@ -128,19 +127,22 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
 
     const int active = active_slot_.load(std::memory_order_relaxed);
     const int target_slot = transition_target_.load(std::memory_order_relaxed);
-    if (target_slot < 0) {
-        const bool ok = engines_[static_cast<std::size_t>(active)].process(
-            input, output, frames, profiles_[static_cast<std::size_t>(active)].quad,
-            sub_output);
-        (void)ok; // Configuration and buffer requirements were validated.
-        return;
-    }
-
     const std::size_t samples = frames * kOutputChannelCount;
     std::copy(input, input + samples, input_scratch_.begin());
+
+    if (target_slot < 0) {
+        const bool ok = engines_[static_cast<std::size_t>(active)].process(
+            input_scratch_.data(), output, frames,
+            profiles_[static_cast<std::size_t>(active)].quad, sub_output);
+        if (!ok) {
+            std::copy(input_scratch_.begin(), input_scratch_.begin() + samples, output);
+            if (sub_output != nullptr) std::fill(sub_output, sub_output + frames, 0.0F);
+        }
+        return ok;
+    }
+
     float* active_sub = sub_output != nullptr ? active_sub_scratch_.data() : nullptr;
     float* target_sub = sub_output != nullptr ? target_sub_scratch_.data() : nullptr;
-
     const bool active_ok = engines_[static_cast<std::size_t>(active)].process(
         input_scratch_.data(), output, frames,
         profiles_[static_cast<std::size_t>(active)].quad, active_sub);
@@ -148,9 +150,9 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
         input_scratch_.data(), target_scratch_.data(), frames,
         profiles_[static_cast<std::size_t>(target_slot)].quad, target_sub);
     if (!active_ok || !target_ok) {
-        std::fill(output, output + samples, 0.0F);
+        std::copy(input_scratch_.begin(), input_scratch_.begin() + samples, output);
         if (sub_output != nullptr) std::fill(sub_output, sub_output + frames, 0.0F);
-        return;
+        return false;
     }
 
     const float denominator = static_cast<float>(
@@ -177,6 +179,7 @@ void ProfiledQuadEngine::process_chunk(const float* input, float* output,
         slot_available_[static_cast<std::size_t>(retired)].store(
             true, std::memory_order_release);
     }
+    return true;
 }
 
 } // namespace pcm_dsp
