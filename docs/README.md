@@ -16,6 +16,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Public firmware compute scripts](public-compute/COMPUTE_SCRIPTS.md) — inventory, safe extraction, audio-stack analysis and HEQ verification tools.
 
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — workflow inventory, branch pinning and follow-up review.
+- [GitHub Actions minute optimization](CI_MINUTE_OPTIMIZATION.md) — automatic CI scope, manual diagnostics and public compute execution policy.
 
 - [Repository structure and file-placement rules](REPOSITORY_STRUCTURE.md) — canonical map of the repository and cleanup conventions.
 
