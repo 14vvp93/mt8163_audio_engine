@@ -106,26 +106,40 @@ PcmByteTransfer PcmByteStreamAdapter::transfer(const void* buffer,
     std::size_t frames = 0U;
     const PcmResult validation =
         validate_pcm16_buffer(handle_, config_, buffer, byte_count, &frames);
-    PcmTransferResult result{validation, 0U};
-    if (validation == PcmResult::Ok) {
-        result = direction == PcmDirection::Playback
-            ? adapter_.write_transfer(handle_, static_cast<const std::int16_t*>(buffer), frames)
-            : adapter_.read_transfer(handle_, const_cast<std::int16_t*>(
-                  static_cast<const std::int16_t*>(buffer)), frames);
-    }
-    transfer_gate_.fetch_sub(1U, std::memory_order_release);
+    PcmByteTransfer transfer_result{validation, 0U};
 
-    if (result.frames_transferred > frames ||
-        (result.result == PcmResult::Ok && result.frames_transferred == 0U)) {
-        return {PcmResult::BackendFailure, 0U};
+    if (validation == PcmResult::Ok) {
+        const PcmTransferResult backend_result =
+            direction == PcmDirection::Playback
+                ? adapter_.write_transfer(handle_, static_cast<const std::int16_t*>(buffer),
+                                          frames)
+                : adapter_.read_transfer(
+                      handle_, const_cast<std::int16_t*>(
+                                   static_cast<const std::int16_t*>(buffer)),
+                      frames);
+
+        if (backend_result.frames_transferred > frames ||
+            (backend_result.result == PcmResult::Ok &&
+             backend_result.frames_transferred == 0U)) {
+            transfer_result = {PcmResult::BackendFailure, 0U};
+        } else {
+            const std::size_t bytes_per_frame =
+                static_cast<std::size_t>(config_.channel_count) * sizeof(std::int16_t);
+            if (backend_result.frames_transferred >
+                std::numeric_limits<std::size_t>::max() / bytes_per_frame) {
+                transfer_result = {PcmResult::BackendFailure, 0U};
+            } else {
+                transfer_result = {
+                    backend_result.result,
+                    backend_result.frames_transferred * bytes_per_frame};
+            }
+        }
     }
-    const std::size_t bytes_per_frame =
-        static_cast<std::size_t>(config_.channel_count) * sizeof(std::int16_t);
-    if (result.frames_transferred >
-        std::numeric_limits<std::size_t>::max() / bytes_per_frame) {
-        return {PcmResult::BackendFailure, 0U};
-    }
-    return {result.result, result.frames_transferred * bytes_per_frame};
+
+    // This must be the final access to the object: stop/close use this count
+    // to prove that no callback can still touch the adapter.
+    transfer_gate_.fetch_sub(1U, std::memory_order_release);
+    return transfer_result;
 }
 
 PcmByteTransfer PcmByteStreamAdapter::write(const void* buffer,
