@@ -193,6 +193,29 @@ void test_audio_core_is_single_hardware_command_owner() {
             "AudioCore preserves the mute owner identity");
 }
 
+void test_same_handle_reopen_rejects_stale_session_token() {
+    AudioCore core;
+    SessionToken old_session{};
+    SessionToken new_session{};
+    require(core.open_session(0x8163U, SourceId::LocalMedia,
+                              RouteType::PrimaryPcm, &old_session),
+            "old AudioCore session opens");
+    require(core.close_session(old_session), "old AudioCore session closes");
+    require(core.open_session(0x8163U, SourceId::LocalMedia,
+                              RouteType::PrimaryPcm, &new_session),
+            "same handle reopens as a new session");
+    require(old_session.handle == new_session.handle &&
+            old_session.generation != new_session.generation,
+            "AudioCore assigns a new generation on handle reuse");
+    require(!core.transition_session(old_session, SessionState::Failed),
+            "stale token cannot transition replacement session");
+    require(!core.close_session(old_session),
+            "stale token cannot close replacement session");
+    require(core.sessions().find(new_session) != nullptr &&
+            core.sessions().find(new_session)->state == SessionState::Requested,
+            "replacement session remains unchanged");
+}
+
 void test_invalid_mode_and_session() {
     AudioCore core;
     require(!core.set_mode(static_cast<AudioMode>(0xFFU)),
@@ -213,6 +236,7 @@ int main() {
     test_unverified_routes_are_rejected_before_session_creation();
     test_dirty_snapshot_retries_latest_committed_state();
     test_owner_scoped_clear_and_close();
+    test_same_handle_reopen_rejects_stale_session_token();
     test_invalid_mode_and_session();
     test_audio_core_is_single_hardware_command_owner();
     std::cout << "AudioCore coordinator tests passed\n";
