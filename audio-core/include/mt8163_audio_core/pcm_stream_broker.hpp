@@ -26,6 +26,9 @@ struct PcmStreamRecord {
     bool backend_stop_required{false};
 };
 
+// Control-plane methods (open/configure/start/stop/close/get_record) must be
+// serialized by one HAL control context. Transfer methods are callback-safe and
+// may run concurrently with stop(); stop() closes admission and drains them.
 class PcmStreamBroker {
 public:
     explicit PcmStreamBroker(PcmBackend& backend) noexcept : backend_(backend) {}
