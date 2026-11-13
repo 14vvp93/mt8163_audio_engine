@@ -3,7 +3,8 @@
 **Project:** MT8163 Audio Engine  
 **Baseline:** 2026-11-13  
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
-**Integration branch:** `integration/beta-0.1`  
+**Working branch:** `feature`  
+**Stable branch:** `main`  
 **Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
 **Latest code/test commit:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
@@ -245,7 +246,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - PCM DSP host tests.
 - CD3313 emulator host tests, ASAN/UBSAN and bounded libFuzzer.
 - AudioCore ThreadSanitizer.
-- PCM stream broker ThreadSanitizer workflow (integration branch and its dedicated work branch).
+- PCM stream broker ThreadSanitizer workflow (feature branch (legacy workflow triggers may still reference deleted branches)).
 - Android ARMv7 library/JNI build and benchmark.
 - Android 9 effect-library ABI build and host smoke tests.
 - Stability lab and performance benchmark.
@@ -263,7 +264,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### Current verified baseline
 
-- AudioCore TSAN: [43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) is running on the current documentation/integration commit; last completed success on this series: [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297).
+- AudioCore TSAN: [43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) is running on the current documentation/feature commit; last completed success on this series: [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297).
 - PCM stream-broker TSAN: [43373877328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877328), success on commit `090f4d1`.
 - Repository integrity: [43373877371](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877371), success on commit `090f4d1`; validates local Markdown links and read-only collector syntax.
 - CD3313 protocol/safety: [43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746), success on code commit `cfc20a4`; it is not a run on the later documentation-only commits.
@@ -306,7 +307,7 @@ The MT8163 Audio Engine is complete only when:
 - Consolidated the repository inventory, firmware/driver analysis, AudioCore, PCM/DSP, route, Android integration and CI evidence.
 - Reordered work around runtime ownership, PCM lifecycle, factory HAL ABI and a proven stereo insertion point.
 - Archived the old Beta 0.1 roadmap, refreshed the status/index/README, and marked legacy hardware-identity records as superseded where necessary.
-- Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
+- Enabled repository-integrity and PCM stream-broker TSAN workflows on the feature branch.
 - Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test and passed PCM broker TSAN.
 - Added an AudioCore dirty-snapshot recovery test covering all three slots pinned, mutation commit, release and retry; passed AudioCore TSAN.
 - Pinned the AOSP Android 9 r3 ARM32 HAL header baseline to the firmware's `PPR1.180610.011` build fingerprint; documented structure layouts and offsets while keeping vendor ABI facts explicitly unresolved.
