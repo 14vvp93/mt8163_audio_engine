@@ -99,6 +99,19 @@ int main() {
     CHECK(adapter.stream_count() == 0U);
     CHECK(!backend.opened);
 
+    CHECK(adapter.open(handle, SourceId::PrimaryMicrophone,
+                        RouteType::PrimaryCapturePcm,
+                        PcmDirection::Capture) == PcmResult::Ok);
+    CHECK(adapter.configure(handle, config) == PcmResult::Ok);
+    CHECK(adapter.start(handle) == PcmResult::Ok);
+    const PcmByteTransfer byte_read = read_pcm16_bytes(
+        adapter, handle, config, samples.data(), 960U);
+    CHECK(byte_read.result == PcmResult::Ok);
+    CHECK(byte_read.bytes_transferred == 960U);
+    CHECK(samples[0] == 0);
+    CHECK(adapter.stop(handle) == PcmResult::Ok);
+    CHECK(adapter.close(handle) == PcmResult::Ok);
+
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::A2dpPcm,
                         PcmDirection::Playback) == PcmResult::UnsupportedRoute);
     CHECK(adapter.open(0U, SourceId::LocalMedia, RouteType::PrimaryPcm,
