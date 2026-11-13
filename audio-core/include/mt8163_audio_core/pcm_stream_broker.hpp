@@ -23,6 +23,7 @@ struct PcmStreamRecord {
     PcmDirection direction{PcmDirection::Playback};
     PcmConfig config{};
     PcmStreamState state{PcmStreamState::Closed};
+    bool backend_stop_required{false};
 };
 
 class PcmStreamBroker {
