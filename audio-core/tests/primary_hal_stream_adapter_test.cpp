@@ -280,7 +280,7 @@ int main() {
           failed_session->state == SessionState::Active);
     CHECK(output.stop() == PcmResult::Ok);
     const SessionRecord* suspended_session =
-        adapter.audio_core().sessions().find(handle);
+        adapter.audio_core().sessions().find(adapter.token_for(handle));
     CHECK(suspended_session != nullptr &&
           suspended_session->state == SessionState::Suspended);
     const SessionToken old_playback_session = output.session();
