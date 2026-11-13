@@ -16,7 +16,7 @@ struct PcmByteTransfer {
 // The owner must quiesce callback dispatch before destroying this object.
 class PcmByteStreamAdapter final {
 public:
-    PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter, std::uint32_t handle,
+    PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter, SessionToken session,
                          PcmDirection direction) noexcept;
     PcmByteStreamAdapter(const PcmByteStreamAdapter&) = delete;
     PcmByteStreamAdapter& operator=(const PcmByteStreamAdapter&) = delete;
@@ -34,7 +34,7 @@ public:
     bool started() const noexcept {
         return started_.load(std::memory_order_acquire) != 0U;
     }
-    std::uint32_t handle() const noexcept { return handle_; }
+    SessionToken session() const noexcept { return handle_; }
     PcmDirection direction() const noexcept { return direction_; }
 
 private:
