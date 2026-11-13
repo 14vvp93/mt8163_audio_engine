@@ -78,13 +78,18 @@ The current core API is intentionally frame-based:
 - The Android HAL callbacks receive a byte count and Android format/channel
   mask.
 
-A future wrapper must derive bytes per frame from the validated negotiated
-format and direction-specific channel mask, then reject:
+The new `PcmByteStreamAdapter` derives bytes per frame from its validated
+PCM16 `PcmConfig` and fixed direction. It rejects:
 - null buffers;
 - zero or non-frame-aligned byte counts;
-- unsupported formats or channel masks;
-- frame counts exceeding the bounded transport limit;
-- integer overflow while converting bytes to frames or back.
+- unsupported formats or channel counts;
+- unaligned PCM16 buffers;
+- frame counts exceeding the 2048-frame broker limit.
+
+The adapter is deliberately PCM16-only and currently relies on the backend's
+all-frames-or-error contract. It does not implement partial transfers or
+deferred error reporting. The Android direction-specific channel-mask
+conversion and stream callback tables remain separate integration work.
 
 The current `PcmBackend` result type reports success/failure for a requested
 frame count; it cannot represent a partial transfer. Before wiring it to
@@ -98,9 +103,11 @@ count after an unverified partial transfer.
 1. `primary_hal.cpp` currently returns `-ENODEV` from both stream-open
    callbacks and clears the output stream pointer. This is the correct
    fail-closed behavior while no verified endpoint/backend exists.
-2. `PrimaryHalStreamAdapter` is a C++ lifecycle bridge, not an Android stream
-   wrapper. It does not own an `audio_stream_out` or `audio_stream_in`
-   callback table and does not translate byte counts, formats or masks.
+2. `PrimaryHalStreamAdapter` is the C++ lifecycle bridge.
+   `PcmByteStreamAdapter` now adds a per-stream PCM16 byte/frame conversion
+   layer with callback admission and stop/close draining. Neither class owns
+   the Android `audio_stream_out` / `audio_stream_in` callback tables or
+   converts Android channel masks; partial transfers remain unsupported.
 3. `PcmStreamBroker` admits frame-based transfers and protects stop against
    in-flight I/O. Its lifecycle contract requires a serialized control
    context. The HAL must additionally prevent device/adapter destruction
