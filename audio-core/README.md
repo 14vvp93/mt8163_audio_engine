@@ -4,7 +4,7 @@ This directory contains the first host-testable primitives for the unified MT816
 
 ## Current scope
 
-- Session identity is now generation-bearing across SessionRegistry, AudioCore snapshots, PcmStreamBroker, PrimaryHalStreamAdapter and PcmByteStreamAdapter. The external 32-bit handle is accepted only at open; every subsequent mutation and transfer requires the complete `SessionToken`. Same-handle reopen, stale-token, foreign-registry and generation-exhaustion regressions are present. The implementation contract is [AudioCore Session Token Contract](../docs/AUDIOCORE_SESSION_TOKEN_CONTRACT.md). HAL integration remains blocked until the [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml) passes on the exact final commit.
+- Session identity is now generation-bearing across SessionRegistry, AudioCore snapshots, PcmStreamBroker, PrimaryHalStreamAdapter and PcmByteStreamAdapter. The external 32-bit handle is accepted only at open; every subsequent mutation and transfer requires the complete `SessionToken`. Same-handle reopen, stale-token, foreign-registry and generation-exhaustion regressions are present. The implementation contract is [AudioCore Session Token Contract](../docs/AUDIOCORE_SESSION_TOKEN_CONTRACT.md). The offline [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml) passed at `6d13b5f3a98be0306911fc6d2655a4ad4f5078bd`; the token API is ready for internal HAL integration. Production installation and endpoint binding remain blocked on P0 hardware evidence and factory ABI verification.
 
 - Stable source and route identifiers.
 - Fixed-capacity multi-session registry with an explicit lifecycle state machine.
