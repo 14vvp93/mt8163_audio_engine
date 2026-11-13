@@ -46,7 +46,7 @@ jobs:
           "$CLANG" \
             --target=armv7a-linux-androideabi28 \
             -std=c++17 \
-            -Wall -Wextra -Wpedantic -Werror \
+            -Wall -Wextra -Wpedantic -Werror -Wno-c99-extensions \
             -fvisibility=hidden \
             -fno-exceptions -fno-rtti -fno-unwind-tables \
             -fno-asynchronous-unwind-tables \
