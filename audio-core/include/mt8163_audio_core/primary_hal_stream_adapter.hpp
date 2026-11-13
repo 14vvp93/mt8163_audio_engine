@@ -15,20 +15,20 @@ public:
     PrimaryHalStreamAdapter& operator=(const PrimaryHalStreamAdapter&) = delete;
 
     PcmResult open(std::uint32_t handle, SourceId source, RouteType route,
-                   PcmDirection direction) noexcept;
-    PcmResult configure(std::uint32_t handle, const PcmConfig& config) noexcept;
-    PcmResult start(std::uint32_t handle) noexcept;
-    PcmResult write(std::uint32_t handle, const std::int16_t* samples,
+                   PcmDirection direction, SessionToken* out_token) noexcept;
+    PcmResult configure(SessionToken session, const PcmConfig& config) noexcept;
+    PcmResult start(SessionToken session) noexcept;
+    PcmResult write(SessionToken session, const std::int16_t* samples,
                     std::size_t frames) noexcept;
-    PcmResult read(std::uint32_t handle, std::int16_t* samples,
+    PcmResult read(SessionToken session, std::int16_t* samples,
                    std::size_t frames) noexcept;
-    PcmTransferResult write_transfer(std::uint32_t handle,
+    PcmTransferResult write_transfer(SessionToken session,
                                      const std::int16_t* samples,
                                      std::size_t frames) noexcept;
-    PcmTransferResult read_transfer(std::uint32_t handle, std::int16_t* samples,
+    PcmTransferResult read_transfer(SessionToken session, std::int16_t* samples,
                                     std::size_t frames) noexcept;
-    PcmResult stop(std::uint32_t handle) noexcept;
-    PcmResult close(std::uint32_t handle) noexcept;
+    PcmResult stop(SessionToken session) noexcept;
+    PcmResult close(SessionToken session) noexcept;
 
     AudioCore& audio_core() noexcept { return audio_core_; }
     const AudioCore& audio_core() const noexcept { return audio_core_; }
