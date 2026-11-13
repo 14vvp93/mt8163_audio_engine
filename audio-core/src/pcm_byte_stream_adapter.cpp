@@ -22,6 +22,14 @@ PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
     if (started_.load(std::memory_order_acquire) != 0U || (transfer_gate_.load(std::memory_order_acquire) & kTransferCountMask) != 0U) return PcmResult::InvalidState;
     if (config.sample_rate_hz == 0U || (config.channel_count != 1U && config.channel_count != 2U) || config.period_frames == 0U) return PcmResult::InvalidArgument;
     if (config.format != PcmFormat::Pcm16SignedLittleEndian) return PcmResult::UnsupportedFormat;
+    if (configured_.load(std::memory_order_acquire) != 0U) {
+        const bool same_config = config_.sample_rate_hz == config.sample_rate_hz &&
+            config_.channel_count == config.channel_count &&
+            config_.period_frames == config.period_frames &&
+            config_.format == config.format;
+        return same_config ? PcmResult::Ok : PcmResult::InvalidState;
+    }
+
     const PcmResult result = adapter_.configure(handle_, config);
     if (result == PcmResult::Ok) {
         config_ = config;
@@ -73,7 +81,10 @@ PcmResult PcmByteStreamAdapter::stop() noexcept {
     transfer_gate_.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
     if ((transfer_gate_.load(std::memory_order_acquire) & kTransferCountMask) != 0U) return PcmResult::WouldBlock;
     const PcmResult result = adapter_.stop(handle_);
-    if (result == PcmResult::Ok) started_.store(0U, std::memory_order_release);
+    if (result == PcmResult::Ok) {
+        started_.store(0U, std::memory_order_release);
+        configured_.store(0U, std::memory_order_release);
+    }
     return result;
 }
 PcmResult PcmByteStreamAdapter::close() noexcept {

@@ -85,6 +85,10 @@ int main() {
     CHECK(!output.configured());
     CHECK(output.configure(config) == PcmResult::Ok);
     CHECK(output.configured());
+    CHECK(output.configure(config) == PcmResult::Ok);
+    PcmConfig changed_config = config;
+    changed_config.sample_rate_hz = 44100U;
+    CHECK(output.configure(changed_config) == PcmResult::InvalidState);
     CHECK(output.start() == PcmResult::Ok);
     CHECK(output.started());
 
