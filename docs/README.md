@@ -30,7 +30,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [GitHub Actions workflow audit](repository-audit/WORKFLOW_AUDIT.md) — retained workflows, cleanup decisions and verified runs.
 - [Firmware binary analysis summary](repository-audit/FIRMWARE_ANALYSIS_SUMMARY.md) — framework device-node hooks, alternative DSP modules, carstatus and HFP findings.
 
-## CD3313 hardware and driver
+## CD3313EO physical IC and CD3313KO Linux driver
 
 - [Protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
 - [Character-device read/write ABI](CD3313_CHAR_DEVICE_ABI.md)
