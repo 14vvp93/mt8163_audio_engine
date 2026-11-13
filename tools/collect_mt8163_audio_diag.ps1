@@ -35,7 +35,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $manifest = @(
     "MT8163 Audio diagnostics",
     "Collected: $(Get-Date -Format o)",
-    "ADB serial: $Serial",
+    "ADB device selector: supplied to adb; identifier intentionally not stored",
     "Read-only collection: yes (temporary local output only)",
     "Device writes: none intended"
 )
@@ -105,7 +105,10 @@ Write-Host "Collecting read-only diagnostics from $Serial ..."
 Save-AdbText "getprop" "getprop"
 Save-AdbText "system_identity" "uname -a; cat /proc/version; cat /proc/cmdline; cat /proc/uptime"
 Save-AdbText "asound" "for f in /proc/asound/cards /proc/asound/pcm /proc/asound/devices /proc/asound/timers; do echo ==== `$f; cat `$f 2>&1; done"
+Save-AdbText "alsa_pcm_runtime" 'for f in /proc/asound/card*/pcm*/info /proc/asound/card*/pcm*/sub*/status; do [ -r "$f" ] || continue; echo ==== "$f"; cat "$f" 2>&1; done'
 Save-AdbText "sound_devices" "ls -la /dev/snd 2>&1; ls -la /dev/audiomux 2>&1; ls -la /dev/i2c-* 2>&1"
+Save-AdbText "audio_node_metadata" 'stat -c "%n %F mode=%a owner=%u:%g major_minor=%t:%T" /dev/audiomux /dev/carstatus /dev/fm /dev/snd/* 2>&1'
+Save-AdbText "audio_device_fd_owners" 'for p in /proc/[0-9]*; do pid=${p##*/}; for f in "$p"/fd/*; do target=$(readlink "$f" 2>/dev/null) || continue; case "$target" in /dev/audiomux|/dev/carstatus|/dev/fm|/dev/snd/*) echo "$pid ${f##*/} -> $target" ;; esac; done; done' -Root
 Save-AdbText "modules" "cat /proc/modules; echo ==== lsmod; lsmod 2>&1"
 Save-AdbText "tinymix" "command -v tinymix 2>&1; tinymix 2>&1"
 Save-AdbText "audio_flinger" "dumpsys media.audio_flinger"
@@ -114,6 +117,7 @@ Save-AdbText "audio_service" "dumpsys audio"
 Save-AdbText "bluetooth_state" "dumpsys bluetooth_manager 2>&1 | grep -iE 'a2dp|codec|offload|connected|profile|state' | tail -n 2000"
 Save-AdbText "media_metrics_audio" "dumpsys media.metrics 2>&1 | grep -iE 'a2dp|fm|offload|codec|stream|audio' | tail -n 2000"
 Save-AdbText "i2c_devices" "ls -la /sys/bus/i2c/devices 2>&1; cat /proc/bus/i2c/devices 2>&1"
+Save-AdbText "i2c_driver_bindings" 'for d in /sys/bus/i2c/devices/*; do [ -e "$d" ] || continue; echo ==== "$d"; ls -l "$d/driver" "$d/of_node" 2>&1; for f in name modalias uevent; do [ -r "$d/$f" ] || continue; echo --- "$d/$f"; cat "$d/$f" 2>&1; done; done'
 Save-AdbText "block_partitions" "ls -la /dev/block/by-name 2>&1; cat /proc/partitions"
 Save-AdbText "device_tree_listing" "ls -la /sys/firmware/devicetree/base 2>&1; ls -la /proc/device-tree 2>&1; cat /sys/firmware/devicetree/base/model 2>&1; tr '\000' '\n' </sys/firmware/devicetree/base/compatible 2>/dev/null"
 Save-AdbText "audio_config_file_list" "for d in /vendor/etc /system/etc; do echo ==== `$d; find `$d -maxdepth 4 -type f 2>/dev/null | grep -iE 'audio|mixer|codec|i2s'; done"
