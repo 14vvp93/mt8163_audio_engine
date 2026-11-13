@@ -135,12 +135,11 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Factory ELF/HMI/APS2 audit, stream/manager disassembly, 1,052-library scan, HIDL bridge/service/ATCI path, input flag/buffer logic and exact input format-width table: PASS — [run 43402659661](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661/artifacts/14026325808).
-- AudioCore TSAN: PASS on feature commit `8c60b6fc20e45a723e5c0838a2687f0312eb2974` — [run 43402659633](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659633).
-- PCM Stream Broker TSAN: PASS on the same feature commit — [run 43402659653](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659653).
-- Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on feature commit `09b42d6893a36874961784f57817c299d9838779` — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
-- Android 9 ABI + factory stream contract tests: PASS on feature HEAD `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). Three CTest tests passed, including the recovered stream predicates.
-- Repository Integrity: PASS on feature commit `5804b4053074492992d44e04b5e5121a388bc057` — [run 43402629370](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402629370). Later changes in this sequence are workflow/docs only.
+- Repository Integrity: PASS on current feature HEAD `0b4c023eb7d0ab321b6dc953171275e1a6c1041b` — [run 43403831105](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831105).
+- AudioCore TSAN: PASS on current feature HEAD — [run 43403831119](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831119).
+- PCM Stream Broker TSAN: PASS on current feature HEAD — [run 43403831103](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831103).
+- Android 9 ARM32 ABI layout plus recovered stream-contract tests: PASS on code-equivalent feature commit `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). C++ layout, C11 layout and factory stream contract tests all passed.
+- Factory ELF/HMI/APS2, stream/manager disassembly, 1,052-library scan, HIDL bridge and service/ATCI audit: PASS — [run 43402659661](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661/artifacts/14026325808).
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
 
