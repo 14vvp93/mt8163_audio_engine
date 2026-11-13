@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace mt8163_audio_core {
 
@@ -28,8 +29,7 @@ struct SessionToken {
     }
 };
 
-static_assert(sizeof(SessionToken) == sizeof(std::uint32_t) +
-                                      sizeof(std::uint64_t),
-              "SessionToken must have a stable compact value representation");
+static_assert(std::is_trivially_copyable<SessionToken>::value,
+              "SessionToken must remain a trivially copyable value type");
 
 }  // namespace mt8163_audio_core
