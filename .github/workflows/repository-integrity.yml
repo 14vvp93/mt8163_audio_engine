@@ -10,7 +10,7 @@ on:
       - "scripts/device/**"
       - "tools/audit_primary_hal_binary.sh"
       - "tools/audit_android_packed_relocations.py"
-      - ".github/workflows/repository-integrity.yml"
+      - ".github/workflows/**"
   pull_request:
     branches: [main, feature]
     paths:
@@ -20,7 +20,7 @@ on:
       - "scripts/device/**"
       - "tools/audit_primary_hal_binary.sh"
       - "tools/audit_android_packed_relocations.py"
-      - ".github/workflows/repository-integrity.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
@@ -38,6 +38,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           sparse-checkout: |
+            /.github/workflows/**
             /*.md
             **/*.md
             /scripts/repository/check_markdown_links.py
@@ -45,6 +46,9 @@ jobs:
             /tools/audit_primary_hal_binary.sh
             /tools/audit_android_packed_relocations.py
           sparse-checkout-cone-mode: false
+      - name: Validate workflow YAML structure
+        run: |
+          ruby -e 'require "yaml"; Dir.glob(".github/workflows/*.{yml,yaml}").sort.each { |file| data = YAML.load_file(file); abort("Invalid workflow structure: #{file}") unless data.is_a?(Hash) && data["name"] && data["jobs"].is_a?(Hash); puts "YAML OK: #{file}" }'
       - name: Validate local Markdown links
         run: python3 scripts/repository/check_markdown_links.py
       - name: Validate read-only device collector syntax
