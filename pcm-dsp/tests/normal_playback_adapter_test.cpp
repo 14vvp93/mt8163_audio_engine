@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
-#include <limits>
+#include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -175,6 +175,24 @@ int main() {
         check(result == pcm_dsp::NormalPlaybackResult::Processed,
               "in-place processing succeeds");
         check(in_place != input, "in-place processing alters the signal");
+
+        std::vector<std::uint8_t> unaligned_input_storage(
+            kFrames * 2U * sizeof(std::int16_t) + 1U, 0U);
+        const auto* unaligned_input = reinterpret_cast<const std::int16_t*>(
+            unaligned_input_storage.data() + 1U);
+        result = adapter.process(unaligned_input, output.data(), kFrames,
+                                 parameters, context);
+        check(result == pcm_dsp::NormalPlaybackResult::InvalidBuffer,
+              "misaligned input buffer is rejected before sample access");
+
+        std::vector<std::uint8_t> unaligned_output_storage(
+            kFrames * 2U * sizeof(std::int16_t) + 1U, 0U);
+        auto* unaligned_output = reinterpret_cast<std::int16_t*>(
+            unaligned_output_storage.data() + 1U);
+        result = adapter.process(input.data(), unaligned_output, kFrames,
+                                 parameters, context);
+        check(result == pcm_dsp::NormalPlaybackResult::InvalidBuffer,
+              "misaligned output buffer is rejected before sample access");
 
         result = adapter.process(nullptr, output.data(), kFrames,
                                  parameters, context);
