@@ -26,6 +26,10 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 - Android ARMv7 library/JNI build and Android 9 effect-library ABI scaffold.
 - Read-only target diagnostic collectors and route/ownership matrices.
 
+## HAL ABI recovery update
+
+The firmware build fingerprint identifies Android 9 base build `PPR1.180610.011`, which maps to AOSP `android-9.0.0_r3`. The ARM32 AOSP HAL structure layouts and offsets are now pinned in [ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). This is the platform reference only: the factory module API version, exported `HMI`, method table, vendor extensions, SONAME and dependencies still require binary-level confirmation. The primary HAL audit script now checks ET_DYN, ARM32 EABI5, factory filename and `HMI` export; CI syntax validation is enabled.
+
 ## Blocking gaps
 
 1. No complete factory-compatible Android 9 primary HAL implementation or exact ABI-verified build.
@@ -64,4 +68,4 @@ The PowerShell collector now records PCM substream status, device-node metadata,
 
 ## Next action
 
-Run the read-only target inventory from [tools/README.md](../tools/README.md), then share the generated ZIP after reviewing private log/property data. Continue host-side HAL ABI recovery without speculative hardware operations. The current AudioCore and PCM broker race regressions are verified; target inventory remains the P0 external evidence gate.
+Run the read-only target inventory from [tools/README.md](../tools/README.md), then share the generated ZIP after reviewing private log/property data. Continue factory-binary ABI recovery and pin the exact ALPS/MediaTek vendor header revision. The AOSP r3 baseline is pinned; the vendor ABI and binary audit remain open. No speculative hardware operations. The current AudioCore and PCM broker race regressions are verified; target inventory remains the P0 external evidence gate.
