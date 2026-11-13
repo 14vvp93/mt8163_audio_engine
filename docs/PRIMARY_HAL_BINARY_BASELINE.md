@@ -9,7 +9,7 @@ Status: static binary and policy evidence; no replacement HAL implemented
 
 | Property | Recovered value |
 |---|---|
-| Extracted source path | `files/vendor/audio.primary.mt8163.so` |
+| Extracted source path | `firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so` |
 | Factory destination | `/vendor/lib/hw/audio.primary.mt8163.so` |
 | SHA-256 | `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4` |
 | Size | 1,671,852 bytes |
