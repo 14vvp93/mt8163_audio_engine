@@ -344,3 +344,14 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - **Revised immediate action:** inventory the complete firmware tree and extract/search all vendor modules and audio libraries; inspect CD3313 module strings, symbols, I2C IDs and probe path to determine whether its name is merely legacy or whether it actually supports CD3310EO. In parallel inspect all other codec/DSP modules and device-tree compatible strings. Do not infer compatibility from module filename.
 - CD3313 protocol parser/emulator and its passing host CI remain software-only work. They are not CD3310EO protocol validation and must not be connected to the physical unit.
 - No hardware writes, module loads, GPIO/mixer changes, flashing or physical-device validation were performed.
+
+
+### P0 follow-up — CD3313 probe and false-positive module classification (2026-11-13)
+
+- Downloaded and inspected the existing `firmware-library-analysis` workflow artifact from `14vvp93/public_calculations` (run `43238133570`; artifact SHA-256 `b5724b927f675fd32dc6f38339b0075bfb6e09d583a71ad46f7aef863e006942`).
+- Corrected the initial `hxchipset-i2c.ko` lead: it is the Himax touchscreen driver (`Himax_common driver`, source under `drivers/input/touchscreen/HXCHIPSET-I2C`, HX83102 strings), not an audio processor. Exclude it from CD3310EO candidate drivers.
+- The CD3313 vendor module is now statically identified more precisely: Build ID `e08637c02ef9a8c5077bb9ee12fd4b76dfb91d56`, SHA-256 `6a96207794c770d05a9ba6981a25af9868f38ebac0391c1c6461cd20ed394594`, source path `drivers/misc/cd3313/cd3313.c`, I2C ID `cd3313`, OF compatible `hcn,cd3313`, and `CD3313_I2C_ADDR = 68` decimal (`0x44`).
+- Recovered `dsp_probe` sends a one-byte `0x3f` I2C write and retries up to three times; the write helper calls `i2c_master_send(..., 1)`. A one-byte transfer success is sufficient for the visible probe path to continue registering `/dev/audiomux`. No explicit silicon-ID read is visible in that probe function. This does **not** prove that CD3310EO is compatible; it means the module's presence and probe success are not a reliable physical-chip identity check.
+- The downloaded firmware-library artifact contains no literal `CD3310` or `CD3310EO` text. This is a scoped negative string-search result only.
+- Updated detailed evidence in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). CD3313 protocol transport remains detached. Next work: recover CD3310EO datasheet/board-specific protocol evidence, then compare address `0x44` and probe sequence without issuing writes.
+- No hardware I/O, module load, GPIO/mixer write or device validation performed.
