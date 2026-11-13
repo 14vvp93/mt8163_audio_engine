@@ -18,15 +18,15 @@ Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](C
 
 ## 1. Product definition
 
-**Owner-approved architecture decisions (2026-11-13):** full replacement of the factory vendor audio implementation; one DSP engine covering all supported source classes and directions; retain all factory components and immutable artifacts for compatibility/rollback without allowing competing runtime ownership. The detailed decision record is [Architecture Decisions — Full Replacement, All-Source DSP and Factory Retention](ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md).
+**Owner-approved architecture decisions (2026-11-13):** deep replacement of selected factory audio processing/control layers; profile-driven DSP applied only to verified and explicitly supported routes; retain compatible factory components and immutable rollback artifacts without allowing competing runtime ownership. The detailed decision record is [Architecture Decisions — Deep Replacement, Profile-Based DSP and Factory Retention](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
 
-Build one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation while preserving the required Android 9 framework, HAL, kernel and application contracts.
+Build one integrated **MT8163 Audio Engine** that deeply replaces selected factory audio-processing and control layers while retaining compatible factory HAL, policy, services and kernel integrations wherever they remain correct and verified.
 
 Final primary HAL artifact:
 
 `/vendor/lib/hw/audio.primary.mt8163.so`
 
-The final artifact must retain the factory basename, path, ELF/SONAME, required symbols, dependencies and Android 9 HAL contract.
+Any artifact that intentionally replaces a factory component must retain its required factory basename, path, ELF/SONAME, symbols, dependencies and Android 9 ABI contract. A wholesale primary-HAL replacement is not the default target.
 
 Internal modules may be separate source libraries, but they must not create competing runtime owners. AudioCore is the authoritative owner of audio state, sessions, routes, mute arbitration, volume/profile state and hardware-command scheduling.
 
