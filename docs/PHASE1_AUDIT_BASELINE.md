@@ -1,3 +1,7 @@
+> **HISTORICAL AUDIT BASELINE. Findings remain evidence inputs, but the execution order is superseded by [Project Roadmap](PROJECT_ROADMAP.md). Hardware terminology follows the user's latest correction: CD3313EO is the physical IC; CD3313KO is the Linux driver (`cd3313.ko`).**
+
+---
+
 # MT8163 Audio Engine — Phase 1 audit baseline
 
 Date: 2026-11-12  
