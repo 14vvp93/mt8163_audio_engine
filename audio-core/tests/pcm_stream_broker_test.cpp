@@ -489,16 +489,38 @@ void test_same_handle_reopen_rejects_stale_session_token() {
     require(broker.open(new_session, SourceId::LocalMedia,
                         RouteType::PrimaryPcm) == PcmResult::Ok,
             "same handle reopens with a new generation");
-    require(broker.configure(old_session, config) == PcmResult::NotOpen,
-            "stale token cannot configure replacement");
-    require(broker.close(old_session) == PcmResult::NotOpen,
-            "stale token cannot close replacement");
     require(broker.configure(new_session, config) == PcmResult::Ok,
             "replacement token remains valid");
+    require(broker.start(new_session) == PcmResult::Ok,
+            "replacement starts with its current token");
+    const std::int16_t samples[4]{};
+    require(broker.configure(old_session, config) == PcmResult::NotOpen,
+            "stale token cannot configure replacement");
+    require(broker.start(old_session) == PcmResult::NotOpen,
+            "stale token cannot start replacement");
+    require(broker.write(old_session, samples, 1U) == PcmResult::NotOpen,
+            "stale token cannot write to replacement");
+    require(broker.read(old_session, const_cast<std::int16_t*>(samples), 1U) ==
+                PcmResult::NotOpen,
+            "stale token cannot read from replacement");
+    require(broker.write_transfer(old_session, samples, 1U).result ==
+                PcmResult::NotOpen,
+            "stale token cannot enter playback transfer path");
+    std::int16_t capture_samples[4]{};
+    require(broker.read_transfer(old_session, capture_samples, 1U).result ==
+                PcmResult::NotOpen,
+            "stale token cannot enter capture transfer path");
+    require(broker.stop(old_session) == PcmResult::NotOpen,
+            "stale token cannot stop replacement");
+    require(broker.close(old_session) == PcmResult::NotOpen,
+            "stale token cannot close replacement");
     PcmStreamRecord record{};
     require(broker.get_record(new_session, &record) &&
-            record.session == new_session,
-            "broker record publishes the complete session token");
+            record.session == new_session &&
+            record.state == PcmStreamState::Started,
+            "replacement remains active with its complete token");
+    require(broker.stop(new_session) == PcmResult::Ok,
+            "replacement stops with its current token");
     require(broker.close(new_session) == PcmResult::Ok,
             "replacement closes with its current token");
 }
