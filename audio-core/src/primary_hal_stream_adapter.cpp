@@ -68,7 +68,8 @@ PcmResult PrimaryHalStreamAdapter::stop(std::uint32_t handle) noexcept {
 PcmResult PrimaryHalStreamAdapter::close(std::uint32_t handle) noexcept {
     PcmStreamRecord record{};
     if (!streams_.get_record(handle, &record)) return PcmResult::NotOpen;
-    if (record.state == PcmStreamState::Started) {
+    if (record.state == PcmStreamState::Started ||
+        (record.state == PcmStreamState::Failed && record.backend_stop_required)) {
         const PcmResult stop_result = stop(handle);
         if (stop_result != PcmResult::Ok) return stop_result;
     }
