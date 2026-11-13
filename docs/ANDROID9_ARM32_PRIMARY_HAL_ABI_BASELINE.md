@@ -456,6 +456,25 @@ doDcRemoval
 
 This confirms the earlier pipeline analysis at method level. The actual card/PCM indices and selected device-name keys still depend on target runtime inventory and the device parser configuration; do not hard-code them into the replacement before P0 evidence is collected.
 
+### Factory PCM open and capture-provider lifecycle
+
+The base playback PCM opener `AudioALSAPlaybackHandlerBase::openPcmDriverWithFlag`:
+- receives the resolved PCM index and stream flags;
+- obtains the card index from `AudioALSADeviceParser`;
+- calls TinyALSA `pcm_open(card, pcm, flags, config)`;
+- checks `pcm_is_ready`, calls `pcm_prepare`, and closes/clears the handle on failure.
+
+Normal playback initialization calls the base PCM opener and initializes the handler stages for DC removal, MTK post-processing, BLI SRC, bit conversion and pending-data handling. It also configures the factory low-jitter/sample-rate policy.
+
+Normal capture uses a shared provider/client design:
+1. `AudioALSACaptureHandlerNormal::open` obtains the singleton `AudioALSACaptureDataProviderNormal` and attaches an `AudioALSACaptureDataClient` using the stream attributes.
+2. `AudioALSACaptureDataProviderNormal::open` resolves card/PCM indices through `AudioALSADeviceParser`, queries TinyALSA parameters, calls `pcm_open`, `pcm_is_ready` and `pcm_prepare`, then starts its read thread.
+3. The provider read thread sets its thread priority, waits for PCM start, reads through `AudioALSACaptureDataProviderBase::pcmRead`, obtains capture timestamps and calls `provideCaptureDataToAllClients`.
+4. Each input stream's `AudioALSACaptureDataClient::read` consumes data from that shared provider.
+
+This is a shared capture endpoint with client fan-out, not evidence that every Android input stream owns an independent ALSA PCM. The replacement AudioCore model must preserve shared-provider ownership and per-client delivery semantics where the factory route uses this path.
+
+
 
 
 
