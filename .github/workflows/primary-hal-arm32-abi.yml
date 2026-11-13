@@ -37,8 +37,8 @@ jobs:
             https://github.com/aosp-mirror/platform_hardware_libhardware.git build/libhardware
           git clone --depth 1 --branch android-9.0.0_r3 \
             https://github.com/aosp-mirror/platform_system_core.git build/system-core
-          git clone --depth 1 --branch lineage-16.0 \
-            https://github.com/LineageOS/android_system_media.git build/system-media
+          git clone --depth 1 --branch android-9.0.0_r3 \
+            https://android.googlesource.com/platform/system/media build/system-media
 
       - name: Compile factory ABI bootstrap for ARM32
         run: |
