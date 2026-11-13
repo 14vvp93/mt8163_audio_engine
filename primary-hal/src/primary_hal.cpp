@@ -12,6 +12,25 @@ struct FactoryPrimaryDeviceLayout {
 };
 
 static_assert(sizeof(void*) == 4U, "MT8163 Primary HAL must be ARM32");
+static_assert(sizeof(audio_module) == 128U, "Android 9 audio_module ABI mismatch");
+static_assert(offsetof(hw_module_t, methods) == 20U,
+              "Android 9 hw_module_t::methods offset mismatch");
+static_assert(offsetof(hw_device_t, close) == 60U,
+              "Android 9 hw_device_t::close offset mismatch");
+static_assert(offsetof(audio_stream_out, write) == 64U,
+              "Android 9 audio_stream_out::write offset mismatch");
+static_assert(offsetof(audio_stream_in, read) == 60U,
+              "Android 9 audio_stream_in::read offset mismatch");
+static_assert(offsetof(audio_hw_device, init_check) == 68U,
+              "Android 9 audio_hw_device::init_check offset mismatch");
+static_assert(offsetof(audio_hw_device, set_master_mute) == 132U,
+              "Android 9 audio_hw_device::set_master_mute offset mismatch");
+static_assert(offsetof(audio_hw_device, create_audio_patch) == 140U,
+              "Android 9 audio_hw_device::create_audio_patch offset mismatch");
+static_assert(offsetof(audio_hw_device, set_audio_port_config) == 152U,
+              "Android 9 audio_hw_device::set_audio_port_config offset mismatch");
+static_assert(AUDIO_DEVICE_API_VERSION_3_0 == 0x0300,
+              "Factory device API version mismatch");
 static_assert(sizeof(hw_module_t) == 128U, "Android 9 hw_module_t ABI mismatch");
 static_assert(sizeof(hw_device_t) == 64U, "Android 9 hw_device_t ABI mismatch");
 static_assert(sizeof(audio_stream) == 56U, "Android 9 audio_stream ABI mismatch");
