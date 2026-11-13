@@ -481,9 +481,21 @@ void test_same_handle_reopen_rejects_stale_session_token() {
     const SessionToken new_session{0x8163U, 2U};
     const PcmConfig config{48000U, 2U, 240U};
 
+    require(broker.open(SessionToken{}, SourceId::LocalMedia,
+                        RouteType::PrimaryPcm) == PcmResult::InvalidArgument,
+            "default session token is rejected");
     require(broker.open(old_session, SourceId::LocalMedia,
                         RouteType::PrimaryPcm) == PcmResult::Ok,
             "old token opens broker stream");
+    const SessionToken mismatched{old_session.handle,
+                                  old_session.generation + 1U};
+    require(broker.configure(mismatched, config) == PcmResult::NotOpen,
+            "mismatched generation cannot identify a live stream");
+    require(broker.close(mismatched) == PcmResult::NotOpen,
+            "mismatched generation cannot close a live stream");
+    require(broker.open(mismatched, SourceId::LocalMedia,
+                        RouteType::PrimaryPcm) == PcmResult::InvalidArgument,
+            "duplicate live correlation handle cannot open a second stream");
     require(broker.close(old_session) == PcmResult::Ok,
             "old token closes broker stream");
     require(broker.open(new_session, SourceId::LocalMedia,
