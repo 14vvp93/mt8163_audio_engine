@@ -41,7 +41,8 @@ Recovered stream contract:
 - Output/input callback tables and null/unsupported slots recorded.
 - Input `set_parameters` and `get_parameters` adapters verified to dispatch to the corresponding C++ vtable methods.
 - Open/set/close forwarding paths through `AudioALSAHardware` and `AudioALSAStreamManager` recovered.
-- Factory route-specific handler classes recovered: playback Normal/Voice/HFP Client/BTSCO/BTCVSD/FM Transmitter/HDMI; capture Normal/Voice/FM Radio/BT/AEC. Exact selection predicates and PCM endpoint mappings remain open.
+- Factory route-specific handler classes recovered: playback Normal/Voice/HFP Client/BTSCO/BTCVSD/FM Transmitter/HDMI; capture Normal/Voice/FM Radio/BT/AEC.
+- Normal playback open resolves PCM/card indices through `AudioALSADeviceParser` using `/proc/asound/pcm` and queries TinyALSA capabilities; Normal write order is confirmed as DC removal → conditional mono fold → MTK post-processing → BLI SRC → bit conversion → pending-data handling → PCM write → voice-unlock ring feed.
 - Close path delegates legacy C++ object teardown to the manager and frees only the C wrapper.
 - Exact format/rate/channel negotiation and all route/error semantics still require method-level analysis.
 
