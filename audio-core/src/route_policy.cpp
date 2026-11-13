@@ -36,6 +36,7 @@ RouteValidation validate_source_route(SourceId source,
         case SourceId::LocalMedia:
         case SourceId::Navigation:
         case SourceId::Notification:
+        case SourceId::SystemSound:
             return route == RouteType::PrimaryPcm
                 ? RouteValidation::Supported
                 : RouteValidation::Unverified;
