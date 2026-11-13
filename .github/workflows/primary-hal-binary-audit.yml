@@ -90,7 +90,19 @@ jobs:
           {
             echo "===== Factory stream negotiation symbol inventory ====="
             arm-linux-gnueabi-nm -D -C --defined-only "$binary" |
-              grep -E 'AudioALSAStream(Out|In)::(set\(|open\(|checkOpenStream)' || true
+              grep -E 'AudioALSAStream(Out|In)::(set\\(|open\\(|checkOpenStream|bufferSize\\(|sampleRate\\(|channels\\(|format\\(|latency\\())|AudioALSAStreamManager::open(Output|Input)Stream|AudioALSAHardware::(getInputBufferSize|openOutputStream|openInputStream)' || true
+
+            echo
+            echo "===== AudioALSAStreamManager::openOutputStream ====="
+            "$objdump" -d -C --start-address=0x77e30 --stop-address=0x78404 "$binary"
+
+            echo
+            echo "===== AudioALSAStreamManager::openInputStream ====="
+            "$objdump" -d -C --start-address=0x78908 --stop-address=0x78eb4 "$binary"
+
+            echo
+            echo "===== AudioALSAHardware stream entry points ====="
+            "$objdump" -d -C --start-address=0xcac48 --stop-address=0xcacd0 "$binary"
 
             echo
             echo "===== AudioALSAStreamOut::set ====="
