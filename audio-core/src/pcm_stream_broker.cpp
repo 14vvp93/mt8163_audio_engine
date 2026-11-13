@@ -150,7 +150,9 @@ PcmTransferResult PcmStreamBroker::write_transfer(
         PcmTransferResult result = backend_.write_transfer(token, interleaved, frame_count);
         const bool invalid_result = result.frames_transferred > frame_count ||
             (result.result == PcmResult::Ok && result.frames_transferred == 0U);
-        if (invalid_result) {
+        const bool terminal_error = result.result == PcmResult::Xrun ||
+                                    result.result == PcmResult::DeviceLost;
+        if (invalid_result || terminal_error) {
             slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
                              std::memory_order_release);
             slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
@@ -203,7 +205,9 @@ PcmTransferResult PcmStreamBroker::read_transfer(
         PcmTransferResult result = backend_.read_transfer(token, interleaved, frame_count);
         const bool invalid_result = result.frames_transferred > frame_count ||
             (result.result == PcmResult::Ok && result.frames_transferred == 0U);
-        if (invalid_result) {
+        const bool terminal_error = result.result == PcmResult::Xrun ||
+                                    result.result == PcmResult::DeviceLost;
+        if (invalid_result || terminal_error) {
             slot.state.store(static_cast<std::uint32_t>(PcmStreamState::Failed),
                              std::memory_order_release);
             slot.transfer_gate.fetch_and(kTransferCountMask, std::memory_order_acq_rel);
