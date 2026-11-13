@@ -54,6 +54,13 @@ public:
         ++closes;
         return close_result;
     }
+    PcmTransferResult write_transfer(StreamToken token, const std::int16_t* data,
+                                     std::size_t frames) noexcept override {
+        if (invalid_write_transfer.load(std::memory_order_acquire)) {
+            return {PcmResult::Ok, frames + 1U};
+        }
+        return PcmBackend::write_transfer(token, data, frames);
+    }
 
     StreamToken last_token{0U};
     PcmDirection last_direction{PcmDirection::Playback};
@@ -61,6 +68,7 @@ public:
     std::atomic<std::size_t> writes{0U}, reads{0U}, stops{0U}, closes{0U};
     std::atomic<std::size_t> last_frames{0U};
     std::atomic<bool> block_writes{false}, release_blocked_write{false};
+    std::atomic<bool> invalid_write_transfer{false};
     PcmResult open_result{PcmResult::Ok}, configure_result{PcmResult::Ok};
     PcmResult start_result{PcmResult::Ok}, write_result{PcmResult::Ok};
     PcmResult read_result{PcmResult::Ok}, stop_result{PcmResult::Ok};
@@ -347,6 +355,39 @@ void test_reopen_same_handle_while_callback_runs() {
             "callback remains safe across repeated close and reopen cycles");
 }
 
+void test_invalid_transfer_count_fails_closed_and_can_stop() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 2U, 240U};
+    const std::int16_t samples[2]{};
+
+    require(broker.open(51U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok,
+            "invalid-count stream opens");
+    require(broker.configure(51U, config) == PcmResult::Ok,
+            "invalid-count stream configures");
+    require(broker.start(51U) == PcmResult::Ok,
+            "invalid-count stream starts");
+
+    backend.invalid_write_transfer.store(true, std::memory_order_release);
+    const PcmTransferResult invalid = broker.write_transfer(51U, samples, 1U);
+    require(invalid.result == PcmResult::BackendFailure &&
+            invalid.frames_transferred == 0U,
+            "transfer count greater than request is rejected");
+    PcmStreamRecord record{};
+    require(broker.get_record(51U, &record) &&
+            record.state == PcmStreamState::Failed,
+            "invalid transfer count marks stream failed");
+    require(broker.write(51U, samples, 1U) == PcmResult::InvalidState,
+            "invalid transfer count closes callback admission");
+    require(broker.stop(51U) == PcmResult::Ok,
+            "failed stream remains explicitly stoppable");
+    require(broker.close(51U) == PcmResult::Ok,
+            "failed stream closes after successful stop");
+    require(backend.stops.load() == 1U && backend.closes.load() == 1U,
+            "backend receives one stop and one close after invalid count");
+}
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -373,6 +414,7 @@ int main() {
     test_callback_write_while_opening_another_stream();
     test_stop_waits_for_in_flight_callback();
     test_stop_failure_can_be_retried();
+    test_invalid_transfer_count_fails_closed_and_can_stop();
     test_backend_error_propagation();
     test_reopen_same_handle_while_callback_runs();
     std::cout << "PCM stream broker tests passed\n";
