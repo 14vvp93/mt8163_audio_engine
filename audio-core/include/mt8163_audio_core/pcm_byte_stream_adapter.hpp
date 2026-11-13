@@ -51,6 +51,7 @@ private:
     std::atomic<std::uint32_t> transfer_gate_{0U};
     std::atomic<std::uint32_t> configured_{0U};
     std::atomic<std::uint32_t> started_{0U};
+    std::atomic<std::uint32_t> stop_required_{0U};
     std::atomic<std::uint32_t> closed_{0U};
     bool valid_{false};
 };
