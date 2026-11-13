@@ -17,13 +17,10 @@ on:
       - "pcm-dsp/src/engine.cpp"
       - "pcm-dsp/include/pcm_dsp/engine.hpp"
       - "pcm-dsp/Android.mk"
-      - "docs/ANDROID9_STEREO_EFFECT_LIBRARY.md"
-      - "docs/ANDROID9_AUDIOFLINGER_STEREO_INSERTION.md"
-      - ".github/workflows/android-effect-library.yml"
   workflow_dispatch:
 
 concurrency:
-  group: android-effect-library-${{ github.ref }}
+  group: android-effect-library-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
