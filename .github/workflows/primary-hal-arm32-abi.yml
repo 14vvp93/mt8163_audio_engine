@@ -1,0 +1,56 @@
+name: Android 9 Primary HAL ARM32 ABI bootstrap
+
+on:
+  push:
+    branches: [feature]
+    paths:
+      - "primary-hal/**"
+      - ".github/workflows/primary-hal-arm32-abi.yml"
+  pull_request:
+    paths:
+      - "primary-hal/**"
+      - ".github/workflows/primary-hal-arm32-abi.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arm32-abi:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Android NDK r27c
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - name: Fetch Android 9 platform headers
+        run: |
+          git clone --depth 1 --branch android-9.0.0_r3 \
+            https://github.com/aosp-mirror/platform_hardware_libhardware.git build/libhardware
+          git clone --depth 1 --branch android-9.0.0_r3 \
+            https://github.com/aosp-mirror/platform_system_core.git build/system-core
+          git clone --depth 1 --branch lineage-16.0 \
+            https://github.com/LineageOS/android_system_media.git build/system-media
+
+      - name: Compile factory ABI bootstrap for ARM32
+        run: |
+          CLANG="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
+          "$CLANG" \
+            --target=armv7a-linux-androideabi28 \
+            -std=c++17 \
+            -Wall -Wextra -Wpedantic -Werror \
+            -fvisibility=hidden \
+            -fsyntax-only \
+            -Ibuild/libhardware/include \
+            -Ibuild/system-core/libcutils/include \
+            -Ibuild/system-core/libsystem/include \
+            -Ibuild/system-media/audio/include \
+            primary-hal/src/primary_hal.cpp
