@@ -145,6 +145,12 @@ jobs:
             arm-linux-gnueabi-nm -D -C --defined-only "$client" |
               grep -E 'MTKPrimaryDevicesHalClientImpl::(MTKPrimaryDevicesHalClientImpl|setParameters|getParameters|~MTKPrimaryDevicesHalClientImpl)' || true
             echo
+            echo "===== MTKPrimaryDevicesHalClient::getInstance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x3cc8 --stop-address=0x3e74 "$client"
+            echo
+            echo "===== MTKPrimaryDevicesHalClientImpl constructor ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x3e74 --stop-address=0x4008 "$client"
+            echo
             echo "===== MTKPrimaryDevicesHalClientImpl::setParameters ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0x40cc --stop-address=0x4170 "$client"
             echo
