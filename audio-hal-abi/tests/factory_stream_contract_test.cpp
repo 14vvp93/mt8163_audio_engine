@@ -77,5 +77,57 @@ int main() {
         }
     }
 
+
+    using mt8163::factory_contract::input_buffer_duration_us;
+    using mt8163::factory_contract::input_buffer_size_20ms;
+    using mt8163::factory_contract::input_format_width_bytes;
+    using mt8163::factory_contract::kFactoryInputFlagFast;
+    using mt8163::factory_contract::output_buffer_duration_us;
+
+    if (output_buffer_duration_us(2U, 48000U, 2U) != 42666U ||
+        output_buffer_duration_us(0U, 48000U, 2U) != 0U ||
+        output_buffer_duration_us(2U, 0U, 2U) != 0U) {
+        return fail("factory output buffer duration contract mismatch");
+    }
+
+    if (input_buffer_duration_us(kFactoryInputFlagFast, true, 0) != 5000U ||
+        input_buffer_duration_us(0U, false, 0) != 20000U ||
+        input_buffer_duration_us(0U, true, 0) != 60000U ||
+        input_buffer_duration_us(0U, true, -1) != 20000U) {
+        return fail("factory input buffer duration selection mismatch");
+    }
+
+    constexpr std::array<std::uint32_t, 5> format_widths{2U, 1U, 4U, 4U, 0U};
+    for (std::uint32_t format = 1U; format <= 5U; ++format) {
+        if (input_format_width_bytes(format) != format_widths[format - 1U]) {
+            return fail("factory input format-width lookup mismatch");
+        }
+    }
+    if (input_format_width_bytes(0U) != 2U ||
+        input_format_width_bytes(6U) != 2U ||
+        input_format_width_bytes(UINT32_MAX) != 2U) {
+        return fail("factory input format-width fallback mismatch");
+    }
+
+    const auto input_stereo_pcm16 = input_buffer_size_20ms(44100U, 2U, 1U);
+    if (!input_stereo_pcm16.valid || input_stereo_pcm16.bytes != 3528U) {
+        return fail("factory 20 ms input buffer-size arithmetic mismatch");
+    }
+    const auto input_width_one = input_buffer_size_20ms(44100U, 2U, 2U);
+    if (!input_width_one.valid || input_width_one.bytes != 1764U) {
+        return fail("factory one-byte input format width mismatch");
+    }
+    const auto input_zero_width = input_buffer_size_20ms(44100U, 2U, 5U);
+    if (!input_zero_width.valid || input_zero_width.bytes != 0U) {
+        return fail("factory zero-width format quirk mismatch");
+    }
+    const auto input_fallback = input_buffer_size_20ms(44100U, 2U, 99U);
+    if (!input_fallback.valid || input_fallback.bytes != 3528U) {
+        return fail("factory input format fallback arithmetic mismatch");
+    }
+    if (input_buffer_size_20ms(UINT32_MAX, UINT32_MAX, 3U).valid) {
+        return fail("overflowing input buffer-size request must be rejected");
+    }
+
     return 0;
 }
