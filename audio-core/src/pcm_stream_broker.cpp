@@ -33,8 +33,13 @@ const PcmStreamBroker::Slot* PcmStreamBroker::find_control(
 PcmResult PcmStreamBroker::open(SessionToken session, SourceId source,
                                 RouteType route,
                                 PcmDirection direction) noexcept {
-    if (!session.valid() || find_control(session) != nullptr) {
-        return PcmResult::InvalidArgument;
+    if (!session.valid()) return PcmResult::InvalidArgument;
+    for (const auto& slot : streams_) {
+        if (slot.state.load(std::memory_order_acquire) !=
+                static_cast<std::uint32_t>(PcmStreamState::Closed) &&
+            slot.handle.load(std::memory_order_acquire) == session.handle) {
+            return PcmResult::InvalidArgument;
+        }
     }
     if (validate_source_route(source, route) != RouteValidation::Supported ||
         !is_valid_pcm_route_direction(route, direction)) {
