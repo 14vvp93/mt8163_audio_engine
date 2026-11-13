@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <cstdlib>
 #include <new>
 
 namespace {
@@ -89,7 +90,9 @@ int set_device_parameters(audio_hw_device*, const char* parameters) noexcept {
     return parameters == nullptr ? -EINVAL : -ENOSYS;
 }
 char* get_device_parameters(const audio_hw_device*, const char*) noexcept {
-    return nullptr;
+    auto* result = static_cast<char*>(std::malloc(1U));
+    if (result != nullptr) result[0] = '\\0';
+    return result;
 }
 size_t get_input_buffer_size(const audio_hw_device*, const audio_config*) noexcept {
     return 0U;
