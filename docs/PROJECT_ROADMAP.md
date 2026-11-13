@@ -12,6 +12,8 @@
 
 This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
 
+Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](CI_EXECUTION_DIAGNOSTICS_2026-11-13.md). The latest three Actions jobs have failed conclusions but returned no executed steps and their log downloads are unavailable; do not classify them as source-code test failures without executable logs.
+
 ---
 
 ## 1. Product definition
