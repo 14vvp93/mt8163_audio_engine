@@ -63,6 +63,8 @@ void test_duplicate_and_invalid_inputs() {
     require(!sessions.open(1U, SourceId::Aux, RouteType::PrimaryPcm, &token),
             "analog AUX cannot claim a PCM route without evidence");
     const SessionToken live = open_session(sessions, 1U);
+    require((live.generation & 0xFFFFFFFFULL) == 1U,
+            "rejected opens do not consume a session sequence");
     require(!sessions.open(1U, SourceId::Navigation, RouteType::PrimaryPcm, &token),
             "duplicate handle is rejected");
     require(!sessions.transition(live, SessionState::Free),
@@ -97,6 +99,8 @@ void test_capacity_and_multiple_sources() {
     require(sessions.close(tokens[4U]), "one session slot can be released");
     const SessionToken replacement = open_session(
         sessions, 100U, SourceId::Notification);
+    require((replacement.generation & 0xFFFFFFFFULL) == 17U,
+            "capacity failure does not consume a session sequence");
     require(!sessions.transition(tokens[4U], SessionState::Active),
             "stale token cannot transition a reused slot");
     require(!sessions.close(tokens[4U]),
