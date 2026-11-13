@@ -218,13 +218,11 @@ void test_stop_failure_can_be_retried() {
     require(broker.write(41U, &sample, 1U) == PcmResult::InvalidState,
             "failed stop keeps transfer admission closed");
 
-    backend.stop_result = PcmResult::Ok;
-    require(broker.stop(41U) == PcmResult::Ok,
-            "stop can be retried after a backend failure");
     require(broker.close(41U) == PcmResult::InvalidState,
             "stream cannot close while backend stop is still unconfirmed");
     require(backend.closes.load() == 0U,
             "backend close is not called after a failed stop");
+
     backend.stop_result = PcmResult::Ok;
     require(broker.stop(41U) == PcmResult::Ok,
             "stop can be retried after a backend failure");
@@ -395,6 +393,25 @@ void test_invalid_transfer_count_fails_closed_and_can_stop() {
             "backend receives one stop and one close after invalid count");
 }
 
+void test_failed_start_requires_cleanup_before_close() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    require(broker.open(42U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok, "failed-start stream opens");
+    require(broker.configure(42U, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok,
+            "failed-start stream configures");
+
+    backend.start_result = PcmResult::BackendFailure;
+    require(broker.start(42U) == PcmResult::BackendFailure,
+            "backend start failure is propagated");
+    require(broker.close(42U) == PcmResult::InvalidState,
+            "failed start requires cleanup before close");
+    require(broker.stop(42U) == PcmResult::Ok,
+            "stop cleanup is attempted after failed start");
+    require(broker.close(42U) == PcmResult::Ok,
+            "stream closes after failed-start cleanup");
+}
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -424,6 +441,7 @@ int main() {
     test_stop_waits_for_in_flight_callback();
     test_stop_failure_can_be_retried();
     test_invalid_transfer_count_fails_closed_and_can_stop();
+    test_failed_start_requires_cleanup_before_close();
     test_backend_error_propagation();
     test_reopen_same_handle_while_callback_runs();
     std::cout << "PCM stream broker tests passed\n";
