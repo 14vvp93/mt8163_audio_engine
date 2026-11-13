@@ -633,6 +633,37 @@ void test_failed_start_requires_cleanup_before_close() {
             "stream closes after failed-start cleanup");
 }
 
+void test_backend_token_rejects_stale_slot_reuse() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    EndpointPcmBackend backend(&endpoint, 1U, make_ops(fake));
+    PcmBackend::StreamToken old_token = 0U;
+    PcmBackend::StreamToken new_token = 0U;
+
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                        &old_token) == PcmResult::Ok,
+            "first backend token opens");
+    require(backend.close(old_token) == PcmResult::Ok,
+            "first backend token closes");
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback,
+                        &new_token) == PcmResult::Ok,
+            "reused slot receives a new backend token");
+    require(old_token != new_token,
+            "backend token identity changes when a slot is reused");
+    require(backend.configure(old_token, PcmConfig{48000U, 2U, 240U}) ==
+                PcmResult::NotOpen,
+            "stale backend token cannot configure replacement");
+    require(backend.close(old_token) == PcmResult::NotOpen,
+            "stale backend token cannot close replacement");
+    require(backend.configure(new_token, PcmConfig{48000U, 2U, 240U}) ==
+                PcmResult::Ok,
+            "replacement backend token remains valid");
+    require(backend.close(new_token) == PcmResult::Ok,
+            "replacement backend token closes normally");
+}
+
 void test_backend_token_exhaustion_fails_closed() {
     FakeDevice fake;
     const PcmEndpoint endpoint{
@@ -688,6 +719,7 @@ int main() {
     test_failed_stop_requires_retry_before_close();
     test_failed_close_can_be_retried();
     test_failed_start_requires_cleanup_before_close();
+    test_backend_token_rejects_stale_slot_reuse();
     test_backend_token_exhaustion_fails_closed();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
