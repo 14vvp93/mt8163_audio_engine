@@ -68,9 +68,13 @@ PcmResult PrimaryHalStreamAdapter::stop(std::uint32_t handle) noexcept {
 PcmResult PrimaryHalStreamAdapter::close(std::uint32_t handle) noexcept {
     PcmStreamRecord record{};
     if (!streams_.get_record(handle, &record)) return PcmResult::NotOpen;
-    if (record.state == PcmStreamState::Started ||
-        (record.state == PcmStreamState::Failed && record.backend_stop_required)) {
+    if (record.state == PcmStreamState::Started) {
         const PcmResult stop_result = stop(handle);
+        if (stop_result != PcmResult::Ok) return stop_result;
+    } else if (record.state == PcmStreamState::Failed &&
+               record.backend_stop_required) {
+        // Після невдалого start сесія AudioCore ще не перейшла в Active.
+        const PcmResult stop_result = streams_.stop(handle);
         if (stop_result != PcmResult::Ok) return stop_result;
     }
     const PcmResult result = streams_.close(handle);
