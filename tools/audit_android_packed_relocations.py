@@ -17,6 +17,7 @@ ELF32_SECTION = struct.Struct("<IIIIIIIIII")
 ELF32_SYMBOL = struct.Struct("<IIIBBH")
 APS2_MAGIC = b"APS2"
 R_ARM_ABS32 = 2
+R_ARM_RELATIVE = 23
 
 
 @dataclass(frozen=True)
@@ -295,24 +296,50 @@ def inspect_vtable(binary: Path, symbol_name: str) -> int:
     for relocation in selected:
         symbol_index = relocation.info >> 8
         relocation_type = relocation.info & 0xFF
-
-        if symbol_index >= len(symbol_by_index):
-            raise ValueError(f"invalid dynamic symbol index: {symbol_index}")
-
-        target_symbol = symbol_by_index[symbol_index]
         place_offset = relocation.offset - vtable.value
 
         if place_offset % 4:
             raise ValueError(f"unaligned vtable relocation at 0x{relocation.offset:x}")
 
-        if relocation_type != R_ARM_ABS32:
+        if relocation_type == R_ARM_ABS32:
+            if symbol_index >= len(symbol_by_index):
+                raise ValueError(f"invalid dynamic symbol index: {symbol_index}")
+            target_symbol = symbol_by_index[symbol_index]
+            target_name = target_symbol.name
+            target_value = target_symbol.value
+        elif relocation_type == R_ARM_RELATIVE:
+            if symbol_index != 0:
+                raise ValueError(
+                    f"R_ARM_RELATIVE has non-zero symbol index {symbol_index}"
+                )
+            target_section = next(
+                (
+                    section
+                    for section in sections
+                    if section.address <= relocation.offset
+                    < section.address + section.size
+                ),
+                None,
+            )
+            if target_section is None:
+                raise ValueError(
+                    f"no section contains relative relocation at 0x{relocation.offset:x}"
+                )
+            file_offset = (
+                target_section.offset + relocation.offset - target_section.address
+            )
+            if file_offset + 4 > len(data):
+                raise ValueError("relative relocation addend exceeds file size")
+            target_value = struct.unpack_from("<I", data, file_offset)[0]
+            target_name = f"R_ARM_RELATIVE(addend=0x{target_value:08x})"
+        else:
             raise ValueError(
                 f"unexpected vtable relocation type {relocation_type} "
                 f"at 0x{relocation.offset:x}"
             )
 
-        names.append(target_symbol.name)
-        rows.append((place_offset, relocation, target_symbol))
+        names.append(target_name)
+        rows.append((place_offset, relocation, target_value))
 
     pretty_names = demangle_names(names)
 
@@ -325,11 +352,11 @@ def inspect_vtable(binary: Path, symbol_name: str) -> int:
     print("Offset  Address     Symbol value  Method")
     print("------  ----------  ------------  ------")
 
-    for (place_offset, relocation, target_symbol), pretty_name in zip(rows, pretty_names):
+    for (place_offset, relocation, target_value), pretty_name in zip(rows, pretty_names):
         print(
             f"+0x{place_offset:03x}   "
             f"0x{relocation.offset:08x}  "
-            f"0x{target_symbol.value:08x}    "
+            f"0x{target_value:08x}    "
             f"{pretty_name}"
         )
 
