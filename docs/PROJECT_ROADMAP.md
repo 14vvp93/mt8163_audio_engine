@@ -202,7 +202,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 4. Verify target vendor AudioFlinger locking, effect-chain classification, session lifecycle, output-device changes, offload transitions and effect registration schema.
 5. Choose one supported production insertion point and document why it covers the intended media streams.
 6. Initially enable only verified PCM16 stereo media formats/rates.
-7. Keep unsupported formats, calls, SCO, capture and unverified routes bit-transparent bypasses.
+7. Calls, HFP/SCO and microphone capture are mandatory final-product routes, not exclusions. Until each telephony path is implemented and validated, keep it on a safe, bit-transparent factory-compatible fallback; never route it through the media DSP by assumption. The fallback is an implementation stage, not the product endpoint.
 8. Measure CPU budget, callback duration, scheduling jitter, latency, clipping/headroom, DC behavior and profile-transition artifacts on the target.
 
 Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment is validated before sample access; misaligned buffers return `InvalidBuffer`. This is host-verified on code HEAD `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 tests). It does not mean the adapter is connected to the factory HAL.
@@ -219,7 +219,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 | Bluetooth A2DP | PCM16 stereo 44.1 kHz policy; offload path exists | Runtime offload detection, 44.1 kHz route, exact bypass when offloaded/unsupported |
 | FM direct I2S | HAL opens a dedicated FM endpoint; no ordinary userspace PCM write loop | Preserve or deliberately redesign the direct route; do not pretend FM capture is the same path |
 | FM capture PCM | Dedicated AudioRecord capture handler/provider identified; 32 kHz adapter scaffold exists | Confirm actual consumer and audible route before enabling DSP |
-| HFP/SCO / Voice | Separate call handlers, downlink/uplink, microphone and echo-reference components | Dedicated telephony adapter, clock/gain/mute transitions and call regression tests |
+| HFP/SCO / Voice | Separate call handlers, downlink/uplink, microphone and echo-reference components | Full replacement telephony path: SCO transport, call downlink/uplink, microphone capture, echo-reference synchronization, AEC, noise suppression, AGC, sidetone, gain/mute arbitration, clock transitions, call-state lifecycle and regression tests |
 | AUX / AUX2 / DAB | Factory policy and external-input control references recovered | Confirm physical input route and whether audio is analog or PCM before choosing adapter |
 | HDMI / USB / other | Policy/handler declarations exist | Keep bypassed until exact active route and PCM contract are proven |
 
@@ -309,7 +309,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
 6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
 7. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
-8. Add source adapters incrementally; keep unverified routes bypassed.
+8. Add every source adapter incrementally, including complete HFP/SCO and microphone/voice processing. Keep unverified routes on safe temporary fallback until their replacement is validated; no source class is excluded from final scope.
 9. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
 
 ## 9. Definition of done
@@ -318,7 +318,7 @@ The MT8163 Audio Engine is complete only when:
 
 - The factory primary HAL is replaced at the exact factory path and ABI.
 - One coherent AudioCore owns audio state and control.
-- Every enabled route has verified PCM/control ownership and documented lifecycle.
+- Every required route—including A2DP, HFP/SCO, voice-call uplink/downlink, microphone capture, FM, AUX/DAB and system/navigation overlays—has verified PCM/control ownership and documented lifecycle.
 - DSP preserves stereo/channel topology and has safe bypass/error behavior.
 - Hardware commands use a bounded, validated ABI with truthful completion state.
 - Factory clients cannot compete with the new owner.
