@@ -36,15 +36,13 @@ NormalPlaybackResult NormalPlaybackPcmAdapter::process(
     if (frames == 0U) {
         return NormalPlaybackResult::Bypassed;
     }
-    constexpr std::size_t kSamplesPerFrame = 2U;
     constexpr std::size_t kBytesPerSample = sizeof(std::int16_t);
-    constexpr std::size_t kBytesPerFrame = kSamplesPerFrame * kBytesPerSample;
+    constexpr std::size_t kBytesPerFrame = 2U * kBytesPerSample;
     if (input == nullptr || output == nullptr ||
         frames > std::numeric_limits<std::size_t>::max() / kBytesPerFrame) {
         return NormalPlaybackResult::InvalidBuffer;
     }
 
-    const std::size_t sample_count = frames * kSamplesPerFrame;
     const std::size_t byte_count = frames * kBytesPerFrame;
     const auto input_address = reinterpret_cast<std::uintptr_t>(input);
     const auto output_address = reinterpret_cast<std::uintptr_t>(output);
