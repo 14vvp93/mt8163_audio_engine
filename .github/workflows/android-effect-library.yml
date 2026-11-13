@@ -2,6 +2,7 @@ name: Android 9 stereo effect library ABI build
 
 on:
   push:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/android/**"
       - "pcm-dsp/src/engine.cpp"
@@ -10,6 +11,7 @@ on:
       - "pcm-dsp/tests/android_effect_smoke_test.cpp"
       - ".github/workflows/android-effect-library.yml"
   pull_request:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/android/**"
       - "pcm-dsp/tests/android_effect_smoke_test.cpp"
