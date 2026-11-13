@@ -120,3 +120,18 @@ These symbols establish that the factory HAL contains direct-I2S and capture-rel
 - Physical confirmation of populated DSP/module hardware.
 
 No ioctl, I2C write, GPIO write, mixer write, module load or physical-device operation was performed.
+
+
+## 7. User-confirmed provenance for the physical head unit — 2026-11-13
+
+The user confirmed that the firmware dump analyzed in workflow run `43238133570` is from the same physical MT8163 head unit whose populated audio IC is CD3310EO.
+
+This makes the `cd3313@44` / `compatible = "hcn,cd3313"` node a direct firmware declaration for this unit, rather than a declaration from an unrelated reference board. The physical marking and firmware declaration therefore form a confirmed discrepancy:
+
+- Physical IC: CD3310EO (user-confirmed).
+- Firmware DTBO node: CD3313-compatible at address `0x44` (static artifact verified).
+- Firmware module: `cd3313.ko`, with I2C ID `cd3313` and OF compatible `hcn,cd3313` (static ELF/DWARF verified).
+
+Do not collapse these into a claim that the IC is actually CD3313 or that the CD3313 driver is compatible with CD3310EO. The selected overlay, live device-tree node, successful driver probe, and runtime `/dev/audiomux` owner remain unverified. The next evidence required is the base-DTB/overlay selection path plus read-only runtime module, I2C-device, driver-binding, and device-node ownership data.
+
+No hardware transaction or device operation was performed.
