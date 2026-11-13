@@ -79,6 +79,14 @@ void test_capacity_and_multiple_sources() {
     require(sessions.close(5U), "one session slot can be released");
     require(sessions.open(100U, SourceId::Notification, RouteType::PrimaryPcm),
             "released slot can be reused");
+    require(!sessions.transition(5U, SessionState::Active),
+            "stale handle cannot transition a reused slot");
+    require(!sessions.close(5U),
+            "stale handle cannot close a different session in a reused slot");
+    const auto* replacement = sessions.find(100U);
+    require(replacement != nullptr &&
+                replacement->state == SessionState::Requested,
+            "stale handle operations leave the replacement session unchanged");
 }
 
 }  // namespace
