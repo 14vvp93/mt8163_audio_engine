@@ -18,6 +18,8 @@ struct FakeDevice {
     std::uint32_t writes{0U}, reads{0U}, stops{0U}, closes{0U};
     PcmConfig last_config{};
     PcmResult next_write_result{PcmResult::Ok};
+    PcmResult start_result{PcmResult::Ok};
+    PcmResult stop_result{PcmResult::Ok};
     EndpointPcmBackend* backend{nullptr};
     PcmBackend::StreamToken reenter_token{0U};
     bool reenter_write{false};
@@ -49,8 +51,9 @@ PcmResult fake_configure(void* context, std::uint32_t, const PcmConfig& config) 
     return PcmResult::Ok;
 }
 PcmResult fake_start(void* context, std::uint32_t) noexcept {
-    ++static_cast<FakeDevice*>(context)->starts;
-    return PcmResult::Ok;
+    auto& fake = *static_cast<FakeDevice*>(context);
+    ++fake.starts;
+    return fake.start_result;
 }
 PcmResult fake_write(void* context, std::uint32_t, const std::int16_t* data,
                      std::size_t frames) noexcept {
@@ -78,8 +81,9 @@ PcmResult fake_read(void* context, std::uint32_t, std::int16_t* data,
     return PcmResult::Ok;
 }
 PcmResult fake_stop(void* context, std::uint32_t) noexcept {
-    ++static_cast<FakeDevice*>(context)->stops;
-    return PcmResult::Ok;
+    auto& fake = *static_cast<FakeDevice*>(context);
+    ++fake.stops;
+    return fake.stop_result;
 }
 PcmResult fake_close(void* context, std::uint32_t) noexcept {
     ++static_cast<FakeDevice*>(context)->closes;
@@ -384,6 +388,56 @@ void test_direction_specific_ops_requirements() {
             "capture-only endpoint closes");
 }
 
+
+void test_failed_stop_requires_retry_before_close() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    EndpointPcmBackend backend(&endpoint, 1U, make_ops(fake));
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok, "retry stream opens");
+    require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok,
+            "retry stream configures");
+    require(backend.start(token) == PcmResult::Ok, "retry stream starts");
+
+    fake.stop_result = PcmResult::BackendFailure;
+    require(backend.stop(token) == PcmResult::BackendFailure,
+            "backend stop failure is propagated");
+    require(backend.close(token) == PcmResult::InvalidState,
+            "native handle cannot close while stop is unconfirmed");
+    require(fake.closes == 0U, "native close callback is not invoked");
+
+    fake.stop_result = PcmResult::Ok;
+    require(backend.stop(token) == PcmResult::Ok, "stop retry succeeds");
+    require(backend.close(token) == PcmResult::Ok,
+            "native handle closes after successful stop retry");
+}
+
+void test_failed_start_requires_cleanup_before_close() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    EndpointPcmBackend backend(&endpoint, 1U, make_ops(fake));
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok, "failed-start stream opens");
+    require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok,
+            "failed-start stream configures");
+
+    fake.start_result = PcmResult::BackendFailure;
+    require(backend.start(token) == PcmResult::BackendFailure,
+            "backend start failure is propagated");
+    require(backend.close(token) == PcmResult::InvalidState,
+            "failed start requires cleanup before close");
+    require(backend.stop(token) == PcmResult::Ok,
+            "stop cleanup is attempted after failed start");
+    require(backend.close(token) == PcmResult::Ok,
+            "stream closes after failed-start cleanup");
+}
+
 void test_invalid_tables() {
     FakeDevice fake;
     const PcmEndpoint duplicate[] = {
@@ -407,6 +461,8 @@ int main() {
     test_lifecycle_rejects_inflight_transfer();
     test_partial_transfer_contract();
     test_direction_specific_ops_requirements();
+    test_failed_stop_requires_retry_before_close();
+    test_failed_start_requires_cleanup_before_close();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
     return 0;

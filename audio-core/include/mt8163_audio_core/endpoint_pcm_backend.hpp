@@ -75,6 +75,7 @@ private:
         std::atomic<std::uint32_t> state{
             static_cast<std::uint32_t>(PcmStreamState::Closed)};
         std::atomic_flag transfer_busy = ATOMIC_FLAG_INIT;
+        bool stop_required{false};
     };
 
     const PcmEndpoint* find_endpoint(RouteType route, PcmDirection direction) const noexcept;

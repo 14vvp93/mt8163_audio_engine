@@ -221,8 +221,15 @@ void test_stop_failure_can_be_retried() {
     backend.stop_result = PcmResult::Ok;
     require(broker.stop(41U) == PcmResult::Ok,
             "stop can be retried after a backend failure");
+    require(broker.close(41U) == PcmResult::InvalidState,
+            "stream cannot close while backend stop is still unconfirmed");
+    require(backend.closes.load() == 0U,
+            "backend close is not called after a failed stop");
+    backend.stop_result = PcmResult::Ok;
+    require(broker.stop(41U) == PcmResult::Ok,
+            "stop can be retried after a backend failure");
     require(broker.close(41U) == PcmResult::Ok,
-            "stream closes after successful stop retry");
+            "stream closes only after successful stop retry");
     require(backend.stops.load() == 2U,
             "backend receives both stop attempts");
 }
@@ -401,7 +408,9 @@ void test_backend_error_propagation() {
     require(broker.get_record(4U, &failed_record) &&
             failed_record.state == PcmStreamState::Failed,
             "failed stream state recorded");
-    require(broker.close(4U) == PcmResult::Ok, "failed stream can be closed");
+    require(broker.stop(4U) == PcmResult::InvalidState,
+            "configure failure does not trigger a stop on a never-started backend");
+    require(broker.close(4U) == PcmResult::Ok, "failed unstarted stream can be closed");
 }
 }  // namespace
 

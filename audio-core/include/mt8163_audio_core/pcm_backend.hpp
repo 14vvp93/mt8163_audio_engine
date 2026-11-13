@@ -105,6 +105,7 @@ public:
                            StreamToken* token) noexcept = 0;
     virtual PcmResult configure(StreamToken token,
                                 const PcmConfig& config) noexcept = 0;
+    // start() failure may leave native state partially active; callers must attempt stop().
     virtual PcmResult start(StreamToken token) noexcept = 0;
     virtual PcmResult write(StreamToken token, const std::int16_t* interleaved,
                             std::size_t frame_count) noexcept = 0;

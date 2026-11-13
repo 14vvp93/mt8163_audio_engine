@@ -55,6 +55,7 @@ private:
         std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
         std::atomic<std::uint32_t> transfer_gate{0U};
         std::atomic<std::uint32_t> generation{0U};
+        bool backend_stop_required{false};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
         PcmDirection direction{PcmDirection::Playback};

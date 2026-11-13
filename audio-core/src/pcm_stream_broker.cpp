@@ -53,6 +53,7 @@ PcmResult PcmStreamBroker::open(std::uint32_t handle, SourceId source,
     free_slot->route = route;
     free_slot->direction = direction;
     free_slot->config = PcmConfig{};
+    free_slot->backend_stop_required = false;
     free_slot->transfer_gate.store(0U, std::memory_order_relaxed);
     free_slot->generation.fetch_add(1U, std::memory_order_relaxed);
     free_slot->backend_token.store(token, std::memory_order_relaxed);
@@ -92,6 +93,7 @@ PcmResult PcmStreamBroker::start(std::uint32_t handle) noexcept {
         static_cast<std::uint32_t>(PcmStreamState::Configured)) {
         return PcmResult::InvalidState;
     }
+    slot->backend_stop_required = true;
     const PcmResult result = backend_.start(
         slot->backend_token.load(std::memory_order_relaxed));
     if (result == PcmResult::Ok) {
@@ -233,7 +235,8 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
     const PcmStreamState state = static_cast<PcmStreamState>(
         slot->state.load(std::memory_order_acquire));
     if (state == PcmStreamState::Stopped) return PcmResult::Ok;
-    if (state != PcmStreamState::Started && state != PcmStreamState::Failed) {
+    if ((state != PcmStreamState::Started && state != PcmStreamState::Failed) ||
+        !slot->backend_stop_required) {
         return PcmResult::InvalidState;
     }
 
@@ -243,6 +246,7 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
 
     const PcmResult result = backend_.stop(
         slot->backend_token.load(std::memory_order_relaxed));
+    if (result == PcmResult::Ok) slot->backend_stop_required = false;
     slot->state.store(static_cast<std::uint32_t>(result == PcmResult::Ok
                           ? PcmStreamState::Stopped : PcmStreamState::Failed),
                       std::memory_order_release);
@@ -253,7 +257,8 @@ PcmResult PcmStreamBroker::close(std::uint32_t handle) noexcept {
     Slot* slot = find_control(handle);
     if (slot == nullptr) return PcmResult::NotOpen;
     if (slot->state.load(std::memory_order_acquire) ==
-        static_cast<std::uint32_t>(PcmStreamState::Started)) return PcmResult::InvalidState;
+            static_cast<std::uint32_t>(PcmStreamState::Started) ||
+        slot->backend_stop_required) return PcmResult::InvalidState;
     if ((slot->transfer_gate.load(std::memory_order_acquire) &
          kTransferCountMask) != 0U) return PcmResult::WouldBlock;
 
@@ -264,6 +269,7 @@ PcmResult PcmStreamBroker::close(std::uint32_t handle) noexcept {
                           std::memory_order_release);
         slot->handle.store(0U, std::memory_order_release);
         slot->backend_token.store(0U, std::memory_order_relaxed);
+        slot->backend_stop_required = false;
         slot->transfer_gate.store(0U, std::memory_order_relaxed);
         slot->source = SourceId::None;
         slot->route = RouteType::None;
