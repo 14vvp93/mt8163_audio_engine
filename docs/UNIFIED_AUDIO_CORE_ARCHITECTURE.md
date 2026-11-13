@@ -131,15 +131,15 @@ Do not collapse all audio sources into one enum or assume all sources enter the 
 
 | Source class | Factory evidence | Initial replacement handling |
 |---|---|---|
-| Local media / navigation / notifications | Android primary PCM stream; Normal HAL handler | PCM session adapters; distinguish media, navigation and notification policy |
-| Bluetooth A2DP | Separate A2DP route; PCM16 stereo 44.1 kHz policy; offload control also exists | Dedicated adapter; process only when PCM is actually owned by the replacement and offload is false |
-| HFP/SCO | Separate HFP client, SCO and Voice handlers; 8/16 kHz profiles; microphone and echo-reference path | Dedicated telephony adapter; initially preserve/bypass until downlink, uplink, clock and echo contracts are complete |
-| FM direct | AudioPatch controls FM_I2S_Playback; no userspace PCM write loop in recovered direct path | Dedicated direct-route adapter or deliberate redesign to a verified PCM source; never claim Music INSERT coverage |
-| FM capture | AUDIO_SOURCE_FM_TUNER → FM_I2S_Capture capture provider/fanout | Separate PCM input adapter if chosen as the audible path; prove how it reaches output |
-| AUX / AUX2 / DAB / RADIO | CD3313 logical analog input selection and source mute | Hardware-source sessions controlled by AudioCore; distinguish analog mux selection from Android PCM sessions |
+| Local media / navigation / notifications / system sounds | Android primary PCM stream; Normal HAL handler | Shared playback DSP graph with per-source profiles and overlay/ducking policy |
+| Bluetooth A2DP | Separate A2DP route; PCM16 stereo 44.1 kHz policy; offload control also exists | DSP-visible PCM is mandatory; disable or redirect offload where it bypasses DSP, after runtime validation |
+| HFP/SCO | Separate HFP client, SCO and Voice handlers; 8/16 kHz profiles; microphone and echo-reference path | Dedicated telephony downlink/uplink DSP graph; temporary safe fallback only until SCO PCM, clock, latency and echo contracts are complete |
+| FM direct | AudioPatch controls FM_I2S_Playback; no userspace PCM write loop in recovered direct path | Recover a DSP-visible digital tap or redesign to a verified PCM source; never claim Music INSERT coverage |
+| FM capture | AUDIO_SOURCE_FM_TUNER → FM_I2S_Capture capture provider/fanout | Dedicated capture DSP adapter; prove the active audible route and its relationship to capture clients |
+| AUX / AUX2 / DAB / RADIO | CD3313 logical analog input selection and source mute | Keep analog mux control in AudioCore; software DSP requires a separately verified ADC/PCM capture path, which CD3313EO alone does not provide |
 | Reverse / ONSTAR | Legacy source-priority and vehicle state | Safety-priority route policy; exact output signal and takeover behavior require target validation |
 
-The recovered CD3313 source-priority order is retained only as a compatibility reference: HFP, reverse, ONSTAR, RADIO/RDS, AUX, A2DP, MUSIC, AUX2, DAB, fallback NONE. It is not automatically the new universal priority policy. AudioCore must model emergency/telephony priority separately from user-selected media and overlay streams.
+The accepted product scope requires one DSP implementation for all supported source classes and directions, using distinct playback, capture, telephony and echo-reference graphs. The current DSP-route classifier intentionally distinguishes route validity from PCM visibility: a valid CD3313 analog route is not a software DSP path until an ADC/PCM boundary is proven. HFP/SCO and microphone processing are mandatory final scope, not permanent bypasses. The recovered CD3313 source-priority order is retained only as a compatibility reference: HFP, reverse, ONSTAR, RADIO/RDS, AUX, A2DP, MUSIC, AUX2, DAB, fallback NONE. It is not automatically the new universal priority policy. AudioCore must model emergency/telephony priority separately from user-selected media and overlay streams.
 
 ## 7. Mute and volume semantics
 
@@ -211,7 +211,7 @@ The JNI extra-word discrepancy is unresolved. Do not reproduce the vendor JNI fr
 3. Connect existing PCM/DSP core through a bounded PCM graph; keep current verified DSP tests intact.
 4. Implement CD3313 broker/emulator contract and safe kernel/user ABI. Hardware writes remain disabled until reviewed.
 5. Implement replacement primary HAL and Android policy adapter with explicit source-specific route handlers.
-6. Integrate A2DP, FM direct/capture and HFP/SCO one route at a time with fallback and regression tests.
+6. Integrate every source and direction one route at a time: media/system overlays, A2DP without offload bypass, FM direct/capture, HFP/SCO downlink/uplink, microphone/echo-reference and analog inputs where a verified ADC/PCM path exists. Temporary fallback and regression tests are mandatory.
 7. Retire factory service/JNI/AudioPolicy/AudioFlinger vendor hooks only when each behavior has a replacement owner and rollback.
 8. Validate on the target head unit and compare every route against the factory behavior before final cutover.
 
@@ -222,7 +222,7 @@ The JNI extra-word discrepancy is unresolved. Do not reproduce the vendor JNI fr
 - No raw chip command is issued from UI, service or PCM callback.
 - PCM callback is bounded, allocation-free and free of blocking IPC/device I/O.
 - Media, navigation, notification, A2DP, HFP/SCO, FM, AUX/DAB and vehicle events have explicit route behavior.
-- Unsupported routes and offload fail open safely.
+- Unsupported formats/routes and unexpected offload fail open safely during migration; final release must provide a DSP-visible path for every supported source and direction.
 - Quad output is enabled only after board/ALSA topology is proven.
 - Every route has host tests, Android build evidence and target-device evidence separately.
 - Rollback restores the previous HAL/policy and hardware-safe state without concurrent factory/new ownership.
