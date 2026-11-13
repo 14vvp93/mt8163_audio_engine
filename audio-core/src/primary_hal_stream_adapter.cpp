@@ -61,11 +61,15 @@ PcmTransferResult PrimaryHalStreamAdapter::read_transfer(
 PcmResult PrimaryHalStreamAdapter::stop(std::uint32_t handle) noexcept {
     PcmStreamRecord record{};
     if (!streams_.get_record(handle, &record)) return PcmResult::NotOpen;
-    if (record.state == PcmStreamState::Failed && record.backend_stop_required) {
-        return streams_.stop(handle);
-    }
+
+    const SessionRecord* session = audio_core_.sessions().find(handle);
+    const bool session_was_active =
+        session != nullptr && session->state == SessionState::Active;
+
     const PcmResult result = streams_.stop(handle);
     if (result != PcmResult::Ok) return result;
+    if (!session_was_active) return PcmResult::Ok;
+
     return audio_core_.transition_session(handle, SessionState::Suspended)
         ? PcmResult::Ok : PcmResult::InvalidState;
 }
