@@ -274,6 +274,52 @@ void test_stop_waits_for_in_flight_callback() {
     require(broker.close(21U) == PcmResult::Ok, "stream closes after callback drain");
 }
 
+void test_reopen_same_handle_while_callback_runs() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 2U, 240U};
+    const std::int16_t sample = 0;
+    std::atomic<bool> finish{false};
+    std::atomic<bool> failed{false};
+
+    std::thread callback([&] {
+        while (!finish.load(std::memory_order_acquire)) {
+            const PcmResult result = broker.write(77U, &sample, 1U);
+            if (result != PcmResult::Ok && result != PcmResult::InvalidState &&
+                result != PcmResult::NotOpen) {
+                failed.store(true, std::memory_order_release);
+                return;
+            }
+        }
+    });
+
+    for (std::uint32_t iteration = 0U; iteration < 500U; ++iteration) {
+        require(broker.open(77U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                    PcmResult::Ok,
+                "same public handle can be reopened after close");
+        require(broker.configure(77U, config) == PcmResult::Ok,
+                "reopened stream configures");
+        require(broker.start(77U) == PcmResult::Ok,
+                "reopened stream starts");
+        PcmResult stop_result = PcmResult::WouldBlock;
+        while (stop_result == PcmResult::WouldBlock) {
+            stop_result = broker.stop(77U);
+            if (stop_result == PcmResult::WouldBlock) std::this_thread::yield();
+        }
+        require(stop_result == PcmResult::Ok,
+                "stop drains callbacks before backend shutdown");
+        require(broker.close(77U) == PcmResult::Ok,
+                "reopened stream closes cleanly");
+        require(!failed.load(std::memory_order_acquire),
+                "callback observes only valid lifecycle results during handle reuse");
+    }
+
+    finish.store(true, std::memory_order_release);
+    callback.join();
+    require(!failed.load(std::memory_order_acquire),
+            "callback remains safe across repeated close and reopen cycles");
+}
+
 void test_backend_error_propagation() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -300,6 +346,7 @@ int main() {
     test_callback_write_while_opening_another_stream();
     test_stop_waits_for_in_flight_callback();
     test_backend_error_propagation();
+    test_reopen_same_handle_while_callback_runs();
     std::cout << "PCM stream broker tests passed\n";
     return 0;
 }
