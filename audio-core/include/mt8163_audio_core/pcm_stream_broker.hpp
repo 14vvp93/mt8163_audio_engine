@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mt8163_audio_core/pcm_backend.hpp"
+#include "mt8163_audio_core/session_token.hpp"
 #include "mt8163_audio_core/route_policy.hpp"
 
 #include <array>
@@ -16,7 +17,7 @@ static_assert(std::atomic<std::uint32_t>::is_always_lock_free,
               "32-bit atomics must be lock-free on the target ABI");
 
 struct PcmStreamRecord {
-    std::uint32_t handle{0U};
+    SessionToken session{};
     PcmBackend::StreamToken backend_token{0U};
     SourceId source{SourceId::None};
     RouteType route{RouteType::None};
@@ -33,32 +34,33 @@ class PcmStreamBroker {
 public:
     explicit PcmStreamBroker(PcmBackend& backend) noexcept : backend_(backend) {}
 
-    PcmResult open(std::uint32_t handle, SourceId source, RouteType route,
+    PcmResult open(SessionToken session, SourceId source, RouteType route,
                    PcmDirection direction = PcmDirection::Playback) noexcept;
-    PcmResult configure(std::uint32_t handle, const PcmConfig& config) noexcept;
-    PcmResult start(std::uint32_t handle) noexcept;
-    PcmResult write(std::uint32_t handle, const std::int16_t* interleaved,
+    PcmResult configure(SessionToken session, const PcmConfig& config) noexcept;
+    PcmResult start(SessionToken session) noexcept;
+    PcmResult write(SessionToken session, const std::int16_t* interleaved,
                     std::size_t frame_count) noexcept;
-    PcmResult read(std::uint32_t handle, std::int16_t* interleaved,
+    PcmResult read(SessionToken session, std::int16_t* interleaved,
                    std::size_t frame_count) noexcept;
-    PcmTransferResult write_transfer(std::uint32_t handle,
+    PcmTransferResult write_transfer(SessionToken session,
                                      const std::int16_t* interleaved,
                                      std::size_t frame_count) noexcept;
-    PcmTransferResult read_transfer(std::uint32_t handle, std::int16_t* interleaved,
+    PcmTransferResult read_transfer(SessionToken session, std::int16_t* interleaved,
                                     std::size_t frame_count) noexcept;
-    PcmResult stop(std::uint32_t handle) noexcept;
-    PcmResult close(std::uint32_t handle) noexcept;
+    PcmResult stop(SessionToken session) noexcept;
+    PcmResult close(SessionToken session) noexcept;
 
-    bool get_record(std::uint32_t handle, PcmStreamRecord* out) const noexcept;
+    bool get_record(SessionToken session, PcmStreamRecord* out) const noexcept;
     std::size_t size() const noexcept;
 
 private:
     struct Slot {
         std::atomic<std::uint32_t> handle{0U};
+        std::uint64_t session_generation{0U};
         std::atomic<std::uint32_t> backend_token{0U};
         std::atomic<std::uint32_t> state{static_cast<std::uint32_t>(PcmStreamState::Closed)};
         std::atomic<std::uint32_t> transfer_gate{0U};
-        std::atomic<std::uint32_t> generation{0U};
+        std::atomic<std::uint32_t> transfer_generation{0U};
         bool backend_stop_required{false};
         SourceId source{SourceId::None};
         RouteType route{RouteType::None};
@@ -66,8 +68,8 @@ private:
         PcmConfig config{};
     };
 
-    Slot* find_control(std::uint32_t handle) noexcept;
-    const Slot* find_control(std::uint32_t handle) const noexcept;
+    Slot* find_control(SessionToken session) noexcept;
+    const Slot* find_control(SessionToken session) const noexcept;
 
     PcmBackend& backend_;
     std::array<Slot, kMaxPcmStreams> streams_{};
