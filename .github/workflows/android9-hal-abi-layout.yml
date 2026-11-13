@@ -1,0 +1,32 @@
+name: Android 9 HAL ABI layout
+
+on:
+  push:
+    branches: [main, feature]
+    paths:
+      - "audio-hal-abi/**"
+      - ".github/workflows/android9-hal-abi-layout.yml"
+  pull_request:
+    paths:
+      - "audio-hal-abi/**"
+      - ".github/workflows/android9-hal-abi-layout.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  layout:
+    name: Verify recovered ARM32 ABI layouts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S audio-hal-abi -B build/android9-abi -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/android9-abi --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build/android9-abi --output-on-failure
