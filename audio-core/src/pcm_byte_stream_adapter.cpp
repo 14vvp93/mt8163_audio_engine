@@ -32,10 +32,10 @@ PcmResult validate_pcm16_buffer(std::uint32_t handle, const PcmConfig& config,
 }
 
 PcmByteStreamAdapter::PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter,
-                                           std::uint32_t handle,
+                                           SessionToken session,
                                            PcmDirection direction) noexcept
-    : adapter_(adapter), handle_(handle), direction_(direction),
-      valid_(handle != 0U &&
+    : adapter_(adapter), session_(session), direction_(direction),
+      valid_(session.valid() &&
              (direction == PcmDirection::Playback || direction == PcmDirection::Capture)) {}
 
 PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
@@ -58,7 +58,7 @@ PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
             config_.format == config.format;
         return same_config ? PcmResult::Ok : PcmResult::InvalidState;
     }
-    const PcmResult result = adapter_.configure(handle_, config);
+    const PcmResult result = adapter_.configure(session_, config);
     if (result == PcmResult::Ok) {
         config_ = config;
         configured_.store(1U, std::memory_order_release);
@@ -105,7 +105,7 @@ PcmByteTransfer PcmByteStreamAdapter::transfer(const void* buffer,
 
     std::size_t frames = 0U;
     const PcmResult validation =
-        validate_pcm16_buffer(handle_, config_, buffer, byte_count, &frames);
+        validate_pcm16_buffer(session_.handle, config_, buffer, byte_count, &frames);
     PcmByteTransfer transfer_result{validation, 0U};
 
     if (validation == PcmResult::Ok) {
