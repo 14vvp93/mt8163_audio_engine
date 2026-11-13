@@ -4,7 +4,7 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
-> **Latest code HEAD:** `e0c499b2af1e2c7c95a8337cad8e74984ef2820e`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
+> **Latest code HEAD:** `cd1d695e5742b3d44260ffa592b4b8689f6dcbed`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
@@ -179,17 +179,18 @@ Final replacement target:
 
 ## PCM lifecycle audit update — 2026-11-13
 
-Latest code commit: [e0c499b](https://github.com/14vvp93/mt8163_audio_engine/commit/e0c499b2af1e2c7c95a8337cad8e74984ef2820e).
+Latest code commit: [cd1d695](https://github.com/14vvp93/mt8163_audio_engine/commit/cd1d695e5742b3d44260ffa592b4b8689f6dcbed).
 
 - Found a lifecycle defect shared by `PcmStreamBroker` and `EndpointPcmBackend`: after `start()` succeeded, a failed `stop()` changed the state to `Failed`, but `close()` still allowed native resource release.
 - Added an explicit stop-required lifecycle flag. It is set before calling backend start (so partial start failures are covered), cleared only after successful stop, and checked before close. A failed start also requires a stop/cleanup attempt.
+- Closed the endpoint backend's callback admission before attempting stop, including when stop returns `WouldBlock`; pending callbacks are rejected while stop is retried. The broker also advances its callback generation at start/stop boundaries so an admission attempt from an earlier run cannot enter after a restart.
 - A configure failure does not set the stop-required flag; an unstarted stream can still be closed without an invalid stop call.
 - Added regression tests for failed stop, retry-before-close, failed start cleanup and configure-failure close behavior in both the broker and endpoint backend test suites.
 - The control plane remains single-writer/serialized as specified by the roadmap. The new lifecycle flag is intentionally accessed only by serialized lifecycle calls; PCM transfer callbacks do not access it.
 
 ### CI status for this update
 
-Workflows for commits `19017c7` and `e0c499b` again failed before runner assignment. The latest job metadata reports `runner_id=0`, empty `runner_name`, `steps=[]`, and log retrieval returns `BlobNotFound`. No compile, unit-test, TSAN, benchmark or ARM32 step is known to have executed for these commits. Do not classify these runs as source-code failures or as successful validation.
+Workflows for commits `19017c7`, `e0c499b` and `cd1d695` again failed before runner assignment. The latest job metadata reports `runner_id=0`, empty `runner_name`, `steps=[]`, and log retrieval returns `BlobNotFound`. No compile, unit-test, TSAN, benchmark or ARM32 step is known to have executed for these commits. Do not classify these runs as source-code failures or as successful validation.
 
 A current GitHub Community report describes the same runner-allocation signature; this does not identify the cause for this repository. Private-repository Actions compute is subject to the account's included usage and billing configuration. The repository owner's **Settings → Billing and licensing → Usage** page is the next account-level check. See [GitHub Actions billing and usage](https://docs.github.com/en/actions/concepts/billing-and-usage).
 
