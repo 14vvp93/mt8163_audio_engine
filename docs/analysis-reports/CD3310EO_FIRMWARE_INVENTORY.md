@@ -292,3 +292,17 @@ A separate static disassembly comparison establishes different probe policies:
 The init script requests CD3313 before AK7604 and FY7604. This creates a plausible, unverified scenario in which CD3313 registers the shared `/dev/audiomux` endpoint if the physical device at `0x44` acknowledges the one-byte write, even if the physical marking is CD3310EO. The acknowledgement and runtime registration have not been observed. This is not approval to send the byte or any CD3313 command to the physical chip.
 
 Updated technical detail and exact hashes are recorded in [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md). No module was loaded and no hardware I/O was performed.
+
+
+## 13. Shared DSP GPIO ownership — static probe-order finding
+
+The three DSP module probes also overlap on GPIO ownership:
+
+- CD3313 requests GPIO IDs `0x189` and `0x199` after its one-byte I2C write succeeds.
+- AK7604 requests `0x189`, `0x182` and `0x199`; it aborts probe if any request fails. Its chip-existence check occurs only after these requests.
+- FY7604 requests the same three GPIO IDs and likewise aborts on a failed request before running its chip-existence check.
+- The init order is CD3313 → AK7604 → FY7604.
+
+If CD3313 succeeds first and keeps the shared GPIOs requested, AK7604 and FY7604 can fail before they even check for their respective ICs. This compounds the shared `/dev/audiomux` name collision and makes CD3313 the first candidate to claim the endpoint.
+
+This is a conditional static explanation, not proof of runtime ownership: a successful CD3313 I2C transfer, successful GPIO requests and live module binding have not been observed. No GPIO or I2C operation was performed.
