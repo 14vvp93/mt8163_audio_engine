@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -43,6 +44,11 @@ int main() {
         initial.quad.enabled = true;
         check(engine.configure(48000U, initial),
               "initial profile configures");
+        float overflow_probe = 0.0F;
+        const std::size_t overflow_frames =
+            std::numeric_limits<std::size_t>::max() / kOutputChannelCount + 1U;
+        check(!engine.process(&overflow_probe, &overflow_probe, overflow_frames),
+              "frame count overflow is rejected before buffer access");
 
         AudioProfile next = initial;
         next.quad.channels[0].gain_db = -12.0F;
