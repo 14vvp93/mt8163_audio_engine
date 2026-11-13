@@ -1,6 +1,6 @@
 # MT8163 Audio Engine — Documentation Index
 
-> **Canonical execution plan:** [Project Roadmap](PROJECT_ROADMAP.md). Use it for priorities, current status, gates and next actions. The older Beta 0.1 roadmap below is retained only as a historical record.
+> **Canonical execution plan:** [Project Roadmap](PROJECT_ROADMAP.md). Use it for priorities, current status, gates and next actions. The older [Beta 0.1 roadmap](archive/PROJECT_ROADMAP_BETA_0.1.md) is retained only as a historical record.
 
 Use this page as the navigation map for the project. The documents remain grouped by subject here; source files and research inputs are stored separately from buildable code.
 
