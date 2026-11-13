@@ -5,8 +5,8 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Working branch:** `feature`  
 **Stable branch:** `main`  
-**Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-**Latest code/test commit:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
+**Latest verified AudioCore/PCM code baseline:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
+**Current feature HEAD:** `4c7bc2e63ceb64591f0720bdf6dcda5cc7f37d04` (docs/status commits may advance this independently)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -172,13 +172,13 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 **Priority: critical product milestone**
 
-1. Complete the factory binary audit: ELF32 ARM identity, SONAME, exported symbols, symbol versions, dependencies, relocations and linker namespace. **Tool improved:** `tools/audit_primary_hal_binary.sh` now checks ET_DYN, ARM32 EABI5, factory basename and exported `HMI`; it still needs to be run against the immutable firmware binary.
-2. Recover the exact Android 9 `audio_hw_device`, output/input stream, device-open, callback, structure-layout and error contracts.
-3. **AOSP baseline pinned:** the firmware fingerprint reports `PPR1.180610.011`, matching Android 9 tag `android-9.0.0_r3`; ARM32 AOSP structure layouts and offsets are documented in [ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). Exact ALPS/MediaTek vendor headers remain unpinned.
-4. Create the replacement HAL skeleton with the factory module entry point and required symbols.
-5. Link AudioCore and the PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
-6. Add ELF, symbol, dependency and packaging checks against the factory baseline.
-7. Preserve factory originals and a verified rollback manifest.
+1. Reconcile the recovered `DT_NEEDED` list with the actual Android 9 linker namespace and verify the library search paths; the namespace config file is not present in the current extracted tree.
+2. Obtain/pin the matching ALPS/MediaTek vendor headers or source revision and compare private declarations with AOSP r3.
+3. Finish method-level `AudioALSAStreamOut::set/open` and `AudioALSAStreamIn::set/open` analysis: accepted rates, formats, channel masks, flags, buffer sizing and error behavior.
+4. Trace external callers and runtime semantics for all 16 private device-tail callbacks.
+5. Implement the typed factory-compatible HAL shell using the recovered module, device and C stream wrapper layouts; do not perform hardware writes.
+6. Link AudioCore and PCM/DSP libraries internally; do not ship a parallel primary HAL or always-on stateful daemon.
+7. Add exact ELF/symbol/dependency/packaging gates and preserve factory originals plus rollback hashes.
 
 **Exit gate:** a factory-named `/vendor/lib/hw/audio.primary.mt8163.so` builds for the exact Android 9 ARM32 ABI and passes symbol/dependency/contract checks. This is ABI/build verification, not device verification.
 
@@ -261,7 +261,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - PCM DSP host tests.
 - CD3313 emulator host tests, ASAN/UBSAN and bounded libFuzzer.
 - AudioCore ThreadSanitizer.
-- PCM stream broker ThreadSanitizer workflow (feature branch (legacy workflow triggers may still reference deleted branches)).
+- PCM stream broker ThreadSanitizer workflow (runs on `main` and `feature`).
 - Android ARMv7 library/JNI build and benchmark.
 - Android 9 effect-library ABI build and host smoke tests.
 - Stability lab and performance benchmark.
@@ -270,33 +270,35 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### CI gaps to close
 
-1. **DONE (2026-11-13):** Repository-integrity push trigger now includes `integration/beta-0.1`.
-2. **DONE (2026-11-13):** PCM stream-broker TSAN now runs on `integration/beta-0.1` as well as its work branch.
-3. Ensure the Android ARMv7 and full host-test workflows run on every relevant integration change.
-4. Add the factory HAL ABI/symbol/dependency audit as a required CI gate.
+1. **DONE:** all active branch filters use only `main` and `feature`.
+2. **DONE:** factory Primary HAL ELF/HMI/APS2 audit runs against the SHA-256-pinned firmware artifact.
+3. **DONE:** ARM32 ABI layout mirror is compiled and tested by CMake/CTest.
+4. Ensure the Android ARMv7 and full host-test workflows run on every relevant code change.
 5. Add packaging checks that reject project-named parallel runtime HALs and unexpected extra owners.
 6. Report workflow results against the exact commit being evaluated.
 
 ### Current verified baseline
 
-- AudioCore TSAN: [43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) is running on the current documentation/feature commit; last completed success on this series: [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297).
-- PCM stream-broker TSAN: [43373877328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877328), success on commit `090f4d1`.
-- Repository integrity: [43373877371](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877371), success on commit `090f4d1`; validates local Markdown links and read-only collector syntax.
-- CD3313 protocol/safety: [43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746), success on code commit `cfc20a4`; it is not a run on the later documentation-only commits.
+- Repository Integrity: [43382264658](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264658), PASS on feature commit `4c7bc2e63ceb`.
+- AudioCore TSAN: [43382264635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264635), in progress on `4c7bc2e63ceb`.
+- PCM Stream Broker TSAN: [43382264632](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264632), in progress on `4c7bc2e63ceb`.
+- Prior feature commit `9d30241ab90d`: Repository Integrity, AudioCore TSAN and PCM Broker TSAN all PASS (runs 43382164716, 43382164693 and 43382164857).
+- Factory ELF/HMI/APS2 audit: [43381061217](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381061217), PASS.
+- Android 9 ARM32 ABI layout CMake/CTest: [43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046), PASS.
 - Earlier PCM DSP and Android ARMv7 runs are recorded in validation documents. Re-run them when relevant code changes; do not infer current code status from old run IDs.
-- No complete HAL ABI build or device validation is claimed.
+- No complete HAL implementation, factory ABI build or device validation is claimed.
 
 ## 8. Immediate execution queue
 
-1. Run the read-only target diagnostic collector and record runtime ownership/topology; this remains the only blocker requiring target-side evidence.
-2. Finish PCM lifecycle race/recovery tests and close sanitizer findings.
-3. Complete AudioCore single-writer and snapshot publication review.
-4. Finish exact factory primary HAL ABI recovery and build a minimal factory-compatible HAL shell.
-5. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
-6. Add source adapters incrementally; keep all unverified routes bypassed.
-7. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
-8. Migrate factory control owners and validate rollback.
-9. Complete end-to-end route, quality and stability validation.
+1. Finish method-level stream negotiation analysis for factory output/input `set/open` methods.
+2. Resolve Android 9 vendor linker namespace configuration and pin the matching ALPS/MediaTek headers.
+3. Trace external callers and semantics of private device-tail callbacks.
+4. Run the read-only target diagnostic collector and record runtime ownership/topology.
+5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
+6. Confirm latest AudioCore and PCM Broker TSAN runs on the current feature HEAD.
+7. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
+8. Add source adapters incrementally; keep unverified routes bypassed.
+9. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
 
 ## 9. Definition of done
 
@@ -315,6 +317,15 @@ The MT8163 Audio Engine is complete only when:
 ---
 
 ## 10. Change log
+
+### 2026-11-13 — factory Primary HAL ABI recovery
+
+- Audited the exact factory `audio.primary.mt8163.so`: HMI/module/device versions, 224-byte device wrapper, standard callbacks and 68-byte vendor tail.
+- Decoded APS2 relocations to recover AudioALSAHardware, AudioALSAStreamOut and AudioALSAStreamIn vtables.
+- Recovered the 124-byte output and 100-byte input C stream wrappers, callback population, private legacy pointers and manager-owned close lifecycle.
+- Recorded factory SONAME, 32 dependencies, symbol versions and dependency presence in the extracted firmware tree; linker namespace configuration remains unresolved.
+- Added reproducible ELF/APS2 audit tooling and an ARM32 layout mirror with passing CMake/CTest.
+- Consolidated current status and removed stale integration-branch and pre-audit statements.
 
 ### 2026-11-13 — initial consolidated roadmap
 
