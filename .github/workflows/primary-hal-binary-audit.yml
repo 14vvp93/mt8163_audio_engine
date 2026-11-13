@@ -107,6 +107,14 @@ jobs:
             "$objdump" -d -C --start-address=0xcac48 --stop-address=0xcacd0 "$binary"
 
             echo
+            echo "===== AudioALSAStreamManager::getInputBufferSize ====="
+            "$objdump" -d -C --start-address=0x7eee8 --stop-address=0x7efb8 "$binary"
+
+            echo
+            echo "===== AudioALSAHardware input stream wrappers ====="
+            "$objdump" -d -C --start-address=0xcac90 --stop-address=0xcacd0 "$binary"
+
+            echo
             echo "===== AudioALSAHardware::openOutputStreamWithFlags ====="
             "$objdump" -d -C --start-address=0xd1244 --stop-address=0xd127c "$binary"
 
