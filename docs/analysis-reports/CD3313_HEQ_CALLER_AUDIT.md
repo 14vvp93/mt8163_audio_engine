@@ -41,3 +41,20 @@ The inspected `AspSettings` class does not call `setInputGain()` or `setMasterVo
 - Keep the JNI extra-word mismatch separate from these Java API values. The native bridge adds one word to `_IOC_SIZE` beyond the Java array length, and the extra word is not a documented application argument.
 
 No app code was executed. No Binder transaction, ioctl, device-node open, I2C write or hardware state change was performed.
+
+
+## 5. Firmware-wide userspace scan — VDEX references
+
+A separate static scan artifact from firmware analysis run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570), artifact `audiomux-userspace-client-scan` (ID `13954011424`), adds two VDEX leads:
+
+- `system/framework/boot-carservices.vdex` contains string-table entries `ExtAudioMuxer`, `ExtAudioMuxer.java`, `DoAudioMux` and `SendCmdAudioMux`.
+- `system/AudioInputSource.vdex` contains the class descriptor `Landroid/sourceservice/ExtAudioMuxer;`. The scan output does not establish a call to `SendCmdAudioMux` from this VDEX.
+- The scan inventory also includes `AudioInputSource.odex` (ARM32 EABI5, Build ID `c2ee92a50305d642b2d179474bce62e2c958128a`) and the split HEQ APK inputs.
+
+These are string-table and inventory findings, not recovered callsites. They do not identify the method containing each reference, the actual command ID, the exact integer-array contents or the array length at each invocation. They must not be counted as a completed caller inventory.
+
+### Next extraction required
+
+Obtain the raw `boot-carservices.vdex` and `AudioInputSource.vdex` files, extract/decompile their DEX code, and map every reachable `ExtAudioMuxer.SendCmdAudioMux(int, int[])` invocation to its command ID and argument array. Correlate those calls with the HEQ APK callers and the JNI request-size formula before selecting a compatibility adapter contract.
+
+No app code was executed and no device or hardware interface was accessed for this scan.
