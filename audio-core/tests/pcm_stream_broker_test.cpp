@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
+#include <array>
+#include <mutex>
 #include <thread>
 
 using namespace mt8163_audio_core;
@@ -75,9 +77,123 @@ public:
     PcmResult close_result{PcmResult::Ok};
 };
 
+class TestPcmStreamBroker final {
+public:
+    explicit TestPcmStreamBroker(PcmBackend& backend) noexcept : broker_(backend) {}
+
+    PcmResult open(std::uint32_t handle, SourceId source, RouteType route,
+                   PcmDirection direction = PcmDirection::Playback) noexcept {
+        if (handle == 0U) return PcmResult::InvalidArgument;
+        SessionToken token{};
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (find_locked(handle) != nullptr) return PcmResult::InvalidArgument;
+            if (next_generation_ == 0U) return PcmResult::CapacityExceeded;
+            token = SessionToken{handle, next_generation_++};
+        }
+        const PcmResult result = broker_.open(token, source, route, direction);
+        if (result == PcmResult::Ok) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            Entry* entry = find_free_locked();
+            if (entry == nullptr) {
+                (void)broker_.close(token);
+                return PcmResult::CapacityExceeded;
+            }
+            *entry = Entry{handle, token, true};
+        }
+        return result;
+    }
+
+    PcmResult configure(std::uint32_t handle, const PcmConfig& config) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.configure(token, config) : PcmResult::NotOpen;
+    }
+    PcmResult start(std::uint32_t handle) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.start(token) : PcmResult::NotOpen;
+    }
+    PcmResult write(std::uint32_t handle, const std::int16_t* data,
+                    std::size_t frames) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.write(token, data, frames) : PcmResult::NotOpen;
+    }
+    PcmResult read(std::uint32_t handle, std::int16_t* data,
+                   std::size_t frames) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.read(token, data, frames) : PcmResult::NotOpen;
+    }
+    PcmTransferResult write_transfer(std::uint32_t handle,
+                                     const std::int16_t* data,
+                                     std::size_t frames) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.write_transfer(token, data, frames)
+                             : PcmTransferResult{PcmResult::NotOpen, 0U};
+    }
+    PcmTransferResult read_transfer(std::uint32_t handle, std::int16_t* data,
+                                    std::size_t frames) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.read_transfer(token, data, frames)
+                             : PcmTransferResult{PcmResult::NotOpen, 0U};
+    }
+    PcmResult stop(std::uint32_t handle) noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() ? broker_.stop(token) : PcmResult::NotOpen;
+    }
+    PcmResult close(std::uint32_t handle) noexcept {
+        const SessionToken token = token_for(handle);
+        if (!token.valid()) return PcmResult::NotOpen;
+        const PcmResult result = broker_.close(token);
+        if (result == PcmResult::Ok) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            Entry* entry = find_locked(handle);
+            if (entry != nullptr && entry->token == token) entry->active = false;
+        }
+        return result;
+    }
+    bool get_record(std::uint32_t handle, PcmStreamRecord* out) const noexcept {
+        const SessionToken token = token_for(handle);
+        return token.valid() && broker_.get_record(token, out);
+    }
+    std::size_t size() const noexcept { return broker_.size(); }
+    SessionToken token_for(std::uint32_t handle) const noexcept {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const Entry* entry = find_locked(handle);
+        return entry == nullptr ? SessionToken{} : entry->token;
+    }
+    PcmStreamBroker& underlying() noexcept { return broker_; }
+
+private:
+    struct Entry {
+        std::uint32_t handle{0U};
+        SessionToken token{};
+        bool active{false};
+    };
+    Entry* find_locked(std::uint32_t handle) noexcept {
+        for (auto& entry : entries_) {
+            if (entry.active && entry.handle == handle) return &entry;
+        }
+        return nullptr;
+    }
+    const Entry* find_locked(std::uint32_t handle) const noexcept {
+        for (const auto& entry : entries_) {
+            if (entry.active && entry.handle == handle) return &entry;
+        }
+        return nullptr;
+    }
+    Entry* find_free_locked() noexcept {
+        for (auto& entry : entries_) if (!entry.active) return &entry;
+        return nullptr;
+    }
+
+    PcmStreamBroker broker_;
+    mutable std::mutex mutex_;
+    std::array<Entry, kMaxPcmStreams> entries_{};
+    std::uint64_t next_generation_{1U};
+};
+
 void test_complete_lifecycle() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     require(broker.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "open supported primary playback route");
