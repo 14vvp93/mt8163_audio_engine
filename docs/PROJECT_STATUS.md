@@ -13,8 +13,10 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 - The workflow sparsely checks out the factory `audio.primary.mt8163.so` from `14vvp93/public_calculations`, verifies its expected size and SHA-256, then runs the ELF/HMI audit script.
 - First factory audit completed successfully: exact factory size/SHA-256, ELF32 ARM EABI5, Android API 28 note, exported `HMI`, SONAME, 32 `DT_NEEDED` entries, dynamic symbol versions and ARM relocations were inspected.
 - Confirmed `HMI` is a 128-byte `OBJECT GLOBAL DEFAULT` in `.data` at `0x00195014`; module API `0.1`, HAL API `1.0`, module ID `audio`, name `MTK Audio HW HAL`, author `MTK`.
-- `hw_module_methods_t.open` pointer `0x0009b70c`; disassembly confirms returned device API version `0x0300` (3.0), 224-byte allocation, populated AOSP method slots and a 68-byte vendor tail. The tail callback targets still need mapping.
+- `hw_module_methods_t.open` pointer `0x0009b70c`; disassembly confirms device API 3.0, 224-byte allocation and 68-byte vendor tail.
+- Decoded 2,431 Android APS2 relocations and recovered the 57-entry `AudioALSAHardware` vtable, all standard device callback targets and the vendor extension callback map.
 - Factory SONAME and exact `DT_NEEDED` list are recorded in `ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md`.
+- Main tree contents were restored after an accidental helper-file creation on the default branch; the two bookkeeping commits remain in `main` history. The helper now exists only on `feature`.
 
 ## Branch model
 
