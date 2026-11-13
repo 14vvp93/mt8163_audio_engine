@@ -68,6 +68,19 @@ def main() -> int:
                 f"lifecycle/stream API: {match.group(0)!r}"
             )
 
+        if component in {"session_registry", "audio_core", "primary_hal_adapter"}:
+            open_signature = re.compile(
+                r"\\b(?:open_session|open)\\s*\\(\\s*std::uint32_t\\s+handle"
+                r"[\\s\\S]{0,240}SessionToken\\s*\\*\\s*out_token"
+            )
+            if not open_signature.search(source):
+                fail(f"{component}: open must return the new SessionToken through out_token.")
+
+        if component == "pcm_stream_broker" and not re.search(
+            r"\\bopen\\s*\\(\\s*SessionToken\\s+session", source
+        ):
+            fail("pcm_stream_broker: open must accept SessionToken, never a raw handle.")
+
     registry = read_required(PUBLIC_HEADERS["session_registry"])
     if not re.search(r"struct\s+SessionRecord\b[\s\S]*?SessionToken", registry):
         fail("SessionRecord must publish the complete SessionToken.")
