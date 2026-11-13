@@ -57,6 +57,7 @@ bool validate_stereo_profile(const StereoPlaybackProfile& profile,
     for (const auto& band : parameters.bands) {
         if (!valid_filter_type(band.type) ||
             !finite_in_range(band.frequency_hz, 10.0F, maximum_frequency) ||
+            band.frequency_hz >= maximum_frequency ||
             !finite_in_range(band.gain_db, -18.0F, 18.0F) ||
             !finite_in_range(band.q, 0.1F, 10.0F) ||
             !finite_in_range(band.shelf_slope, 0.1F, 1.0F)) {
