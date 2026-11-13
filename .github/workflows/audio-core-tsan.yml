@@ -3,12 +3,12 @@ name: AudioCore ThreadSanitizer
 on:
   push:
     branches:
-      - work/audio-core-concurrency
-      - integration/beta-0.1
+      - main
+      - feature
   pull_request:
     branches:
-      - work/audio-core-concurrency
-      - integration/beta-0.1
+      - main
+      - feature
   workflow_dispatch:
 
 permissions:
