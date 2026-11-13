@@ -1,6 +1,6 @@
 # AudioCore Session Token Contract
 
-**Status:** implementation and offline P1 session-identity gates passed at `6d13b5f3a98be0306911fc6d2655a4ad4f5078bd`; the exact updated documentation/workflow HEAD is being revalidated.
+**Status:** implementation and all offline P1 session-identity gates passed at exact HEAD `888f1cc73209814313e70f5bde54955a7267a492` (workflow run `43520873741`, SUCCESS).
 
 ## Problem
 
