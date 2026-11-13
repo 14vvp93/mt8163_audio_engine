@@ -17,6 +17,13 @@ This register tracks defects and unresolved architectural risks found while reco
 | CD3313-STATE-001 | Medium | `cd3313.ko` status reporting | Diagnostic status exposes cached state rather than physical chip readback | Label cache as requested/last-written state and expose validity/unknown state; never call it hardware readback | Open |
 | CD3313-JNI-001 | High | Vendor JNI bridge | JNI encodes one more 32-bit word than the Java array contains, allowing a native out-of-bounds read when the kernel copies the encoded length | Replace/fix the bridge to build a correctly sized initialized frame; kernel-only changes cannot repair the caller's over-read | Open |
 
+## Suspected defects and contract mismatches
+
+| ID | Component | Evidence | Required action | Status |
+|---|---|---|---|---|
+| FACTORY-STREAM-001 | Factory input channel-mask predicate | The reconstructed predicate accepts any mask containing the mono bit, even when unrelated bits are present. This is weaker than validating the complete Android input mask and its direction-specific channel count. | Treat the predicate as factory-behavior evidence only. Validate masks with the matching Android 9 helpers and an explicit supported-layout policy; add malformed-mask tests. | Open — suspected defect |
+| FACTORY-STREAM-002 | Factory input format normalization | Unsupported input formats are normalized to PCM16 by the recovered helper. This can hide caller errors and reinterpret the buffer layout. | Preserve the observation for compatibility analysis, but reject unsupported formats in the replacement unless an exact caller-visible compatibility requirement is proven. | Open — suspected defect |
+
 ## Unresolved risks — not yet classified as defects
 
 | ID | Component | Evidence | What must be verified |
