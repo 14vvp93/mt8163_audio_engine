@@ -2,7 +2,6 @@
 
 #include <cerrno>
 #include <cstddef>
-#include <cstring>
 
 namespace {
 
@@ -29,6 +28,22 @@ static_assert(offsetof(FactoryPrimaryDeviceLayout, legacy_hardware) == 220U,
 static_assert(sizeof(FactoryPrimaryDeviceLayout) == 224U,
               "Factory primary device wrapper size mismatch");
 
+bool equals_literal(const char* value, const char* literal) noexcept {
+    if (value == nullptr || literal == nullptr) {
+        return false;
+    }
+
+    while (*value != '\0' && *literal != '\0') {
+        if (*value != *literal) {
+            return false;
+        }
+        ++value;
+        ++literal;
+    }
+
+    return *value == '\0' && *literal == '\0';
+}
+
 int open_primary_device(const hw_module_t* module,
                         const char* id,
                         hw_device_t** device) noexcept {
@@ -42,7 +57,7 @@ int open_primary_device(const hw_module_t* module,
         return -EINVAL;
     }
 
-    if (std::strcmp(id, AUDIO_HARDWARE_INTERFACE) != 0) {
+    if (!equals_literal(id, AUDIO_HARDWARE_INTERFACE)) {
         return -EINVAL;
     }
 
