@@ -6,6 +6,13 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This status file is a concise snapshot only. Do not use older execution logs to select priorities.
 
+## Branch model
+
+- `main` is the stable branch; no project changes were pushed to it.
+- `feature` is the sole active development branch.
+- Repository integrity, AudioCore TSAN and PCM broker TSAN workflows now target `main` and `feature`; legacy branch filters were removed.
+- Validation for the workflow migration is running on the current `feature` commits; results must be checked before treating the migration as verified.
+
 ## Product status
 
 **Engineering foundations implemented; complete factory Android 9 primary HAL replacement is not implemented or device-validated.**
