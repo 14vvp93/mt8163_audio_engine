@@ -311,3 +311,11 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Factory policy/HAL evidence identifies FM I2S, FM capture and direct-control code paths, but does not identify the active route at runtime.
 - P0-B remains open: no loaded-module list, boot/probe logs, ALSA runtime inventory, active DTBO confirmation or physical board inspection is available.
 - This update is static/read-only firmware evidence only. No hardware I/O or device validation was performed.
+
+
+### P0-A follow-up — firmware-wide VDEX caller leads
+
+- Extended [CD3313_HEQ_CALLER_AUDIT.md](analysis-reports/CD3313_HEQ_CALLER_AUDIT.md) with evidence from `audiomux-userspace-client-scan` artifact [13954011424](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
+- `system/framework/boot-carservices.vdex` contains `ExtAudioMuxer`, `DoAudioMux` and `SendCmdAudioMux` string-table entries. `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
+- These are leads only. No method-level VDEX callsites, command IDs or actual argument arrays have been recovered from this artifact. The full Java/Binder caller inventory remains OPEN.
+- Next action remains raw VDEX extraction/decompilation and caller-by-caller mapping. Do not implement the legacy JNI compatibility contract from string matches alone.
