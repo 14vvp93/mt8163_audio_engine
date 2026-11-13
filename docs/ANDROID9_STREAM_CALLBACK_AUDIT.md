@@ -151,132 +151,92 @@ When the backend and private ABI are verified:
   public contract defines it); do not install no-op callbacks that claim
   successful hardware behavior.
 
-## Framework close sequencing: source-level evidence
+## Pinned AOSP Android 9 baseline and close sequencing
 
-The framework-side close path is materially stronger than the generic HAL
-header contract:
+The public AOSP reference is pinned to `platform/frameworks/av` tag
+`android-9.0.0_r3`, commit
+`8d3bfcbbd96603ad74df5ee003bbf100d74a1096` (PPR1.180610.011).
+This matches the `platform_hardware_libhardware` tag used for the ABI
+assertions. It is a reproducible upstream baseline, **not proof** that the
+MT8163 vendor image uses this exact revision: the target build fingerprint,
+repo manifest, and vendor cherry-picks are still absent.
 
-- AudioFlinger's output close path removes the playback thread from its
-  registry, calls `PlaybackThread::exit()`, then clears the stream and calls
-  `close_output_stream()`. The source contains an explicit comment that the
-  thread entity is no longer running after `exit()`.
-- AudioFlinger's input close path follows the corresponding sequence:
-  remove the record thread, call `RecordThread::exit()`, clear the input, then
-  call `close_input_stream()`.
-- Read/write callbacks are driven by those playback/record worker threads.
-  Therefore, if the target branch's `exit()` synchronously joins the worker
-  and no other framework path invokes I/O callbacks, the worker-originated
-  read/write dispatch has quiesced before the HAL close callback starts.
+### Output close
 
-Source references inspected for this sequencing (the exact Android 9 tag
-must still be pinned in the target platform checkout):
+In this exact tag, `AudioFlinger::closeOutput_nonvirtual()`:
+1. Holds a strong reference to the playback thread.
+2. Removes the thread from `mPlaybackThreads` while holding AudioFlinger's
+   `mLock`.
+3. Releases `mLock`, calls `playbackThread->exit()`, then calls
+   `closeOutputFinish()`, which clears and deletes the `AudioStreamOut`.
 
-- https://android.googlesource.com/platform/frameworks/av/+/2e422c4/services/audioflinger/AudioFlinger.cpp
-  (output close path)
-- https://android.googlesource.com/platform/frameworks/av/+/7fa0152/services/audioflinger/AudioFlinger.cpp
-  (input close path)
+`ThreadBase::exit()` calls `preExit()` before requesting exit and waiting
+with `requestExitAndWait()`. `PlaybackThread::preExit()` synchronously calls
+the HAL `set_parameters("exiting=1")`; this is a real callback from the close
+caller and must return before the worker shutdown begins.
 
-These are source-level call-path references, not proof that the target vendor
-image uses identical framework code. The repository's pinned
-`platform_hardware_libhardware` tag does not pin
-`platform_frameworks_av`, and the matching framework revision has not yet
-been recovered from the target image.
+The main PlaybackThread loop finishes its current iteration, runs
+`threadLoop_exit()`, and if it is not already in standby calls
+`threadLoop_standby()` before returning. For MixerThread,
+`threadLoop_standby()` changes FastMixer to `COLD_IDLE` and pushes the state
+queue with `BLOCK_UNTIL_ACKED`. The source comment explicitly says
+`BLOCK_UNTIL_PUSHED` would not be enough because FastMixer must stop doing
+I/O now. Thus FastMixer's HAL-facing output sink is quiescent before
+`requestExitAndWait()` returns and before AudioFlinger deletes the stream.
+The FastMixer object itself is only sent `EXIT` and joined later in
+`MixerThread::~MixerThread()`; that later destruction is not the quiescence
+point—the acknowledged `COLD_IDLE` transition is.
 
-Important scope limitation: this sequencing can justify wrapper reclamation
-only for callbacks whose dispatch is exclusively owned by the stopped worker
-thread. It does not automatically cover vendor-private callbacks, callbacks
-from Binder/control threads, effect callbacks, mmap paths, or asynchronous
-HAL-originated callback mechanisms. Those require separate call-site and
-serialization audits. In particular, do not infer a global "no callback can
-run after close" guarantee from the public `audio.h` declarations.
+### Input close
 
-Next verification gate: pin the exact target `frameworks/av` revision and
-inspect `PlaybackThread::exit()`, `RecordThread::exit()`, their thread-loop
-shutdown/join behavior, and every call site of the stream callback tables.
-Only then decide whether framework worker quiescence is sufficient for the
-public read/write callbacks, or whether additional stable dispatch ownership
-is required for any other callback class.
+In this exact tag, `AudioFlinger::closeInput_nonvirtual()` removes the
+RecordThread from `mRecordThreads` under `mLock`, then
+`closeInputFinish()` calls `thread->exit()`, clears the input and deletes
+the `AudioStreamIn`.
 
-## Thread shutdown semantics: additional source evidence
+When the RecordThread enters standby, `inputStandBy()` changes FastCapture
+to `COLD_IDLE` and waits with `BLOCK_UNTIL_ACKED` before calling HAL
+`standby()`. The RecordThread loop also calls
+`standbyIfNotAlreadyInStandby()` before returning. Consequently the
+FastCapture HAL read path is quiescent before the joined RecordThread exits
+and before AudioFlinger deletes the input stream. The FastCapture object is
+sent `EXIT` and joined later by `RecordThread::~RecordThread()`; as with
+FastMixer, the acknowledged idle transition is the earlier I/O quiescence
+point.
 
-The inspected AudioFlinger implementation does not merely signal worker shutdown:
-`ThreadBase::exit()` calls `preExit()`, sets the exit request while waking the
-worker condition variable, then calls `requestExitAndWait()`. The corresponding
-`libutils::Thread::requestExitAndWait()` waits until the worker's
-`mRunning` state becomes false. This establishes a synchronous worker
-quiescence point in those inspected source revisions.
+### Offload async callback thread and mmap
 
-There is one important callback before that quiescence point:
-`PlaybackThread::preExit()` invokes the output stream's
-`common.set_parameters("exiting=1")`. It is part of the close caller's
-shutdown sequence and must be treated as a live HAL callback until it returns.
-The worker join only proves that worker-thread dispatch has stopped after
-`exit()` returns; it does not prove that arbitrary control/API calls or
-vendor-private callback mechanisms cannot race close.
+`OffloadThread::threadLoop_exit()` performs its pending flush/drain work
+before the parent PlaybackThread exits, then calls
+`AsyncCallbackThread::exit()`. That method only requests exit and signals
+its condition; it does not synchronously join the callback thread. The
+callback thread promotes a weak PlaybackThread reference and calls
+`resetWriteBlocked()`, `resetDraining()`, or `onAsyncError()`; in this
+source, `onAsyncError()` only invalidates tracks. This is not another
+HAL-stream `write/read` dispatch path, but the async callback worker can
+outlive the parent's I/O quiescence point briefly. Do not assume it has
+terminated merely because `PlaybackThread::exit()` returned.
 
-Additional source references inspected:
+Mmap streams use separate `MmapPlaybackThread` /
+`MmapCaptureThread` close branches and are not covered by the ordinary
+PlaybackThread/RecordThread argument. The current HAL does not implement
+mmap streams and must continue rejecting them.
 
-- https://android.googlesource.com/platform/frameworks/av/+/45e3065/services/audioflinger/Threads.cpp
-  (`ThreadBase::exit()` and its `requestExitAndWait()` call)
-- https://android.googlesource.com/platform/frameworks/av/+/e93cf2ca27ae6f4a81d4ef548bbf10a34db6d98f/services/audioflinger/Threads.cpp
-  (`PlaybackThread::preExit()` calling output `set_parameters`)
-- https://android.googlesource.com/platform/system/core/+/d2baf64a1081d5f0cd44d694b24afaab6ff4f4a6/libutils/Threads.cpp
-  (`Thread::requestExitAndWait()` waiting for `mRunning == false`)
+### Current conclusion and provenance limit
 
-These commits are source evidence for the shutdown mechanism, not a recovered
-revision identity for the target vendor image. Do not promote this to a
-target-specific guarantee until the target `frameworks/av` and
-`system/core` revisions are pinned. The callback inventory must also cover
-control methods (parameters, standby, effects and device controls), mmap
-threads, and offload/async callback workers independently.
+For the pinned AOSP Android 9.0.0_r3 baseline, normal non-mmap PCM read/write
+dispatch—including the auxiliary FastMixer and FastCapture workers—is
+quiescent before the corresponding HAL close callback begins. The output
+`preExit()` parameter callback is also complete before that point.
+This removes the generic pre-admission UAF concern for callbacks exclusively
+dispatched by those framework-owned workers **when the target framework
+matches this baseline**.
 
-## Reproducible AOSP Android 9 baseline
-
-The upstream Android 9.0.0 Release 3 tag has now been resolved for the two
-framework repositories used by this lifecycle analysis:
-
-- `platform/frameworks/av`, tag `android-9.0.0_r3`, commit
-  `8d3bfcbbd96603ad74df5ee003bbf100d74a1096` (build
-  `PPR1.180610.011`).
-- `platform/system/core`, tag `android-9.0.0_r3`, commit
-  `0fac9018f2388f25f5a5778663a14712e75a9903` (same build).
-
-This pins a reproducible public AOSP baseline matching the
-`platform_hardware_libhardware` tag already used for ABI assertions. It does
-**not** prove that the MT8163 vendor image was built from these exact commits:
-the target image fingerprint, repo manifest, and vendor cherry-picks are not
-present in this repository. Treat the tag as the reference baseline, not as
-recovered device provenance.
-
-The `system/core` implementation is especially important: `Thread`'s
-destructor is empty. The join guarantee comes from the explicit
-`Thread::requestExitAndWait()` call in `ThreadBase::exit()`, which waits
-until `mRunning` becomes false. It must not be attributed to object
-destruction or to `requestExit()` alone.
-
-The offload path needs separate treatment. `OffloadThread::threadLoop_exit()`
-requests exit on `AsyncCallbackThread` when asynchronous writes are enabled,
-but `AsyncCallbackThread::exit()` itself only sets the exit request and
-signals its condition; it does not call `requestExitAndWait()`. Its worker
-processes acknowledgements/errors back into the playback-thread object; it is
-not the ordinary PCM `write()` dispatch path. Do not claim that the parent
-thread's join also joins this callback thread. Any lifetime argument involving
-the HAL's registered asynchronous callback must be audited against the
-specific HAL callback registration/unregistration contract.
-
-Mmap playback/capture uses separate AudioFlinger thread classes and close
-branches. The ordinary PlaybackThread/RecordThread sequence cannot be applied
-to mmap streams. This project currently has no mmap stream implementation,
-and its HAL stream-open methods remain fail-closed.
-
-For ordinary non-mmap PCM streams, the current defensible conclusion is
-narrow: AudioFlinger removes the thread from its registry, exits and joins
-the worker, then clears the stream and invokes the HAL close method. This is
-a strong quiescence guarantee for I/O dispatched exclusively by that worker.
-It is not a blanket guarantee for calls already holding a thread reference,
-control-plane operations, effects, mmap, or vendor-private asynchronous
-callbacks. Keep the stable-dispatch-lifetime question open until those
-classes and the exact target vendor framework delta are checked.
+This does not establish that every vendor-private callback, effect callback,
+mmap callback, or independently dispatched control call is quiescent. Nor
+does the upstream tag prove the target firmware has no vendor changes.
+Keep the stream-open implementation fail-closed until target provenance and
+the remaining callback classes are checked.
 
 ## Callback dispatch lifetime: unresolved hard boundary
 
