@@ -6,7 +6,6 @@ on:
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
-      - ".github/workflows/android-armv7.yml"
   pull_request:
     branches: [main, feature]
     paths:
