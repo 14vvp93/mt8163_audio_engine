@@ -27,6 +27,20 @@ void NormalPlaybackPcmAdapter::reset() noexcept {
     was_processing_ = false;
 }
 
+
+NormalPlaybackResult NormalPlaybackPcmAdapter::process(
+    const std::int16_t* input,
+    std::int16_t* output,
+    std::size_t frames,
+    const StereoPlaybackProfile& profile,
+    const NormalPlaybackContext& context) noexcept {
+    if (!configured_ || !validate_stereo_profile(profile, sample_rate_hz_)) {
+        const Parameters bypass_parameters{};
+        return process(input, output, frames, bypass_parameters, context);
+    }
+    return process(input, output, frames, profile.parameters, context);
+}
+
 NormalPlaybackResult NormalPlaybackPcmAdapter::process(
     const std::int16_t* input,
     std::int16_t* output,
