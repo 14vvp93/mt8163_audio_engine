@@ -12,6 +12,7 @@ on:
       - "tools/audit_android_packed_relocations.py"
       - ".github/workflows/repository-integrity.yml"
   pull_request:
+    branches: [main, feature]
     paths:
       - "**/*.md"
       - "README.md"
