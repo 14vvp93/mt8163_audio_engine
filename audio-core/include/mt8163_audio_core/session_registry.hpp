@@ -31,6 +31,10 @@ class SessionRegistry {
 public:
     SessionRegistry() noexcept;
     explicit SessionRegistry(std::uint32_t first_sequence) noexcept;
+    SessionRegistry(const SessionRegistry&) = delete;
+    SessionRegistry& operator=(const SessionRegistry&) = delete;
+    SessionRegistry(SessionRegistry&&) = delete;
+    SessionRegistry& operator=(SessionRegistry&&) = delete;
 
     bool open(std::uint32_t handle, SourceId source, RouteType route,
               SessionToken* out_token) noexcept;
