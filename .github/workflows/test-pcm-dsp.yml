@@ -20,6 +20,7 @@ concurrency:
 jobs:
   host-tests:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
       - name: Configure
@@ -27,4 +28,4 @@ jobs:
       - name: Build
         run: cmake --build build/pcm-dsp --parallel
       - name: Test
-        run: ctest --test-dir build/pcm-dsp --output-on-failure
+        run: ctest --test-dir build/pcm-dsp --output-on-failure --timeout 30
