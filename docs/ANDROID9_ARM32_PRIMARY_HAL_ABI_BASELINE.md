@@ -614,7 +614,7 @@ Entry point: `0x00128318`, size 1,320 bytes. Validation helpers:
 | Helper | Address | Recovered behavior |
 |---|---:|---|
 | `checkOpenStreamFormat(int*)` | `0x00127fac` | Accepts PCM16 (`1`); for another value writes PCM16 to the supplied field and returns false |
-| `checkOpenStreamChannels(unsigned int*)` | `0x0012800c` | Accepts `0x0c` directly; otherwise uses representation bits `0xc000` and rejects masks containing bit `0x10`. Preserve this as a raw predicate until vendor channel-mask declarations are pinned |
+| `checkOpenStreamChannels(unsigned int*)` | `0x0012800c` | Accepts `0x0c` directly; otherwise accepts any mask containing bit `0x10`, or a non-zero mask composed only of bits in `0xc000`. All other masks are rewritten to `0x0c` and the helper returns false. Preserve this as a raw predicate until vendor channel-mask declarations are pinned |
 | `checkOpenStreamSampleRate(unsigned int, unsigned int*)` | `0x00128094` | Route-dependent checks described below |
 
 The input rate validator branches on the raw input-device mask:
@@ -624,6 +624,16 @@ The input rate validator branches on the raw input-device mask:
 - other masks consult `AudioALSAStreamManager` state and route flags, with 16,000/48,000-Hz handling and a 48,000-Hz fallback path.
 
 Do not assign semantic names to the two vendor-specific masks without matching vendor headers. The helper may rewrite the requested rate on a rejected path; callers must preserve and test both the returned status and the updated configuration.
+
+### Executable reference tests for recovered predicates
+
+The host-only reference model is in `audio-hal-abi/include/mt8163_factory_stream_contract.h`. It encodes only the recovered, deterministic helper behavior:
+
+- output `SampleRateSupport` allowlist;
+- input format acceptance (PCM16 enum `1`) and PCM16 fallback;
+- input channel-mask predicate and stereo-mask fallback (`0x0c`).
+
+`audio-hal-abi/tests/factory_stream_contract_test.cpp` covers accepted and rejected boundary values. It does not claim to implement the HAL, device policy, stream flags or buffer negotiation. The ARM32 ABI workflow builds both the existing C/C++ layout tests and this contract test; all three passed in [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781) on feature HEAD `37b4a089bc33be45b55acdb6081fe17600fe3407`.
 
 ### Open and buffer timing
 
