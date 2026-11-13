@@ -39,6 +39,29 @@ The control thread closes the gate with an atomic bit operation. This linearizes
 
 The endpoint backend adds a per-stream atomic transfer gate so overlapping playback writes or capture reads return `WouldBlock` rather than entering the platform PCM API concurrently. Its platform callbacks must be bounded, nonblocking and allocation/logging-free.
 
+## Android HAL byte/frame bridge
+
+`PcmByteStreamAdapter` is a per-stream wrapper around
+`PrimaryHalStreamAdapter`. It owns the negotiated `PcmConfig` snapshot and
+direction so individual realtime calls cannot supply a different channel
+count or format.
+
+- Android-facing byte counts are validated against PCM16 bytes per frame.
+- Null, zero-length, misaligned buffers, non-frame-aligned byte counts and
+  transfers above 2048 frames are rejected before entering the broker.
+- Playback and capture methods are direction-specific.
+- A successful backend call maps to the complete requested byte count; an
+  error maps to zero transferred bytes.
+- This relies on the current all-frames-or-error `PcmBackend` contract. It
+  does not yet model partial transfers or deferred errors, so it is not by
+  itself a complete Android `audio_stream_out::write` /
+  `audio_stream_in::read` implementation.
+- The wrapper must be destroyed only after explicit successful close, and its
+  referenced `PrimaryHalStreamAdapter` must outlive it.
+
+The Android HAL device callbacks remain fail-closed. This bridge does not
+enable an output/input stream or select a hardware endpoint.
+
 ## Explicit non-goals
 
 - No production tinyalsa/ALSA binding or enabled target endpoint map.
