@@ -168,7 +168,15 @@ int main() {
     const PcmByteTransfer partial_xrun = output.write(samples.data(), 16U);
     CHECK(partial_xrun.result == PcmResult::Xrun);
     CHECK(partial_xrun.bytes_transferred == 4U);
+    const SessionRecord* failed_session =
+        adapter.audio_core().sessions().find(handle);
+    CHECK(failed_session != nullptr &&
+          failed_session->state == SessionState::Active);
     CHECK(output.stop() == PcmResult::Ok);
+    const SessionRecord* suspended_session =
+        adapter.audio_core().sessions().find(handle);
+    CHECK(suspended_session != nullptr &&
+          suspended_session->state == SessionState::Suspended);
     CHECK(output.close() == PcmResult::Ok);
     CHECK(!output.configured());
     CHECK(!output.started());
