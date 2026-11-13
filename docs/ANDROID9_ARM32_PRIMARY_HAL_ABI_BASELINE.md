@@ -635,6 +635,23 @@ Do not assign semantic names to the two vendor-specific masks without matching v
 
 These findings close only the static format/rate predicate portion of P2. They do not establish runtime policy acceptance, physical endpoint capabilities, or route behavior.
 
+### External-client scan for the private device-tail callbacks
+
+A repeatable scan was added to the factory-binary audit workflow [run 43395840306](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43395840306). It checked dynamic symbols and printable strings in these exact factory binaries:
+
+- `system/lib/libaudioflinger.so`
+- `system/lib/libaudiopolicymanagerdefault.so`
+- `system/lib/libaudiopolicycustomextensions.so`
+- `system/lib/libcarservices_jni.so`
+- `vendor/lib/libaudioprimarydevicehalifclient.so`
+- `vendor/audiocmdservice_atci`
+
+No direct named `xWay*`, `VoiceUnlock`, `ReadRefFromRing`, or callback-registration symbol/string references were found in those six client files. This is a bounded negative string/symbol scan only; it does **not** prove that indirect calls through a private struct offset do not exist, and it does not cover every binary in the firmware.
+
+A separate disassembly of `libaudioprimarydevicehalifclient.so` confirmed that `MTKPrimaryDevicesHalClientImpl` creates an `MTKDevicesFactoryHalInterface` object and forwards `setParameters` / `getParameters` through that interface's virtual methods. `audiocmdservice_atci` obtains this client. This establishes an ATCI-to-MTK-device-factory parameter bridge, but it does not identify a caller of the 16 private device-tail callbacks.
+
+Therefore the external-caller and semantics gate remains open. Do not populate the private tail with guessed function signatures or assume all 16 entries are unused.
+
 ## 6. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
