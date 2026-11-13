@@ -102,6 +102,12 @@ jobs:
             "$objdump" -d -C --start-address=0x12b510 --stop-address=0x12b718 "$binary"
 
             echo
+            echo "===== AudioALSAStreamOut/Input getters ====="
+            "$objdump" -d -C --start-address=0x81d48 --stop-address=0x81d58 "$binary"
+            "$objdump" -d -C --start-address=0x81d50 --stop-address=0x81d58 "$binary"
+            "$objdump" -d -C --start-address=0x81db0 --stop-address=0x81db8 "$binary"
+
+            echo
             echo "===== AudioALSAStreamOut::SampleRateSupport ====="
             "$objdump" -d -C --start-address=0x81c8c --stop-address=0x81d48 "$binary"
 
