@@ -1,4 +1,5 @@
 #include "mt8163_audio_core/route_policy.hpp"
+#include "mt8163_audio_core/dsp_route_policy.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -64,6 +65,40 @@ void test_cd3313_analog_inputs() {
             "analog AUX is not assumed to be a PCM stream");
 }
 
+
+void test_dsp_visibility_is_not_route_validity() {
+    require(classify_dsp_route(SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                DspRouteClass::PcmPlayback,
+            "local media exposes a playback PCM boundary");
+    require(classify_dsp_route(SourceId::SystemSound, RouteType::PrimaryPcm) ==
+                DspRouteClass::PcmPlayback,
+            "system sounds use the shared playback DSP graph");
+    require(classify_dsp_route(SourceId::BluetoothA2dp, RouteType::A2dpPcm) ==
+                DspRouteClass::PcmPlaybackRequiresOffloadControl,
+            "A2DP DSP visibility requires offload control");
+    require(classify_dsp_route(SourceId::BluetoothHfp, RouteType::HfpSco) ==
+                DspRouteClass::TelephonyRequiresPcmBridge,
+            "HFP requires a dedicated DSP-visible telephony PCM bridge");
+    require(classify_dsp_route(SourceId::Microphone, RouteType::PrimaryCapturePcm) ==
+                DspRouteClass::CaptureRequiresEchoReference,
+            "microphone DSP requires a synchronized echo reference");
+    require(classify_dsp_route(SourceId::FmRadio, RouteType::FmCapturePcm) ==
+                DspRouteClass::PcmCapture,
+            "FM capture is a DSP-visible capture route");
+    require(classify_dsp_route(SourceId::FmRadio, RouteType::FmDirectI2s) ==
+                DspRouteClass::RequiresDigitalTap,
+            "FM direct I2S requires a digital DSP tap");
+    require(classify_dsp_route(SourceId::Aux, RouteType::Cd3313AnalogInput) ==
+                DspRouteClass::AnalogOnlyNoPcmEvidence,
+            "CD3313 analog AUX is not falsely declared software DSP-visible");
+    require(classify_dsp_route(SourceId::Dab, RouteType::Cd3313AnalogInput) ==
+                DspRouteClass::AnalogOnlyNoPcmEvidence,
+            "analog DAB path requires digitization before DSP");
+    require(classify_dsp_route(SourceId::Count, RouteType::PrimaryPcm) ==
+                DspRouteClass::Invalid,
+            "out-of-range source cannot be DSP-classified");
+}
+
 void test_unproven_and_invalid_pairs() {
     require(validate_source_route(SourceId::Reverse, RouteType::PrimaryPcm) ==
                 RouteValidation::Unverified,
@@ -84,6 +119,7 @@ int main() {
     test_proven_pcm_routes();
     test_fm_planes_remain_distinct();
     test_cd3313_analog_inputs();
+    test_dsp_visibility_is_not_route_validity();
     test_unproven_and_invalid_pairs();
     std::cout << "AudioCore route policy tests passed\n";
     return 0;
