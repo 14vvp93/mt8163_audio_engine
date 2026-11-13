@@ -50,6 +50,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 ## MT8163 platform, HAL and vendor stack
 
 - [Primary Audio HAL analysis](MT8163_AUDIO_HAL_ANALYSIS.md)
+- [Android 9 ARM32 primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md) — pinned PPR1.180610.011 / AOSP r3 structure reference, offsets and unresolved vendor binary facts.
 - [Audio HAL reconstruction](MT8163_AUDIO_HAL_RECONSTRUCTION.md)
 - [Vendor audio DSP stack](MT8163_VENDOR_AUDIO_DSP_STACK.md)
 - [MTK audio lifecycle](MT8163_MTK_AUDIO_LIFECYCLE.md)
@@ -91,6 +92,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 - [ADB audio and Device Tree diagnostics collector](../tools/README.md)
 - [Offline Markdown link checker](../scripts/repository/check_markdown_links.py)
+- [Primary HAL ELF/ABI audit](../tools/audit_primary_hal_binary.sh)
 
 ## Repository areas
 
