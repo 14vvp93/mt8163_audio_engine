@@ -122,6 +122,10 @@ Whichever option is selected, a production adapter must:
   real four-channel PCM boundary is proven.
 - Keep the legacy stereo PCM16 core as the candidate for stereo-preserving
   media processing.
+- A host-side `NormalPlaybackPcmAdapter` scaffold now exercises the
+  pre-fold boundary contract. It is PCM16 stereo only, processes only an
+  explicitly supplied PrimaryMedia/Normal context, and bit-exact bypasses
+  unsupported routes, formats and modes. It is not connected to Android.
 - Do not connect either engine to the existing MTK post-processing callback
   yet: speaker routes have already been folded to mono, and the remaining
   buffer contract is incomplete.
