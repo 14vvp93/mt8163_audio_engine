@@ -8,6 +8,7 @@ add_library(mt8163_audio_core STATIC
     src/pcm_backend_contract.cpp
     src/endpoint_pcm_backend.cpp
     src/pcm_stream_broker.cpp
+    src/primary_hal_stream_adapter.cpp
     src/snapshot_publisher_compile_check.cpp
 )
 target_include_directories(mt8163_audio_core PUBLIC include)
@@ -49,6 +50,11 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(mt8163_audio_core_pcm_contract_tests PRIVATE mt8163_audio_core)
     target_compile_options(mt8163_audio_core_pcm_contract_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME mt8163_audio_core_pcm_contract_tests COMMAND mt8163_audio_core_pcm_contract_tests)
+
+    add_executable(mt8163_primary_hal_adapter_tests tests/primary_hal_stream_adapter_test.cpp)
+    target_link_libraries(mt8163_primary_hal_adapter_tests PRIVATE mt8163_audio_core)
+    target_compile_options(mt8163_primary_hal_adapter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME mt8163_primary_hal_adapter_tests COMMAND mt8163_primary_hal_adapter_tests)
 
     add_executable(mt8163_audio_core_endpoint_backend_tests tests/endpoint_pcm_backend_test.cpp)
     target_link_libraries(mt8163_audio_core_endpoint_backend_tests PRIVATE mt8163_audio_core Threads::Threads)
