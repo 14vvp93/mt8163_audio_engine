@@ -43,7 +43,7 @@ Internal modules may be separate source libraries, but they must not create comp
 
 Use these names consistently:
 
-- **CD3313EO** — physical audio IC.
+- **CD3313EO** — physical audio IC; use the manufacturer datasheet values as hard design constraints for the analog-control layer.
 - **CD3313KO** — Linux kernel driver; firmware file is `cd3313.ko`.
 - **`/dev/audiomux`** — device-node interface exposed by the firmware driver.
 
