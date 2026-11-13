@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Working branch:** `feature`  
 **Stable branch:** `main`  
-**Latest verified AudioCore/PCM code baseline:** `5f5cf4547bd51cb6c7987e5e1616d8191e175e12` (stereo profile API; 22/22 host tests and Android ARMv7 cross-build PASS on descendant `66b1782c554ba22f7a2f3029e1e199ee293cf5a1`)  
+**Latest verified AudioCore/PCM code baseline:** `346dc854204f4f1a907c580eb2b2e6c4bf42ad63` (versioned stereo profile API; 22/22 host tests and Android ARMv7 cross-build PASS)  
 **Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; selected profile-driven DSP integration and device validation are not complete.
