@@ -46,6 +46,9 @@ PcmResult PcmByteStreamAdapter::configure(const PcmConfig& config) noexcept {
         (transfer_gate_.load(std::memory_order_acquire) & kTransferCountMask) != 0U) {
         return PcmResult::InvalidState;
     }
+    if (config.format != PcmFormat::Pcm16SignedLittleEndian) {
+        return PcmResult::UnsupportedFormat;
+    }
     if (!is_valid_pcm_config(config)) return PcmResult::InvalidArgument;
     if (configured_.load(std::memory_order_acquire) != 0U) {
         const bool same_config =
