@@ -5,6 +5,7 @@ add_library(mt8163_pcm_dsp STATIC
     src/engine.cpp
     src/fm_adapter.cpp
     src/normal_playback_adapter.cpp
+    src/stereo_profile.cpp
     src/quad_engine.cpp
     src/time_alignment.cpp
     src/crossover.cpp
