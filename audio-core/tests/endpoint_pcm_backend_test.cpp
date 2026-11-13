@@ -21,6 +21,7 @@ struct FakeDevice {
     PcmResult next_write_result{PcmResult::Ok};
     PcmResult start_result{PcmResult::Ok};
     PcmResult stop_result{PcmResult::Ok};
+    PcmResult close_result{PcmResult::Ok};
     EndpointPcmBackend* backend{nullptr};
     PcmBackend::StreamToken reenter_token{0U};
     bool reenter_write{false};
@@ -100,8 +101,9 @@ PcmResult fake_stop(void* context, std::uint32_t) noexcept {
     return fake.stop_result;
 }
 PcmResult fake_close(void* context, std::uint32_t) noexcept {
-    ++static_cast<FakeDevice*>(context)->closes;
-    return PcmResult::Ok;
+    auto& fake = *static_cast<FakeDevice*>(context);
+    ++fake.closes;
+    return fake.close_result;
 }
 
 PcmDeviceOps make_ops(FakeDevice& fake) {
@@ -497,6 +499,36 @@ void test_failed_stop_requires_retry_before_close() {
             "native handle closes after successful stop retry");
 }
 
+void test_failed_close_can_be_retried() {
+    FakeDevice fake;
+    const PcmEndpoint endpoint{
+        RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+    };
+    EndpointPcmBackend backend(&endpoint, 1U, make_ops(fake));
+    PcmBackend::StreamToken token = 0U;
+    require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                PcmResult::Ok,
+            "close-retry stream opens");
+
+    fake.close_result = PcmResult::BackendFailure;
+    require(backend.close(token) == PcmResult::BackendFailure,
+            "native close failure is propagated");
+    require(backend.active_streams() == 1U,
+            "failed native close retains the backend slot");
+    require(backend.close(token) == PcmResult::BackendFailure,
+            "failed close can be retried without losing the token");
+    require(fake.closes == 2U && backend.active_streams() == 1U,
+            "each close retry reaches the native close callback");
+
+    fake.close_result = PcmResult::Ok;
+    require(backend.close(token) == PcmResult::Ok,
+            "close succeeds after the native backend recovers");
+    require(fake.closes == 3U && backend.active_streams() == 0U,
+            "successful retry releases the backend slot");
+    require(backend.close(token) == PcmResult::NotOpen,
+            "closed token is no longer accepted");
+}
+
 void test_failed_start_requires_cleanup_before_close() {
     FakeDevice fake;
     const PcmEndpoint endpoint{
@@ -545,6 +577,7 @@ int main() {
     test_terminal_transfer_errors_fail_closed();
     test_direction_specific_ops_requirements();
     test_failed_stop_requires_retry_before_close();
+    test_failed_close_can_be_retried();
     test_failed_start_requires_cleanup_before_close();
     test_invalid_tables();
     std::cout << "Endpoint PCM backend tests passed\n";
