@@ -21,8 +21,8 @@ This register tracks defects and unresolved architectural risks found while reco
 
 | ID | Component | Evidence | Required action | Status |
 |---|---|---|---|---|
-| FACTORY-STREAM-001 | Factory input channel-mask predicate | The reconstructed predicate accepts any mask containing the mono bit, even when unrelated bits are present. This is weaker than validating the complete Android input mask and its direction-specific channel count. | Treat the predicate as factory-behavior evidence only. Validate masks with the matching Android 9 helpers and an explicit supported-layout policy; add malformed-mask tests. | Open — suspected defect |
-| FACTORY-STREAM-002 | Factory input format normalization | Unsupported input formats are normalized to PCM16 by the recovered helper. This can hide caller errors and reinterpret the buffer layout. | Preserve the observation for compatibility analysis, but reject unsupported formats in the replacement unless an exact caller-visible compatibility requirement is proven. | Open — suspected defect |
+| FACTORY-STREAM-001 | Factory input channel-mask predicate | The reconstructed predicate accepts any mask containing the mono bit, including masks with additional input-channel bits. Such a mask may represent a multichannel layout under Android semantics; acceptance alone does not prove a defect. | Compare exact masks with the pinned Android 9 input-mask helpers and target policy/profile, derive the channel count, and reject layouts the replacement backend cannot represent. Do not silently fold or normalize them. | Open — unresolved compatibility/capability mismatch |
+| FACTORY-STREAM-002 | Factory input format fallback | The recovered helper returns PCM16 as a fallback value while separately reporting `accepted=false`. The actual stream-open caller's handling of that flag has not yet been established. | Trace the exact caller and verify whether the rejection flag is honored before classifying this as a factory defect. The replacement must not treat the fallback value as proof that PCM16 was negotiated. | Open — unresolved call-site behavior |
 
 ## Unresolved risks — not yet classified as defects
 

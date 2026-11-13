@@ -116,10 +116,11 @@ count after an unverified partial transfer.
    but it is not a concrete ALSA/tinyalsa implementation and has no verified
    endpoint map.
 5. The recovered factory input-mask predicate in
-   `mt8163_factory_stream_contract.h` accepts a mask whenever the mono bit is
-   present, even if unrelated bits are also set. The helper is evidence of
-   factory behavior, not a valid Android channel-mask validator. The current
-   `PcmConfig` is narrower still: it supports only one/two-channel PCM16.
+   `mt8163_factory_stream_contract.h` accepts any mask containing the mono
+   bit, including masks with additional input-channel bits. Those bits may
+   describe a multichannel layout under Android semantics, so this is not a
+   confirmed defect without matching policy/call-site evidence. The current
+   `PcmConfig` is narrower: it supports only one/two-channel PCM16.
 
 ## Safe wrapper ownership design
 
