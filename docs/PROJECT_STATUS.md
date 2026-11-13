@@ -137,10 +137,10 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Android 9 ARM32 ABI layout and factory stream-contract tests: PASS on current feature HEAD `ea6818f3c31f13dcd0e25d3ae498961738b596fe` — [run 43406175717](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406175717). The C/C++ layout tests and stream-predicate tests pass with compile-time assertions for all 16 private callback slots, including the corrected `xWayRec_Start` index 4.
-- AudioCore TSAN: PASS on current feature HEAD — [run 43406175719](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406175719).
-- PCM Stream Broker TSAN: PASS on current feature HEAD — [run 43406175796](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406175796).
-- Repository Integrity: PASS on the preceding feature commit — [run 43406055651](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406055651).
+- Android 9 ARM32 ABI layout and factory stream-contract tests: PASS on current feature HEAD `0321a586ace98f9bf1e9154be449e2e4675980a2` — [run 43406307144](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307144). Includes C/C++ layout checks, stream-predicate tests and compile-time assertions for all 16 private callback indices and exact offsets 156–216.
+- AudioCore TSAN: PASS on current feature HEAD — [run 43406307164](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307164).
+- PCM Stream Broker TSAN: PASS on current feature HEAD — [run 43406307107](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307107).
+- Repository Integrity: PASS on the immediately preceding feature commit — [run 43406273492](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406273492).
 - Primary HAL factory audit, stream contracts, xWay forwarding, voice-unlock worker/teardown, HIDL bridge, full 1,052-library scan and service executable audit: PASS on code-equivalent feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048/artifacts/14026274892).
 - The firmware extraction contains no MediaTek vendor headers and no `ld.config*.txt` linker namespace configuration. Audio policy XML/conf and audio-device XML are present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
