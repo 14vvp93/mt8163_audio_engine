@@ -28,7 +28,7 @@ public:
     }
     PcmResult start(StreamToken) noexcept override {
         started = true;
-        return PcmResult::Ok;
+        return start_result;
     }
     PcmResult write(StreamToken, const std::int16_t* data,
                     std::size_t frames) noexcept override {
@@ -73,6 +73,7 @@ public:
     std::size_t writes{0U};
     std::size_t next_transfer_frames{0U};
     PcmResult next_transfer_result{PcmResult::Ok};
+    PcmResult start_result{PcmResult::Ok};
     PcmConfig config{};
     std::atomic<bool> block_writes{false};
     std::atomic<bool> write_entered{false};
@@ -183,5 +184,20 @@ int main() {
                        PcmDirection::Playback) == PcmResult::UnsupportedRoute);
     CHECK(adapter.open(0U, SourceId::LocalMedia, RouteType::PrimaryPcm,
                        PcmDirection::Playback) == PcmResult::InvalidArgument);
+
+    constexpr std::uint32_t failed_start_handle = 0x81630002U;
+    CHECK(adapter.open(failed_start_handle, SourceId::LocalMedia,
+                       RouteType::PrimaryPcm, PcmDirection::Playback) == PcmResult::Ok);
+    PcmByteStreamAdapter failed_start_output(
+        adapter, failed_start_handle, PcmDirection::Playback);
+    CHECK(failed_start_output.configure(config) == PcmResult::Ok);
+    backend.start_result = PcmResult::BackendFailure;
+    CHECK(failed_start_output.start() == PcmResult::BackendFailure);
+    CHECK(!failed_start_output.started());
+    CHECK(failed_start_output.stop() == PcmResult::Ok);
+    CHECK(!backend.started);
+    CHECK(failed_start_output.close() == PcmResult::Ok);
+    CHECK(adapter.stream_count() == 0U);
+    backend.start_result = PcmResult::Ok;
     return 0;
 }
