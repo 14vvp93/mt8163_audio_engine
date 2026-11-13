@@ -635,22 +635,48 @@ Do not assign semantic names to the two vendor-specific masks without matching v
 
 These findings close only the static format/rate predicate portion of P2. They do not establish runtime policy acceptance, physical endpoint capabilities, or route behavior.
 
-### External-client scan for the private device-tail callbacks
+### External-client and HIDL bridge recovery
 
-A repeatable scan was added to the factory-binary audit workflow [run 43395840306](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43395840306). It checked dynamic symbols and printable strings in these exact factory binaries:
+The factory audit workflow now scans every extracted shared library under `system/lib` and `vendor/lib`, rather than a small hand-picked client set. In [run 43399592976](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43399592976), it scanned **1,052 shared libraries** and found four libraries with matching symbols or strings:
 
-- `system/lib/libaudioflinger.so`
-- `system/lib/libaudiopolicymanagerdefault.so`
-- `system/lib/libaudiopolicycustomextensions.so`
-- `system/lib/libcarservices_jni.so`
-- `vendor/lib/libaudioprimarydevicehalifclient.so`
-- `vendor/audiocmdservice_atci`
+| Library | SHA-256 | Evidence |
+|---|---|---|
+| `vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so` | `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc` | Implements MediaTek HIDL 4.1 extension methods and dispatches into the legacy device tail |
+| `vendor/lib/vendor.mediatek.hardware.audio@4.1.so` | `553704e5285c4ab1e505bab569ac261f40ce7e6aa8c0c9173e038acc59dc3be5` | Generated Bp/Bn HIDL interface and callback transport methods |
+| `vendor/lib/libaudioprimarydevicehalifclient.so` | `b5e805b6cf20d995babb730f70b6287d4d4ff0c7168c189de326d05e8d58c22c` | Factory client loads/uses the MTK primary-device interface |
+| `vendor/lib/hw/audio.primary.mt8163.so` | Factory HAL SHA-256 above | Exports the legacy device callback implementations |
 
-No direct named `xWay*`, `VoiceUnlock`, `ReadRefFromRing`, or callback-registration symbol/string references were found in those six client files. This is a bounded negative string/symbol scan only; it does **not** prove that indirect calls through a private struct offset do not exist, and it does not cover every binary in the firmware.
+The scan is symbol/string based. It does not prove absence of indirect calls from stripped executables or code that accesses the private tail by numeric offset. It does, however, identify the actual vendor HIDL bridge that consumes a substantial part of that tail.
 
-A separate disassembly of `libaudioprimarydevicehalifclient.so` confirmed that `MTKPrimaryDevicesHalClientImpl` creates an `MTKDevicesFactoryHalInterface` object and forwards `setParameters` / `getParameters` through that interface's virtual methods. `audiocmdservice_atci` obtains this client. This establishes an ATCI-to-MTK-device-factory parameter bridge, but it does not identify a caller of the 16 private device-tail callbacks.
+#### Confirmed HIDL 4.1 to legacy HAL callback mapping
 
-Therefore the external-caller and semantics gate remains open. Do not populate the private tail with guessed function signatures or assume all 16 entries are unused.
+Disassembly of `android.hardware.audio@4.0-impl-mediatek.so` confirms that the HIDL `Device` adapter obtains the legacy `audio_hw_device` pointer from its device wrapper and invokes these function pointers by their exact byte offsets:
+
+| Private device offset | HIDL 4.1 method | Legacy callback |
+|---:|---|---|
+| 188 (`0xbc`) | `getVoiceUnlockULTime` | `GetVoiceUnlockULTime(void*)` |
+| 192 (`0xc0`) | `setVoiceUnlockSRC` | `SetVoiceUnlockSRC(unsigned int, unsigned int)` |
+| 196 (`0xc4`) | `startVoiceUnlockDL` | `startVoiceUnlockDL()` |
+| 200 (`0xc8`) | `stopVoiceUnlockDL` | `stopVoiceUnlockDL()` |
+| 204 (`0xcc`) | `getVoiceUnlockDLInstance` | `getVoiceUnlockDLInstance()` |
+| 208 (`0xd0`) | `setupParametersCallback` | `setupParametersCallback(callback, cookie)` |
+| 212 (`0xd4`) | `setAudioParameterChangedCallback` | `setAudioParameterChangedCallback(callback, cookie)` |
+| 216 (`0xd8`) | `clearAudioParameterChangedCallback` | `clearAudioParameterChangedCallback(cookie)` |
+
+The `Device::audioParameterChangedCallback(char const*, void*)` implementation forwards parameter-change notifications through the registered `IAudioParameterChangedCallback::audioParameterChangedCallback(hidl_string)` HIDL callback. This establishes both registration and notification directions for the parameter-change callback.
+
+The HIDL adapter has null-pointer branches for absent legacy callbacks and returns an error result instead of invoking a null function pointer. Exact public HIDL result-enum interpretation and callback lifetime/concurrency semantics still need to be reconciled against the generated interface declarations and runtime service behavior.
+
+#### What remains unresolved in the private tail
+
+- Offsets 156–184: `xWayPlay_Start/Stop/Write/GetFreeBufferCount`, both `xWayRec_Stop` entry forms, `xWayRec_Read`, and `ReadRefFromRing` have not yet been tied to all their external callers.
+- The duplicate `xWayRec_Stop` entries have different first-argument conventions and must remain distinct.
+- The six-library negative scan recorded in the earlier audit is superseded by the 1,052-library scan above.
+- The scan did not include every executable, APK/JNI payload, or runtime-loaded component; indirect callers remain possible.
+
+The linker-namespace portion of the same full-tree audit found no `ld.config.txt` or `ld.config.28.txt` in the extracted `system/etc` or `vendor/etc` locations. It did find the system/vendor audio policy XML, legacy `vendor/audio_policy.conf`, and `vendor/audio_device.xml`. Those policy files are not substitutes for linker namespace configuration.
+
+Do not populate or replace unresolved private callbacks with guessed signatures. Preserve only the exact factory ABI until the remaining caller and lifetime contracts are understood.
 
 ## 6. Vendor-specific facts that remain unresolved
 
