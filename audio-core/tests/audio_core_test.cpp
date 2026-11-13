@@ -73,6 +73,47 @@ void test_control_state_is_published() {
     require(!core.snapshot_dirty(), "successful publication clears dirty flag");
 }
 
+void test_dirty_snapshot_retries_latest_committed_state() {
+    AudioCore core;
+
+    auto initial = core.try_acquire_snapshot();
+    require(static_cast<bool>(initial), "initial snapshot slot is pinned");
+
+    require(core.set_mode(AudioMode::InCall),
+            "first mutation publishes to a second slot");
+    auto second = core.try_acquire_snapshot();
+    require(static_cast<bool>(second), "second snapshot slot is pinned");
+
+    require(core.set_master_mute(MuteOwner::AccPowerState, true),
+            "second mutation publishes to the third slot");
+    auto third = core.try_acquire_snapshot();
+    require(static_cast<bool>(third), "third snapshot slot is pinned");
+
+    require(core.set_source_mute(SourceId::Navigation,
+                                 MuteOwner::UserRequest, true),
+            "control mutation commits when all inactive slots are pinned");
+    require(core.snapshot_dirty(),
+            "failed publication leaves snapshot marked dirty");
+
+    initial.reset();
+    require(core.publish_snapshot(),
+            "control loop can publish after a reader releases a slot");
+    require(!core.snapshot_dirty(),
+            "successful retry clears dirty state");
+
+    auto current = core.try_acquire_snapshot();
+    require(static_cast<bool>(current), "retried snapshot is readable");
+    require(current->generation == 3U,
+            "retry publishes the latest committed generation");
+    require(current->mode == AudioMode::InCall,
+            "retry preserves earlier committed mode");
+    require(current->master_mute_owners == (1U << 0U),
+            "retry preserves earlier committed master mute");
+    require(current->source_mute_owners[
+                static_cast<std::size_t>(SourceId::Navigation)] == (1U << 9U),
+            "retry includes the mutation that initially could not publish");
+}
+
 void test_owner_scoped_clear_and_close() {
     AudioCore core;
     require(core.set_master_mute(MuteOwner::AccPowerState, true),
@@ -139,6 +180,7 @@ void test_invalid_mode_and_session() {
 int main() {
     test_initial_snapshot();
     test_control_state_is_published();
+    test_dirty_snapshot_retries_latest_committed_state();
     test_owner_scoped_clear_and_close();
     test_invalid_mode_and_session();
     test_audio_core_is_single_hardware_command_owner();
