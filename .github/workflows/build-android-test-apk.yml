@@ -35,7 +35,7 @@ jobs:
           [ -d "$ANDROID_HOME/platforms/android-35" ] || packages+=("platforms;android-35")
           [ -d "$ANDROID_HOME/build-tools/35.0.0" ] || packages+=("build-tools;35.0.0")
           [ -d "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" ] || packages+=("ndk;$ANDROID_NDK_VERSION")
-          [ -d "$ANDROID_HOME/cmake/3.22.1" ] || packages+=("cmake;3.22.1")
+          [ -d "$ANDROID_HOME/cmake/3.31.5" ] || packages+=("cmake;3.31.5")
           if [ "${#packages[@]}" -gt 0 ]; then
             yes | "$SDKMANAGER" --licenses >/dev/null
             "$SDKMANAGER" --install "${packages[@]}"
