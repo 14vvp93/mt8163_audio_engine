@@ -423,6 +423,15 @@ The factory binary contains these concrete handler constructors:
 
 This confirms that factory PCM handling is route-specific rather than one universal playback/capture loop. The exact `stream_attribute_t` predicates selecting each handler, and the handler-to-ALSA endpoint/rate/format mappings, still need method-level analysis and P0 runtime corroboration.
 
+The playback factory's dispatch table also exposes several concrete branches:
+- The `stream_attribute_t` selection field at offset `0x18` equal to `0x400` constructs `AudioALSAPlaybackHandlerHDMI`.
+- The same field equal to `0x100000` constructs `AudioALSAPlaybackHandlerFMTransmitter`.
+- A Bluetooth SCO-specific branch consults `WCNChipController` and chooses `AudioALSAPlaybackHandlerBTSCO` when its capability check succeeds, otherwise `AudioALSAPlaybackHandlerBTCVSD`.
+- Other common/default cases construct `AudioALSAPlaybackHandlerNormal`; voice/HFP paths are selected in earlier branches.
+
+These are static dispatch facts. The semantic name of every vendor selection value and its active runtime use still require matching headers and target evidence.
+
+
 
 The device callback adapters pass the following recovered arguments into the C++ open methods:
 
