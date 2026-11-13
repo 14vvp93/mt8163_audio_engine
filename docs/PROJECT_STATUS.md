@@ -38,9 +38,11 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 
 ## Current CI evidence
 
-- AudioCore ThreadSanitizer: [run 43372199075](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43372199075) — success on reviewed baseline HEAD.
+- PCM stream-broker ThreadSanitizer: [run 43373877328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877328) — success on integration branch.
+- Repository integrity: [run 43373877371](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877371) — success; validates local Markdown links and read-only collector syntax.
+- AudioCore ThreadSanitizer: [run 43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) — running at the time of this update; the previous completed run [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297) succeeded.
 - CD3313 protocol/safety: [run 43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746) — success on code commit `cfc20a4`, not the later docs-only HEAD.
-- Earlier PCM DSP host tests and Android ARMv7 library builds are recorded in the roadmap and their validation reports. Re-run them for relevant code changes.
+- Earlier PCM DSP host tests and Android ARMv7 library builds are recorded in validation reports. Re-run them for relevant code changes.
 - No complete primary HAL build or device validation is claimed.
 
 ## Safety state
