@@ -197,6 +197,17 @@ private:
     std::array<Entry, kMaxAudioSessions> entries_{};
 };
 
+void test_stale_token_after_same_handle_reopen(
+    PrimaryHalStreamAdapter& adapter, SessionToken stale,
+    SessionToken replacement, const PcmConfig& config) {
+    CHECK(stale.valid());
+    CHECK(replacement.valid());
+    CHECK(stale.handle == replacement.handle);
+    CHECK(stale.generation != replacement.generation);
+    CHECK(adapter.configure(stale, config) == PcmResult::NotOpen);
+    CHECK(adapter.close(stale) == PcmResult::NotOpen);
+}
+
 int main() {
     FakeBackend backend;
     TestPrimaryHalStreamAdapter adapter(backend);
@@ -297,12 +308,8 @@ int main() {
                        RouteType::PrimaryCapturePcm,
                        PcmDirection::Capture) == PcmResult::Ok);
     const SessionToken new_capture_session = adapter.token_for(handle);
-    CHECK(new_capture_session.valid());
-    CHECK(new_capture_session.handle == old_playback_session.handle);
-    CHECK(new_capture_session.generation != old_playback_session.generation);
-    CHECK(adapter.underlying().configure(old_playback_session, config) ==
-          PcmResult::NotOpen);
-    CHECK(adapter.underlying().close(old_playback_session) == PcmResult::NotOpen);
+    test_stale_token_after_same_handle_reopen(
+        adapter.underlying(), old_playback_session, new_capture_session, config);
     PcmByteStreamAdapter input(adapter.underlying(), adapter.token_for(handle), PcmDirection::Capture);
     CHECK(input.configure(config) == PcmResult::Ok);
     CHECK(input.start() == PcmResult::Ok);
