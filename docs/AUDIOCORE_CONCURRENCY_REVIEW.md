@@ -3,7 +3,7 @@
 Date: 2026-11-12
 Baseline: d0547fa811050a248c1d9d4479d94cc8cf270680
 Scope: AudioCore control state and bounded snapshot publication
-Status: static source review; host CI has passed current snapshot tests; no device test
+Status: static source review; AudioCore and PCM broker TSAN passed on 2026-11-13; no device test
 
 ## 1. Ownership model
 
@@ -34,7 +34,7 @@ No payload field is concurrently modified while a valid handle pins its slot. Th
 - AudioCore retains committed control state and marks the snapshot dirty; the control loop must retry publication.
 - The audio thread must retain its previous valid snapshot for the current block when acquisition fails.
 
-Existing tests cover initial publication, pinned-slot backpressure, coherent multi-field snapshots with concurrent readers, concurrent writer rejection/retry, and mute snapshot transport. A dedicated GitHub Actions ThreadSanitizer workflow was added; its first run completed successfully on the snapshot stress suite.
+Existing tests cover initial publication, pinned-slot backpressure, coherent multi-field snapshots with concurrent readers, concurrent writer rejection/retry, and mute snapshot transport. AudioCore additionally tests the full dirty-state recovery path: all three slots are pinned, a control mutation commits while publication fails, one reader releases a slot, and retry publishes the latest generation with all committed fields. This regression passed AudioCore TSAN run [43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004).
 
 ## 4. Integration constraints
 
@@ -49,7 +49,7 @@ Existing tests cover initial publication, pinned-slot backpressure, coherent mul
 
 - Keep the ThreadSanitizer workflow enabled and rerun it after changes to the publisher or snapshot lifetime protocol.
 - Add repeated acquire/publish/release stress with multiple readers and an intentionally slow pinned reader.
-- Add a dirty-state retry test after all three slots are pinned.
+- [x] Add a dirty-state retry test after all three slots are pinned; passed AudioCore TSAN [run 43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004).
 - Confirm Android NDK r27c ARMv7 compilation of the atomic requirements.
 - Establish callback quiescence and AudioCore lifetime ordering in the primary HAL.
 
