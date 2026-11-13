@@ -1,3 +1,7 @@
+> **PRODUCT SCOPE RETAINED; PRIORITIES SUPERSEDED. The product definition remains useful, but its older P0–P7 ordering is historical. Follow [Project Roadmap](PROJECT_ROADMAP.md) for all current priorities and execution gates.**
+
+---
+
 # MT8163 Audio Engine — Product Goal and Replacement Scope
 
 ## Product definition
