@@ -12,7 +12,7 @@ Stable branch: `main`
 - Authoritative record: [Deep Replacement, Profile-Based DSP and Factory Retention](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
 
 
-> **Latest verified code-bearing commit:** `f50f25af1b3d14010b3f3bf3c4e00451f7c7e5a5`. It adds explicit DSP-route visibility classification and a `SystemSound` source identity. Host CMake/CTest passed **22/22 tests** ([run 43509199586](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199586)); Android ARMv7 static-library cross-build/ELF verification passed ([run 43509199532](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199532)); PCM Stream/HAL Adapter TSAN passed ([run 43509199597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199597)). Repository Integrity passed after the documentation changes ([run 43509340411](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509340411)). Later feature commits in this work session are documentation-only. These results do not claim a complete installable HAL or physical-device validation.
+> **Latest verified code-bearing commit:** `5f5cf4547bd51cb6c7987e5e1616d8191e175e12`. It adds a versioned PCM16 stereo playback-profile contract, strict profile validation and fail-open integration through the NormalPlayback adapter. Host CMake/CTest passed **22/22 tests** on descendant `66b1782c554ba22f7a2f3029e1e199ee293cf5a1` ([run 43510826842](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43510826842)); Android ARMv7 static-library cross-build/ELF verification passed on the same descendant ([run 43510826727](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43510826727)). Repository Integrity passed after the architecture and documentation updates ([run 43510833457](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43510833457)). These results do not claim an Android HAL connection or physical-device validation.
 
 > **Latest regression coverage (2026-11-13):** commit [2f0d4f7](https://github.com/14vvp93/mt8163_audio_engine/commit/2f0d4f77f873471b5eb0149c13fed320d08e35c5) adds endpoint-backend tests for impossible transfer counts on both playback and capture. The backend must return `BackendFailure`, reject subsequent transfers, and require explicit stop/close cleanup. These tests are added but are **not yet CI-verified**; the last verified code baseline remains `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
 
@@ -134,7 +134,7 @@ Final replacement target:
 - [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
 - [x] Confirm stereo-preserving DSP insertion point after DC removal and before conditional stereo-to-mono fold; fold condition and PCM16/PCM32 averaging behavior documented.
 - [x] Confirm the MTK callback does not cover every audio route.
-- [x] Add versioned, validated PCM16 stereo profile contract for the first PrimaryMedia processing boundary; invalid/unknown profiles fail open to bit-transparent bypass.
+- [x] Add versioned, validated PCM16 stereo profile contract for the first PrimaryMedia processing boundary; invalid/unknown profiles fail open to bit-transparent bypass (host tests and ARMv7 cross-build passed).
 - [ ] Integrate the PrimaryMedia profile into the verified Android/HAL route adapter.
 - [ ] Define and validate additional profiles only for routes with proven DSP-visible PCM boundaries.
 - [ ] Add route-specific playback, capture, telephony and echo-reference processing graphs under one DSP/profile owner.
