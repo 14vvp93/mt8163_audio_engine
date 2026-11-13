@@ -134,6 +134,24 @@ jobs:
             "$objdump" -d -C --start-address=0x128094 --stop-address=0x128318 "$binary"
           } 2>&1 | tee primary-hal-stream-methods.txt
 
+      - name: Disassemble MediaTek primary-device HAL client bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          client="factory-firmware/firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so"
+          test -s "$client"
+          {
+            echo "===== MTKPrimaryDevicesHalClientImpl dynamic symbols ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$client" |
+              grep -E 'MTKPrimaryDevicesHalClientImpl::(MTKPrimaryDevicesHalClientImpl|setParameters|getParameters|~MTKPrimaryDevicesHalClientImpl)' || true
+            echo
+            echo "===== MTKPrimaryDevicesHalClientImpl::setParameters ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x40cc --stop-address=0x4170 "$client"
+            echo
+            echo "===== MTKPrimaryDevicesHalClientImpl::getParameters ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0x4170 --stop-address=0x4210 "$client"
+          } 2>&1 | tee primary-hal-client-bridge.txt
+
       - name: Scan factory framework and vendor clients for private HAL callback references
         shell: bash
         run: |
@@ -175,5 +193,6 @@ jobs:
             primary-hal-audit-report.txt
             primary-hal-stream-methods.txt
             primary-hal-private-client-scan.txt
+            primary-hal-client-bridge.txt
           if-no-files-found: error
           retention-days: 7
