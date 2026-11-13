@@ -134,7 +134,9 @@ Final replacement target:
 - [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
 - [x] Confirm stereo-preserving DSP insertion point after DC removal and before conditional stereo-to-mono fold; fold condition and PCM16/PCM32 averaging behavior documented.
 - [x] Confirm the MTK callback does not cover every audio route.
-- [ ] Integrate the unified DSP into every supported route with bit-transparent temporary fallback on unsupported format or DSP failure.
+- [x] Add versioned, validated PCM16 stereo profile contract for the first PrimaryMedia processing boundary; invalid/unknown profiles fail open to bit-transparent bypass.
+- [ ] Integrate the PrimaryMedia profile into the verified Android/HAL route adapter.
+- [ ] Define and validate additional profiles only for routes with proven DSP-visible PCM boundaries.
 - [ ] Add route-specific playback, capture, telephony and echo-reference processing graphs under one DSP/profile owner.
 - [ ] Disable or redirect A2DP offload where it bypasses the DSP-visible PCM path.
 - [ ] Recover a DSP-visible digital path for FM direct I2S and verified ADC/PCM capture for analog-only AUX/AUX2/DAB inputs.
