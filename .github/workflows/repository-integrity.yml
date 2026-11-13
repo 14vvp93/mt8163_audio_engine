@@ -2,7 +2,7 @@ name: Repository integrity
 
 on:
   push:
-    branches: [main, feature/cd3313-driver-rewrite, feature/profile-transition-benchmark]
+    branches: [main, integration/beta-0.1, feature/cd3313-driver-rewrite, feature/profile-transition-benchmark]
     paths:
       - "**/*.md"
       - "README.md"
