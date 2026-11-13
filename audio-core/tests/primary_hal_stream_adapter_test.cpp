@@ -155,6 +155,7 @@ int main() {
     });
     while (!backend.write_entered.load(std::memory_order_acquire)) std::this_thread::yield();
     CHECK(output.stop() == PcmResult::WouldBlock);
+    CHECK(output.close() == PcmResult::WouldBlock);
     CHECK(output.write(samples.data(), 4U).result == PcmResult::InvalidState);
     backend.release_write.store(true, std::memory_order_release);
     writer.join();
