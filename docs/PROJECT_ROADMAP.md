@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Integration branch:** `integration/beta-0.1`  
 **Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-**Current implementation HEAD:** `9ee683c01a170e2ae2297d1f3e594ef0336989f7`  
+**Current implementation HEAD:** `e33c75234b629a1efb7f225d8a606b557e6ddcb8`  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -130,7 +130,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 1. Reconcile the physical-chip terminology across legacy documents using CD3313EO for the IC and CD3313KO for the driver.
 2. Pin the exact firmware manifest, binary hashes, kernel build identity, board DTB/DTBO and selected overlay evidence.
-3. Run the existing read-only diagnostic collector on the target and preserve its unmodified output.
+3. Expanded the read-only PowerShell collector with PCM substream status, `/dev` node metadata, open-FD owners and I2C driver symlinks; removed the ADB serial from the saved manifest. **Pending:** run it on the target and preserve its unmodified output.
 4. Capture loaded modules, module probe logs, `/dev/audiomux` major/minor and owner, relevant process FDs, I2C device/driver bindings and kernel messages.
 5. Capture `/proc/asound/cards`, `/proc/asound/pcm`, PCM status, mixer control inventory and relevant sysfs/pinctrl metadata.
 6. Determine the live Audio Policy XML, AudioPatch state, FM route state, Bluetooth offload state and HFP/SCO lifecycle.
@@ -143,8 +143,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 **Priority: high; host-testable work can continue while P0 evidence is collected**
 
 1. Audit AudioCore's single-writer contract and enforce it at the future HAL control-executor boundary.
-2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery. **In progress:** direction metadata access in PCM callbacks was moved behind transfer admission; a repeated same-handle close/reopen race test was added.
-3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **In progress:** the new race regression is running under the PCM broker TSAN workflow.
+2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery. **Implemented and TSAN-verified:** direction metadata access in PCM callbacks was moved behind transfer admission; a repeated same-handle close/reopen race test was added. [PCM broker TSAN run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298) passed.
+3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **PASS:** the new race regression passed under [PCM broker TSAN run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298).
 4. Ensure stop/close cannot destroy backend state while a transfer callback is active.
 5. Implement the concrete TinyALSA/ALSA operation table only after P0 provides verified endpoint mappings.
 6. Validate period size, buffer size, channels, sample format, rate, interleaving and blocking behavior against the real endpoint.
@@ -307,5 +307,6 @@ The MT8163 Audio Engine is complete only when:
 - Reordered work around runtime ownership, PCM lifecycle, factory HAL ABI and a proven stereo insertion point.
 - Archived the old Beta 0.1 roadmap, refreshed the status/index/README, and marked legacy hardware-identity records as superseded where necessary.
 - Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
-- Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test.
+- Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test and passed PCM broker TSAN.
+- Expanded the read-only PowerShell collector with runtime PCM status, device-node metadata, open-FD ownership and I2C driver bindings; stopped storing the ADB serial in its manifest.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
