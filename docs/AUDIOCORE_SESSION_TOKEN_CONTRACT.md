@@ -84,4 +84,18 @@ Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently in h
 7. Run host tests, AudioCore/PCM ThreadSanitizer, Android ARMv7 build and repository-integrity checks against the exact resulting commit.
 8. Only then permit the HAL integration workstream to consume the token API.
 
+## Automated P1 gate
+
+The repository includes [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml). It runs on relevant pushes and pull requests targeting `feature`, and can be dispatched manually from `feature`.
+
+The workflow has five required checks:
+
+1. Public API contract: verifies the generation-bearing token shape, propagation through all four public layers, absence of raw numeric-handle lifecycle overloads, and presence of stale-token/same-handle-reuse and generation-exhaustion regression coverage.
+2. Full host build and CTest suite.
+3. Full AudioCore/DSP ThreadSanitizer build and test suite.
+4. Android ARMv7 / API 28 cross-build and ELF architecture checks.
+5. Repository Markdown/workflow integrity.
+
+The final `P1 COMPLETE` job succeeds only when every required job succeeds. Until the API migration and required tests are implemented, the contract check is expected to fail. This is intentional: the workflow is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
+
 No device validation is implied by this host/API contract.
