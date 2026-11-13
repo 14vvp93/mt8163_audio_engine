@@ -1,6 +1,6 @@
 # AudioCore Session Token Contract
 
-**Status:** P1 implementation in progress; SessionRegistry, AudioCore, PcmStreamBroker and PrimaryHalStreamAdapter now use generation-bearing tokens. Final verification and remaining audit gates are still open.
+**Status:** implementation and offline P1 session-identity gates passed at `6d13b5f3a98be0306911fc6d2655a4ad4f5078bd`; the exact updated documentation/workflow HEAD is being revalidated.
 
 ## Problem
 
@@ -100,6 +100,6 @@ The workflow has six required checks:
 4. Android ARMv7 / API 28 cross-build and ELF architecture checks.
 5. Repository Markdown/workflow integrity.
 
-The final `P1 COMPLETE` job succeeds only when every required job succeeds. The workflow is expected to remain red until the full regression suite and all verification jobs pass. It is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
+The final `P1 SESSION IDENTITY COMPLETE` job succeeds only when every required job succeeds. The workflow is expected to remain red until the full regression suite and all verification jobs pass. It is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
 
 No device validation is implied by this host/API contract.
