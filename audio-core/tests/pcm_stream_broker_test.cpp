@@ -372,6 +372,7 @@ int main() {
     test_fixed_capacity();
     test_callback_write_while_opening_another_stream();
     test_stop_waits_for_in_flight_callback();
+    test_stop_failure_can_be_retried();
     test_backend_error_propagation();
     test_reopen_same_handle_while_callback_runs();
     std::cout << "PCM stream broker tests passed\n";
