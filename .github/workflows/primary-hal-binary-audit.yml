@@ -109,6 +109,9 @@ jobs:
             echo
             echo "===== AudioALSAStreamManager::getInputBufferSize ====="
             "$objdump" -d -C --start-address=0x7eee8 --stop-address=0x7efb8 "$binary"
+            echo
+            echo "===== Input buffer format-width lookup data ====="
+            "$objdump" -s --start-address=0x186aec --stop-address=0x186b00 "$binary"
 
             echo
             echo "===== AudioALSAHardware input stream wrappers ====="
