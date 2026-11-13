@@ -631,6 +631,11 @@ Do not assign semantic names to the two vendor-specific masks without matching v
 - `AudioALSAStreamIn::open()` (`0x12b510`) follows the equivalent capture path through `createCaptureHandler`.
 - A missing handler or failed handler open returns an error; these methods do not select a hard-coded ALSA PCM index themselves.
 - `AudioALSAStreamOut::bufferSizeTimeUs()` (`0x81d58`) computes the duration of the 8,192-byte quantity as `1,000,000 * 8192 / (channels * sample_rate * bytes_per_sample)`. The byte width comes from the selected PCM format.
+- `AudioALSAHardware::openOutputStream()` (`0x000cac58`) forwards the legacy Android entry point to `AudioALSAStreamManager::openOutputStream()` with the final output-flags argument set to zero.
+- `AudioALSAHardware::openOutputStreamWithFlags()` (`0x000d1244`) reorders the supplied `audio_output_flags_t` into the manager's final argument. The manager forwards it to `AudioALSAStreamOut::set()`; the stream object stores the raw value at offset `0x54`. This proves propagation, not the semantics of individual flag bits.
+- The output `bufferSize()` getter reads the stream-object field at offset `0x74`; the successful `set()` path stores `8192` there. The recovered C wrapper's `get_buffer_size` callback therefore exposes an 8,192-byte output buffer on this path.
+- The manager uses `createPlaybackHandler(stream_attribute_t*)` and `createCaptureHandler(stream_attribute_t*)` as route-handler factories. Handler selection is not equivalent to a simple one-to-one mapping from Android output flags; keep exact flag-bit behavior open until every branch is decoded.
+- The Android input flags are forwarded through the corresponding `openInputStreamWithFlags()` path; their individual bit semantics and their effect on capture-handler selection remain open.
 - The exact stream flag semantics, every error branch, all input/output channel-mask combinations, and the framework-visible buffer-size contract still require further reconciliation.
 
 These findings close only the static format/rate predicate portion of P2. They do not establish runtime policy acceptance, physical endpoint capabilities, or route behavior.
