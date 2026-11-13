@@ -121,7 +121,7 @@ printf '%s\n' "$hmi_export"
 echo
 echo "===== HMI data object: raw ARM32 words ====="
 data_layout=$(readelf -SW "$binary" |
-    awk '$0 ~ /\\] \\.data[[:space:]]+PROGBITS/ { print $4, $5; exit }')
+    awk '$0 ~ /\] \.data[[:space:]]+PROGBITS/ { print $4, $5; exit }')
 set -- $data_layout
 if [ "$#" -ne 2 ]; then
     echo "ERROR: unable to locate .data section for HMI inspection" >&2
@@ -129,10 +129,10 @@ if [ "$#" -ne 2 ]; then
 fi
 data_vaddr=$1
 data_offset=$2
-hmi_vaddr=$(printf '%s\\n' "$hmi_export" | awk '{ print $2 }')
+hmi_vaddr=$(printf '%s\n' "$hmi_export" | awk '{ print $2 }')
 hmi_file_offset=$((0x$data_offset + 0x$hmi_vaddr - 0x$data_vaddr))
 echo "HMI virtual address: 0x$hmi_vaddr"
-printf "HMI file offset: 0x%x\\n" "$hmi_file_offset"
+printf "HMI file offset: 0x%x\n" "$hmi_file_offset"
 od -An -v -tx4 -j "$hmi_file_offset" -N 128 "$binary"
 echo
 echo "===== Relocations targeting the HMI object ====="
