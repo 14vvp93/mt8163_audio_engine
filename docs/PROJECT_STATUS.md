@@ -93,8 +93,9 @@ Final replacement target:
 - [x] Recover legacy output-open flags defaulting to zero, `openOutputStreamWithFlags()` forwarding, raw output flag storage offset and the 8,192-byte output buffer getter contract.
 - [x] Recover input `AUDIO_INPUT_FLAG_FAST` handling, the 5/20/60 ms input stream-buffer duration branches, and the separate 20 ms `getInputBufferSize()` formula with its exact format-width lookup table.
 - [ ] Finish other input/output flag bits, the third-argument channel-mask contract, all error branches, all channel-mask combinations and vendor-header reconciliation.
-- [x] Identify the MediaTek HIDL 4.1 bridge and recover exact legacy callback offsets for seven voice-unlock/parameter-callback methods plus the notification callback path.
-- [ ] Trace all remaining private tail entries at offsets 156–184 (`xWayPlay`, `xWayRec`, `ReadRefFromRing`) and validate callback lifetime/concurrency semantics.
+- [x] Map all 16 private device-tail slots to their internal forwarding targets: xWay playback/recording, reference-ring, voice-unlock and parameter callbacks.
+- [x] Recover xWay adapter forwarding to `Play2Way`, `Record2Way` and `AudioVUnlockDL`; correct the offset-172 entry to `xWayRec_Start` (not a duplicate stop callback).
+- [ ] Identify all external consumers of the private tail and validate callback lifetime/concurrency semantics; the 1,052-library/service scan found no separate named xWay client, but indirect offset callers remain possible.
 - [ ] Implement typed factory-compatible HAL shell with no hardware writes.
 - [ ] Build exact ARM32 HAL and verify ABI/symbol/dependency contract.
 
@@ -135,11 +136,11 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Repository Integrity: PASS on current feature HEAD `0b4c023eb7d0ab321b6dc953171275e1a6c1041b` — [run 43403831105](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831105).
-- AudioCore TSAN: PASS on current feature HEAD — [run 43403831119](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831119).
-- PCM Stream Broker TSAN: PASS on current feature HEAD — [run 43403831103](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403831103).
+- Primary HAL factory audit, xWay/Record2Way/AudioVUnlockDL forwarding analysis, HIDL bridge, full 1,052-library scan and service executable audit: PASS on feature commit `a90d9362b9e66890cace26285aad2f49a10ed364` — [run 43404049682](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43404049682). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43404049682/artifacts/14026586456).
+- Repository Integrity: PASS on feature HEAD before the latest documentation-only update — [run 43403961026](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403961026).
+- AudioCore TSAN: PASS — [run 43403961011](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403961011).
+- PCM Stream Broker TSAN: PASS — [run 43403961074](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403961074).
 - Android 9 ARM32 ABI layout plus recovered stream-contract tests: PASS on code-equivalent feature commit `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). C++ layout, C11 layout and factory stream contract tests all passed.
-- Factory ELF/HMI/APS2, stream/manager disassembly, 1,052-library scan, HIDL bridge and service/ATCI audit: PASS — [run 43402659661](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43402659661/artifacts/14026325808).
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
 
