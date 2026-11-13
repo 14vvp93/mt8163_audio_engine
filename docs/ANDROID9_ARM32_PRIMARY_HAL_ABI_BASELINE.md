@@ -459,7 +459,7 @@ This confirms the earlier pipeline analysis at method level. The actual card/PCM
 **Stereo fold details recovered from the factory helper**
 
 `AudioALSAPlaybackHandlerBase::doStereoToMonoConversionIfNeed` at `0x000d20ac`:
-- checks bit `0x02` in the byte at `stream_attribute_t + 0x18`; if clear, it leaves the buffer unchanged;
+- checks speaker-device bit `0x02` in the output-device mask byte at `stream_attribute_t + 0x18`; if clear, it leaves the buffer unchanged. This includes speaker-only and combined output masks containing the speaker bit;
 - for format value `1` (`AUDIO_FORMAT_PCM_16_BIT`), reads signed 16-bit left/right samples, arithmetic-shifts each by one, adds them and writes the same result to both channels;
 - for format value `3` (`AUDIO_FORMAT_PCM_32_BIT`), performs the equivalent operation on 32-bit samples;
 - other format values bypass this fold helper.
