@@ -9,6 +9,7 @@ add_library(mt8163_audio_core STATIC
     src/endpoint_pcm_backend.cpp
     src/pcm_stream_broker.cpp
     src/primary_hal_stream_adapter.cpp
+    src/pcm_byte_stream_adapter.cpp
     src/snapshot_publisher_compile_check.cpp
 )
 target_include_directories(mt8163_audio_core PUBLIC include)

@@ -1,4 +1,5 @@
 #include "mt8163_audio_core/primary_hal_stream_adapter.hpp"
+#include "mt8163_audio_core/pcm_byte_stream_adapter.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -72,6 +73,27 @@ int main() {
     CHECK(adapter.start(handle) == PcmResult::Ok);
     CHECK(adapter.write(handle, samples.data(), 240U) == PcmResult::Ok);
     CHECK(backend.writes == 240U);
+
+    const PcmByteTransfer byte_write = write_pcm16_bytes(
+        adapter, handle, config, samples.data(), 960U);
+    CHECK(byte_write.result == PcmResult::Ok);
+    CHECK(byte_write.bytes_transferred == 960U);
+    CHECK(backend.writes == 480U);
+
+    const PcmByteTransfer misaligned_write = write_pcm16_bytes(
+        adapter, handle, config, samples.data(), 959U);
+    CHECK(misaligned_write.result == PcmResult::InvalidArgument);
+    CHECK(misaligned_write.bytes_transferred == 0U);
+
+    const PcmByteTransfer oversized_write = write_pcm16_bytes(
+        adapter, handle, config, samples.data(), 8196U);
+    CHECK(oversized_write.result == PcmResult::BufferTooLarge);
+    CHECK(oversized_write.bytes_transferred == 0U);
+
+    const PcmByteTransfer null_write = write_pcm16_bytes(
+        adapter, handle, config, nullptr, 4U);
+    CHECK(null_write.result == PcmResult::InvalidArgument);
+    CHECK(null_write.bytes_transferred == 0U);
     CHECK(adapter.stop(handle) == PcmResult::Ok);
     CHECK(adapter.close(handle) == PcmResult::Ok);
     CHECK(adapter.stream_count() == 0U);
