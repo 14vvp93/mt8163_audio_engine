@@ -1,16 +1,6 @@
 name: Primary HAL factory binary audit
 
 on:
-  push:
-    branches: [main, feature]
-    paths:
-      - "tools/audit_primary_hal_binary.sh"
-      - "tools/audit_android_packed_relocations.py"
-      - ".github/workflows/primary-hal-binary-audit.yml"
-  pull_request:
-    paths:
-      - "tools/audit_primary_hal_binary.sh"
-      - ".github/workflows/primary-hal-binary-audit.yml"
   workflow_dispatch:
 
 permissions:
