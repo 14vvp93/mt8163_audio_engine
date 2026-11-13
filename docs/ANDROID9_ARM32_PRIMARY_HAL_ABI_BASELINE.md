@@ -672,6 +672,16 @@ The `Device::audioParameterChangedCallback(char const*, void*)` implementation f
 
 The HIDL adapter has null-pointer branches for absent legacy callbacks and returns an error result instead of invoking a null function pointer. Exact public HIDL result-enum interpretation and callback lifetime/concurrency semantics still need to be reconciled against the generated interface declarations and runtime service behavior.
 
+#### Vendor HIDL service registration and ATCI client entry
+
+The service executable and init configuration were also included in [factory audit run 43401616001](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401616001):
+
+- `vendor/android.hardware.audio@4.0-service-mediatek` SHA-256: `1f2848726bb752eb291c5abe583144e6cc4f4b49047b38750f2af21b96e9a827`. Its dynamic imports include `IDevicesFactory::descriptor`, `getService()` and `registerAsService()`; strings include `registered IDevicesFactory`.
+- `vendor/android.hardware.audio@4.0-service-mediatek.rc` SHA-256: `20089785ff5d27955f2ce22314804b78bad89b0bb00f6c125b39330a95b3fe7f`. Init starts the service as `vendor.audio-hal-4-0`, runs it as `audioserver`, and declares `android.hardware.audio@4.0::IDevicesFactory default`.
+- `vendor/audiocmdservice_atci` SHA-256: `302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566`. Its dynamic imports include `android::MTKPrimaryDevicesHalClient::getInstance()`.
+
+This establishes two separate factory client paths: Android's HIDL DevicesFactory service and the ATCI service's MediaTek primary-device client. It does not prove that ATCI calls the private xWay/recording callbacks; its recovered client bridge still exposes only the parameter-client `setParameters/getParameters` path.
+
 #### What remains unresolved in the private tail
 
 - Offsets 156–184: `xWayPlay_Start/Stop/Write/GetFreeBufferCount`, both `xWayRec_Stop` entry forms, `xWayRec_Read`, and `ReadRefFromRing` have not yet been tied to all their external callers.
