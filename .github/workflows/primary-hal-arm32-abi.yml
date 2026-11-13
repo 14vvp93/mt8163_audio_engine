@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - "primary-hal/**"
+      - "audio-core/**"
       - ".github/workflows/primary-hal-arm32-abi.yml"
   workflow_dispatch:
 
