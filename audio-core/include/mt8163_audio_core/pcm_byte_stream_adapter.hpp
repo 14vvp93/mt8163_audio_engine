@@ -34,7 +34,7 @@ public:
     bool started() const noexcept {
         return started_.load(std::memory_order_acquire) != 0U;
     }
-    SessionToken session() const noexcept { return handle_; }
+    SessionToken session() const noexcept { return session_; }
     PcmDirection direction() const noexcept { return direction_; }
 
 private:
@@ -45,7 +45,7 @@ private:
     static constexpr std::uint32_t kTransferCountMask = 0x7FFFFFFFU;
 
     PrimaryHalStreamAdapter& adapter_;
-    const std::uint32_t handle_;
+    const SessionToken session_;
     const PcmDirection direction_;
     PcmConfig config_{};
     std::atomic<std::uint32_t> transfer_gate_{0U};
