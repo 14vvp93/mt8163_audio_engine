@@ -9,6 +9,7 @@ on:
       - "scripts/repository/check_markdown_links.py"
       - "scripts/device/**"
       - "tools/audit_primary_hal_binary.sh"
+      - "tools/audit_android_packed_relocations.py"
       - ".github/workflows/repository-integrity.yml"
   pull_request:
   workflow_dispatch:
@@ -29,6 +30,7 @@ jobs:
             /scripts/repository/check_markdown_links.py
             /scripts/device/collect_mt8163_audio_runtime.sh
             /tools/audit_primary_hal_binary.sh
+            /tools/audit_android_packed_relocations.py
           sparse-checkout-cone-mode: false
       - name: Validate local Markdown links
         run: python3 scripts/repository/check_markdown_links.py
@@ -36,3 +38,5 @@ jobs:
         run: bash -n scripts/device/collect_mt8163_audio_runtime.sh
       - name: Validate primary HAL audit script syntax
         run: sh -n tools/audit_primary_hal_binary.sh
+      - name: Validate APS2 relocation audit script syntax
+        run: python3 -m py_compile tools/audit_android_packed_relocations.py
