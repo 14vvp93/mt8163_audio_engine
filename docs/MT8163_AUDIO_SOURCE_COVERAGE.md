@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The current owner-approved target is one DSP engine covering every supported source and direction, including media, navigation, system sounds, A2DP, HFP/SCO, calls, microphone capture, FM and external inputs. Source-specific integration points and processing graphs remain separate where transport or signal direction requires it. This file preserves historical firmware evidence and interim adapter behavior; it does not override the current architecture decision in [the full-replacement/all-source-DSP ADR](ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md).
+The current owner-approved target is one DSP engine covering every supported source and direction, including media, navigation, system sounds, A2DP, HFP/SCO, calls, microphone capture, FM and external inputs. Source-specific integration points and processing graphs remain separate where transport or signal direction requires it. This file preserves historical firmware evidence and interim adapter behavior; it does not override the current architecture decision in [the full-replacement/all-source-DSP ADR](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
 
 This document records firmware-archive evidence and the current integration
 decision. It does not claim runtime validation on a head unit.
