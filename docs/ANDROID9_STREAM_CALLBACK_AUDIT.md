@@ -197,6 +197,39 @@ Only then decide whether framework worker quiescence is sufficient for the
 public read/write callbacks, or whether additional stable dispatch ownership
 is required for any other callback class.
 
+## Thread shutdown semantics: additional source evidence
+
+The inspected AudioFlinger implementation does not merely signal worker shutdown:
+`ThreadBase::exit()` calls `preExit()`, sets the exit request while waking the
+worker condition variable, then calls `requestExitAndWait()`. The corresponding
+`libutils::Thread::requestExitAndWait()` waits until the worker's
+`mRunning` state becomes false. This establishes a synchronous worker
+quiescence point in those inspected source revisions.
+
+There is one important callback before that quiescence point:
+`PlaybackThread::preExit()` invokes the output stream's
+`common.set_parameters("exiting=1")`. It is part of the close caller's
+shutdown sequence and must be treated as a live HAL callback until it returns.
+The worker join only proves that worker-thread dispatch has stopped after
+`exit()` returns; it does not prove that arbitrary control/API calls or
+vendor-private callback mechanisms cannot race close.
+
+Additional source references inspected:
+
+- https://android.googlesource.com/platform/frameworks/av/+/45e3065/services/audioflinger/Threads.cpp
+  (`ThreadBase::exit()` and its `requestExitAndWait()` call)
+- https://android.googlesource.com/platform/frameworks/av/+/e93cf2ca27ae6f4a81d4ef548bbf10a34db6d98f/services/audioflinger/Threads.cpp
+  (`PlaybackThread::preExit()` calling output `set_parameters`)
+- https://android.googlesource.com/platform/system/core/+/d2baf64a1081d5f0cd44d694b24afaab6ff4f4a6/libutils/Threads.cpp
+  (`Thread::requestExitAndWait()` waiting for `mRunning == false`)
+
+These commits are source evidence for the shutdown mechanism, not a recovered
+revision identity for the target vendor image. Do not promote this to a
+target-specific guarantee until the target `frameworks/av` and
+`system/core` revisions are pinned. The callback inventory must also cover
+control methods (parameters, standby, effects and device controls), mmap
+threads, and offload/async callback workers independently.
+
 ## Callback dispatch lifetime: unresolved hard boundary
 
 An atomic admission counter stored inside a stream wrapper is not a lifetime
