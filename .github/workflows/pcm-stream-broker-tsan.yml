@@ -6,9 +6,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pcm-stream-broker-tsan-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   pcm-broker-tsan:

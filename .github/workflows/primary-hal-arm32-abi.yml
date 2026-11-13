@@ -14,9 +14,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: primary-hal-arm32-abi-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   arm32-abi:

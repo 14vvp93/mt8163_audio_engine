@@ -6,9 +6,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: audio-core-tsan-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   audio-core-tsan:

@@ -6,9 +6,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: android-test-apk-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-test-apk:

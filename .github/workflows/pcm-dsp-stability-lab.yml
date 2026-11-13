@@ -3,9 +3,6 @@ name: PCM DSP Stability Lab
 on:
   workflow_dispatch:
 
-concurrency:
-  group: pcm-dsp-stability-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   stability-lab:

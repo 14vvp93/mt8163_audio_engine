@@ -3,9 +3,6 @@ name: PCM DSP Performance Benchmark
 on:
   workflow_dispatch:
 
-concurrency:
-  group: pcm-dsp-performance-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   host-benchmark:

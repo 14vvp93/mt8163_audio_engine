@@ -6,9 +6,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: primary-hal-binary-audit-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   audit-factory-hal:

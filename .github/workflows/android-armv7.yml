@@ -13,9 +13,6 @@ on:
       - "audio-core/**"
   workflow_dispatch:
 
-concurrency:
-  group: android-armv7-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   android-armv7:

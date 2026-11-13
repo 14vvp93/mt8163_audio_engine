@@ -19,9 +19,6 @@ on:
       - "pcm-dsp/Android.mk"
   workflow_dispatch:
 
-concurrency:
-  group: android-effect-library-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   android9-armv7-effect:

@@ -13,9 +13,6 @@ on:
       - "audio-core/**"
   workflow_dispatch:
 
-concurrency:
-  group: test-pcm-dsp-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   host-tests:
