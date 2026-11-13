@@ -193,7 +193,7 @@ private:
 
 void test_complete_lifecycle() {
     FakePcmBackend backend;
-    TestPcmStreamBroker broker(backend);
+    TestTestPcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     require(broker.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "open supported primary playback route");
@@ -213,7 +213,7 @@ void test_complete_lifecycle() {
 
 void test_primary_microphone_capture() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 1U, 240U};
     std::int16_t samples[8]{};
     require(broker.open(29U, SourceId::Microphone, RouteType::PrimaryCapturePcm,
@@ -233,7 +233,7 @@ void test_primary_microphone_capture() {
 
 void test_capture_and_hfp_bidirectional_routes() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{16000U, 1U, 160U};
     std::int16_t samples[8]{};
 
@@ -275,7 +275,7 @@ void test_capture_and_hfp_bidirectional_routes() {
 
 void test_invalid_order_and_arguments() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const std::int16_t sample = 0;
     require(broker.start(9U) == PcmResult::NotOpen, "unknown handle cannot start");
     require(broker.open(2U, SourceId::FmRadio, RouteType::FmDirectI2s) ==
@@ -316,7 +316,7 @@ void test_invalid_order_and_arguments() {
 
 void test_stop_failure_can_be_retried() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 2U, 240U};
 
     require(broker.open(41U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
@@ -348,7 +348,7 @@ void test_stop_failure_can_be_retried() {
 
 void test_fixed_capacity() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     for (std::uint32_t i = 1U; i <= kMaxPcmStreams; ++i) {
         require(broker.open(i, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
                 "fixed stream capacity can be filled");
@@ -364,7 +364,7 @@ void test_fixed_capacity() {
 
 void test_callback_write_while_opening_another_stream() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     std::int16_t samples[2]{};
     require(broker.open(11U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
@@ -399,7 +399,7 @@ void test_callback_write_while_opening_another_stream() {
 
 void test_stop_waits_for_in_flight_callback() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     const std::int16_t samples[2]{};
     require(broker.open(21U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
@@ -430,7 +430,7 @@ void test_stop_waits_for_in_flight_callback() {
 
 void test_reopen_same_handle_while_callback_runs() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 2U, 240U};
     const std::int16_t sample = 0;
     std::atomic<bool> finish{false};
@@ -505,7 +505,7 @@ void test_same_handle_reopen_rejects_stale_session_token() {
 
 void test_invalid_transfer_count_fails_closed_and_can_stop() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 2U, 240U};
     const std::int16_t samples[2]{};
 
@@ -542,7 +542,7 @@ void test_invalid_transfer_count_fails_closed_and_can_stop() {
 
 void test_terminal_transfer_errors_fail_closed() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{48000U, 2U, 240U};
     std::int16_t samples[2]{};
 
@@ -595,7 +595,7 @@ void test_terminal_transfer_errors_fail_closed() {
 
 void test_failed_start_requires_cleanup_before_close() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     require(broker.open(42U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
                 PcmResult::Ok, "failed-start stream opens");
     require(broker.configure(42U, PcmConfig{48000U, 2U, 240U}) == PcmResult::Ok,
@@ -619,7 +619,7 @@ void test_failed_start_requires_cleanup_before_close() {
 
 void test_backend_error_propagation() {
     FakePcmBackend backend;
-    PcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     backend.configure_result = PcmResult::BackendFailure;
     require(broker.open(4U, SourceId::Navigation, RouteType::PrimaryPcm) == PcmResult::Ok,
             "open stream before injected error");
