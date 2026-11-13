@@ -96,7 +96,7 @@ int main() {
     CHECK(null_write.result == PcmResult::InvalidArgument);
     CHECK(null_write.bytes_transferred == 0U);
 
-    std::array<std::uint8_t, 8U> unaligned_storage{};
+    alignas(std::int16_t) std::array<std::uint8_t, 8U> unaligned_storage{};
     const PcmByteTransfer unaligned_buffer =
         output.write(unaligned_storage.data() + 1U, 4U);
     CHECK(unaligned_buffer.result == PcmResult::InvalidArgument);
