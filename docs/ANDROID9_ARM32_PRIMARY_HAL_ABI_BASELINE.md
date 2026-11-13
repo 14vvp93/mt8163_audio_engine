@@ -396,6 +396,14 @@ The factory HAL delegates stream creation and teardown through the `AudioALSAHar
 
 The HAL adapter owns the small C wrapper allocation and its callback table. The manager owns the legacy C++ stream object and its route/PCM lifecycle. The stream `set()` methods perform format/device/configuration validation before stream activation; the exact supported combinations and all error branches still require full method-level analysis.
 
+The device callback adapters pass the following recovered arguments into the C++ open methods:
+
+- Output: `devices`, `flags`, `&config->format`, `&config->channel_mask`, `config`, and a local handle pointer. `openOutputStreamWithFlags` returns the legacy C++ output-stream pointer or null.
+- Input: `devices`, `&config->format`, `&config->channel_mask`, `config`, a local handle pointer, zero acoustics, and `flags`. `openInputStreamWithFlags` returns the legacy C++ input-stream pointer or null.
+
+The C wrapper stores the returned legacy pointer in its private tail and separately publishes the 124-byte or 100-byte C callback wrapper to the framework.
+
+
 **Stream close and ownership**
 
 The output close callback:
