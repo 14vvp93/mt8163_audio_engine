@@ -193,6 +193,41 @@ jobs:
             arm-linux-gnueabi-objdump -d -C --start-address=0x4170 --stop-address=0x4210 "$client"
           } 2>&1 | tee primary-hal-client-bridge.txt
 
+      - name: Disassemble legacy xWay and reference-ring callbacks
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          {
+            echo "===== xWay and reference-ring symbol inventory ====="
+            arm-linux-gnueabi-nm -D -C --defined-only "$binary" |
+              grep -E 'AudioALSAHardware::(xWayPlay_|xWayRec_|ReadRefFromRing)' || true
+            echo
+            echo "===== AudioALSAHardware::xWayPlay_Start ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce564 --stop-address=0xce5a0 "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayPlay_Stop ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce5a0 --stop-address=0xce5dc "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayPlay_Write ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce5dc --stop-address=0xce628 "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayPlay_GetFreeBufferCount ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce628 --stop-address=0xce664 "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayRec_Start ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce664 --stop-address=0xce6a0 "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayRec_Stop ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce6a0 --stop-address=0xce6dc "$binary"
+            echo
+            echo "===== AudioALSAHardware::xWayRec_Read ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce6dc --stop-address=0xce728 "$binary"
+            echo
+            echo "===== AudioALSAHardware::ReadRefFromRing ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xce728 --stop-address=0xce77c "$binary"
+          } 2>&1 | tee primary-hal-xway-callbacks.txt
+
       - name: Disassemble MediaTek HIDL 4.1 bridge to legacy Primary HAL callbacks
         shell: bash
         run: |
@@ -328,5 +363,6 @@ jobs:
             primary-hal-client-bridge.txt
             primary-hal-hidl-bridge.txt
             primary-hal-service-executable-scan.txt
+            primary-hal-xway-callbacks.txt
           if-no-files-found: error
           retention-days: 7
