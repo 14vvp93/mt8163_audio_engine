@@ -403,3 +403,14 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Next P0 action: resolve the base DTB and overlay selection path, then correlate with read-only runtime module/I2C/device-node evidence if available. Keep all CD3313 transport disconnected from the physical unit.
 - Updated evidence reports: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) and [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
 - No hardware I/O, module load, GPIO/mixer operation or flashing was performed.
+
+
+### P0 follow-up — base DTB and competing DSP probe checks (2026-11-13)
+
+- Recovered the base FDT embedded at offset 7,014,136 in `boot.img`; its 42,614-byte payload is byte-identical to the base FDT in `recovery.img`. SHA-256: `b17bff1b3251882864700ca290efd6d0326997356bb98ed10a8dd8d012ae72a0`.
+- Parsed the single DTBO table entry and resolved overlay fragment 11 through the `i2c2` fixup to base node `/soc/i2c@11009000`. It enables I2C2 and declares `cd3313@44`, `ak7604@1c` and `fy7604@50`, alongside multiple FM-tuner alternatives. This is a multi-variant overlay, not a physical population list.
+- Compared the DSP probes: AK7604 and FY7604 perform I2C response checks before registering `/dev/audiomux`; the CD3313 probe only requires a successful one-byte `0x3f` write in its visible path.
+- Init requests CD3313 first. A successful ACK at `0x44` could therefore let the CD3313 module claim the shared endpoint without proving the responding silicon is CD3313. This remains a static hypothesis; no runtime ACK, module binding or device-node ownership is established.
+- Next P0 action: keep the CD3313 transport isolated; seek read-only runtime logs/device-tree/module evidence. Do not attempt an I2C probe or send `0x3f` to the physical CD3310EO.
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- No hardware I/O or module load was performed.
