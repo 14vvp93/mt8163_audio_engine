@@ -99,8 +99,9 @@ Final replacement target:
 - [ ] Confirm source-level return types and every external call site for the xWay callbacks; the adapter instructions establish argument forwarding but vendor declarations are absent.
 - [x] Recover `AudioVUnlockDL` detached worker lifecycle, condition-variable ring-buffer synchronization and mandatory stop-before-free ordering.
 - [ ] Identify all external consumers of the private tail and validate callback-in-flight draining. The 1,052-library/service scan found no separate named xWay client; indirect offset callers remain possible. The factory voice-unlock singleton is freed separately from `stopInput()`, so a replacement must enforce stop/drain-before-free.
-- [ ] Implement typed factory-compatible HAL shell with no hardware writes.
-- [ ] Build exact ARM32 HAL and verify ABI/symbol/dependency contract.
+- [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The valid primary open request fails closed with `-ENOSYS`; no device or hardware access is exposed.
+- [ ] Implement the callable `audio_hw_device` and stream callback tables plus the 16 private factory-tail callbacks; the bootstrap is not a deployable HAL.
+- [ ] Build the complete exact ARM32 HAL and verify ABI/symbol/dependency contract.
 
 ### P3 — DSP integration
 
