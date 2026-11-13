@@ -100,6 +100,7 @@ Final replacement target:
 - [x] Recover `AudioVUnlockDL` detached worker lifecycle, condition-variable ring-buffer synchronization and mandatory stop-before-free ordering.
 - [ ] Identify all external consumers of the private tail and validate callback-in-flight draining. The 1,052-library/service scan found no separate named xWay client; indirect offset callers remain possible. The factory voice-unlock singleton is freed separately from `stopInput()`, so a replacement must enforce stop/drain-before-free.
 - [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The valid primary open request fails closed with `-ENOSYS`; no device or hardware access is exposed.
+- [x] Cross-compile the bootstrap as ELF32 ARM, verify `audio.primary.mt8163.so` SONAME and exported `HMI` (`GLOBAL DEFAULT`, 128 bytes) with NDK r27c in [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This is bootstrap ABI evidence, not a complete HAL build.
 - [ ] Implement the callable `audio_hw_device` and stream callback tables plus the 16 private factory-tail callbacks; the bootstrap is not a deployable HAL.
 - [ ] Build the complete exact ARM32 HAL and verify ABI/symbol/dependency contract.
 
