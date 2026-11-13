@@ -76,7 +76,7 @@ Final replacement target:
 - [x] Add repeated same-handle close/reopen stress test.
 - [x] Add snapshot backpressure regression with all publication slots pinned.
 - [x] Prior PCM Broker and AudioCore TSAN runs passed.
-- [ ] Confirm the latest TSAN runs on current HEAD.
+- [x] Re-ran the complete six-workflow host/ARM verification matrix on current HEAD `61259c7b72c2fda0d3ec1c8038e5c336aade38ff`; all six runs completed successfully.
 
 ### P2 — Android 9 Primary HAL
 
@@ -139,6 +139,7 @@ Final replacement target:
 
 ## Current CI evidence
 
+- Current feature HEAD `61259c7b72c2fda0d3ec1c8038e5c336aade38ff`: AudioCore TSAN, PCM Stream Broker TSAN, PCM DSP Stability Lab, PCM DSP Performance Benchmark, PCM DSP Core Tests and Android ARMv7 build all PASS — [AudioCore TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132535), [PCM Broker TSAN](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132470), [Stability Lab](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132445), [Performance](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132810), [DSP tests](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132458), [ARMv7 build](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43409132882).
 - Android 9 ARM32 ABI layout and factory stream-contract tests: PASS on code-equivalent feature commit `0321a586ace98f9bf1e9154be449e2e4675980a2` — [run 43406307144](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307144). Includes C/C++ layout checks, stream-predicate tests and compile-time assertions for all 16 private callback indices and exact offsets 156–216.
 - AudioCore TSAN: PASS on code-equivalent feature commit — [run 43406307164](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307164).
 - PCM Stream Broker TSAN: PASS on code-equivalent feature commit — [run 43406307107](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43406307107).
