@@ -283,6 +283,12 @@ jobs:
             echo "===== AudioVUnlockDL::freeInstance ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xb49a0 --stop-address=0xb4a2c "$binary"
             echo
+            echo "===== AudioVUnlockDL destructor ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb3548 --stop-address=0xb35a8 "$binary"
+            echo
+            echo "===== AudioALSAHardware destructor ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xc56e4 --stop-address=0xc5874 "$binary"
+            echo
             echo "===== AudioALSAHardware voice-unlock entry points ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xce7c0 --stop-address=0xce8fc "$binary"
             echo
