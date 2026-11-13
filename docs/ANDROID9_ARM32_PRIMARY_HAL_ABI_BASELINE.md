@@ -361,7 +361,8 @@ The device callbacks allocate a separate C ABI wrapper around the C++ stream imp
 | 24 | `standby` | `standby` |
 | 28 | `dump` | Adapter implementation |
 | 32, 36 | `get_device`, `set_device` | Null |
-| 40, 44 | `set_parameters`, `get_parameters` | Suspicious entry addresses; see ABI anomaly below |
+| 40 | `set_parameters` | Adapter at `0x0009ccd0`; forwards to `AudioALSAStreamIn::setParameters` |
+| 44 | `get_parameters` | Adapter at `0x0009cda8`; forwards to `AudioALSAStreamIn::getParameters` |
 | 48, 52 | `add_audio_effect`, `remove_audio_effect` | Matching C++ methods |
 | 56 | `set_gain` | `setGain` |
 | 60 | `read` | `read` |
@@ -372,13 +373,14 @@ The device callbacks allocate a separate C ABI wrapper around the C++ stream imp
 | 92 | `update_sink_metadata` | `updateSinkMetadata` |
 | 96 | Private field | `legacy_in` pointer |
 
-**Input callback ABI anomaly — unresolved**
+**Input callback mapping verified**
 
-The statically constructed input table places:
-- offset 40 at code address `0x0009cecc`, which is the `bx r2` instruction inside the `setGain` forwarding thunk beginning at `0x0009cec0);
-- offset 44 at `0x0009ccb8`, which branches into a cleanup block at `0x0009cc78`, rather than the apparent prologue at `0x0009ccd0).
+The two parameter callbacks are independent function entries with valid prologues, despite lacking standalone dynamic symbol names:
+- `0x0009ccd0` loads the private `legacy_in` pointer and dispatches through the `AudioALSAStreamIn::setParameters` vtable slot.
+- `0x0009cda8` loads the private `legacy_in` pointer and dispatches through the `AudioALSAStreamIn::getParameters` vtable slot.
 
-The C++ `AudioALSAStreamIn` vtable does contain `setParameters` and `getParameters` methods, but these two C adapter entries do not visibly forward to those slots. This is recorded as a factory-binary ABI anomaly, not silently corrected or treated as a proven runtime crash. The exact call convention and whether the target vendor build has a matching wrapper/source change must be reconciled before implementing input-stream compatibility.
+The earlier apparent mid-function targets were caused by using incorrect literal-pool values during the first manual address calculation. The corrected PC-relative calculations and disassembly confirm the expected input parameter callback mapping.
+
 
 ## 5. Vendor-specific facts that remain unresolved
 
