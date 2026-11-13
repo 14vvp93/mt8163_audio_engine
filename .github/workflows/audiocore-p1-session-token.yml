@@ -185,7 +185,7 @@ jobs:
         run: ruby -e 'require "yaml"; data = YAML.load_file(".github/workflows/audiocore-p1-session-token.yml"); abort("Invalid workflow") unless data.is_a?(Hash) && data["name"] && data["jobs"].is_a?(Hash); puts "Workflow YAML OK"'
 
   p1-complete:
-    name: P1 COMPLETE
+    name: P1 SESSION IDENTITY COMPLETE
     if: always()
     needs:
       - api-contract
@@ -214,4 +214,4 @@ jobs:
           test "$ASAN_UBSAN" = success
           test "$ARMV7" = success
           test "$INTEGRITY" = success
-          echo "P1 COMPLETE: all required offline gates passed."
+          echo "P1 SESSION IDENTITY COMPLETE: all required offline gates passed."
