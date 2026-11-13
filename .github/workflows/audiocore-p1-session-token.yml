@@ -9,6 +9,9 @@ on:
       - "scripts/repository/check_audiocore_session_tokens.py"
       - ".github/workflows/audiocore-p1-session-token.yml"
       - "pcm-dsp/CMakeLists.txt"
+      - "audio-core/README.md"
+      - "docs/AUDIOCORE_SESSION_TOKEN_CONTRACT.md"
+      - "docs/PROJECT_ROADMAP.md"
   pull_request:
     branches:
       - feature
