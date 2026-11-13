@@ -2,10 +2,7 @@
 
 ## Purpose
 
-The target is one shared PCM DSP engine for ordinary media, Bluetooth A2DP
-music and FM radio. The engine is shared; the source-specific integration
-points are not necessarily shared. Keep call/SCO and microphone paths out of
-the first release.
+The current owner-approved target is one DSP engine covering every supported source and direction, including media, navigation, system sounds, A2DP, HFP/SCO, calls, microphone capture, FM and external inputs. Source-specific integration points and processing graphs remain separate where transport or signal direction requires it. This file preserves historical firmware evidence and interim adapter behavior; it does not override the current architecture decision in [the full-replacement/all-source-DSP ADR](ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md).
 
 This document records firmware-archive evidence and the current integration
 decision. It does not claim runtime validation on a head unit.
@@ -72,12 +69,11 @@ The Android effect adapter now accepts the three A2DP output device masks in
 addition to Speaker and wired headset/headphones, but only at the vendor's
 verified 44.1 kHz profile. A2DP at 48 kHz is fail-open bit-exact bypass.
 The host smoke test checks DSP processing at 44.1 kHz for all three masks and
-exact bypass at 48 kHz. Bluetooth SCO remains an exact bypass.
+exact bypass at 48 kHz. The current scaffold's SCO bypass is temporary and is not the final product scope.
 
 This is a source/configuration-based implementation change. The smoke test
 must pass in CI, and actual AudioFlinger attachment/device notifications must
-still be confirmed on the target. If the framework reports offload, the
-adapter continues to bypass.
+still be confirmed on the target. If the framework reports offload, the existing adapter temporarily bypasses. Final A2DP DSP coverage requires a DSP-visible PCM path; offload must be disabled or redirected where it would bypass DSP, after target validation.
 
 ## 3. Bluetooth SCO / phone calls
 
@@ -85,9 +81,7 @@ The primary policy declares SCO, SCO Headset and SCO Car Kit as separate
 output devices with 8/16 kHz PCM profiles. These are communication/telephony
 paths, not A2DP music.
 
-SCO stays explicitly excluded from the DSP. Do not enable it merely because
-the Bluetooth A2DP path is supported. Microphone capture and in-call audio
-remain bypassed.
+HFP/SCO, microphone capture and in-call audio are mandatory final DSP scope. They require dedicated telephony and capture graphs, verified PCM transport, clock/latency handling and synchronized echo-reference ownership. The current media/A2DP adapter is not the insertion point for these paths; until their dedicated adapters are validated, retain a safe temporary fallback.
 
 ## 4. FM radio
 
@@ -268,9 +262,7 @@ Stability Lab in `43171471659`, the performance benchmark in
 The latest ARMv7 archive contains `libmt8163_pcm_dsp.a` with the
 `FmPcmAdapter` methods:
 https://github.com/14march93/mt8163_audio_engine/actions/runs/43171471610/artifacts/13922137285
-This adapter is not wired into the vendor HAL or the direct FM_I2S playback
-patch. The FM route must retain a hard bypass for calls and any path whose
-buffer ownership/format is not proven.
+This adapter is not wired into the vendor HAL or the direct FM_I2S playback patch. Its bypass behavior is a temporary safety gate until the direct route is exposed through a verified DSP-visible digital tap. Calls and other routes require their own processing graphs, not permanent exclusion.
 
 Firmware extraction artifact containing the primary HAL, A2DP HAL and policy binaries:
 https://github.com/14march93/mt8163_audio_engine/actions/runs/43168955195/artifacts/13920953355
@@ -280,17 +272,17 @@ https://github.com/14march93/mt8163_audio_engine/actions/runs/43168955195/artifa
 The intended architecture is:
 
 ```text
-Android Music ── AudioFlinger Music INSERT ─┐
-Bluetooth A2DP ─ A2DP PCM output INSERT ───┼── shared PCM DSP core
-FM radio ─────── verified FM PCM adapter ──┘
+Playback sources ─────┐
+Radio / external PCM ──┼── shared DSP implementation ── route-specific output
+A2DP PCM (no offload) ─┤
+HFP/SCO downlink ──────┤
+Microphone capture ────┤── capture / telephony DSP graphs + echo reference
+FM direct I2S tap ─────┘
                                                │
-                                    profile / EQ / limiter
+                                  validated per-source profiles
 ```
 
-The three adapters may differ, but they must use the same parameter model,
-filter coefficients and profile state. Only one source is normally audible
-at a time; route transitions must reset or safely transition DSP state to
-avoid stale filter state/clicks.
+Adapters may differ, but they share the same DSP implementation, validated parameter model and profile ownership. Playback, capture, telephony and echo-reference graphs have direction-specific processing and synchronization. Route transitions must reset or safely transition state to avoid stale filter state, clicks or feedback. Analog-only sources are not software-DSP-covered until a real ADC/PCM boundary is verified.
 
 ## 6. Evidence and validation gates
 
@@ -298,8 +290,7 @@ avoid stale filter state/clicks.
 |---|---|---|---|
 | Music | vendor effects v2.0 XML; AOSP Android 9 effect contract | software INSERT scaffold | registration/runtime Music classification |
 | Bluetooth A2DP | vendor A2DP module, PCM16 stereo 44.1 kHz, three output masks | adapter allows A2DP at 44.1 kHz; 48 kHz bypass, host A2DP tests passed in workflow run 43168512245; latest ARMv7 ABI build (with 32 kHz core) passed in workflow run 43169030035 | target AudioFlinger attachment/device notifications and offload verification |
-| Bluetooth SCO | separate 8/16 kHz communication devices | bypass | keep excluded |
+| Bluetooth HFP/SCO | separate 8/16 kHz communication devices | mandatory scope; current adapter bypass is temporary | recover downlink/uplink PCM ownership, clocking, echo reference and call lifecycle |
 | FM | vendor FM Tuner In policy route; AudioPatch/direct FM_I2S playback; AUDIO_SOURCE_FM_TUNER input stream selects FM capture handler/provider | shared 32 kHz core plus separate fail-open FmPcmAdapter scaffold; not connected to target HAL | determine whether the active app uses AudioRecord capture or direct AudioPatch; map factory guard fields and choose the audible PCM path |
 
-No effect XML, product makefile, vendor HAL, kernel module, device configuration,
-or live CD3313 state has been modified by this work.
+No effect XML, product makefile, vendor HAL, kernel module, device configuration, or live CD3313 state has been modified by the historical adapter work. The current product decision retains factory components and artifacts; runtime ownership must still converge to one AudioCore.
