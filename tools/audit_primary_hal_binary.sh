@@ -15,14 +15,21 @@ if [ ! -f "$binary" ] || [ ! -r "$binary" ]; then
     exit 2
 fi
 
-for tool in readelf sha256sum; do
+for tool in readelf sha256sum basename; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: required tool not found: $tool" >&2
         exit 2
     fi
 done
 
+filename=$(basename "$binary")
+if [ "$filename" != "audio.primary.mt8163.so" ]; then
+    echo "ERROR: expected factory filename audio.primary.mt8163.so, got: $filename" >&2
+    exit 1
+fi
+
 header=$(readelf -hW "$binary")
+elf_type=$(printf '%s\n' "$header" | awk -F: '/Type:/ {gsub(/^[ \t]+/, "", $2); print $2}')
 class=$(printf '%s\n' "$header" | awk -F: '/Class:/ {gsub(/^[ \t]+/, "", $2); print $2}')
 machine=$(printf '%s\n' "$header" | awk -F: '/Machine:/ {gsub(/^[ \t]+/, "", $2); print $2}')
 flags=$(printf '%s\n' "$header" | awk -F: '/Flags:/ {sub(/^[ \t]+/, "", $2); print $2}')
@@ -33,18 +40,33 @@ echo "===== Identity ====="
 echo "File: $binary"
 echo "Size: $size bytes"
 echo "SHA-256: $sha"
+echo "ELF type: $elf_type"
 echo "ELF class: $class"
 echo "Machine: $machine"
 echo "Flags: $flags"
+
+if [ "$elf_type" != "DYN (Shared object file)" ]; then
+    echo "ERROR: expected an ELF shared object (ET_DYN)" >&2
+    exit 1
+fi
 
 if [ "$class" != "ELF32" ]; then
     echo "ERROR: expected ELF32 for the recovered ARM32 target" >&2
     exit 1
 fi
+
 case "$machine" in
     *ARM*) ;;
     *)
         echo "ERROR: expected ARM machine type" >&2
+        exit 1
+        ;;
+esac
+
+case "$flags" in
+    *"Version5 EABI"*) ;;
+    *)
+        echo "ERROR: expected ARM EABI5 flags" >&2
         exit 1
         ;;
 esac
@@ -59,15 +81,21 @@ readelf -dW "$binary" || true
 
 echo
 echo "===== Dynamic symbols relevant to Android audio HAL ====="
-readelf --dyn-syms -W "$binary" |
-    grep -E 'HAL_MODULE_INFO_SYM|audio_hw_device|audio_stream_out|audio_stream_in|adev_open|open_output_stream|open_input_stream|close_output_stream|close_input_stream' ||
-    echo "No matching dynamic symbols found (may be stripped, hidden, or differently named)."
+dyn_symbols=$(readelf --dyn-syms -W "$binary")
+printf '%s\n' "$dyn_symbols" |
+    grep -E '(^|[[:space:]])HMI([[:space:]]|$)|HAL_MODULE_INFO_SYM|audio_hw_device|audio_stream_out|audio_stream_in|adev_open|open_output_stream|open_input_stream|close_output_stream|close_input_stream' ||
+    true
+
+if ! printf '%s\n' "$dyn_symbols" | grep -Eq '(^|[[:space:]])HMI([[:space:]]|$)'; then
+    echo "ERROR: required Android HAL module export HMI is missing from .dynsym" >&2
+    exit 1
+fi
 
 echo
 echo "===== All exported dynamic symbols (first 250 lines) ====="
-readelf --dyn-syms -W "$binary" | sed -n '1,250p'
+printf '%s\n' "$dyn_symbols" | sed -n '1,250p'
 
 echo
 echo "===== Notes ====="
 echo "This is a static ELF inventory only. It does not prove runtime linker compatibility,"
-echo "the exact Android 9 audio HAL ABI, functional routing, or device operation."
+echo "the exact vendor-extended Android 9 audio HAL ABI, functional routing, or device operation."
