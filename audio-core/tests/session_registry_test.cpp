@@ -4,12 +4,18 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <type_traits>
 
 using mt8163_audio_core::RouteType;
 using mt8163_audio_core::SessionRegistry;
 using mt8163_audio_core::SessionState;
 using mt8163_audio_core::SessionToken;
 using mt8163_audio_core::SourceId;
+
+static_assert(!std::is_copy_constructible<SessionRegistry>::value,
+              "SessionRegistry must not duplicate registry token authority");
+static_assert(!std::is_move_constructible<SessionRegistry>::value,
+              "SessionRegistry must not transfer token authority implicitly");
 
 namespace {
 
