@@ -355,3 +355,11 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The downloaded firmware-library artifact contains no literal `CD3310` or `CD3310EO` text. This is a scoped negative string-search result only.
 - Updated detailed evidence in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). CD3313 protocol transport remains detached. Next work: recover CD3310EO datasheet/board-specific protocol evidence, then compare address `0x44` and probe sequence without issuing writes.
 - No hardware I/O, module load, GPIO/mixer write or device validation performed.
+
+
+### P0 follow-up — userspace audiomux string-table leads (2026-11-13)
+
+- Downloaded `audiomux-userspace-client-scan` artifact from workflow run `43238133570` (artifact SHA-256 `2f463e328bb54592bc2369a4ea25024d0b5f36601abc345504e70996c3ed1bea`).
+- `system/framework/boot-carservices.vdex` contains strings `/dev/audiomux`, `DoAudioMux`, `ExtAudioMuxer`, `ExtAudioMuxer.java`, `SendCmdAudioMux` and `cd3313`; `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
+- The scan did not recover method-level callsites, command IDs or argument arrays. These remain string-table leads, not a caller-to-driver proof. Caller inventory remains OPEN.
+- Added the evidence and scope limits to [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md). Next step is method-level VDEX extraction/decompilation and correlation with the module's exact I2C/probe contract.
