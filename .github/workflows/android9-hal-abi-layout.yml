@@ -6,16 +6,16 @@ on:
     paths:
       - "audio-hal-abi/**"
   pull_request:
+    branches: [main, feature]
     paths:
       - "audio-hal-abi/**"
-      - ".github/workflows/android9-hal-abi-layout.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: android9-hal-abi-${{ github.ref }}
+  group: android9-hal-abi-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
