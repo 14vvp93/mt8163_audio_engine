@@ -41,3 +41,15 @@ Do not change source, tests or workflow commands based only on these conclusions
 2. If a job again has no steps, capture the complete job metadata from GitHub's UI/API and investigate Actions runner/service availability.
 3. Once a step executes, fix only the specific reproducible command/test failure.
 4. Keep the Primary HAL marked non-installable until the complete factory contract and target-device gates pass.
+
+## Follow-up after recording this note
+
+The documentation commit `e6643a1e63039011c136425c8864b2a55db4060a` triggered another complete set of the same workflows:
+
+| Workflow | Run ID | Job | Job ID | Conclusion |
+|---|---:|---|---:|---|
+| Repository integrity | 43437058530 | markdown-links | 131924788001 | failure |
+| PCM Stream Broker ThreadSanitizer | 43437058378 | pcm-broker-tsan | 131924786987 | failure |
+| AudioCore ThreadSanitizer | 43437058494 | audio-core-tsan | 131924787226 | failure |
+
+The follow-up jobs again returned empty step arrays. All three log downloads again returned storage error `BlobNotFound`. This reproduces the diagnostic-availability problem on a second commit; it still does not identify a source-level failure. The documentation update itself cannot be declared CI-verified.
