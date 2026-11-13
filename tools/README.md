@@ -55,6 +55,11 @@ The collector is read-only with respect to Android audio settings. It does
 not change mixer controls, properties, routing, NVRAM, GPIOs, I²C registers or
 system files. Temporary output and the ZIP are created on the computer.
 
+The runtime inventory also captures ALSA PCM substream status, `/dev` node
+metadata, processes holding `/dev/audiomux`, `/dev/carstatus`, `/dev/fm` or
+`/dev/snd/*`, and I²C device driver symlinks/uevent metadata. The ADB serial is
+used to select the target but is intentionally not written into the manifest.
+
 Before sharing the ZIP, review `getprop`, `logcat_audio.txt` and the
 kernel logs for device identifiers, application names or other information
 you do not want to disclose.
