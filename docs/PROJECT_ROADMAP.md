@@ -167,6 +167,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - [x] Recover the AudioALSAStreamManager open/set/close entry points and forwarding chain for input/output streams.
 - [x] Recover close ownership: manager closes legacy C++ stream; HAL adapter frees only the C wrapper.
 - [x] Add a layout-only ARM32 ABI mirror with compile-time structure size and offset assertions; host CMake/CTest passes.
+- [x] Add a host-only reference model and CTest coverage for the recovered output sample-rate allowlist, input PCM16 fallback and exact input channel-mask predicate.
 - [x] Resolve input `set_parameters` / `get_parameters` callback addresses; both valid adapters dispatch to the expected `AudioALSAStreamIn` methods.
 - [x] Identify the MediaTek HIDL 4.1 bridge and map the seven legacy callback entries at device offsets 188–216 to their HIDL methods.
 - [ ] Trace xWayPlay/xWayRec/ReadRefFromRing entries at offsets 156–184, including all external callers, duplicate xWayRec_Stop calling conventions and callback lifetime semantics.
@@ -291,7 +292,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ## 8. Immediate execution queue
 
-1. Finish output/input flag-bit semantics, full error branches and capture buffer-size recovery from factory stream methods.
+1. Finish remaining output/input flag-bit semantics, full error branches and capture buffer-size caller contract; recovered predicates now have executable host tests.
 2. Resolve Android 9 vendor linker namespace configuration and pin the matching ALPS/MediaTek headers.
 3. Trace external callers and semantics of private device-tail callbacks.
 4. Run the read-only target diagnostic collector and record runtime ownership/topology.
