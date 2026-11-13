@@ -14,6 +14,8 @@ Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
 - First factory audit completed successfully: exact factory size/SHA-256, ELF32 ARM EABI5, Android API 28 note, exported `HMI`, SONAME, 32 `DT_NEEDED` entries, dynamic symbol versions and ARM relocations were inspected.
 - Confirmed `HMI` is a 128-byte `OBJECT GLOBAL DEFAULT` in `.data` at `0x00195014`; module API `0.1`, HAL API `1.0`, module ID `audio`, name `MTK Audio HW HAL`, author `MTK`.
 - `hw_module_methods_t.open` pointer `0x0009b70c`; disassembly confirms device API 3.0, 224-byte allocation and 68-byte vendor tail.
+- Confirmed exported `HMI` (`GLOBAL DEFAULT`), module API `0x0001`, HAL API `0x0100`, module ID/name/author, `methods->open` and device API `0x0300`.
+- Recovered factory SONAME `audio.primary.mt8163.so`, all 32 `DT_NEEDED` libraries, `BIND_NOW` flags and libc/libdl/libm symbol-version requirements.
 - Decoded 2,431 Android APS2 relocations and recovered the 57-entry `AudioALSAHardware` vtable, all standard device callback targets and the vendor extension callback map.
 - Recovered `AudioALSAStreamOut` and `AudioALSAStreamIn` C++ vtables plus the Android C stream wrappers: output wrapper 124 bytes (`audio_stream_out` 120 + legacy pointer), input wrapper 100 bytes (`audio_stream_in` 96 + legacy pointer).
 - Input `set_parameters` and `get_parameters` callback targets were rechecked against their literal-pool values and disassembly; both correctly dispatch to the matching `AudioALSAStreamIn` vtable methods.
