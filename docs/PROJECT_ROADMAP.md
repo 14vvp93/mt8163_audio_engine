@@ -156,7 +156,9 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 ### P2 — Recover and build the factory-compatible Android 9 primary HAL
 
 - [x] Add CI workflow to fetch the immutable factory HAL artifact from `public_calculations` and verify its expected size/SHA-256 before audit.
-- [ ] Observe and review the first successful factory HAL binary audit run; HMI/ABI details remain unverified until then.
+- [x] Verify factory artifact identity, ELF32 ARM EABI5, exported `HMI`, SONAME and dynamic dependencies in GitHub Actions.
+- [x] Recover `HMI` object address/size, module API 0.1, HAL API 1.0, module ID/name/author and `methods->open` pointer.
+- [ ] Disassemble `open()` and recover returned `hw_device_t.version` plus complete device method table.
 
 **Priority: critical product milestone**
 
