@@ -231,6 +231,30 @@ serialization on the realtime read/write path), or the exact vendor framework
 must be shown to provide an additional serialization guarantee. Do not
 mistake read/write quiescence for full callback-table serialization.
 
+### Remaining ordinary stream callback call sites
+
+The pinned `Threads.cpp` call sites also show:
+
+- Output `write()`, `drain()`, `flush()`, and `pause()/resume()` are
+  issued by the playback-thread processing path or its shutdown path.
+- Output `setVolume()` is issued by `PlaybackThread::processVolume_l()`
+  (including the direct-output variant), under the playback worker's control
+  loop.
+- Input `read()`, `setGain()`, and `standby()` are owned by the RecordThread
+  processing/standby path. FastCapture is explicitly parked by the input
+  standby path before the stream is deleted.
+- `getRenderPosition()` and `getInputFramesLost()` are reached through
+  AudioFlinger methods holding its registry `mLock`; `getParameters()`
+  likewise holds that lock while calling the thread.
+- The AudioFlinger `Threads.cpp` implementation does not call the legacy
+  stream `add_audio_effect()` / `remove_audio_effect()` hooks. Effects are
+  managed by AudioFlinger's EffectChain / EffectsFactory paths. Do not add
+  fake success implementations for these optional HAL callbacks.
+
+This is a source call-site inventory for the public AOSP r3 ordinary stream
+path. Vendor framework additions and direct private HAL clients are outside
+its scope.
+
 ### Offload async callback thread and mmap
 
 `OffloadThread::threadLoop_exit()` performs its pending flush/drain work
