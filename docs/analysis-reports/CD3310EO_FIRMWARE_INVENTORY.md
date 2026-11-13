@@ -154,7 +154,7 @@ The following command IDs and Java array lengths are recovered from the `AudioEf
 | `0x5B` | `setAlto(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
 | `0x5C` | `setTreble(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
 | `0x60` | `setDelay(int,int,int,int,int,int)` | 6 | Six arguments, in order |
-| `0xA1` | `setXOverLowFreq(int,int,int)` | 4 | [first argument > 0 ? 1 : 0, second argument, third argument, fourth register argument] |
+| `0xA1` | `setXOverLowFreq(int,int,int)` | 4 | [second argument != 0 ? 1 : 0, first argument, second argument, third argument] |
 | `0xA2` | `setXOverHeighLowFreq(int,int,int)` | 4 | [first argument > 0 ? 1 : 0, second argument, third argument, fourth register argument] |
 | `0xA3` | `setSubWoofer(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
 
