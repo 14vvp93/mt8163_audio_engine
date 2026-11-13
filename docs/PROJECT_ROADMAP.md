@@ -8,7 +8,7 @@
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
-This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence.
+This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
 
 ---
 
