@@ -1,96 +1,143 @@
 # MT8163 Audio Engine — current status
 
 Updated: 2026-11-13  
-Reviewed historical audit baseline: `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-Latest code/test commit: `7b1dbc347913c16c52460d350dcfd87913f1f5e7`
+Active development branch: `feature`  
+Current feature HEAD: `4c7bc2e63ceb64591f0720bdf6dcda5cc7f37d04`  
+Stable branch: `main`
 
-> **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This status file is a concise snapshot only. Do not use older execution logs to select priorities.
-
-
-## Primary HAL artifact automation
-
-- Added `.github/workflows/primary-hal-binary-audit.yml` on `feature`.
-- The workflow sparsely checks out the factory `audio.primary.mt8163.so` from `14vvp93/public_calculations`, verifies its expected size and SHA-256, then runs the ELF/HMI audit script.
-- First factory audit completed successfully: exact factory size/SHA-256, ELF32 ARM EABI5, Android API 28 note, exported `HMI`, SONAME, 32 `DT_NEEDED` entries, dynamic symbol versions and ARM relocations were inspected.
-- Confirmed `HMI` is a 128-byte `OBJECT GLOBAL DEFAULT` in `.data` at `0x00195014`; module API `0.1`, HAL API `1.0`, module ID `audio`, name `MTK Audio HW HAL`, author `MTK`.
-- `hw_module_methods_t.open` pointer `0x0009b70c`; disassembly confirms device API 3.0, 224-byte allocation and 68-byte vendor tail.
-- Confirmed exported `HMI` (`GLOBAL DEFAULT`), module API `0x0001`, HAL API `0x0100`, module ID/name/author, `methods->open` and device API `0x0300`.
-- Recovered factory SONAME `audio.primary.mt8163.so`, all 32 `DT_NEEDED` libraries, `BIND_NOW` flags and libc/libdl/libm symbol-version requirements.
-- Decoded 2,431 Android APS2 relocations and recovered the 57-entry `AudioALSAHardware` vtable, all standard device callback targets and the vendor extension callback map.
-- Recovered `AudioALSAStreamOut` and `AudioALSAStreamIn` C++ vtables plus the Android C stream wrappers: output wrapper 124 bytes (`audio_stream_out` 120 + legacy pointer), input wrapper 100 bytes (`audio_stream_in` 96 + legacy pointer).
-- Input `set_parameters` and `get_parameters` callback targets were rechecked against their literal-pool values and disassembly; both correctly dispatch to the matching `AudioALSAStreamIn` vtable methods.
-- Recovered the full static stream-manager forwarding chain and entry points for output/input open, set, close; the C adapters pass `legacy_out` / `legacy_in` to manager teardown, then free only their C wrappers.
-- Added a layout-only ARM32 ABI mirror with compile-time size/offset assertions for module, device, stream and vendor wrapper structures. The standalone CMake/CTest layout workflow passed.
-- Factory SONAME and exact `DT_NEEDED` list are recorded in `ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md`.
-- Main tree contents were restored after an accidental helper-file creation on the default branch; the two bookkeeping commits remain in `main` history. The helper now exists only on `feature`.
+> **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
 ## Branch model
 
-- `main` is the stable branch; no project changes were pushed to it.
-- `feature` is the sole active development branch.
-- Repository integrity, AudioCore TSAN and PCM broker TSAN workflows now target `main` and `feature`; legacy branch filters were removed.
-- Latest observed validation on `feature` commit `31cfeb11a618`: Repository Integrity PASS, AudioCore TSAN PASS and PCM Stream Broker TSAN PASS. The factory HAL audit also passed on `50196bc0b946`.
+- Exactly two branches exist: `main` and `feature`.
+- All development changes are made on `feature`.
+- The current `main` tree is byte-for-byte tree-identical to its pre-cleanup commit `d38c020763cb448fe0bceb00c6463cbb7d13c3a7`.
+- A helper file was accidentally created and then removed on `main`; two bookkeeping commits remain in its history, but the final tree is unchanged. The helper now exists only on `feature`.
+- Repository Integrity, AudioCore TSAN and PCM Broker TSAN workflows target `main` and `feature`; obsolete branch filters were removed.
 
-## Product status
+## Factory Primary HAL — recovered static ABI
 
-**Engineering foundations implemented; complete factory Android 9 primary HAL replacement is not implemented or device-validated.**
+Factory artifact:
+- Path: `firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so` in `14vvp93/public_calculations`
+- Size: 1,671,852 bytes
+- SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
+- ELF32 ARM EABI5, Android API 28
+- Build ID: `f66eaf9e6ac950259f0c253be618d15a`
 
-Final replacement target remains:
+Recovered module/device contract:
+- Exported `HMI`: `GLOBAL DEFAULT`, 128-byte object at `0x00195014`.
+- `module_api_version=0x0001`, `hal_api_version=0x0100`.
+- Module ID `audio`, name `MTK Audio HW HAL`, author `MTK`.
+- `hw_module_methods_t` at `0x00195010`; `open` at `0x0009b70c`.
+- Device API version `0x0300`; factory device wrapper size 224 bytes.
+- Standard `audio_hw_device` callbacks, 68-byte vendor tail and the 57-entry `AudioALSAHardware` C++ vtable recovered from 2,431 Android APS2 relocations.
+- Factory SONAME `audio.primary.mt8163.so`; all 32 `DT_NEEDED` entries, `BIND_NOW` flags and libc/libdl/libm symbol-version requirements recorded.
+- All 32 dependency basenames exist somewhere in the extracted firmware tree. Actual linker namespace visibility is not proven because no `ld.config*.txt` or equivalent namespace configuration was present in the current extraction.
+
+Recovered stream contract:
+- `AudioALSAStreamOut` and `AudioALSAStreamIn` C++ vtables decoded.
+- Output C wrapper: 124 bytes = 120-byte Android `audio_stream_out` + `legacy_out` at offset 120.
+- Input C wrapper: 100 bytes = 96-byte Android `audio_stream_in` + `legacy_in` at offset 96.
+- Output/input callback tables and null/unsupported slots recorded.
+- Input `set_parameters` and `get_parameters` adapters verified to dispatch to the corresponding C++ vtable methods.
+- Open/set/close forwarding paths through `AudioALSAHardware` and `AudioALSAStreamManager` recovered.
+- Close path delegates legacy C++ object teardown to the manager and frees only the C wrapper.
+- Exact format/rate/channel negotiation and all route/error semantics still require method-level analysis.
+
+ABI tooling:
+- `tools/audit_primary_hal_binary.sh` verifies factory ELF identity, HMI export, SONAME, dependencies, versions and relocations.
+- `tools/audit_android_packed_relocations.py` decodes APS2 relocations and recovers C++ vtables.
+- `audio-hal-abi/include/mt8163_android9_abi_layout32.h` models ARM32 structure layouts and asserts sizes/offsets. It is explicitly layout-only; its 32-bit words are not callable native pointers.
+- Standalone CMake/CTest ABI layout workflow passed.
+- Detailed evidence: [Android 9 ARM32 Primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md).
+
+## Project status
+
+**Engineering foundations and factory ABI recovery are progressing. A complete replacement Primary HAL has not been implemented, built or validated on the head unit.**
+
+Final replacement target:
 
 `/vendor/lib/hw/audio.primary.mt8163.so`
 
-Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux kernel driver (`cd3313.ko`). Historical hardware labels are superseded by the canonical terminology above and must be reconciled without rewriting unrelated forensic findings.
+### P0 — target runtime inventory
 
-## Implemented foundations
+- [x] Prepare read-only PowerShell collector for PCM endpoints/substream status, device-node metadata, open-FD owners and I2C driver symlinks.
+- [x] Avoid persisting the ADB serial in the manifest.
+- [ ] Run collector on the physical MT8163 unit.
+- [ ] Confirm live ALSA card/PCM indices, active policy, module ownership and `/dev/audiomux` owner.
 
-- Firmware inventory, provenance, boot/kernel/DTB/DTBO and audio-stack static analysis.
-- CD3313KO driver/JNI/ioctl static reconstruction, command model, host emulator, boundary tests, ASAN/UBSAN and libFuzzer workflow.
-- AudioCore coordinator, session registry, route policy, mute arbitration, snapshot publication and semantic hardware broker.
-- PCM backend contracts, endpoint adapter and stream broker with bounded lifecycle/concurrency behavior and host tests.
-- PCM DSP foundations: stereo PCM processing, four-channel Float32 test engine, EQ, crossover, dynamics, enhancement, time alignment and profile transitions.
-- Android ARMv7 library/JNI build and Android 9 effect-library ABI scaffold.
-- Read-only target diagnostic collectors and route/ownership matrices.
+### P1 — AudioCore and PCM
 
-## HAL ABI recovery update
+- [x] AudioCore coordinator, session registry, route policy, mute arbitration and snapshot publication.
+- [x] PCM backend contract, endpoint adapter and stream broker.
+- [x] Fix direction metadata race by reading it only after transfer admission.
+- [x] Add repeated same-handle close/reopen stress test.
+- [x] Add snapshot backpressure regression with all publication slots pinned.
+- [x] Prior PCM Broker and AudioCore TSAN runs passed.
+- [ ] Confirm the latest TSAN runs on current HEAD.
 
-The firmware build fingerprint identifies Android 9 base build `PPR1.180610.011`, which maps to AOSP `android-9.0.0_r3`. The ARM32 AOSP HAL structure layouts and offsets are now pinned in [ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md). This is the platform reference only: the factory module API version, exported `HMI`, method table, vendor extensions, SONAME and dependencies still require binary-level confirmation. The primary HAL audit script now checks ET_DYN, ARM32 EABI5, factory filename and `HMI` export; CI syntax validation is enabled.
+### P2 — Android 9 Primary HAL
 
-## Blocking gaps
+- [x] Pin AOSP reference to `android-9.0.0_r3` from firmware build `PPR1.180610.011`.
+- [x] Recover HMI, module/device API versions, device callback table and vendor tail.
+- [x] Recover stream C wrappers, callback tables, C++ stream vtables and manager ownership.
+- [x] Recover SONAME, DT_NEEDED list and symbol-version requirements.
+- [x] Add layout-only ABI mirror and CI checks.
+- [ ] Obtain/pin matching ALPS/MediaTek vendor headers or source revision.
+- [ ] Recover actual Android 9 linker namespace configuration and verify every dependency is visible there.
+- [ ] Finish method-level stream negotiation analysis: rates, formats, channel masks, flags, buffer sizing and error behavior.
+- [ ] Trace external clients of private vendor callbacks.
+- [ ] Implement typed factory-compatible HAL shell with no hardware writes.
+- [ ] Build exact ARM32 HAL and verify ABI/symbol/dependency contract.
 
-1. No complete factory-compatible Android 9 primary HAL implementation or exact ABI-verified build.
-2. No target runtime inventory proving module/device-node ownership, ALSA endpoint indexes, active policy, mixer controls or route state.
-3. No concrete TinyALSA endpoint implementation configured from target evidence.
-4. No production CD3313EO/CD3313KO hardware transport backend; transport remains disabled.
-5. No proven stereo-preserving system-audio insertion point or end-to-end media route.
-6. FM direct I2S, FM capture, A2DP offload, HFP/SCO, microphone/echo and analog input routes are not integrated end-to-end.
-7. Factory control clients have not yet been migrated to one authoritative owner.
-8. No physical-device audio, acoustic, latency, long-run or rollback validation.
+### P3 — DSP integration
+
+- [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
+- [x] Confirm the MTK callback does not cover every audio route.
+- [ ] Identify stereo-preserving insertion point.
+- [ ] Integrate DSP with bit-transparent bypass on unsupported route/format or DSP failure.
+- [ ] Validate stereo separation, latency, CPU and stability.
+
+### P4 — source adapters and routes
+
+- [ ] Media playback and route arbitration.
+- [ ] FM direct-I2S and FM capture.
+- [ ] Bluetooth A2DP and HFP/SCO.
+- [ ] Voice call, microphone, echo and analog input.
+- [ ] Navigation prompts and concurrent-session transitions.
+- [ ] Route-by-route regression against factory behavior.
+
+### P5 — CD3313EO hardware integration
+
+- [x] Identify physical IC as CD3313EO and driver as CD3313KO (`cd3313.ko`).
+- [x] Reconstruct JNI/ioctl framing and protocol bounds.
+- [x] Add host boundary tests, ASAN/UBSAN and libFuzzer workflow.
+- [ ] Confirm live module/device ownership and I2C topology from P0 evidence.
+- [ ] Implement bounded hardware transport only after ownership and protocol gates.
+- [ ] Verify physical readback/command completion semantics before enabling writes.
+
+### P6 — release
+
+- [ ] Complete host regression, TSAN/ASAN/UBSAN and ARMv7 build.
+- [ ] Verify Android 9 linker/ABI compatibility.
+- [ ] Test all routes on the physical unit.
+- [ ] Measure latency, stability and long-run behavior.
+- [ ] Prepare factory rollback artifact and hashes.
+- [ ] Package and validate final `audio.primary.mt8163.so`.
 
 ## Current CI evidence
 
-- PCM stream-broker ThreadSanitizer: [run 43375546258](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546258) — PASS, including repeated same-handle close/reopen stress.
-- AudioCore ThreadSanitizer: [run 43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004) — PASS, including dirty snapshot retry with all slots pinned.
-- PCM DSP performance benchmark: [run 43375546124](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546124) — PASS.
-- PCM DSP host tests, stability lab and Android ARMv7 build were running at the last check and are not yet marked as passed.
-- Earlier collector-only changes passed PCM broker TSAN [run 43375203331](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375203331) and repository integrity [run 43375253089](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375253089).
-- No complete primary HAL build or device validation is claimed.
+- Repository Integrity on current HEAD `4c7bc2e63ceb`: PASS — [run 43382264658](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264658).
+- AudioCore TSAN on current HEAD: in progress — [run 43382264635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264635).
+- PCM Stream Broker TSAN on current HEAD: in progress — [run 43382264632](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382264632).
+- Repository Integrity, AudioCore TSAN and PCM Broker TSAN on prior feature commit `9d30241ab90d`: all PASS — runs 43382164716, 43382164693 and 43382164857.
+- Factory ELF/HMI/APS2 audit: PASS — [run 43381061217](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381061217).
+- Android 9 ARM32 ABI layout CMake/CTest: PASS — [run 43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046).
+- PCM DSP host tests, stability/performance and Android ARMv7 build passed on the previously recorded baseline; this does not constitute a complete HAL build.
 
 ## Safety state
 
 - No live ioctl, I2C write, GPIO change, mixer write, module load/unload or firmware flash is claimed.
-- Do not enable hardware transport until target ownership and the complete bounded command ABI are verified.
-- Keep unsupported routes/formats on bit-transparent bypass.
+- Hardware transport remains disabled until P0 ownership and bounded command ABI gates are satisfied.
+- Unsupported routes/formats must use bit-transparent bypass.
 - Preserve factory originals and rollback hashes.
-
-## Latest P1 changes
-
-- PCM broker direction metadata is read only after transfer admission. The repeated same-handle close/reopen stress test passed under TSAN.
-- AudioCore snapshot backpressure now has a dedicated regression: all three slots are pinned, a mutation commits while publication is blocked, then retry after a slot release publishes the latest complete state. This passed AudioCore TSAN.
-
-## P0 collector update
-
-The PowerShell collector now records PCM substream status, device-node metadata, open-FD owners and I2C driver symlinks. It no longer stores the ADB serial in the manifest. The collector remains unrun on the physical unit.
-
-## Next action
-
-Run the read-only target inventory from [tools/README.md](../tools/README.md), then share the generated ZIP after reviewing private log/property data. Continue factory-binary ABI recovery and pin the exact ALPS/MediaTek vendor header revision. The AOSP r3 baseline is pinned; the vendor ABI and binary audit remain open. No speculative hardware operations. The current AudioCore and PCM broker race regressions are verified; target inventory remains the P0 external evidence gate.
