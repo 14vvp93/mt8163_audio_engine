@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdlib>
+#include <cstdio>
 #include <cstddef>
 #include <cstdint>
 #include <atomic>
@@ -10,7 +11,12 @@
 
 using namespace mt8163_audio_core;
 
-#define CHECK(condition) do { if (!(condition)) std::abort(); } while (false)
+#define CHECK(condition) do { \
+    if (!(condition)) { \
+        std::fprintf(stderr, "CHECK failed at %s:%d: %s\\n", __FILE__, __LINE__, #condition); \
+        std::abort(); \
+    } \
+} while (false)
 
 namespace {
 class FakeBackend final : public PcmBackend {
