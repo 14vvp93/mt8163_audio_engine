@@ -183,7 +183,7 @@ if command -v arm-linux-gnueabi-objdump >/dev/null 2>&1; then
     open_address=$((0x$open_pointer & ~1))
     arm-linux-gnueabi-objdump -d \
         --start-address="$open_address" \
-        --stop-address="$((open_address + 512))" "$binary"
+        --stop-address="$((open_address + 1024))" "$binary"
 else
     echo "WARNING: arm-linux-gnueabi-objdump unavailable; open() disassembly skipped."
 fi
