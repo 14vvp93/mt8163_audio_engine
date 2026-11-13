@@ -253,8 +253,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### CI gaps to close
 
-1. Make repository-integrity push triggers include `integration/beta-0.1`.
-2. Run PCM stream-broker TSAN on the integration branch, not only its work branch.
+1. <badge>Closed 2026-11-13</badge> Repository-integrity push trigger now includes `integration/beta-0.1`.
+2. <badge>Closed 2026-11-13</badge> PCM stream-broker TSAN now runs on `integration/beta-0.1` as well as its work branch.
 3. Ensure the Android ARMv7 and full host-test workflows run on every relevant integration change.
 4. Add the factory HAL ABI/symbol/dependency audit as a required CI gate.
 5. Add packaging checks that reject project-named parallel runtime HALs and unexpected extra owners.
@@ -303,4 +303,6 @@ The MT8163 Audio Engine is complete only when:
 - Replaced the Beta 0.1-only roadmap with this single project roadmap.
 - Consolidated the repository inventory, firmware/driver analysis, AudioCore, PCM/DSP, route, Android integration and CI evidence.
 - Reordered work around runtime ownership, PCM lifecycle, factory HAL ABI and a proven stereo insertion point.
+- Archived the old Beta 0.1 roadmap, refreshed the status/index/README, and marked legacy hardware-identity records as superseded where necessary.
+- Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
