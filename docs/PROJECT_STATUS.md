@@ -137,12 +137,12 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Primary HAL factory audit, stream contracts, xWay forwarding, voice-unlock worker/teardown, HIDL bridge, full 1,052-library scan and service executable audit: PASS on feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048/artifacts/14026274892).
-- Repository Integrity: PASS on the current docs-only feature HEAD — [run 43405890757](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405890757).
-- AudioCore TSAN: PASS on code-equivalent feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588013](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588013).
-- PCM Stream Broker TSAN: PASS on the same code-equivalent feature commit — [run 43405588054](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588054).
+- Repository Integrity: PASS on current feature HEAD `2dd639968474e42ced7ce338f7221f6f1c6c3680` — [run 43405942022](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405942022).
+- AudioCore TSAN: PASS on current feature HEAD — [run 43405942165](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405942165).
+- PCM Stream Broker TSAN: PASS on current feature HEAD — [run 43405941915](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405941915).
+- Primary HAL factory audit, stream contracts, xWay forwarding, voice-unlock worker/teardown, HIDL bridge, full 1,052-library scan and service executable audit: PASS on code-equivalent feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048/artifacts/14026274892).
 - Android 9 ARM32 ABI layout plus recovered stream-contract tests: PASS on code-equivalent feature commit `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). C++ layout, C11 layout and factory stream contract tests all passed.
-- Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
+- The firmware extraction contains no MediaTek vendor headers and no `ld.config*.txt` linker namespace configuration. Audio policy XML/conf and audio-device XML are present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
 
 ## Safety state
