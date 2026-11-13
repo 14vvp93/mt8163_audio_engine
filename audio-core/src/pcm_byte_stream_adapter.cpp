@@ -8,10 +8,10 @@ namespace {
 static_assert(std::atomic<std::uint32_t>::is_always_lock_free,
               "PCM byte stream gate requires lock-free 32-bit atomics");
 
-PcmResult validate_pcm16_buffer(std::uint32_t handle, const PcmConfig& config,
+PcmResult validate_pcm16_buffer(SessionToken session, const PcmConfig& config,
                                 const void* buffer, std::size_t byte_count,
                                 std::size_t* frame_count) noexcept {
-    if (frame_count == nullptr || handle == 0U || buffer == nullptr ||
+    if (frame_count == nullptr || !session.valid() || buffer == nullptr ||
         byte_count == 0U || config.sample_rate_hz == 0U ||
         (config.channel_count != 1U && config.channel_count != 2U) ||
         config.period_frames == 0U) return PcmResult::InvalidArgument;
@@ -105,7 +105,7 @@ PcmByteTransfer PcmByteStreamAdapter::transfer(const void* buffer,
 
     std::size_t frames = 0U;
     const PcmResult validation =
-        validate_pcm16_buffer(session_.handle, config_, buffer, byte_count, &frames);
+        validate_pcm16_buffer(session_, config_, buffer, byte_count, &frames);
     PcmByteTransfer transfer_result{validation, 0U};
 
     if (validation == PcmResult::Ok) {
