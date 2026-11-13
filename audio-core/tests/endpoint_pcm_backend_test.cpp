@@ -1,5 +1,6 @@
 #include "mt8163_audio_core/endpoint_pcm_backend.hpp"
 
+#include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
@@ -283,7 +284,9 @@ void test_lifecycle_rejects_inflight_transfer() {
 
     {
         std::unique_lock<std::mutex> lock(device.mutex);
-        device.condition.wait(lock, [&device] { return device.write_entered; });
+        const bool entered = device.condition.wait_for(
+            lock, std::chrono::seconds(5), [&device] { return device.write_entered; });
+        require(entered, "writer enters the blocking platform callback before timeout");
     }
 
     require(backend.stop(token) == PcmResult::WouldBlock,
