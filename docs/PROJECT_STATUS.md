@@ -90,7 +90,7 @@ Final replacement target:
 - [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly.
 - [x] Recover output/input handler-open dispatch and output buffer-time formula.
 - [ ] Finish stream-flag semantics, all error branches, Android-visible buffer-size contract and vendor-header reconciliation.
-- [ ] Trace external clients of private vendor callbacks.
+- [ ] Trace external callers and semantics of all 16 private vendor-tail callbacks. A six-binary symbol/string scan found no named direct references; indirect function-pointer callers remain unresolved. The ATCI bridge was traced to `MTKDevicesFactoryHalInterface`, not to a confirmed private-tail callback.
 - [ ] Implement typed factory-compatible HAL shell with no hardware writes.
 - [ ] Build exact ARM32 HAL and verify ABI/symbol/dependency contract.
 
@@ -132,11 +132,10 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Repository Integrity: PASS on feature commit `1148555f1753` — [run 43382385597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43382385597).
-- AudioCore TSAN: PASS on feature commit `927196f0c969ea936877cb0bb13094c028ef3419` — [run 43393937627](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43393937627).
-- PCM Stream Broker TSAN: PASS on feature commit `927196f0c969ea936877cb0bb13094c028ef3419` — [run 43393937609](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43393937609).
-- Repository Integrity: PASS on the immediately preceding feature commit `6111493ffd8f43c263f1cbd69d4bdef750cb054c` — [run 43383335669](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43383335669). The current audit-workflow commit changes CI configuration only; a docs update below will trigger Repository Integrity again.
-- Factory ELF/HMI/APS2 audit: PASS on current feature commit `927196f0c969ea936877cb0bb13094c028ef3419` — [run 43393937659](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43393937659). The workflow downloaded the exact factory binary from `public_calculations`, verified its size and SHA-256, recovered HMI/module metadata, SONAME/dependencies and decoded the AudioALSAHardware/StreamOut/StreamIn APS2 vtables. It uploaded the binary and full report as artifact `mt8163-factory-primary-hal-audit` (artifact ID `14022216353`).
+- Repository Integrity: PASS on feature commit `93f83ad37472af82bdc2de42673ceb38de364aec` — [run 43396219341](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396219341). Subsequent commits through current HEAD `4e250b2aa4971cef9ad8ab2dc995fbd023d14efd` are documentation-only.
+- AudioCore TSAN: PASS on current feature HEAD `4e250b2aa4971cef9ad8ab2dc995fbd023d14efd` — [run 43396223465](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396223465).
+- PCM Stream Broker TSAN: PASS on current feature HEAD `4e250b2aa4971cef9ad8ab2dc995fbd023d14efd` — [run 43396223474](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396223474).
+- Factory ELF/HMI/APS2 audit and stream-method disassembly: PASS — [run 43396086806](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396086806). Includes factory binary, stream disassembly, private-client scan and MTK HAL client bridge disassembly. Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396086806/artifacts/14022538280).
 - Android 9 ARM32 ABI layout CMake/CTest: PASS — [run 43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046).
 - PCM DSP host tests, stability/performance and Android ARMv7 build passed on the previously recorded baseline; this does not constitute a complete HAL build.
 
