@@ -232,6 +232,46 @@ jobs:
             arm-linux-gnueabi-objdump -d -C --start-address=0xce728 --stop-address=0xce77c "$binary"
           } 2>&1 | tee primary-hal-xway-callbacks.txt
 
+      - name: Inspect xWay singleton lifecycle and buffer operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          {
+            echo "===== Play2Way::GetInstance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xabaac --stop-address=0xabbe4 "$binary"
+            echo
+            echo "===== Play2Way::Start ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xabf10 --stop-address=0xac268 "$binary"
+            echo
+            echo "===== Play2Way::Stop ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xac268 --stop-address=0xac428 "$binary"
+            echo
+            echo "===== Play2Way::Write ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xac428 --stop-address=0xac720 "$binary"
+            echo
+            echo "===== Play2Way::GetFreeBufferCount ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xac720 --stop-address=0xac73c "$binary"
+            echo
+            echo "===== Record2Way::GetInstance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xac984 --stop-address=0xacabc "$binary"
+            echo
+            echo "===== Record2Way::Start ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xacde8 --stop-address=0xad140 "$binary"
+            echo
+            echo "===== Record2Way::Stop ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xad140 --stop-address=0xad300 "$binary"
+            echo
+            echo "===== Record2Way::Read ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xad300 --stop-address=0xad8f0 "$binary"
+            echo
+            echo "===== AudioVUnlockDL::getInstance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb3170 --stop-address=0xb31d4 "$binary"
+            echo
+            echo "===== AudioVUnlockDL::ReadRefFromRing ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb40a8 --stop-address=0xb4508 "$binary"
+          } 2>&1 | tee primary-hal-xway-lifecycle.txt
+
       - name: Disassemble MediaTek HIDL 4.1 bridge to legacy Primary HAL callbacks
         shell: bash
         run: |
@@ -368,5 +408,6 @@ jobs:
             primary-hal-hidl-bridge.txt
             primary-hal-service-executable-scan.txt
             primary-hal-xway-callbacks.txt
+            primary-hal-xway-lifecycle.txt
           if-no-files-found: error
           retention-days: 7
