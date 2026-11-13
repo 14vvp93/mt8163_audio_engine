@@ -3,6 +3,7 @@ add_library(mt8163_audio_core STATIC
     src/cd3313_compat.cpp
     src/session_registry.cpp
     src/route_policy.cpp
+    src/dsp_route_policy.cpp
     src/audio_core.cpp
     src/hardware_broker.cpp
     src/pcm_backend_contract.cpp
