@@ -592,7 +592,50 @@ The extracted firmware tree contains all 32 dependency basenames. Vendor-specifi
 No `ld.config*.txt` or equivalent linker namespace configuration file was found in the current `public_calculations` extracted tree. The actual target namespace search paths and permitted vendor/system library links therefore remain unresolved.
 
 
-## 5. Vendor-specific facts that remain unresolved
+## 5. Method-level stream negotiation findings
+
+The following results were recovered from the SHA-256-pinned factory ELF using ARM32 disassembly in workflow run [43395498637](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43395498637) and its follow-up audit. They are static binary findings, not proof that every combination is enabled by the live board policy.
+
+### Output stream: `AudioALSAStreamOut::set`
+
+Entry point: `0x0008172c`, size 1,376 bytes. The independent `SampleRateSupport(unsigned int)` helper is at `0x00081c8c`.
+
+- Accepted format enum values are `1`, `3`, and `4`: PCM16, PCM32, and PCM8_24. Other values set the error result to `-EINVAL`; the format pointer is normalized to PCM16 on the error path.
+- For the HDMI output device mask `0x400`, the channel-mask values checked by the factory are `0x63f` and `0x3f`.
+- For the non-HDMI branch, the observed predicate is `(channel_mask | 0x2) == 0x3`, i.e. mask `0x1` or `0x3`. The factory then computes the channel count from the mask.
+- The exact output sample-rate allowlist returned by `SampleRateSupport` is: **8,000; 11,025; 12,000; 22,050; 24,000; 32,000; 44,100; 48,000; 88,200; 96,000; 176,400; 192,000 Hz**. 16,000 Hz is not in this helper's accepted set.
+- The set path stores an 8,192-byte buffer quantity and derives an additional internal timing/size field from the negotiated format, channel count and rate. Do not treat the internal field as the Android `get_buffer_size()` result until its getter and caller contract are reconciled.
+- On unsupported sample rate, the disassembly shows normalization to 44,100 Hz and an `-EINVAL` status result. This is not equivalent to silently accepting the originally requested rate.
+
+### Input stream: `AudioALSAStreamIn::set`
+
+Entry point: `0x00128318`, size 1,320 bytes. Validation helpers:
+
+| Helper | Address | Recovered behavior |
+|---|---:|---|
+| `checkOpenStreamFormat(int*)` | `0x00127fac` | Accepts PCM16 (`1`); for another value writes PCM16 to the supplied field and returns false |
+| `checkOpenStreamChannels(unsigned int*)` | `0x0012800c` | Accepts `0x0c` directly; otherwise uses representation bits `0xc000` and rejects masks containing bit `0x10`. Preserve this as a raw predicate until vendor channel-mask declarations are pinned |
+| `checkOpenStreamSampleRate(unsigned int, unsigned int*)` | `0x00128094` | Route-dependent checks described below |
+
+The input rate validator branches on the raw input-device mask:
+- `0x80000020`: requires 44,100 Hz;
+- `0xc0000000`: requires 16,000 Hz;
+- `0x80002000`: compares against the current rate returned by `AudioALSAFMController`;
+- other masks consult `AudioALSAStreamManager` state and route flags, with 16,000/48,000-Hz handling and a 48,000-Hz fallback path.
+
+Do not assign semantic names to the two vendor-specific masks without matching vendor headers. The helper may rewrite the requested rate on a rejected path; callers must preserve and test both the returned status and the updated configuration.
+
+### Open and buffer timing
+
+- `AudioALSAStreamOut::open()` (`0x83d54`) creates a playback handler through `AudioALSAStreamManager::createPlaybackHandler`, then invokes the handler's open method.
+- `AudioALSAStreamIn::open()` (`0x12b510`) follows the equivalent capture path through `createCaptureHandler`.
+- A missing handler or failed handler open returns an error; these methods do not select a hard-coded ALSA PCM index themselves.
+- `AudioALSAStreamOut::bufferSizeTimeUs()` (`0x81d58`) computes the duration of the 8,192-byte quantity as `1,000,000 * 8192 / (channels * sample_rate * bytes_per_sample)`. The byte width comes from the selected PCM format.
+- The exact stream flag semantics, every error branch, all input/output channel-mask combinations, and the framework-visible buffer-size contract still require further reconciliation.
+
+These findings close only the static format/rate predicate portion of P2. They do not establish runtime policy acceptance, physical endpoint capabilities, or route behavior.
+
+## 6. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
 - SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
@@ -609,7 +652,7 @@ The following runtime/vendor integration facts remain unresolved:
 
 The static HMI, version, device table, stream wrapper sizes, C++ vtables, SONAME and dependency list are now recovered from the supplied binary; do not reclassify these as unresolved.
 
-## 6. ABI audit tooling change
+## 7. ABI audit tooling change
 
 `tools/audit_primary_hal_binary.sh` now checks:
 - factory filename;
@@ -622,7 +665,7 @@ The static HMI, version, device table, stream wrapper sizes, C++ vtables, SONAME
 
 This tool is static evidence only. It does not establish callback semantics, runtime linker compatibility or device behavior. Repository CI checks its shell syntax.
 
-## 7. Next exact recovery steps
+## 8. Next exact recovery steps
 
 1. Keep the factory ELF audit and APS2 vtable decoder as reproducible CI gates.
 2. Reconcile the full `DT_NEEDED` list with the target firmware's linker namespace and exact library locations.
