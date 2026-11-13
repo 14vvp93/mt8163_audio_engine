@@ -298,3 +298,16 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The `0x03` callback range analysis is now documented: vendor rejects channel -1 and 6, fails to bound values 7+, and writes through a seven-byte `channel_gain` array. The replacement restricts channels to 0..5 and gains to 0..3; tests cover channel 6 and 7 rejection.
 - Remaining P0-A blockers are the full VDEX caller/callsite inventory, the exact policy for the legacy JNI extra word (compatibility adapter versus new bounded ABI), and the exact vendor kernel source/config for `__check_object_size`/hardened-usercopy. The connected Dropbox root and searches currently return no firmware/kernel source files; do not infer that the user's other Dropbox folders are empty.
 - Keep the native transport detached. No direct `/dev/audiomux` client, ioctl, I2C write, GPIO change, module load or physical-device test has been implemented or performed.
+
+
+### P0-B read-only evidence update — boot kernel, DTBO and FM routing
+
+- Added [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md), based on firmware analysis run [43238133570](https://github.com/14vvp93/public_calculations/actions/runs/43238133570).
+- Recovered the exact embedded boot-kernel config from `IKCFG_ST` / `IKCFG_ED`; boot and recovery configs are byte-identical. The kernel identifies as Linux `4.9.117+`, built by `publisher28@ubuntu128` with GCC 4.9.x on 2026-03-26.
+- Confirmed `CONFIG_MACH_MT8163=y`, `CONFIG_HARDENED_USERCOPY=y`, `CONFIG_MODULES=y`, `CONFIG_MODVERSIONS=y`, `CONFIG_SND_SOC_MT8163=y` and `CONFIG_IKCONFIG=y`. The decompressed image contains `__check_object_size` and the hardened-usercopy diagnostic string.
+- Clarified that hardened usercopy does not validate the logical length of the Java `int[]` passed to JNI. The extra-word over-read remains a real P0-A defect.
+- The supplied DTBO declares `compatible = "hcn,cd3313"` in node `cd3313@44` with mute/sub GPIO properties. GPIO phandles and runtime overlay selection remain unverified.
+- The recovered init script references `cd3313.ko`, `ak7604.ko` and `fy7604.ko` in that order, despite the shared `audiomux` name collision. Only runtime logs and device-node ownership can establish which driver actually registers.
+- Factory policy/HAL evidence identifies FM I2S, FM capture and direct-control code paths, but does not identify the active route at runtime.
+- P0-B remains open: no loaded-module list, boot/probe logs, ALSA runtime inventory, active DTBO confirmation or physical board inspection is available.
+- This update is static/read-only firmware evidence only. No hardware I/O or device validation was performed.
