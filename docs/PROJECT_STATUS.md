@@ -1,7 +1,8 @@
 # MT8163 Audio Engine — current status
 
 Updated: 2026-11-13  
-Reviewed integration baseline: `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`
+Reviewed historical audit baseline: `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
+Current implementation HEAD at status update: `9ee683c01a170e2ae2297d1f3e594ef0336989f7`
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This status file is a concise snapshot only. Do not use older execution logs to select priorities.
 
@@ -38,11 +39,11 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 
 ## Current CI evidence
 
-- PCM stream-broker ThreadSanitizer: [run 43373877328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877328) — success on integration branch.
-- Repository integrity: [run 43373877371](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877371) — success; validates local Markdown links and read-only collector syntax.
-- AudioCore ThreadSanitizer: [run 43373877343](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373877343) — running at the time of this update; the previous completed run [43373791297](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43373791297) succeeded.
-- CD3313 protocol/safety: [run 43337144746](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43337144746) — success on code commit `cfc20a4`, not the later docs-only HEAD.
-- Earlier PCM DSP host tests and Android ARMv7 library builds are recorded in validation reports. Re-run them for relevant code changes.
+- PCM stream-broker ThreadSanitizer: [run 43375007298](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007298) — running against the new handle-reuse regression.
+- AudioCore ThreadSanitizer: [run 43375007312](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007312) — running.
+- PCM DSP host tests: [run 43375007291](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007291) — running.
+- Android ARMv7 build and DSP benchmark: [run 43375007287](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007287) — running.
+- PCM DSP stability/performance: [runs 43375007331 and 43375007550](https://github.com/14vvp93/mt8163_audio_engine/actions) — running.
 - No complete primary HAL build or device validation is claimed.
 
 ## Safety state
@@ -52,6 +53,10 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 - Keep unsupported routes/formats on bit-transparent bypass.
 - Preserve factory originals and rollback hashes.
 
+## Latest P1 change
+
+The PCM broker no longer reads non-atomic stream direction metadata before transfer admission. This removes a lifecycle race window where a callback could inspect direction while close/reopen reset the same slot. A repeated same-handle close/reopen stress test was added and is running under TSAN.
+
 ## Next action
 
-Follow P0 in [Project Roadmap](PROJECT_ROADMAP.md): obtain read-only target runtime topology and close ownership/endpoint evidence. Continue host-side lifecycle and HAL ABI work without speculative hardware operations.
+Follow P0 in [Project Roadmap](PROJECT_ROADMAP.md): obtain the read-only target runtime inventory to close runtime ownership and endpoint evidence. Continue host-side lifecycle and HAL ABI work without speculative hardware operations.
