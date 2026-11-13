@@ -1,13 +1,34 @@
 #include "mt8163_audio_core/session_registry.hpp"
 #include "mt8163_audio_core/route_policy.hpp"
 
+#include <atomic>
 #include <limits>
 
 namespace mt8163_audio_core {
+namespace {
+std::atomic<std::uint32_t> g_next_registry_epoch{1U};
+}
 
-SessionRegistry::SessionRegistry(std::uint64_t first_generation) noexcept
-    : next_generation_(first_generation),
-      generation_exhausted_(first_generation == 0U) {}
+SessionRegistry::SessionRegistry() noexcept
+    : registry_epoch_(allocate_registry_epoch()) {}
+
+SessionRegistry::SessionRegistry(std::uint32_t first_sequence) noexcept
+    : registry_epoch_(allocate_registry_epoch()),
+      next_sequence_(first_sequence),
+      sequence_exhausted_(first_sequence == 0U) {}
+
+std::uint32_t SessionRegistry::allocate_registry_epoch() noexcept {
+    std::uint32_t current = g_next_registry_epoch.load(std::memory_order_relaxed);
+    for (;;) {
+        if (current == 0U) return 0U;
+        const std::uint32_t next =
+            current == std::numeric_limits<std::uint32_t>::max()
+                ? 0U : current + 1U;
+        if (g_next_registry_epoch.compare_exchange_weak(
+                current, next, std::memory_order_relaxed,
+                std::memory_order_relaxed)) return current;
+    }
+}
 
 bool SessionRegistry::valid_source(SourceId source) noexcept {
     return source != SourceId::None &&
@@ -49,7 +70,7 @@ bool SessionRegistry::open(std::uint32_t handle, SourceId source,
                            RouteType route, SessionToken* out_token) noexcept {
     if (out_token == nullptr) return false;
     *out_token = SessionToken{};
-    if (handle == 0U || generation_exhausted_ ||
+    if (handle == 0U || registry_epoch_ == 0U || sequence_exhausted_ ||
         !valid_source(source) || !valid_route(route) ||
         validate_source_route(source, route) != RouteValidation::Supported) {
         return false;
@@ -68,16 +89,19 @@ bool SessionRegistry::open(std::uint32_t handle, SourceId source,
     }
     if (free_session == nullptr) return false;
 
-    const SessionToken token{handle, next_generation_};
+    const std::uint64_t generation =
+        (static_cast<std::uint64_t>(registry_epoch_) << 32U) |
+        static_cast<std::uint64_t>(next_sequence_);
+    const SessionToken token{handle, generation};
     free_session->token = token;
     free_session->source = source;
     free_session->route = route;
     free_session->state = SessionState::Requested;
 
-    if (next_generation_ == std::numeric_limits<std::uint64_t>::max()) {
-        generation_exhausted_ = true;
+    if (next_sequence_ == std::numeric_limits<std::uint32_t>::max()) {
+        sequence_exhausted_ = true;
     } else {
-        ++next_generation_;
+        ++next_sequence_;
     }
     *out_token = token;
     return true;
