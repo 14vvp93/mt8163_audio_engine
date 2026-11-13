@@ -60,6 +60,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes binutils-arm-linux-gnueabi
 
+      - name: Preserve audited factory binary as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt8163-factory-primary-hal
+          path: factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+          if-no-files-found: error
+          retention-days: 2
+
       - name: Audit ELF and exported HAL module symbol
         shell: bash
         run: |
