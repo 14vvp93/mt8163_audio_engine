@@ -126,12 +126,6 @@ int main() {
     CHECK(short_write.result == PcmResult::Ok);
     CHECK(short_write.bytes_transferred == 4U);
 
-    backend.next_transfer_frames = 1U;
-    backend.next_transfer_result = PcmResult::Xrun;
-    const PcmByteTransfer partial_xrun = output.write(samples.data(), 16U);
-    CHECK(partial_xrun.result == PcmResult::Xrun);
-    CHECK(partial_xrun.bytes_transferred == 4U);
-
     const PcmByteTransfer misaligned_write = output.write(samples.data(), 959U);
     CHECK(misaligned_write.result == PcmResult::InvalidArgument);
     CHECK(misaligned_write.bytes_transferred == 0U);
@@ -169,6 +163,11 @@ int main() {
     backend.block_writes.store(false, std::memory_order_release);
     CHECK(output.configure(config) == PcmResult::Ok);
     CHECK(output.start() == PcmResult::Ok);
+    backend.next_transfer_frames = 1U;
+    backend.next_transfer_result = PcmResult::Xrun;
+    const PcmByteTransfer partial_xrun = output.write(samples.data(), 16U);
+    CHECK(partial_xrun.result == PcmResult::Xrun);
+    CHECK(partial_xrun.bytes_transferred == 4U);
     CHECK(output.stop() == PcmResult::Ok);
     CHECK(output.close() == PcmResult::Ok);
     CHECK(!output.configured());
