@@ -55,7 +55,7 @@ ABI tooling:
 
 ## Project status
 
-**Engineering foundations and factory ABI recovery are progressing. A complete replacement Primary HAL has not been implemented, built or validated on the head unit.**
+**Engineering foundations and factory ABI recovery are progressing. Factory stream negotiation has been partially reconstructed from disassembly. A complete replacement Primary HAL has not been implemented, built or validated on the head unit.**
 
 Final replacement target:
 
@@ -87,7 +87,9 @@ Final replacement target:
 - [x] Add layout-only ABI mirror and CI checks.
 - [ ] Obtain/pin matching ALPS/MediaTek vendor headers or source revision.
 - [ ] Recover actual Android 9 linker namespace configuration and verify every dependency is visible there.
-- [ ] Finish method-level stream negotiation analysis: rates, formats, channel masks, flags, buffer sizing and error behavior.
+- [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly.
+- [x] Recover output/input handler-open dispatch and output buffer-time formula.
+- [ ] Finish stream-flag semantics, all error branches, Android-visible buffer-size contract and vendor-header reconciliation.
 - [ ] Trace external clients of private vendor callbacks.
 - [ ] Implement typed factory-compatible HAL shell with no hardware writes.
 - [ ] Build exact ARM32 HAL and verify ABI/symbol/dependency contract.
