@@ -1,0 +1,186 @@
+name: AudioCore P1 Session Identity Gate
+
+on:
+  push:
+    branches:
+      - feature
+    paths:
+      - "audio-core/**"
+      - "scripts/repository/check_audiocore_session_tokens.py"
+      - ".github/workflows/audiocore-p1-session-token.yml"
+      - "pcm-dsp/CMakeLists.txt"
+  pull_request:
+    branches:
+      - feature
+    paths:
+      - "audio-core/**"
+      - "scripts/repository/check_audiocore_session_tokens.py"
+      - ".github/workflows/audiocore-p1-session-token.yml"
+      - "pcm-dsp/CMakeLists.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audiocore-p1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-contract:
+    name: P1 API and stale-token contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Require the protected development branch for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/feature" || {
+            echo "::error::P1 gate must be dispatched from feature."
+            exit 1
+          }
+      - name: Check token propagation and regression coverage
+        run: python3 scripts/repository/check_audiocore_session_tokens.py
+
+  host-tests:
+    name: Complete AudioCore and DSP host tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure
+        run: |
+          cmake -S pcm-dsp -B build/p1-host \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DPCM_DSP_BUILD_TESTS=ON \
+            -DPCM_DSP_BUILD_BENCHMARKS=OFF
+      - name: Build
+        run: cmake --build build/p1-host --parallel 2
+      - name: Run complete host suite
+        run: ctest --test-dir build/p1-host --output-on-failure
+
+  thread-sanitizer:
+    name: AudioCore concurrency and lifecycle TSAN
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure
+        run: |
+          cmake -S pcm-dsp -B build/p1-tsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DPCM_DSP_BUILD_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+      - name: Build complete test suite
+        run: cmake --build build/p1-tsan --parallel 2
+      - name: Run complete suite under ThreadSanitizer
+        env:
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+        run: ctest --test-dir build/p1-tsan --output-on-failure
+
+  android-armv7:
+    name: Android 9 ARMv7 cross-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install Android NDK r27d when missing
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_NDK_VERSION: 27.3.13750724
+        run: |
+          set -euo pipefail
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          if [ ! -x "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+            test -n "$SDKMANAGER"
+            yes | "$SDKMANAGER" --licenses >/dev/null
+            "$SDKMANAGER" --install "ndk;$ANDROID_NDK_VERSION"
+          fi
+          test -x "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+      - name: Configure ARMv7 target
+        run: >
+          cmake -S pcm-dsp -B build/p1-android-armv7
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=armeabi-v7a
+          -DANDROID_PLATFORM=android-28
+          -DANDROID_STL=c++_static
+          -DPCM_DSP_BUILD_TESTS=OFF
+          -DPCM_DSP_BUILD_BENCHMARKS=OFF
+          -DPCM_DSP_BUILD_ANDROID_JNI=ON
+          -DCMAKE_BUILD_TYPE=Release
+      - name: Build ARMv7 libraries
+        run: cmake --build build/p1-android-armv7 --parallel 2
+      - name: Verify 32-bit ARM ELF outputs
+        run: |
+          set -euo pipefail
+          mkdir -p build/p1-android-armv7/verify
+          cd build/p1-android-armv7/verify
+          ar x ../libmt8163_pcm_dsp.a
+          readelf -h quad_engine.cpp.o | grep -E "Class:.*ELF32|Machine:.*ARM"
+          readelf -h ../libmt8163_audio_jni.so | grep -E "Class:.*ELF32|Machine:.*ARM"
+          mkdir -p audio-core
+          cd audio-core
+          ar x ../../audio-core-build/libmt8163_audio_core.a
+          readelf -h session_registry.cpp.o | grep -E "Class:.*ELF32|Machine:.*ARM"
+          readelf -h primary_hal_stream_adapter.cpp.o | grep -E "Class:.*ELF32|Machine:.*ARM"
+      - name: Upload ARMv7 build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-audiocore-p1-armv7
+          path: |
+            build/p1-android-armv7/libmt8163_pcm_dsp.a
+            build/p1-android-armv7/audio-core-build/libmt8163_audio_core.a
+            build/p1-android-armv7/libmt8163_audio_jni.so
+          if-no-files-found: error
+          retention-days: 14
+
+  repository-integrity:
+    name: P1 documentation and workflow integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Validate Markdown links
+        run: python3 scripts/repository/check_markdown_links.py
+      - name: Validate P1 checker syntax
+        run: python3 -m py_compile scripts/repository/check_audiocore_session_tokens.py
+      - name: Validate workflow YAML
+        run: ruby -e 'require "yaml"; data = YAML.load_file(".github/workflows/audiocore-p1-session-token.yml"); abort("Invalid workflow") unless data.is_a?(Hash) && data["name"] && data["jobs"].is_a?(Hash); puts "Workflow YAML OK"'
+
+  p1-complete:
+    name: P1 COMPLETE
+    if: always()
+    needs:
+      - api-contract
+      - host-tests
+      - thread-sanitizer
+      - android-armv7
+      - repository-integrity
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every P1 gate
+        env:
+          API: ${{ needs.api-contract.result }}
+          HOST: ${{ needs.host-tests.result }}
+          TSAN: ${{ needs.thread-sanitizer.result }}
+          ARMV7: ${{ needs.android-armv7.result }}
+          INTEGRITY: ${{ needs.repository-integrity.result }}
+        run: |
+          set -euo pipefail
+          printf 'API=%s HOST=%s TSAN=%s ARMV7=%s INTEGRITY=%s\n' \
+            "$API" "$HOST" "$TSAN" "$ARMV7" "$INTEGRITY"
+          test "$API" = success
+          test "$HOST" = success
+          test "$TSAN" = success
+          test "$ARMV7" = success
+          test "$INTEGRITY" = success
+          echo "P1 COMPLETE: all required offline gates passed."
