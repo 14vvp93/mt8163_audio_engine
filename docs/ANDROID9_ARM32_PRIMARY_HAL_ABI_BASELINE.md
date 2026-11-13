@@ -463,6 +463,11 @@ libdl.so
 
 This is the factory binary's declared dependency contract. It does not by itself prove that every library is present in the target linker namespace or that a replacement with the same SONAME will be accepted by the device's configured namespace policy.
 
+The extracted firmware tree contains all 32 dependency basenames. Vendor-specific dependencies are present under `/vendor/lib`; platform dependencies are present under `/system/lib`, with VNDK copies for several platform libraries under `/system/lib/vndk-28` or `/system/lib/vndk-sp-28`. This confirms artifact presence only, not namespace visibility.
+
+No `ld.config*.txt` or equivalent linker namespace configuration file was found in the current `public_calculations` extracted tree. The actual target namespace search paths and permitted vendor/system library links therefore remain unresolved.
+
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
