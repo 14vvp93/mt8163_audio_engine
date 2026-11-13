@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: repository-integrity-${{ github.ref }}
+  group: repository-integrity-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
