@@ -9,14 +9,13 @@ on:
     branches: [main, feature]
     paths:
       - "primary-hal/**"
-      - ".github/workflows/primary-hal-arm32-abi.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: primary-hal-arm32-abi-${{ github.ref }}
+  group: primary-hal-arm32-abi-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
