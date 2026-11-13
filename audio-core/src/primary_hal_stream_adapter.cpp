@@ -16,6 +16,11 @@ PcmResult PrimaryHalStreamAdapter::open(
         return PcmResult::UnsupportedRoute;
     }
 
+    for (const auto& record : audio_core_.sessions().records()) {
+        if (record.state != SessionState::Free &&
+            record.token.handle == handle) return PcmResult::InvalidArgument;
+    }
+
     SessionToken session{};
     if (!audio_core_.open_session(handle, source, route, &session)) {
         return PcmResult::CapacityExceeded;
