@@ -25,6 +25,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Factory audio ownership matrix](FACTORY_AUDIO_OWNERSHIP_MATRIX.md) — factory control/data-plane owners, mute arbitration and replacement responsibilities.
 - [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md) — confirmed factory paths, basenames, SHA-256 baselines and replacement dispositions.
 - [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) — single state authority, module contracts, source/route model, mute arbitration and migration gates.
+- [Architecture decisions — full replacement, all-source DSP and factory retention](ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md) — owner-approved replacement depth, DSP coverage, factory preservation and cutover constraints.
 - [Factory defect and risk register](FACTORY_DEFECTS.md) — confirmed static defects, unresolved cross-stack risks and closure criteria.
 - [Project status](PROJECT_STATUS.md) — concise current snapshot; execution priorities remain in [Project Roadmap](PROJECT_ROADMAP.md).
 - [Repository cleanup report](repository-audit/REPOSITORY_CLEANUP_REPORT.md) — repository layout, archive handling and cleanup decisions.
