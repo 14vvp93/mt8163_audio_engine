@@ -9,7 +9,6 @@ on:
       - "pcm-dsp/include/pcm_dsp/engine.hpp"
       - "pcm-dsp/Android.mk"
       - "pcm-dsp/tests/android_effect_smoke_test.cpp"
-      - ".github/workflows/android-effect-library.yml"
   pull_request:
     branches: [main, feature]
     paths:
