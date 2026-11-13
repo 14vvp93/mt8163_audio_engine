@@ -31,8 +31,8 @@ public:
 
 private:
     bool prepare_engine(std::size_t slot, const AudioProfile& profile);
-    void process_chunk(const float* input, float* output, std::size_t frames,
-                       float* sub_output);
+    bool process_chunk(const float* input, float* output, std::size_t frames,
+                        float* sub_output);
 
     std::array<QuadEngine, 2> engines_{};
     std::array<AudioProfile, 2> profiles_{};
