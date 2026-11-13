@@ -93,7 +93,7 @@ Final replacement target:
 - [x] Add executable reference tests for factory output sample-rate allowlist, input PCM16 fallback and input channel-mask predicate.
 - [ ] Obtain/pin matching ALPS/MediaTek vendor headers or source revision.
 - [ ] Recover actual Android 9 linker namespace configuration and verify every dependency is visible there.
-- [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly; correct the input channel predicate against the instruction-level branch flow.
+- [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly; record the raw input-mask predicate as factory behavior without assuming it is normative.
 - [x] Recover output/input handler-open dispatch and output buffer-time formula.
 - [x] Recover legacy output-open flags defaulting to zero, `openOutputStreamWithFlags()` forwarding, raw output flag storage offset and the 8,192-byte output buffer getter contract.
 - [x] Recover input `AUDIO_INPUT_FLAG_FAST` handling, the 5/20/60 ms input stream-buffer duration branches, and the separate 20 ms `getInputBufferSize()` formula with its exact format-width lookup table.

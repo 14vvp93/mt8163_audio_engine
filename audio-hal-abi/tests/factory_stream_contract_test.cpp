@@ -55,7 +55,7 @@ int main() {
 
     // This list records the factory predicate, not a normative Android mask allowlist.
     constexpr std::array<std::uint32_t, 6> factory_accepted_channels{
-        0x0c, 0x10, 0x4000, 0x8000, 0xc000, 0x1c
+        0x0c, 0x10, 0x4000, 0x8000, 0xc000, 0x1c // factory accepts extra channel bits too
     };
 
     for (const auto mask : factory_accepted_channels) {
