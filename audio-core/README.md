@@ -4,7 +4,7 @@ This directory contains the first host-testable primitives for the unified MT816
 
 ## Current scope
 
-- Session identity migration is a P1 prerequisite: the current raw 32-bit handle is vulnerable to same-value reuse. The proposed generation-bearing token contract and staged migration are documented in [AudioCore Session Token Contract](../docs/AUDIOCORE_SESSION_TOKEN_CONTRACT.md). Until implementation and end-to-end stale-token tests are complete, the session API is not ready for HAL integration.
+- Session identity migration is a P1 prerequisite: the current raw 32-bit handle is vulnerable to same-value reuse. The proposed generation-bearing token contract and staged migration are documented in [AudioCore Session Token Contract](../docs/AUDIOCORE_SESSION_TOKEN_CONTRACT.md). Until implementation and end-to-end stale-token tests are complete, the session API is not ready for HAL integration. The [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml) enforces API, host-test, TSAN, Android ARMv7 and repository-integrity checks; it remains red until the migration is complete.
 
 - Stable source and route identifiers.
 - Fixed-capacity multi-session registry with an explicit lifecycle state machine.
