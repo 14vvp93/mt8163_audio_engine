@@ -35,6 +35,8 @@ machine=$(printf '%s\n' "$header" | awk -F: '/Machine:/ {gsub(/^[ \t]+/, "", $2)
 flags=$(printf '%s\n' "$header" | awk -F: '/Flags:/ {sub(/^[ \t]+/, "", $2); print $2}')
 size=$(wc -c < "$binary" | tr -d ' ')
 sha=$(sha256sum "$binary" | awk '{print $1}')
+expected_sha=112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4
+expected_size=1671852
 
 echo "===== Identity ====="
 echo "File: $binary"
@@ -44,6 +46,10 @@ echo "ELF type: $elf_type"
 echo "ELF class: $class"
 echo "Machine: $machine"
 echo "Flags: $flags"
+if [ "$sha" != "$expected_sha" ] || [ "$size" != "$expected_size" ]; then
+    echo "WARNING: artifact differs from the recorded factory baseline."
+    echo "Expected size/SHA-256: $expected_size / $expected_sha"
+fi
 
 if [ "$elf_type" != "DYN (Shared object file)" ]; then
     echo "ERROR: expected an ELF shared object (ET_DYN)" >&2
@@ -76,8 +82,24 @@ echo "===== Program headers ====="
 readelf -lW "$binary"
 
 echo
+echo "===== Section headers ====="
+readelf -SW "$binary"
+
+echo
+echo "===== ELF notes / build ID ====="
+readelf -nW "$binary"
+
+echo
 echo "===== Dynamic section / SONAME / dependencies ====="
 readelf -dW "$binary" || true
+
+echo
+echo "===== Dynamic symbol version requirements ====="
+readelf --version-info -W "$binary" || true
+
+echo
+echo "===== Relocations ====="
+readelf -rW "$binary"
 
 echo
 echo "===== Dynamic symbols relevant to Android audio HAL ====="
