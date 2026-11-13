@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pcm_dsp/engine.hpp"
+#include "pcm_dsp/stereo_profile.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -58,6 +59,12 @@ public:
                                  std::int16_t* output,
                                  std::size_t frames,
                                  const Parameters& parameters,
+                                 const NormalPlaybackContext& context) noexcept;
+
+    NormalPlaybackResult process(const std::int16_t* input,
+                                 std::int16_t* output,
+                                 std::size_t frames,
+                                 const StereoPlaybackProfile& profile,
                                  const NormalPlaybackContext& context) noexcept;
 
     bool configured() const noexcept { return configured_; }
