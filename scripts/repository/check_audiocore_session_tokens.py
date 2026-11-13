@@ -21,6 +21,10 @@ TEST_FILES = {
     "primary_hal_adapter": ROOT / "audio-core/tests/primary_hal_stream_adapter_test.cpp",
 }
 
+ENDPOINT_BACKEND_HEADER = ROOT / "audio-core/include/mt8163_audio_core/endpoint_pcm_backend.hpp"
+ENDPOINT_BACKEND_SOURCE = ROOT / "audio-core/src/endpoint_pcm_backend.cpp"
+ENDPOINT_BACKEND_TESTS = ROOT / "audio-core/tests/endpoint_pcm_backend_test.cpp"
+
 IDENTITY_METHOD = re.compile(
     r"\b(?:transition|close|find|configure|start|write|read|"
     r"write_transfer|read_transfer|stop|get_record|"
@@ -99,6 +103,17 @@ def main() -> int:
     registry_tests = read_required(TEST_FILES["session_registry"])
     if not re.search(r"exhaust|numeric_limits|UINT64_MAX|uint64_t\s*\{?\s*[-]1", registry_tests, re.I):
         fail("SessionRegistry tests must cover generation exhaustion and fail-closed behavior.")
+
+    backend_header = read_required(ENDPOINT_BACKEND_HEADER)
+    backend_source = read_required(ENDPOINT_BACKEND_SOURCE)
+    backend_tests = read_required(ENDPOINT_BACKEND_TESTS)
+    if "token_exhausted_" not in backend_header:
+        fail("EndpointPcmBackend must track permanent token exhaustion.")
+    if "std::numeric_limits<StreamToken>::max()" not in backend_source:
+        fail("EndpointPcmBackend must fail closed before backend-token wraparound.")
+    if ("test_backend_token_exhaustion_fails_closed" not in backend_tests or
+            "test_backend_token_rejects_stale_slot_reuse" not in backend_tests):
+        fail("EndpointPcmBackend tests must cover token exhaustion and stale slot reuse.")
 
     print("P1 API contract checks passed: generation-bearing tokens are propagated,")
     print("raw-handle lifecycle APIs are absent, and component regression tests are present.")
