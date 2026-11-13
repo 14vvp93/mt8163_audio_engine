@@ -91,7 +91,7 @@ Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently limi
 
 The repository includes [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml). It runs on relevant pushes and pull requests targeting `feature`, and can be dispatched manually from `feature`.
 
-The workflow has five required checks:
+The workflow has six required checks:
 
 1. Public API contract: verifies the generation-bearing token shape, propagation through all four public layers, absence of raw numeric-handle mutation overloads (the external correlation handle remains allowed only at open), and presence of stale-token/same-handle-reuse and generation-exhaustion regression coverage.
 2. Full host build and CTest suite.
