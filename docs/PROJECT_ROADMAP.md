@@ -4,7 +4,8 @@
 **Baseline:** 2026-11-13  
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Integration branch:** `integration/beta-0.1`  
-**Baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
+**Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
+**Current implementation HEAD:** `9ee683c01a170e2ae2297d1f3e594ef0336989f7`  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -142,8 +143,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 **Priority: high; host-testable work can continue while P0 evidence is collected**
 
 1. Audit AudioCore's single-writer contract and enforce it at the future HAL control-executor boundary.
-2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery.
-3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN.
+2. Finish deterministic lifecycle tests for open/configure/start/write/read/stop/close, stale handles, generation reuse, slot exhaustion, XRUN, device loss and repeated recovery. **In progress:** direction metadata access in PCM callbacks was moved behind transfer admission; a repeated same-handle close/reopen race test was added.
+3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **In progress:** the new race regression is running under the PCM broker TSAN workflow.
 4. Ensure stop/close cannot destroy backend state while a transfer callback is active.
 5. Implement the concrete TinyALSA/ALSA operation table only after P0 provides verified endpoint mappings.
 6. Validate period size, buffer size, channels, sample format, rate, interleaving and blocking behavior against the real endpoint.
@@ -271,16 +272,15 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ## 8. Immediate execution queue
 
-1. Correct the project-wide terminology and mark old CD3310EO references as superseded by the latest user correction.
-2. Refresh the project status from the actual integration branch and current CI, removing stale branch/HEAD statements.
-3. Run the read-only target diagnostic collector and record runtime ownership/topology.
-4. Close the AudioCore/PCM broker lifecycle and sanitizer gaps.
-5. Finish exact factory primary HAL ABI recovery and build a minimal factory-compatible HAL shell.
-6. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
-7. Add source adapters incrementally; keep all unverified routes bypassed.
-8. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
-9. Migrate factory control owners and validate rollback.
-10. Complete end-to-end route, quality and stability validation.
+1. Run the read-only target diagnostic collector and record runtime ownership/topology; this remains the only blocker requiring target-side evidence.
+2. Finish PCM lifecycle race/recovery tests and close sanitizer findings.
+3. Complete AudioCore single-writer and snapshot publication review.
+4. Finish exact factory primary HAL ABI recovery and build a minimal factory-compatible HAL shell.
+5. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
+6. Add source adapters incrementally; keep all unverified routes bypassed.
+7. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
+8. Migrate factory control owners and validate rollback.
+9. Complete end-to-end route, quality and stability validation.
 
 ## 9. Definition of done
 
@@ -307,4 +307,5 @@ The MT8163 Audio Engine is complete only when:
 - Reordered work around runtime ownership, PCM lifecycle, factory HAL ABI and a proven stereo insertion point.
 - Archived the old Beta 0.1 roadmap, refreshed the status/index/README, and marked legacy hardware-identity records as superseded where necessary.
 - Enabled repository-integrity and PCM stream-broker TSAN workflows on the integration branch.
+- Fixed a PCM broker race by moving non-atomic direction metadata reads behind the transfer-admission gate; added a repeated handle-reuse stress test.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
