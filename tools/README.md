@@ -70,7 +70,7 @@ Run this read-only audit in Linux, WSL or Git Bash against the immutable
 firmware extraction:
 
 ```sh
-sh tools/audit_primary_hal_binary.sh files/vendor/audio.primary.mt8163.so
+sh tools/audit_primary_hal_binary.sh /path/to/public_calculations/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
 ```
 
 It verifies the factory basename, ELF shared-object type, ELF32 ARM machine,
