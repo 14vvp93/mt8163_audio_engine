@@ -162,7 +162,7 @@ std::vector<std::uint8_t> encode_driver_command(const DriverCommand& command) {
         throw std::invalid_argument("CD3313 master volume maximum must be in range 0..40");
     if (command.id == 0x03 &&
         !valid_input_gain_arguments(command.payload.data(), command.payload.size()))
-        throw std::invalid_argument("CD3313 input gain requires channel 0..6 and gain 0..3");
+        throw std::invalid_argument("CD3313 input gain requires channel 0..5 and gain 0..3");
 
     const std::uint32_t header =
         (1U << 30U) |
