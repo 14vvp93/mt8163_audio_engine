@@ -245,7 +245,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 - PCM DSP host tests.
 - CD3313 emulator host tests, ASAN/UBSAN and bounded libFuzzer.
 - AudioCore ThreadSanitizer.
-- PCM stream broker ThreadSanitizer workflow (currently scoped to its work branch).
+- PCM stream broker ThreadSanitizer workflow (integration branch and its dedicated work branch).
 - Android ARMv7 library/JNI build and benchmark.
 - Android 9 effect-library ABI build and host smoke tests.
 - Stability lab and performance benchmark.
