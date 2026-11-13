@@ -105,6 +105,7 @@ Firmware archives and extracted firmware are maintained in `14vvp93/public_calcu
 - Android ARMv7 static-library/JNI build workflow.
 - Android 9 effect-library ABI scaffold and host smoke tests.
 - Non-installable Android 9 / ARM32 Primary HAL bootstrap with exported `HMI`, factory wrapper layout assertions and a fail-closed module-open entry point.
+- NDK r27c cross-build of the bootstrap verified as ELF32 ARM with factory SONAME and a 128-byte `GLOBAL DEFAULT` `HMI` symbol; see [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This does not satisfy the complete factory-HAL build gate.
 - Read-only device diagnostics collectors.
 - Static FM direct-I2S/capture, A2DP and HFP/SCO route investigations.
 
