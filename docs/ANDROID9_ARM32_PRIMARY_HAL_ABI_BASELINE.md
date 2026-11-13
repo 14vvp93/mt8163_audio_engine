@@ -431,6 +431,32 @@ The playback factory's dispatch table also exposes several concrete branches:
 
 These are static dispatch facts. The semantic name of every vendor selection value and its active runtime use still require matching headers and target evidence.
 
+### Normal playback endpoint and write pipeline
+
+Static analysis of `AudioALSAPlaybackHandlerNormal::open` and `write` establishes:
+
+- The normal handler resolves PCM and card indices through `AudioALSADeviceParser::GetPcmIndexByString` and `GetCardIndexByString`; it does not rely solely on a hard-coded PCM index.
+- The parser uses the live ALSA inventory at `/proc/asound/pcm`. The existing read-only diagnostic collector already captures this file plus per-PCM `info` and substream `status`.
+- It queries TinyALSA capabilities with `pcm_params_get`, `pcm_params_get_max` and `pcm_params_free`.
+- It consults `AudioALSASampleRateController::getPrimaryStreamOutSampleRate` and the platform isolated-deep-buffer policy.
+- `/vendor/etc/audio_device.xml` is a separate mixer-control/device-sequence configuration parsed by `AudioALSADeviceConfigManager`; it is not the source of the dynamic card/PCM indices.
+
+The factory Normal write order is recovered directly from `AudioALSAPlaybackHandlerNormal::write`:
+
+```text
+doDcRemoval
+-> doStereoToMonoConversionIfNeed
+-> doPostProcessing
+-> doBliSrc
+-> doBitConversion
+-> dodataPending
+-> pcmWrite
+-> AudioVUnlockDL::WriteStreamOutToRing
+```
+
+This confirms the earlier pipeline analysis at method level. The actual card/PCM indices and selected device-name keys still depend on target runtime inventory and the device parser configuration; do not hard-code them into the replacement before P0 evidence is collected.
+
+
 
 
 The device callback adapters pass the following recovered arguments into the C++ open methods:
