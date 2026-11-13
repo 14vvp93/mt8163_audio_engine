@@ -138,9 +138,9 @@ Final replacement target:
 ## Current CI evidence
 
 - Primary HAL factory audit, stream contracts, xWay forwarding, voice-unlock worker/teardown, HIDL bridge, full 1,052-library scan and service executable audit: PASS on feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048/artifacts/14026274892).
-- Repository Integrity: PASS on the preceding feature commit — [run 43405320468](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405320468).
-- AudioCore TSAN: PASS — [run 43405320597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405320597).
-- PCM Stream Broker TSAN: PASS — [run 43405320468](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405320468).
+- Repository Integrity: PASS on the current docs-only feature HEAD — [run 43405890757](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405890757).
+- AudioCore TSAN: PASS on code-equivalent feature commit `29000c551ce36bf9602245c7b67f2ff6b1f37883` — [run 43405588013](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588013).
+- PCM Stream Broker TSAN: PASS on the same code-equivalent feature commit — [run 43405588054](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588054).
 - Android 9 ARM32 ABI layout plus recovered stream-contract tests: PASS on code-equivalent feature commit `37b4a089bc33be45b55acdb6081fe17600fe3407` — [run 43403672781](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43403672781). C++ layout, C11 layout and factory stream contract tests all passed.
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
