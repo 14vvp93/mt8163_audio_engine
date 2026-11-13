@@ -373,6 +373,29 @@ The device callbacks allocate a separate C ABI wrapper around the C++ stream imp
 | 92 | `update_sink_metadata` | `updateSinkMetadata` |
 | 96 | Private field | `legacy_in` pointer |
 
+### Stream-manager forwarding path
+
+The factory HAL delegates stream creation and teardown through the `AudioALSAHardware` singleton to `AudioALSAStreamManager`. The recovered implementation entry points are:
+
+| Method | Address | Size |
+|---|---:|---:|
+| `AudioALSAHardware::openOutputStreamWithFlags` | `0x000d1244` | 56 |
+| `AudioALSAHardware::openInputStreamWithFlags` | `0x000cacc8` | 8 |
+| `AudioALSAHardware::closeOutputStream` | `0x000cac88` | 8 |
+| `AudioALSAHardware::closeInputStream` | `0x000cacd0` | 8 |
+| `AudioALSAStreamManager::openOutputStream` | `0x00077e30` | 1492 |
+| `AudioALSAStreamManager::closeOutputStream` | `0x00078404` | 1284 |
+| `AudioALSAStreamManager::openInputStream` | `0x00078908` | 1452 |
+| `AudioALSAStreamManager::closeInputStream` | `0x00078eb4` | 1204 |
+| `AudioALSAStreamOut::set` | `0x0008172c` | 1376 |
+| `AudioALSAStreamOut::open` | `0x00083d54` | 776 |
+| `AudioALSAStreamOut::close` | `0x00084298` | 744 |
+| `AudioALSAStreamIn::set` | `0x00128318` | 1320 |
+| `AudioALSAStreamIn::open` | `0x0012b510` | 520 |
+| `AudioALSAStreamIn::close` | `0x0012b868` | 684 |
+
+The HAL adapter owns the small C wrapper allocation and its callback table. The manager owns the legacy C++ stream object and its route/PCM lifecycle. The stream `set()` methods perform format/device/configuration validation before stream activation; the exact supported combinations and all error branches still require full method-level analysis.
+
 **Stream close and ownership**
 
 The output close callback:
