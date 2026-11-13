@@ -4,7 +4,7 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
-> **Latest verified code HEAD:** `dd11947d6cbf9aadd4402e5667e045dfa6879176`. `NormalPlaybackPcmAdapter` now rejects misaligned PCM16 input/output buffers before sample access; regression coverage is included. Host CMake/CTest passed **22/22 tests** (Actions run [43507951645](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43507951645)); Android ARMv7 static-library/JNI cross-build and ELF32 ARM verification passed (run [43507951633](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43507951633)). Subsequent feature-branch commits are documentation-only: they add the canonical CD3313EO and MT8163 hardware references, index both documents, and record the datasheet constraints in the DSP integration decision and roadmap.
+> **Latest verified code-bearing commit:** `f50f25af1b3d14010b3f3bf3c4e00451f7c7e5a5`. It adds explicit DSP-route visibility classification and a `SystemSound` source identity. Host CMake/CTest passed **22/22 tests** ([run 43509199586](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199586)); Android ARMv7 static-library cross-build/ELF verification passed ([run 43509199532](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199532)); PCM Stream/HAL Adapter TSAN passed ([run 43509199597](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509199597)). Repository Integrity passed after the documentation changes ([run 43509340411](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43509340411)). Later feature commits in this work session are documentation-only. These results do not claim a complete installable HAL or physical-device validation.
 
 > **Latest regression coverage (2026-11-13):** commit [2f0d4f7](https://github.com/14vvp93/mt8163_audio_engine/commit/2f0d4f77f873471b5eb0149c13fed320d08e35c5) adds endpoint-backend tests for impossible transfer counts on both playback and capture. The backend must return `BackendFailure`, reject subsequent transfers, and require explicit stop/close cleanup. These tests are added but are **not yet CI-verified**; the last verified code baseline remains `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
 
@@ -75,6 +75,8 @@ Final replacement target:
 ### P1 — AudioCore and PCM
 
 - [x] AudioCore coordinator, session registry, route policy, mute arbitration and snapshot publication.
+- [x] Explicit DSP route visibility classification, separate from transport-route validity: A2DP offload control, HFP/SCO PCM bridge, microphone echo-reference requirement, FM direct-I2S digital tap, FM capture PCM, and analog-only CD3313 inputs are distinguished.
+- [x] Add `SystemSound` as a first-class AudioCore source using the primary PCM route.
 - [x] PCM backend contract, endpoint adapter and stream broker.
 - [x] Fix direction metadata race by reading it only after transfer admission.
 - [x] Add repeated same-handle close/reopen stress test.
@@ -124,7 +126,10 @@ Final replacement target:
 - [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
 - [x] Confirm stereo-preserving DSP insertion point after DC removal and before conditional stereo-to-mono fold; fold condition and PCM16/PCM32 averaging behavior documented.
 - [x] Confirm the MTK callback does not cover every audio route.
-- [ ] Integrate DSP with bit-transparent bypass on unsupported route/format or DSP failure.
+- [ ] Integrate the unified DSP into every supported route with bit-transparent temporary fallback on unsupported format or DSP failure.
+- [ ] Add route-specific playback, capture, telephony and echo-reference processing graphs under one DSP/profile owner.
+- [ ] Disable or redirect A2DP offload where it bypasses the DSP-visible PCM path.
+- [ ] Recover a DSP-visible digital path for FM direct I2S and verified ADC/PCM capture for analog-only AUX/AUX2/DAB inputs.
 - [ ] Validate stereo separation, latency, CPU and stability.
 
 ### P4 — source adapters and routes
@@ -132,7 +137,7 @@ Final replacement target:
 - [ ] Media playback and route arbitration.
 - [ ] FM direct-I2S and FM capture.
 - [ ] Bluetooth A2DP and HFP/SCO.
-- [ ] Voice call, microphone, echo and analog input.
+- [ ] Voice call, microphone, echo-reference synchronization, AEC/NS/AGC/sidetone and analog-input digitization where supported.
 - [ ] Navigation prompts and concurrent-session transitions.
 - [ ] Route-by-route regression against factory behavior.
 
@@ -172,7 +177,7 @@ Final replacement target:
 - No live ioctl, I2C write, GPIO change, mixer write, module load/unload or firmware flash is claimed.
 - Hardware transport remains disabled until P0 ownership and bounded command ABI gates are satisfied.
 - Unsupported routes/formats must use bit-transparent bypass.
-- Preserve factory originals and rollback hashes.
+- Retain all factory components and immutable originals/rollback hashes; prevent parallel runtime ownership after cutover.
 
 
 - **Latest execution caveat (2026-11-13):** workflows triggered on `07e8fae18edd39e958cc6deb78552c268ba3acf6` and `8092e1688e889b8d4750faa118dfdc444b014b23` were marked failed by GitHub, but their jobs had `runner_id=0`, an empty `runner_name`, and an empty `steps` array. Re-running the failed jobs reproduced the same pre-runner failure. Job-log retrieval returned storage `BlobNotFound`; therefore no compiler, test, TSAN, or benchmark step is known to have executed. Do not interpret these workflow conclusions as evidence of source-code test failures. The newest code changes remain unverified until a runner actually executes the workflow steps.
