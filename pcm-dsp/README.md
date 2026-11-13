@@ -24,6 +24,31 @@ bypass. The adapter is a platform-independent PCM boundary component; it is
 not yet called by the target's vendor HAL or the direct FM_I2S AudioPatch
 playback path.
 
+### Normal playback pre-fold adapter scaffold
+
+`NormalPlaybackPcmAdapter` is a host-side fail-open harness for the recovered
+Normal playback insertion boundary after DC removal and before the factory's
+conditional stereo-to-mono fold.
+
+It accepts only interleaved PCM16 stereo at sample rates accepted by
+`Engine::configure()`. Processing requires an explicit caller-supplied
+`PrimaryMedia` route, normal audio mode, matching sample rate/channel/format,
+DSP enabled, and APDMNR tuning disabled. Voice call, Bluetooth SCO, FM,
+HDMI, direct/offload, unknown routes, unsupported formats, mismatched
+configurations and disabled DSP are bit-exact bypass.
+
+The route enum is a policy input, not an automatic detector. No Android HAL
+callback or AudioFlinger effect currently supplies it. The caller must not
+label a route `PrimaryMedia` until the target route and stream contract are
+verified. PCM32 remains bypassed even though the factory mono-fold helper
+recognizes PCM32; the existing stereo DSP engine is PCM16-only.
+
+The adapter uses no locks or dynamic allocation in `process()`, resets DSP
+state when leaving an eligible route, supports exact in-place processing,
+and uses overlap-safe bypass copying. Partial-overlap buffers bypass rather
+than entering the DSP. This is a host integration scaffold, not a device
+integration or an approval to patch the factory HAL.
+
 ### Four-channel Float32 foundation
 
 - interleaved Float32 FL/FR/RL/RR processing;
