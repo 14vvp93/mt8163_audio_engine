@@ -5,6 +5,7 @@ on:
     branches: [feature]
     paths:
       - "primary-hal/**"
+      - "audio-core/**"
       - ".github/workflows/primary-hal-arm32-abi.yml"
   pull_request:
     paths:
@@ -62,3 +63,24 @@ jobs:
           "$READELF" -h build/audio.primary.mt8163.so | grep -E "Class:.*ELF32|Machine:.*ARM"
           "$READELF" -d build/audio.primary.mt8163.so | grep -F "audio.primary.mt8163.so"
           "$READELF" -sW build/audio.primary.mt8163.so | grep -E "GLOBAL.*DEFAULT.*HMI$"
+
+      - name: Cross-compile AudioCore for Android ARM32
+        run: |
+          set -euo pipefail
+          CLANG="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
+          LLVM_AR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          mkdir -p build/audio-core-arm32/objects
+          while IFS= read -r source; do
+            object="build/audio-core-arm32/objects/$(basename "${source%.cpp}").o"
+            "$CLANG" \
+              --target=armv7a-linux-androideabi28 \
+              -std=c++17 -O2 \
+              -Wall -Wextra -Wpedantic -Werror \
+              -fvisibility=hidden -fPIC \
+              -Iaudio-core/include \
+              -c "$source" -o "$object"
+          done < <(find audio-core/src -maxdepth 1 -type f -name '*.cpp' | sort)
+          "$LLVM_AR" rcs build/audio-core-arm32/libmt8163_audio_core.a build/audio-core-arm32/objects/*.o
+          test -s build/audio-core-arm32/libmt8163_audio_core.a
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" \
+            -h build/audio-core-arm32/objects/primary_hal_stream_adapter.o | grep -E "Class:.*ELF32|Machine:.*ARM"
