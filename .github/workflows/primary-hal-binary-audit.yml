@@ -41,11 +41,12 @@ jobs:
           path: factory-firmware
           sparse-checkout: |
             firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
-            firmware/extracted/system/lib/libaudioflinger.so
-            firmware/extracted/system/lib/libaudiopolicymanagerdefault.so
-            firmware/extracted/system/lib/libaudiopolicycustomextensions.so
-            firmware/extracted/system/lib/libcarservices_jni.so
-            firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so
+            firmware/extracted/system/lib/
+            firmware/extracted/vendor/lib/
+            firmware/extracted/system/audio_policy_configuration.xml
+            firmware/extracted/vendor/audio_policy_configuration.xml
+            firmware/extracted/vendor/audio_policy.conf
+            firmware/extracted/vendor/audio_device.xml
             firmware/extracted/vendor/audiocmdservice_atci
           sparse-checkout-cone-mode: false
 
@@ -158,37 +159,62 @@ jobs:
             arm-linux-gnueabi-objdump -d -C --start-address=0x4170 --stop-address=0x4210 "$client"
           } 2>&1 | tee primary-hal-client-bridge.txt
 
-      - name: Scan factory framework and vendor clients for private HAL callback references
+      - name: Scan all extracted system and vendor shared libraries for private HAL callback references
         shell: bash
         run: |
           set -euo pipefail
           root="factory-firmware/firmware/extracted"
+          report="primary-hal-private-client-scan.txt"
+          patterns='xWayPlay|xWayRec|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware'
+          : > "$report"
+          scanned=0
+          matched=0
+          while IFS= read -r -d '' file; do
+            scanned=$((scanned + 1))
+            symbols="$(arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null | grep -Ei "$patterns" || true)"
+            strings_found="$(strings -a "$file" 2>/dev/null | grep -Ei "$patterns" | sort -u || true)"
+            if [ -n "$symbols" ] || [ -n "$strings_found" ]; then
+              matched=$((matched + 1))
+              {
+                echo
+                echo "===== ${file#"$root/"} ====="
+                sha256sum "$file"
+                if [ -n "$symbols" ]; then
+                  echo "-- dynamic symbol matches --"
+                  printf '%s\\n' "$symbols"
+                fi
+                if [ -n "$strings_found" ]; then
+                  echo "-- printable string matches --"
+                  printf '%s\\n' "$strings_found"
+                fi
+              } >> "$report"
+            fi
+          done < <(find "$root/system/lib" "$root/vendor/lib" -type f -name '*.so' -print0 | sort -z)
           {
-            for relative in \
-              "system/lib/libaudioflinger.so" \
-              "system/lib/libaudiopolicymanagerdefault.so" \
-              "system/lib/libaudiopolicycustomextensions.so" \
-              "system/lib/libcarservices_jni.so" \
-              "vendor/lib/libaudioprimarydevicehalifclient.so" \
-              "vendor/audiocmdservice_atci"; do
-              file="$root/$relative"
-              echo
-              echo "===== $relative ====="
-              if [ ! -s "$file" ]; then
-                echo "MISSING"
-                continue
+            echo "Scanned shared libraries: $scanned"
+            echo "Libraries with matching symbols or strings: $matched"
+            echo
+            echo "This is a bounded symbol/string scan. It does not prove absence of indirect calls through private structure offsets."
+            echo
+            echo "===== Linker namespace and policy configuration presence ====="
+            for file in \
+              "$root/system/etc/ld.config.txt" \
+              "$root/system/etc/ld.config.28.txt" \
+              "$root/vendor/etc/ld.config.txt" \
+              "$root/vendor/etc/ld.config.28.txt" \
+              "$root/system/audio_policy_configuration.xml" \
+              "$root/vendor/audio_policy_configuration.xml" \
+              "$root/vendor/audio_policy.conf" \
+              "$root/vendor/audio_device.xml"; do
+              if [ -s "$file" ]; then
+                echo "PRESENT: ${file#"$root/"}"
+                sha256sum "$file"
+              else
+                echo "ABSENT: ${file#"$root/"}"
               fi
-              sha256sum "$file"
-              echo "-- matching dynamic symbols --"
-              arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null |
-                grep -Ei 'xway|voice.?unlock|readref|setupParametersCallback|audioParameterChanged|MTKPrimaryDevicesHalClient|AudioALSAHardware' ||
-                true
-              echo "-- matching strings --"
-              strings -a "$file" |
-                grep -Ei 'xway|voice.?unlock|readref|setupParametersCallback|audioParameterChanged|audio.?parameter|primary.?device.?hal' |
-                sort -u || true
             done
-          } 2>&1 | tee primary-hal-private-client-scan.txt
+          } >> "$report"
+          cat "$report"
 
       - name: Preserve audited factory binary and report as workflow artifacts
         uses: actions/upload-artifact@v4
