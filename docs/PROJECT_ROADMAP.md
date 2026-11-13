@@ -5,14 +5,14 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Working branch:** `feature`  
 **Stable branch:** `main`  
-**Latest verified AudioCore/PCM code baseline:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
+**Latest verified AudioCore/PCM code baseline:** `fb5a00e0a1d38aed71571cd3b2db41773d90e509` (PCM host tests and Android ARMv7 cross-build PASS)  
 **Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
 This is the single authoritative execution plan. Update it when evidence, implementation or test status changes. Do not create parallel roadmaps or restart completed investigations without new evidence. The previous Beta 0.1 execution log is preserved at [docs/archive/PROJECT_ROADMAP_BETA_0.1.md](archive/PROJECT_ROADMAP_BETA_0.1.md) for historical reference only.
 
-Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](CI_EXECUTION_DIAGNOSTICS_2026-11-13.md). The latest three Actions jobs have failed conclusions but returned no executed steps and their log downloads are unavailable; do not classify them as source-code test failures without executable logs.
+Latest CI execution diagnostics: [docs/CI_EXECUTION_DIAGNOSTICS_2026-11-13.md](CI_EXECUTION_DIAGNOSTICS_2026-11-13.md). Historical runner-allocation failures are superseded by successful PCM host-test and ARMv7 runs on code HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509`.
 
 ---
 
@@ -63,7 +63,7 @@ The firmware dump was confirmed by the user to come from the same head unit. Fir
 
 ## 3. Repository audit — baseline inventory
 
-At baseline HEAD the recursive Git tree contains **209 files** and **12 GitHub Actions workflows**.
+At the current `feature` HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509`, the recursive Git tree contains **238 files** and **13 GitHub Actions workflows**.
 
 ### Product code
 
@@ -357,3 +357,21 @@ The MT8163 Audio Engine is complete only when:
 - Hardened the primary HAL ELF audit to check the required `HMI` dynamic export, ET_DYN, ARM32 EABI5 and factory basename; added CI shell-syntax validation.
 - Expanded the read-only PowerShell collector with runtime PCM status, device-node metadata, open-FD ownership and I2C driver bindings; stopped storing the ADB serial in its manifest.
 - Preserved CD3313KO static analysis and emulator work as completed firmware research; production hardware transport remains gated.
+
+
+## 11. Latest execution update — 2026-11-13
+
+### CI scheduling
+
+- Removed workflow-level `concurrency` cancellation blocks from all 13 GitHub Actions workflows. Pushes no longer cancel older runs via `cancel-in-progress: true`; successive commits may run concurrently or wait for available runners.
+- Repository Integrity passed on policy commit [20ff746](https://github.com/14vvp93/mt8163_audio_engine/commit/20ff7460c15f861461d224e422d345a983707b8c), Actions run [43474595132](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474595132).
+- This policy was exercised by two consecutive code commits: runs for both commits `5161fa5` and `fb5a00e` executed and completed instead of canceling earlier runs.
+
+### PCM lifecycle correction
+
+- `PrimaryHalStreamAdapter::stop()` previously returned immediately after backend cleanup when the broker stream was `Failed`. For a stream that had been active before an XRUN/device-loss error, this left the AudioCore session marked `Active` even after backend stop succeeded.
+- The adapter now snapshots whether the AudioCore session is `Active`, performs broker stop, and transitions only that active session to `Suspended`. A failed-start session remains `Requested` during cleanup.
+- Added a regression assertion for the `Active` → `Suspended` transition around terminal XRUN cleanup.
+- PCM DSP host tests passed on [commit 5161fa5](https://github.com/14vvp93/mt8163_audio_engine/commit/5161fa519c65d84c73bc26446e4748d63a0c8802) (run [43474868715](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868715)) and final code HEAD [fb5a00e](https://github.com/14vvp93/mt8163_audio_engine/commit/fb5a00e0a1d38aed71571cd3b2db41773d90e509) (run [43474875981](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474875981)).
+- Android ARMv7 cross-build and ELF verification passed on both commits: [run 43474868710](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868710) and [run 43474876012](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474876012).
+- TSAN workflows are manual-dispatch workflows and were not triggered by these code commits. No hardware tests or hardware writes were performed.
