@@ -44,7 +44,7 @@ Terminology: **CD3313EO** is the physical audio IC; **CD3313KO** is the Linux ke
 - PCM DSP host tests: [run 43375007291](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007291) — PASS.
 - Android ARMv7 build and DSP benchmark: [run 43375007287](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375007287) — PASS.
 - PCM DSP stability/performance: [runs 43375007331 and 43375007550](https://github.com/14vvp93/mt8163_audio_engine/actions) — PASS.
-- These results apply to code commit `9ee683c`; subsequent commits are documentation/collector changes. The latest collector-triggered TSAN runs are tracked separately.
+- These results apply to code commit `9ee683c`; subsequent commits are documentation/collector changes. The expanded collector also passed PCM broker TSAN [run 43375203331](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375203331) and repository integrity [run 43375253089](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375253089).
 - No complete primary HAL build or device validation is claimed.
 
 ## Safety state
