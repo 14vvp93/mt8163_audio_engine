@@ -2,10 +2,16 @@ name: PCM Stream Broker ThreadSanitizer
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature
+    paths:
+      - ".github/workflows/pcm-stream-broker-tsan.yml"
+      - "audio-core/**"
+      - "pcm-dsp/CMakeLists.txt"
 
 permissions:
   contents: read
-
 
 jobs:
   pcm-broker-tsan:
