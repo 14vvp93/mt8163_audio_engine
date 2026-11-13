@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Working branch:** `feature`  
 **Stable branch:** `main`  
-**Latest verified AudioCore/PCM code baseline:** `dd11947d6cbf9aadd4402e5667e045dfa6879176` (22/22 host tests and Android ARMv7 cross-build PASS)  
+**Latest verified AudioCore/PCM code baseline:** `f50f25af1b3d14010b3f3bf3c4e00451f7c7e5a5` (22/22 host tests, Android ARMv7 cross-build and PCM/HAL adapter TSAN PASS)  
 **Active development branch:** `feature` (use the live branch pointer for exact HEAD)  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
@@ -311,7 +311,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 4. Run the read-only target diagnostic collector and record runtime ownership/topology.
 5. Implement the typed factory-compatible HAL shell and compile it for ARM32 without hardware writes.
 6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
-7. Select the stereo-preserving DSP insertion point and integrate the first verified media route.
+7. [x] Add a DSP-visibility policy separate from source/transport route validity; verify system sounds, A2DP offload, HFP/SCO bridge, microphone echo-reference, FM direct/capture and analog-only input classifications. Next: integrate the first verified media route at the stereo-preserving boundary.
 8. Add every source adapter incrementally, including A2DP with DSP-visible PCM, FM direct/capture, analog-input digitization where hardware supports it, complete HFP/SCO, microphone/uplink and echo-reference paths. No source class is permanently excluded from final DSP scope.
 9. Integrate CD3313EO hardware controls only after runtime ownership and safe transport gates are closed.
 
@@ -334,6 +334,14 @@ The MT8163 Audio Engine is complete only when:
 ---
 
 ## 10. Change log
+
+### 2026-11-13 — owner-approved full replacement and all-source DSP architecture
+
+- Accepted full replacement of factory vendor audio logic while preserving Android 9 framework contracts and required platform transports.
+- Accepted one DSP implementation covering all supported source classes and directions through route-specific playback, capture, telephony and echo-reference graphs.
+- Accepted retention of factory components and immutable rollback artifacts; explicitly prohibited competing runtime state/hardware owners.
+- Added `SystemSound` as an AudioCore source and introduced a DSP route-visibility classifier separate from transport-route validity. Analog CD3313 inputs are not treated as software-DSP-visible without a verified ADC/PCM path.
+- Verified the code-bearing commit `f50f25a`: host tests 22/22, Android ARMv7 build and PCM/HAL adapter TSAN passed. This is host/build evidence only, not device validation.
 
 ### 2026-11-13 — factory route handler recovery
 
