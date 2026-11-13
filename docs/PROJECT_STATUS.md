@@ -4,6 +4,8 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
+> **Latest code HEAD:** `8092e1688e889b8d4750faa118dfdc444b014b23`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
+
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
 ## Branch model
@@ -78,6 +80,10 @@ Final replacement target:
 - [x] Add a per-stream PCM16 HAL byte/frame adapter with immutable negotiated configuration.
 - [x] Validate buffer alignment, frame divisibility, direction, unsupported formats, zero lengths and the 2048-frame transfer bound.
 - [x] Add a lock-free callback admission gate so stop/close cannot race admitted byte-stream transfers.
+- [x] Extend backend transfers to report actual frames transferred, preserving partial success and partial progress accompanied by an error.
+- [x] Keep status-only legacy backend implementations source-compatible while rejecting hidden short transfers in status-only callers.
+- [x] Validate endpoint callback availability by direction, so playback-only endpoint tables do not need capture callbacks and vice versa.
+- [x] Add regression coverage for partial transfers and playback-only/capture-only endpoint operation.
 - [x] Test stop/retry while a byte-stream write is in flight, plus reconfiguration after successful stop.
 - [x] Include the byte adapter in both CMake and the Android Soong static-library source list.
 - [x] Prior PCM Broker and AudioCore TSAN runs passed.
@@ -164,3 +170,6 @@ Final replacement target:
 - Hardware transport remains disabled until P0 ownership and bounded command ABI gates are satisfied.
 - Unsupported routes/formats must use bit-transparent bypass.
 - Preserve factory originals and rollback hashes.
+
+
+- **Latest execution caveat (2026-11-13):** workflows triggered on `07e8fae18edd39e958cc6deb78552c268ba3acf6` and `8092e1688e889b8d4750faa118dfdc444b014b23` were marked failed by GitHub, but their jobs had `runner_id=0`, an empty `runner_name`, and an empty `steps` array. Re-running the failed jobs reproduced the same pre-runner failure. Job-log retrieval returned storage `BlobNotFound`; therefore no compiler, test, TSAN, or benchmark step is known to have executed. Do not interpret these workflow conclusions as evidence of source-code test failures. The newest code changes remain unverified until a runner actually executes the workflow steps.
