@@ -115,3 +115,73 @@ The `audiomux-userspace-client-scan` artifact from workflow run `43238133570` (a
 - The scan did not recover method-level VDEX callsites, command IDs or actual integer-array payloads. These are string-table leads only; do not infer that the named class actually sends a specific command or that its implementation matches the CD3313 module.
 
 This confirms that the framework contains an audiomux-facing client surface, but the call graph and runtime caller remain unresolved.
+
+## 8. Method-level audiomux path recovered from Android 9 CompactDex
+
+The earlier string-only conclusion is superseded by method-level evidence in the same firmware-analysis artifact. The artifact already contains a VDEX 019 extraction/disassembly of `boot-carservices.vdex`; its `carservices-vdex/disassembly.log` identifies the class and method bodies. The extracted class payload is `boot-carservices_classes.cdex` (SHA-256 `ce6b18430de96b1e99c929316cfbadb2463e56bb3bdd366df32842b5f08f800e`). This is static firmware evidence, not evidence of the user's live runtime.
+
+### Recovered call chain
+
+1. `android.audio.AudioEffect` obtains the Binder service named `sourceinfo` through `ServiceManager.getService("sourceinfo")`.
+2. Its public `doExtAudioEffect(int, int[])` method calls `ISourceService.doExtAudioEffect(int, int[])`.
+3. The `SourceService.doExtAudioEffect(int, int[])` implementation forwards the command and array to `ExtAudioMuxer.SendCmdAudioMux(int, int[])`, except command `1000`, which is handled as a special software-property operation.
+4. `ExtAudioMuxer` declares native `SendCmdAudioMux(I[I)I`, `nativeInit()V` and `SendCmdVideoMux(String)I`. Its static initializer checks whether `/dev/audiomux` exists and stores the result in `ExtAudioAvailable`.
+5. `libcarservices_jni.so` contains the JNI registration for these three native methods and the `/dev/audiomux` string. The native client path is therefore linked to the device node at the binary level.
+
+The call chain proves that this firmware build contains a framework/Binder/JNI client for `/dev/audiomux`. It does **not** prove that this client or the CD3313-named kernel module is active on the user's physical CD3310EO board.
+
+### Framework wrapper command map
+
+The following command IDs and Java array lengths are recovered from the `AudioEffect` and `ExtAudioMuxer` method bytecode. Payload entries are listed in the order written by the Java wrapper. This table records what the firmware client constructs; it is not a CD3310EO protocol specification.
+
+| Command | Framework method | Java int[] length | Recovered payload construction |
+|---|---|---:|---|
+| `0x01` | `DoAudioMux(EnumSet)` | 1 | Source selector: HFP/A2DP/MUSIC = 1; RGEAR/ONSTAR/AUX = 2; RADIO/RDS = 0; AUX2 = 4; DAB = 5; unmatched route = -1 |
+| `0x03` | `AudioEffect.setInputGain(int,int)` | 2 | Two arguments, in order |
+| `0x04` | `setInputPathMute(int,boolean,int)` | 3 | Path, mute flag, third argument |
+| `0x09` | `setMasterVolumeMax(int)` | 1 | Maximum value |
+| `0x10` | `setMasterVolumeIndex(int,int,int,int)` | 1 | Fourth method argument; sent only on selected active-stream conditions |
+| `0x11` | `setMasterMute(boolean,int)` | 2 | Boolean flag, second argument |
+| `0x12` | `setMastVolumePercentage(int)` | 1 | Percentage value |
+| `0x15` | `AudioEffect.setBalance(int,int,int,int)` | 4 | Four arguments, in order |
+| `0x20` | `DoMix(boolean,int)` | 3 | Enabled: [1, 32, second argument]; disabled: [0, 32, 0] |
+| `0x50` | `AudioEffect.setEQValue(int,int,int,int)` | 4 | Four arguments, in order |
+| `0x55` | `setBassBoost(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
+| `0x56` | `setLoud(int)` | 3 | [argument > 0 ? 1 : 0, argument, 0x7fffffff] |
+| `0x57` | `setSurround(int)` | 2 | [argument > 0 ? 1 : 0, argument] |
+| `0x58` | `setCompressor(int)` | 3 | [argument > 0 ? 1 : 0, argument, 0x7fffffff] |
+| `0x59` | `setFreqExpansion(int)` | 3 | [argument > 0 ? 1 : 0, argument, 0x7fffffff] |
+| `0x5B` | `setAlto(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
+| `0x5C` | `setTreble(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
+| `0x60` | `setDelay(int,int,int,int,int,int)` | 6 | Six arguments, in order |
+| `0xA1` | `setXOverLowFreq(int,int,int)` | 4 | [first argument > 0 ? 1 : 0, second argument, third argument, fourth register argument] |
+| `0xA2` | `setXOverHeighLowFreq(int,int,int)` | 4 | [first argument > 0 ? 1 : 0, second argument, third argument, fourth register argument] |
+| `0xA3` | `setSubWoofer(int,int)` | 4 | [first argument > 0 ? 1 : 0, first argument, second argument, 10] |
+
+Command `1000` (`0x3e8`) is a special case in `SourceService.doExtAudioEffect`: it reads the first two array elements and writes `sys.audio.lr.balance` as a comma-separated system property. It does not proceed to `SendCmdAudioMux` in that branch. The framework method named `setMasterVolume(float,float)` scales both floats to integer percentages in the range 0..100 before calling this special case; the method name is not evidence that command 1000 is a hardware master-volume command.
+
+The service also exposes the generic `doExtAudioEffect(int,int[])` Binder method. For command values other than the special `1000` branch, the service forwards the supplied command and array rather than mapping only a fixed set of high-level methods. Thus the high-level wrapper list is not necessarily the complete set of commands a Binder client can request.
+
+### Direct framework callers found
+
+- `SourcePolicy.onNormalAudioPath`, `onBluetoothConnectStatus` and `onBluetoothVoiceStatus` call `DoAudioMux`.
+- `SourcePolicy.onMixingStatus` calls `DoMix`.
+- `McuService` methods call `setInputPathMute`, `setMasterMute`, `setMasterVolumeIndex` and `setMasterVolumeMax`.
+- `CarStatusService` calls `setMasterMute`.
+- A settings observer calls `setMastVolumePercentage`.
+- `AudioEffect` exposes the generic command/array Binder wrapper; the class contains concrete wrappers for commands `0x03`, `0x15`, `0x50`, `0x55`–`0x60`, and `0xA1`–`0xA3`.
+
+### Native framing and remaining limits
+
+The paired JNI/kernel analysis already recorded the legacy framing defect: the native ioctl request encodes one more 32-bit word than the Java array contains. The newly recovered method bodies now provide concrete array lengths for the listed wrappers, but do not make the legacy over-read safe. A replacement must use a separately bounded and initialized compatibility frame or a deliberately revised ABI; it must not reproduce the factory over-read.
+
+Still unresolved:
+
+- Whether this exact framework/JNI/kernel path is selected and loaded on the user's physical board.
+- Whether the physical CD3310EO shares the CD3313 module's I2C address, initialization sequence or command protocol.
+- Whether the board's active device tree and runtime module ownership correspond to this firmware artifact.
+- The semantic ranges and hardware effects of every opaque argument; the bytecode reveals payload construction, not all valid values or chip-level meaning.
+- The full set of non-framework clients that may call the generic Binder method.
+
+**Safety status:** all findings above are static artifact analysis. No ioctl, I2C write, module load, GPIO/mixer operation or hardware probe was performed. CD3313 command IDs must not be sent to the CD3310EO until compatibility is independently proven.
+
