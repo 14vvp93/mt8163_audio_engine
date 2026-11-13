@@ -11,7 +11,9 @@ PcmResult validate_pcm16_buffer(std::uint32_t handle,
                                 std::size_t byte_count,
                                 std::size_t* frame_count) noexcept {
     if (frame_count == nullptr || handle == 0U || buffer == nullptr ||
-        byte_count == 0U || !is_valid_pcm_config(config)) {
+        byte_count == 0U || config.sample_rate_hz == 0U ||
+        (config.channel_count != 1U && config.channel_count != 2U) ||
+        config.period_frames == 0U) {
         return PcmResult::InvalidArgument;
     }
     if (config.format != PcmFormat::Pcm16SignedLittleEndian) {

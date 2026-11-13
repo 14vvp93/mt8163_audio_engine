@@ -94,6 +94,13 @@ int main() {
         adapter, handle, config, nullptr, 4U);
     CHECK(null_write.result == PcmResult::InvalidArgument);
     CHECK(null_write.bytes_transferred == 0U);
+
+    PcmConfig unsupported_config = config;
+    unsupported_config.format = static_cast<PcmFormat>(99U);
+    const PcmByteTransfer unsupported_format = write_pcm16_bytes(
+        adapter, handle, unsupported_config, samples.data(), 4U);
+    CHECK(unsupported_format.result == PcmResult::UnsupportedFormat);
+    CHECK(unsupported_format.bytes_transferred == 0U);
     CHECK(adapter.stop(handle) == PcmResult::Ok);
     CHECK(adapter.close(handle) == PcmResult::Ok);
     CHECK(adapter.stream_count() == 0U);
