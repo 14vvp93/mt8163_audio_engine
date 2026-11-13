@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/pcm-backend
+      - integration/beta-0.1
   pull_request:
     branches:
       - work/pcm-backend
