@@ -392,3 +392,14 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Targeted public searches for the exact `CD3310EO` marking did not find a reliable datasheet or register map. This is not proof that no such documentation exists.
 - Updated [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) with the datasheet cross-check and source links.
 - Compatibility remains UNKNOWN. No CD3313 protocol is approved for CD3310EO; no hardware I/O was performed.
+
+
+### P0 follow-up — same-unit firmware provenance confirmed (2026-11-13)
+
+- The user confirmed that the analyzed firmware dump from `14vvp93/public_calculations/firmware/dumps/mt8163` is from the same physical head unit populated with CD3310EO.
+- This upgrades the firmware evidence from a similar-platform reference to the user's actual unit's firmware provenance.
+- The unit's firmware declares a DTBO node `cd3313@44` with `compatible = "hcn,cd3313"` and includes `cd3313.ko`; the physical IC marking remains CD3310EO. Record this as a confirmed firmware/physical-marking discrepancy.
+- This does not prove that the DTBO overlay is selected, that the driver binds successfully, or that CD3310EO accepts CD3313 commands. Runtime binding and protocol compatibility remain OPEN.
+- Next P0 action: resolve the base DTB and overlay selection path, then correlate with read-only runtime module/I2C/device-node evidence if available. Keep all CD3313 transport disconnected from the physical unit.
+- Updated evidence reports: [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) and [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
+- No hardware I/O, module load, GPIO/mixer operation or flashing was performed.
