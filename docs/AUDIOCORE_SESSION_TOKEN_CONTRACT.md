@@ -1,6 +1,6 @@
 # AudioCore Session Token Contract
 
-**Status:** implementation and all offline P1 session-identity gates passed at exact HEAD `888f1cc73209814313e70f5bde54955a7267a492` (workflow run `43520873741`, SUCCESS).
+**Status:** SessionToken migration and backend-token lifecycle checks passed at exact HEAD `93f7c1180d0581239626055ee0fbefde0aef7377` (workflow run `43521528904`, SUCCESS).
 
 ## Problem
 
@@ -39,6 +39,12 @@ The migration must be atomic at the source/API level; do not leave a raw-handle 
 5. `PcmStreamBroker` stores and compares the complete token. The callback-safe transfer path first admits through the lock-free 32-bit gate, then validates the complete token before touching the backend. The 64-bit generation is non-atomic and is read only after admission; close cannot mutate it until admitted callbacks drain.
 6. Any callback, deferred task, queue item or completion that can outlive the initiating call must capture the complete token, never only the numeric handle.
 7. Tests and diagnostics must make stale-token rejection observable.
+
+## Backend-local token lifetime
+
+`PcmBackend::StreamToken` remains a private 32-bit transport handle; it is not a substitute for `SessionToken` and is never exposed as the public session identity. `EndpointPcmBackend` issues these tokens monotonically, may issue the maximum value once, then fails closed rather than wrapping or reusing a token. Its tests cover stale-token rejection after slot reuse and exhaustion without opening another native stream.
+
+The 32-bit token is retained because it is used by fixed-size backend slots and callback-side atomics on ARM32. The wider session generation is validated by `PcmStreamBroker` after its 32-bit transfer admission gate.
 
 ## Compatibility and ABI
 
