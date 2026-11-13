@@ -45,7 +45,8 @@ struct PcmDeviceOps {
 class EndpointPcmBackend final : public PcmBackend {
 public:
     EndpointPcmBackend(const PcmEndpoint* endpoints, std::size_t endpoint_count,
-                       const PcmDeviceOps& ops) noexcept;
+                       const PcmDeviceOps& ops,
+                       StreamToken first_token = 1U) noexcept;
 
     PcmResult open(RouteType route, PcmDirection direction,
                    StreamToken* token) noexcept override;
@@ -90,6 +91,7 @@ private:
     PcmDeviceOps ops_{};
     std::array<Slot, kMaxEndpointBackendStreams> streams_{};
     StreamToken next_token_{1U};
+    bool token_exhausted_{false};
     bool valid_{false};
 };
 
