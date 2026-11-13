@@ -41,6 +41,12 @@ jobs:
           path: factory-firmware
           sparse-checkout: |
             firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+            firmware/extracted/system/lib/libaudioflinger.so
+            firmware/extracted/system/lib/libaudiopolicymanagerdefault.so
+            firmware/extracted/system/lib/libaudiopolicycustomextensions.so
+            firmware/extracted/system/lib/libcarservices_jni.so
+            firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so
+            firmware/extracted/vendor/audiocmdservice_atci
           sparse-checkout-cone-mode: false
 
       - name: Verify immutable factory artifact identity
@@ -128,6 +134,38 @@ jobs:
             "$objdump" -d -C --start-address=0x128094 --stop-address=0x128318 "$binary"
           } 2>&1 | tee primary-hal-stream-methods.txt
 
+      - name: Scan factory framework and vendor clients for private HAL callback references
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="factory-firmware/firmware/extracted"
+          {
+            for relative in \
+              "system/lib/libaudioflinger.so" \
+              "system/lib/libaudiopolicymanagerdefault.so" \
+              "system/lib/libaudiopolicycustomextensions.so" \
+              "system/lib/libcarservices_jni.so" \
+              "vendor/lib/libaudioprimarydevicehalifclient.so" \
+              "vendor/audiocmdservice_atci"; do
+              file="$root/$relative"
+              echo
+              echo "===== $relative ====="
+              if [ ! -s "$file" ]; then
+                echo "MISSING"
+                continue
+              fi
+              sha256sum "$file"
+              echo "-- matching dynamic symbols --"
+              arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null |
+                grep -Ei 'xway|voice.?unlock|readref|setupParametersCallback|audioParameterChanged|MTKPrimaryDevicesHalClient|AudioALSAHardware' ||
+                true
+              echo "-- matching strings --"
+              strings -a "$file" |
+                grep -Ei 'xway|voice.?unlock|readref|setupParametersCallback|audioParameterChanged|audio.?parameter|primary.?device.?hal' |
+                sort -u || true
+            done
+          } 2>&1 | tee primary-hal-private-client-scan.txt
+
       - name: Preserve audited factory binary and report as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -136,5 +174,6 @@ jobs:
             factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
             primary-hal-audit-report.txt
             primary-hal-stream-methods.txt
+            primary-hal-private-client-scan.txt
           if-no-files-found: error
           retention-days: 7
