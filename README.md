@@ -90,7 +90,7 @@ See the [documentation index](docs/README.md) for the complete, categorized list
 
 - Target platform: MT8163, Android 9, ARM 32-bit.
 - DSP foundations: PCM16 stereo core at 32/44.1/48 kHz (including the MT6627 FM base rate) and four-channel Float32 FL/FR/RL/RR core at 44.1/48 kHz, subject to runtime negotiation.
-- Keep Bluetooth SCO, voice calls, microphone capture and other non-music paths bypassed until explicitly mapped.
+- Bluetooth SCO, voice calls, microphone capture and every non-music path are mandatory replacement scope. Until a path is fully mapped and its replacement is validated, use only a safe temporary fallback; never mistake that fallback for a permanent exclusion.
 - Do not assume every policy-declared route is active on every head unit.
 - Do not guess vendor ioctl structures, ACF/HCF parameter layouts, or NVRAM formats.
 - All current verification is offline/static or host-side CI. No head-unit runtime validation is claimed.
