@@ -396,6 +396,34 @@ The factory HAL delegates stream creation and teardown through the `AudioALSAHar
 
 The HAL adapter owns the small C wrapper allocation and its callback table. The manager owns the legacy C++ stream object and its route/PCM lifecycle. The stream `set()` methods perform format/device/configuration validation before stream activation; the exact supported combinations and all error branches still require full method-level analysis.
 
+### Factory route-specific PCM handler selection
+
+The C++ stream `open()` methods delegate actual playback/capture handler creation to the stream manager:
+
+- `AudioALSAStreamOut::open` calls `AudioALSAStreamManager::createPlaybackHandler(stream_attribute_t*)` at `0x00079368`.
+- `AudioALSAStreamIn::open` calls `AudioALSAStreamManager::createCaptureHandler(stream_attribute_t*)` at `0x00079cf0`.
+- Both open paths also interact with `AudioALSASampleRateController` for scenario/rate coordination.
+
+The factory binary contains these concrete handler constructors:
+
+| Direction | Handler class |
+|---|---|
+| Playback | `AudioALSAPlaybackHandlerNormal` |
+| Playback | `AudioALSAPlaybackHandlerVoice` |
+| Playback | `AudioALSAPlaybackHandlerHfpClient` |
+| Playback | `AudioALSAPlaybackHandlerBTSCO` |
+| Playback | `AudioALSAPlaybackHandlerBTCVSD` |
+| Playback | `AudioALSAPlaybackHandlerFMTransmitter` |
+| Playback | `AudioALSAPlaybackHandlerHDMI` |
+| Capture | `AudioALSACaptureHandlerNormal` |
+| Capture | `AudioALSACaptureHandlerVoice` |
+| Capture | `AudioALSACaptureHandlerFMRadio` |
+| Capture | `AudioALSACaptureHandlerBT` |
+| Capture | `AudioALSACaptureHandlerAEC` |
+
+This confirms that factory PCM handling is route-specific rather than one universal playback/capture loop. The exact `stream_attribute_t` predicates selecting each handler, and the handler-to-ALSA endpoint/rate/format mappings, still need method-level analysis and P0 runtime corroboration.
+
+
 The device callback adapters pass the following recovered arguments into the C++ open methods:
 
 - Output: `devices`, `flags`, `&config->format`, `&config->channel_mask`, `config`, and a local handle pointer. `openOutputStreamWithFlags` returns the legacy C++ output-stream pointer or null.
