@@ -9,9 +9,9 @@ Status: inventory procedure; ABI implementation remains blocked on exact vendor 
 Use the extracted factory copy, not a device path or a modified binary:
 
 ```sh
-sha256sum files/vendor/audio.primary.mt8163.so
-stat -c '%s bytes' files/vendor/audio.primary.mt8163.so
-sh tools/audit_primary_hal_binary.sh files/vendor/audio.primary.mt8163.so
+sha256sum firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+stat -c '%s bytes' firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+sh tools/audit_primary_hal_binary.sh firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
 ```
 
 Record the complete output with the firmware manifest. Do not strip, patch, relink or overwrite the factory artifact.
