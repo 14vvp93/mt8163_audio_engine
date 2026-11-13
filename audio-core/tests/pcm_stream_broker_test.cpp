@@ -493,7 +493,7 @@ void test_same_handle_reopen_rejects_stale_session_token() {
             "replacement token remains valid");
     require(broker.start(new_session) == PcmResult::Ok,
             "replacement starts with its current token");
-    const std::int16_t samples[4]{};
+    std::int16_t samples[4]{};
     require(broker.configure(old_session, config) == PcmResult::NotOpen,
             "stale token cannot configure replacement");
     require(broker.start(old_session) == PcmResult::NotOpen,
