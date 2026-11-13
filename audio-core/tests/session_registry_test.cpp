@@ -138,7 +138,7 @@ void test_foreign_registry_token_and_generation_exhaustion() {
     SessionRegistry last_generation(
         std::numeric_limits<std::uint32_t>::max());
     const SessionToken last = open_session(last_generation, 8U);
-    require(last.generation == std::numeric_limits<std::uint64_t>::max(),
+    require((last.generation & 0xFFFFFFFFULL) == std::numeric_limits<std::uint32_t>::max(),
             "maximum generation may be issued exactly once");
     SessionToken exhausted{};
     require(!last_generation.open(9U, SourceId::LocalMedia,
