@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <atomic>
 #include <thread>
+#include <mutex>
 
 using namespace mt8163_audio_core;
 
@@ -96,9 +97,106 @@ public:
 };
 }
 
+class TestPrimaryHalStreamAdapter final {
+public:
+    explicit TestPrimaryHalStreamAdapter(PcmBackend& backend) noexcept
+        : adapter_(backend) {}
+
+    PcmResult open(std::uint32_t handle, SourceId source, RouteType route,
+                   PcmDirection direction) noexcept {
+        SessionToken token{};
+        const PcmResult result = adapter_.open(
+            handle, source, route, direction, &token);
+        if (result == PcmResult::Ok) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            for (auto& entry : entries_) {
+                if (!entry.active) {
+                    entry = Entry{handle, token, true};
+                    return result;
+                }
+            }
+            (void)adapter_.close(token);
+            return PcmResult::CapacityExceeded;
+        }
+        return result;
+    }
+
+    PcmResult configure(std::uint32_t handle, const PcmConfig& config) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.configure(token, config) : PcmResult::NotOpen;
+    }
+    PcmResult start(std::uint32_t handle) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.start(token) : PcmResult::NotOpen;
+    }
+    PcmResult write(std::uint32_t handle, const std::int16_t* data,
+                    std::size_t frames) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.write(token, data, frames) : PcmResult::NotOpen;
+    }
+    PcmResult read(std::uint32_t handle, std::int16_t* data,
+                   std::size_t frames) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.read(token, data, frames) : PcmResult::NotOpen;
+    }
+    PcmTransferResult write_transfer(std::uint32_t handle,
+                                     const std::int16_t* data,
+                                     std::size_t frames) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.write_transfer(token, data, frames)
+                             : PcmTransferResult{PcmResult::NotOpen, 0U};
+    }
+    PcmTransferResult read_transfer(std::uint32_t handle, std::int16_t* data,
+                                    std::size_t frames) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.read_transfer(token, data, frames)
+                             : PcmTransferResult{PcmResult::NotOpen, 0U};
+    }
+    PcmResult stop(std::uint32_t handle) noexcept {
+        const auto token = token_for(handle);
+        return token.valid() ? adapter_.stop(token) : PcmResult::NotOpen;
+    }
+    PcmResult close(std::uint32_t handle) noexcept {
+        const auto token = token_for(handle);
+        if (!token.valid()) return PcmResult::NotOpen;
+        const PcmResult result = adapter_.close(token);
+        if (result == PcmResult::Ok) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            for (auto& entry : entries_) {
+                if (entry.active && entry.token == token) {
+                    entry.active = false;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+    SessionToken token_for(std::uint32_t handle) const noexcept {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (const auto& entry : entries_) {
+            if (entry.active && entry.handle == handle) return entry.token;
+        }
+        return SessionToken{};
+    }
+    AudioCore& audio_core() noexcept { return adapter_.audio_core(); }
+    const AudioCore& audio_core() const noexcept { return adapter_.audio_core(); }
+    std::size_t stream_count() const noexcept { return adapter_.stream_count(); }
+    PrimaryHalStreamAdapter& underlying() noexcept { return adapter_; }
+
+private:
+    struct Entry {
+        std::uint32_t handle{0U};
+        SessionToken token{};
+        bool active{false};
+    };
+    PrimaryHalStreamAdapter adapter_;
+    mutable std::mutex mutex_;
+    std::array<Entry, kMaxAudioSessions> entries_{};
+};
+
 int main() {
     FakeBackend backend;
-    PrimaryHalStreamAdapter adapter(backend);
+    TestPrimaryHalStreamAdapter adapter(backend);
     constexpr std::uint32_t handle = 0x81630001U;
     constexpr PcmConfig config{48000U, 2U, 240U,
                                PcmFormat::Pcm16SignedLittleEndian};
@@ -109,7 +207,7 @@ int main() {
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
                        PcmDirection::Playback) == PcmResult::InvalidArgument);
     CHECK(adapter.stream_count() == 1U);
-    PcmByteStreamAdapter output(adapter, handle, PcmDirection::Playback);
+    PcmByteStreamAdapter output(adapter.underlying(), adapter.token_for(handle), PcmDirection::Playback);
     PcmConfig unsupported_config = config;
     unsupported_config.format = static_cast<PcmFormat>(99U);
     CHECK(output.configure(unsupported_config) == PcmResult::UnsupportedFormat);
@@ -177,7 +275,7 @@ int main() {
     CHECK(partial_xrun.result == PcmResult::Xrun);
     CHECK(partial_xrun.bytes_transferred == 4U);
     const SessionRecord* failed_session =
-        adapter.audio_core().sessions().find(handle);
+        adapter.audio_core().sessions().find(adapter.token_for(handle));
     CHECK(failed_session != nullptr &&
           failed_session->state == SessionState::Active);
     CHECK(output.stop() == PcmResult::Ok);
@@ -194,7 +292,7 @@ int main() {
     CHECK(adapter.open(handle, SourceId::Microphone,
                        RouteType::PrimaryCapturePcm,
                        PcmDirection::Capture) == PcmResult::Ok);
-    PcmByteStreamAdapter input(adapter, handle, PcmDirection::Capture);
+    PcmByteStreamAdapter input(adapter.underlying(), adapter.token_for(handle), PcmDirection::Capture);
     CHECK(input.configure(config) == PcmResult::Ok);
     CHECK(input.start() == PcmResult::Ok);
     const PcmByteTransfer byte_read = input.read(samples.data(), 960U);
@@ -240,7 +338,7 @@ int main() {
     CHECK(adapter.open(failed_start_handle, SourceId::LocalMedia,
                        RouteType::PrimaryPcm, PcmDirection::Playback) == PcmResult::Ok);
     PcmByteStreamAdapter failed_start_output(
-        adapter, failed_start_handle, PcmDirection::Playback);
+        adapter.underlying(), adapter.token_for(failed_start_handle), PcmDirection::Playback);
     CHECK(failed_start_output.configure(config) == PcmResult::Ok);
     backend.start_result = PcmResult::BackendFailure;
     CHECK(failed_start_output.start() == PcmResult::BackendFailure);
