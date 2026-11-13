@@ -414,3 +414,12 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - Next P0 action: keep the CD3313 transport isolated; seek read-only runtime logs/device-tree/module evidence. Do not attempt an I2C probe or send `0x3f` to the physical CD3310EO.
 - Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
 - No hardware I/O or module load was performed.
+
+
+### P0 follow-up — shared DSP GPIO ownership (2026-11-13)
+
+- Static disassembly shows CD3313 requests GPIO IDs `0x189` and `0x199` after its one-byte I2C probe write.
+- AK7604 and FY7604 both request `0x189`, `0x182` and `0x199`; each aborts probe on a failed GPIO request, before its chip-existence check.
+- Firmware init order is CD3313 → AK7604 → FY7604. If CD3313 succeeds first and retains the shared GPIOs, the later modules can fail before checking their ICs. This is an additional explanation for CD3313 endpoint priority, not runtime proof.
+- Keep I2C and GPIO transport disconnected. No hardware operation was performed.
+- Detailed evidence: [MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md](analysis-reports/MT8163_BOOT_KERNEL_AND_DTBO_AUDIT.md).
