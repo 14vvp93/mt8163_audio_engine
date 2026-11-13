@@ -1,17 +1,11 @@
 name: PCM DSP Performance Benchmark
 
 on:
-  push:
-    paths:
-      - "pcm-dsp/**"
-      - "audio-core/**"
-      - ".github/workflows/pcm-dsp-performance.yml"
-  pull_request:
-    paths:
-      - "pcm-dsp/**"
-      - "audio-core/**"
-      - ".github/workflows/pcm-dsp-performance.yml"
   workflow_dispatch:
+
+concurrency:
+  group: pcm-dsp-performance-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   host-benchmark:
