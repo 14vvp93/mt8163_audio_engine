@@ -197,6 +197,11 @@ echo "===== All exported dynamic symbols (first 250 lines) ====="
 printf '%s\n' "$dyn_symbols" | sed -n '1,250p'
 
 echo
+echo "===== Defined GLOBAL/WEAK dynamic symbols ====="
+readelf --dyn-syms --demangle -W "$binary" |
+    awk '$7 != "UND" && ($5 == "GLOBAL" || $5 == "WEAK") && $6 == "DEFAULT" { print }'
+
+echo
 echo "===== Notes ====="
 echo "This is a static ELF inventory only. It does not prove runtime linker compatibility,"
 echo "the exact vendor-extended Android 9 audio HAL ABI, functional routing, or device operation."
