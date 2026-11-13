@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The current owner-approved target is one DSP engine covering every supported source and direction, including media, navigation, system sounds, A2DP, HFP/SCO, calls, microphone capture, FM and external inputs. Source-specific integration points and processing graphs remain separate where transport or signal direction requires it. This file preserves historical firmware evidence and interim adapter behavior; it does not override the current architecture decision in [the full-replacement/all-source-DSP ADR](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
+The current owner-approved target is deep replacement with profile-driven DSP. Profiles are enabled only on explicitly supported routes with verified DSP-visible PCM boundaries. Factory handling remains active for routes not yet integrated. This file preserves firmware evidence and adapter behavior; it does not override the current architecture decision in [the deep-replacement/profile-DSP ADR](ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md).
 
 This document records firmware-archive evidence and the current integration
 decision. It does not claim runtime validation on a head unit.
@@ -81,7 +81,7 @@ The primary policy declares SCO, SCO Headset and SCO Car Kit as separate
 output devices with 8/16 kHz PCM profiles. These are communication/telephony
 paths, not A2DP music.
 
-HFP/SCO, microphone capture and in-call audio are mandatory final DSP scope. They require dedicated telephony and capture graphs, verified PCM transport, clock/latency handling and synchronized echo-reference ownership. The current media/A2DP adapter is not the insertion point for these paths; until their dedicated adapters are validated, retain a safe temporary fallback.
+HFP/SCO, microphone capture and in-call audio are separate candidate profile families, not implicitly covered by the media profile. They require dedicated telephony and capture graphs, verified PCM transport, clock/latency handling and synchronized echo-reference ownership. Until those profiles and adapters are validated, retain the verified factory handling.
 
 ## 4. FM radio
 
