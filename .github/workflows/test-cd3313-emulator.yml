@@ -9,14 +9,13 @@ on:
     branches: [main, feature, integration/beta-0.1]
     paths:
       - "cd3313-emulator/**"
-      - ".github/workflows/test-cd3313-emulator.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: cd3313-tests-${{ github.ref }}
+  group: cd3313-tests-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
