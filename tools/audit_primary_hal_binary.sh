@@ -135,7 +135,7 @@ echo "HMI virtual address: 0x$hmi_vaddr"
 printf "HMI file offset: 0x%x\n" "$hmi_file_offset"
 od -An -v -tx4 -j "$hmi_file_offset" -N 128 "$binary"
 read_u32_hex() {
-    od -An -tx4 -j "$1" -N 4 "$binary" | tr -d ' \\n'
+    od -An -tx4 -j "$1" -N 4 "$binary" | tr -d ' \n'
 }
 
 read_cstring_at_vaddr() {
@@ -144,7 +144,7 @@ read_cstring_at_vaddr() {
     section_offset=$3
     file_offset=$((0x$section_offset + 0x$pointer - 0x$section_vaddr))
     dd if="$binary" bs=1 skip="$file_offset" count=128 2>/dev/null |
-        tr '\\000' '\\n' | sed -n '1p'
+        tr '\000' '\n' | sed -n '1p'
 }
 
 module_api_version=$(od -An -tu2 -j "$((hmi_file_offset + 4))" -N 2 "$binary" | tr -d ' ')
@@ -169,13 +169,13 @@ open_pointer=$(read_u32_hex "$methods_file_offset")
 
 echo
 echo "===== Decoded factory module metadata ====="
-printf 'module_api_version: 0x%04x\\n' "$module_api_version"
-printf 'hal_api_version: 0x%04x\\n' "$hal_api_version"
-printf 'module id: %s\\n' "$(read_cstring_at_vaddr "$id_pointer" "$rodata_vaddr" "$rodata_offset")"
-printf 'module name: %s\\n' "$(read_cstring_at_vaddr "$name_pointer" "$rodata_vaddr" "$rodata_offset")"
-printf 'module author: %s\\n' "$(read_cstring_at_vaddr "$author_pointer" "$rodata_vaddr" "$rodata_offset")"
-printf 'methods pointer: 0x%s\\n' "$methods_pointer"
-printf 'hw_module_methods_t.open pointer: 0x%s\\n' "$open_pointer"
+printf 'module_api_version: 0x%04x\n' "$module_api_version"
+printf 'hal_api_version: 0x%04x\n' "$hal_api_version"
+printf 'module id: %s\n' "$(read_cstring_at_vaddr "$id_pointer" "$rodata_vaddr" "$rodata_offset")"
+printf 'module name: %s\n' "$(read_cstring_at_vaddr "$name_pointer" "$rodata_vaddr" "$rodata_offset")"
+printf 'module author: %s\n' "$(read_cstring_at_vaddr "$author_pointer" "$rodata_vaddr" "$rodata_offset")"
+printf 'methods pointer: 0x%s\n' "$methods_pointer"
+printf 'hw_module_methods_t.open pointer: 0x%s\n' "$open_pointer"
 
 echo
 echo "===== Relocations targeting the HMI object ====="
