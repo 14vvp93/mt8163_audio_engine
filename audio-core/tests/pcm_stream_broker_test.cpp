@@ -252,7 +252,7 @@ void test_callback_write_while_opening_another_stream() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
-    const std::int16_t samples[2]{};
+    std::int16_t samples[2]{};
     require(broker.open(11U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "first stream opens");
     require(broker.configure(11U, config) == PcmResult::Ok, "first stream configures");
@@ -433,7 +433,7 @@ void test_terminal_transfer_errors_fail_closed() {
             "device-loss capture stream starts");
 
     backend.read_result = PcmResult::DeviceLost;
-    require(broker.read(62U, const_cast<std::int16_t*>(samples), 1U) ==
+    require(broker.read(62U, samples, 1U) ==
                 PcmResult::DeviceLost,
             "device loss is propagated from the capture backend");
     PcmStreamRecord capture_record{};
