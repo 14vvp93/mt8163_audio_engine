@@ -227,8 +227,23 @@ MT8163_ABI_STATIC_ASSERT(sizeof(mt8163_hw_device_layout32_t) == MT8163_HW_DEVICE
 MT8163_ABI_STATIC_ASSERT(offsetof(mt8163_hw_device_layout32_t, close) == 60,
                          "hw_device_t close offset mismatch");
 
+MT8163_ABI_STATIC_ASSERT(offsetof(mt8163_hw_device_layout32_t, module) == 8,
+                         "hw_device_t module offset mismatch");
+
 MT8163_ABI_STATIC_ASSERT(sizeof(mt8163_audio_stream_layout32_t) == MT8163_AUDIO_STREAM_SIZE,
                          "audio_stream ARM32 size mismatch");
+MT8163_ABI_STATIC_ASSERT(offsetof(mt8163_audio_stream_out_layout32_t, callbacks) == 56,
+                         "audio_stream_out callback table offset mismatch");
+MT8163_ABI_STATIC_ASSERT(
+    offsetof(mt8163_audio_stream_out_layout32_t, callbacks) +
+        MT8163_STREAM_OUT_UPDATE_SOURCE_METADATA * sizeof(mt8163_abi_ptr32_t) == 116,
+    "audio_stream_out metadata callback offset mismatch");
+MT8163_ABI_STATIC_ASSERT(offsetof(mt8163_audio_stream_in_layout32_t, callbacks) == 56,
+                         "audio_stream_in callback table offset mismatch");
+MT8163_ABI_STATIC_ASSERT(
+    offsetof(mt8163_audio_stream_in_layout32_t, callbacks) +
+        MT8163_STREAM_IN_UPDATE_SINK_METADATA * sizeof(mt8163_abi_ptr32_t) == 92,
+    "audio_stream_in metadata callback offset mismatch");
 MT8163_ABI_STATIC_ASSERT(sizeof(mt8163_audio_stream_out_layout32_t) == MT8163_AUDIO_STREAM_OUT_SIZE,
                          "audio_stream_out ARM32 size mismatch");
 MT8163_ABI_STATIC_ASSERT(sizeof(mt8163_audio_stream_in_layout32_t) == MT8163_AUDIO_STREAM_IN_SIZE,
