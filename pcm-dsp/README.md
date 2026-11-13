@@ -184,3 +184,33 @@ of the four channel parameter arrays, then edit each channel independently.
 The helper validates the frequency range and Q before changing the output
 array. This is a parameter-layout utility; it does not add processing stages
 beyond the 32 biquad slots already present in each channel.
+
+
+## MT8163 / CD3313EO hardware boundary
+
+The production integration must respect the actual division between the SoC
+PCM path and the external analog processor:
+
+- The recovered MT8163 Normal playback path is PCM16 stereo at the policy
+  boundary and remains a two-channel ALSA path. The verified stereo-preserving
+  DSP candidate is before the factory speaker mono-fold.
+- CD3313EO is a digitally controlled **analog** audio processor. Its
+  datasheet specifies three stereo analog input pairs, four analog outputs,
+  input selection/gain, master volume, bass, treble, loudness and four
+  independent output attenuators. It is not a four-channel PCM/I2S DSP.
+- The CD3313EO control interface is I2C, 7-bit address 0x44, up to 100 kbit/s.
+  Its recommended supply is 6–10 V (typical 9 V; absolute maximum 10 V).
+  These electrical values apply to the chip supply, not to the MT8163 SoC.
+- The CD3313 four-output attenuation command controls analog output levels;
+  it does not establish four independent digital PCM/EQ channels.
+- Keep PCM processing and CD3313 control separate. The PCM callback must
+  never issue I2C, ioctl, GPIO, Binder or device-open operations.
+- Avoid applying the same tone/volume function twice. The profile/control
+  layer must define whether a given EQ, bass, treble, loudness or gain stage
+  belongs to software DSP or to CD3313EO for each route.
+
+For the exact register encoding, package pins, electrical limits and
+command ranges, use
+[CD3313EO hardware and driver reference](../docs/CD3313EO_HARDWARE_AND_DRIVER_REFERENCE.md).
+Do not infer board wiring, amplifier topology, analog rail sequencing or
+subwoofer connectivity from the chip datasheet.
