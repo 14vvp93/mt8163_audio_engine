@@ -391,6 +391,78 @@ The two parameter callbacks are independent function entries with valid prologue
 The earlier apparent mid-function targets were caused by using incorrect literal-pool values during the first manual address calculation. The corrected PC-relative calculations and disassembly confirm the expected input parameter callback mapping.
 
 
+### Recovered factory module metadata and dynamic link contract
+
+The factory binary audit and disassembly now confirm:
+
+| Field | Recovered value |
+|---|---|
+| Dynamic module symbol | `HMI` |
+| ELF symbol binding/visibility | `GLOBAL DEFAULT`, defined in the image |
+| `HMI` address / size | `0x00195014` / 128 bytes |
+| `hw_module_t.tag` | `0x48574d54` |
+| `module_api_version` | `0x0001` |
+| `hal_api_version` | `0x0100` |
+| Module ID | `audio` |
+| Module name | `MTK Audio HW HAL` |
+| Author | `MTK` |
+| `hw_module_methods_t` | `0x00195010` |
+| `methods->open` | `0x0009b70c` |
+| `hw_module_t.dso` | null |
+| Device API version returned by open | `0x0300` |
+| Factory device allocation | 224 bytes |
+
+The module's `open` callback creates the 224-byte factory device wrapper, stores the C++ `AudioALSAHardware` object at offset 220, and initializes the AOSP callback table plus the vendor tail documented above.
+
+**Dynamic link contract**
+
+- `DT_SONAME`: `audio.primary.mt8163.so`
+- `DT_FLAGS`: `BIND_NOW`
+- `DT_FLAGS_1`: `NOW`
+- Required symbol versions:
+  - `libc.so`: `LIBC`, `LIBC_N`
+  - `libdl.so`: `LIBC`
+  - `libm.so`: `LIBC`
+
+The factory `DT_NEEDED` list, in ELF order:
+
+```text
+libhidlbase.so
+libhidltransport.so
+libhwbinder.so
+android.hardware.power@1.0.so
+vendor.mediatek.hardware.power@2.0.so
+libcutils.so
+libutils.so
+libalsautils.so
+libbinder.so
+libhardware_legacy.so
+libhardware.so
+libblisrc_vendor.so
+libnvram.so
+libaudiosetting.so
+libcvsd_mtk.so
+libmsbc_mtk.so
+libaudioutils.so
+libaudiocomponentengine_vendor.so
+libtinyalsa.so
+libtinycompress.so
+libaudiodcrflt_vendor.so
+libtinyxml.so
+libaudiotoolkit_vendor.so
+liblog.so
+libspeech_enh_lib.so
+libladder.so
+libaedv.so
+libbluetooth_mtk_pure.so
+libc++.so
+libc.so
+libm.so
+libdl.so
+```
+
+This is the factory binary's declared dependency contract. It does not by itself prove that every library is present in the target linker namespace or that a replacement with the same SONAME will be accepted by the device's configured namespace policy.
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
@@ -399,15 +471,14 @@ The factory binary is known from the extracted firmware:
 - ELF32 ARM EABI5, Android API 28
 - Build ID: `f66eaf9e6ac950259f0c253be618d15a`.
 
-The current static-analysis reports establish MTK filter and stream-manager symbols, but do not yet publish the following primary-HAL loader facts:
-1. Whether `HMI` is present and exported in `.dynsym`.
-2. Actual `hw_module_t.module_api_version` and `hal_api_version` values.
-3. Actual `hw_device_t.version` returned by `open()`.
-4. The device method table and any vendor-specific structure tail.
-5. Exact `DT_SONAME`, `DT_NEEDED`, symbol-version requirements and linker namespace assumptions.
-6. Actual module/device open path and whether vendor extensions wrap or replace any AOSP callback.
+The following runtime/vendor integration facts remain unresolved:
+1. Whether every `DT_NEEDED` library is present and permitted in the target Android 9 linker namespace.
+2. Exact target linker namespace configuration and library search paths.
+3. Runtime semantics and external callers for every private vendor callback, including the duplicate `xWayRec_Stop` entry forms.
+4. Exact vendor headers/source revision and any private type/signature differences from the pinned AOSP r3 headers.
+5. Route-by-route behavior and stream negotiation under the factory framework clients.
 
-Do not fill these values from the AOSP reference table. They must be recovered from the supplied binary's ELF symbols, relocations and disassembly.
+The static HMI, version, device table, stream wrapper sizes, C++ vtables, SONAME and dependency list are now recovered from the supplied binary; do not reclassify these as unresolved.
 
 ## 6. ABI audit tooling change
 
@@ -424,11 +495,11 @@ This tool is static evidence only. It does not establish callback semantics, run
 
 ## 7. Next exact recovery steps
 
-1. Run the improved audit on the immutable factory binary and retain its complete output.
-2. Disassemble the module constructor and `HMI` data object; identify module API fields and the `methods->open` function pointer.
-3. Trace `open("primary")` to the returned `audio_hw_device` allocation and recover the device API version and method table.
-4. Map every method-table entry to its implementation and cross-check against AOSP r3 offsets.
-5. Recover the actual dynamic dependency/symbol contract and linker namespace from the same firmware build.
-6. Only then create the factory-named HAL shell and compile it against the pinned vendor headers.
+1. Keep the factory ELF audit and APS2 vtable decoder as reproducible CI gates.
+2. Reconcile the full `DT_NEEDED` list with the target firmware's linker namespace and exact library locations.
+3. Recover the matching vendor header/source revision and compare its types/signatures with the AOSP r3 baseline.
+4. Trace external callers and runtime semantics of the private MediaTek device and stream callbacks.
+5. Implement a typed factory-compatible HAL shell using the recovered module/device/stream layouts.
+6. Add fake-backend lifecycle tests before porting any hardware or route behavior.
 
 No hardware writes, module loading, binary patching or factory replacement are part of this ABI-recovery stage.
