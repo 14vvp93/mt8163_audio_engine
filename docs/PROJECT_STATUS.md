@@ -102,7 +102,7 @@ Final replacement target:
 - [x] Prior PCM Broker and AudioCore TSAN runs passed.
 - [x] PCM DSP host tests and Android ARMv7 cross-build passed on code HEAD `fb5a00e0a1d38aed71571cd3b2db41773d90e509` (Actions runs `43474875981` and `43474876012`); the preceding source commit `5161fa5` passed both workflows as well (`43474868715`, `43474868710`).
 
-### P2 — Android 9 Primary HAL
+### P2 — Android 9 integration adapter and factory compatibility
 
 - [x] Pin AOSP reference to `android-9.0.0_r3` from firmware build `PPR1.180610.011`.
 - [x] Recover HMI, module/device API versions, device callback table and vendor tail.
@@ -126,8 +126,9 @@ Final replacement target:
 - [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The device shell opens, while `init_check` and stream opens fail closed with `-ENODEV`; no hardware access is exposed.
 - [x] Add the internal PCM16 byte/frame bridge and per-stream lifecycle gate; it is not yet wired into Android `audio_stream_out` / `audio_stream_in` callbacks.
 - [x] Cross-compile the bootstrap as ELF32 ARM, verify `audio.primary.mt8163.so` SONAME and exported `HMI` (`GLOBAL DEFAULT`, 128 bytes) with NDK r27c in [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This is bootstrap ABI evidence, not a complete HAL build.
-- [ ] Implement the callable `audio_hw_device` and stream callback tables plus the 16 private factory-tail callbacks; the bootstrap is not a deployable HAL.
-- [ ] Build the complete exact ARM32 HAL and verify ABI/symbol/dependency contract.
+- [ ] Select and implement the narrowest production integration adapter for the validated PrimaryMedia profile while retaining the factory primary HAL.
+- [ ] Verify adapter ABI, effect/stream lifecycle, linker visibility and route gating on Android 9 ARM32.
+- [ ] Do not replace the complete factory primary HAL unless later evidence demonstrates that deep integration cannot satisfy the required behavior and the owner approves that scope change.
 
 ### P3 — DSP integration
 
