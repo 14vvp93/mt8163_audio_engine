@@ -151,6 +151,60 @@ When the backend and private ABI are verified:
   public contract defines it); do not install no-op callbacks that claim
   successful hardware behavior.
 
+## Callback dispatch lifetime: unresolved hard boundary
+
+An atomic admission counter stored inside a stream wrapper is not a lifetime
+owner. A callback can be dispatched with the raw `audio_stream_out*` or
+`audio_stream_in*`, be descheduled before its first access to the wrapper,
+and resume after the close path has observed zero in-flight operations. The
+callback's first atomic access would then itself be a use-after-free.
+
+Consequences:
+
+- Do not free a stream wrapper from `close_output_stream` or
+  `close_input_stream` merely because the adapter/broker transfer count is
+  zero.
+- Do not treat a gate embedded in the wrapper, a reference count incremented
+  through that wrapper, or a generation field in that wrapper as protection
+  for callback entry. Each requires dereferencing memory whose lifetime is
+  the disputed property.
+- A valid implementation needs a dispatch-lifetime mechanism whose storage
+  outlives every possible callback entry. Callback admission must happen
+  through that stable storage before the callback dereferences the stream
+  wrapper. The device owner and backend must remain alive until all admitted
+  callbacks have exited.
+- The mechanism must also define stale callback behavior across stream close,
+  address reuse, and device close. A raw stream pointer carries no generation
+  token, so an internal generation counter alone cannot distinguish a stale
+  callback from a new stream allocated at the same address.
+- If the Android framework's close contract guarantees that no callback can
+  begin or remain pending after close returns, pin and verify that exact
+  framework contract for the target Android 9 branch. Otherwise retain a
+  stable dispatch identity/tombstone or use another externally verified
+  lifetime mechanism; do not guess.
+
+The current repository has no such dispatch owner. The fail-closed stream-open
+callbacks are therefore intentional. The broker and byte-adapter gates protect
+already-admitted transfers only; they do not authorize wrapper destruction.
+
+Required deterministic tests before enabling stream callbacks:
+
+1. Pause a callback after framework dispatch but before its first wrapper
+   access; race stream close and verify wrapper/owner storage remains valid.
+2. Pause a callback after successful dispatch admission; race close and verify
+   close cannot reclaim its owner until the lease exits.
+3. Start a callback after admission has been shut down; verify it is rejected
+   without touching the wrapper or backend.
+4. Race stream close, device close, and callback admission; verify backend and
+   owner destruction occurs only after all admitted callbacks drain.
+5. Reuse a stream slot and, separately, an allocation address; verify stale
+   callback identity cannot resolve to a newly opened stream.
+6. Run the above under ThreadSanitizer and the Android ARM32 ABI build.
+
+Do not add an unbounded wait to a realtime callback. Waiting, if required by a
+verified design, belongs to the serialized control/close context and must have
+a bounded or retryable failure mode.
+
 ## Integration gates
 
 Do not implement or enable stream open callbacks until all of the following
