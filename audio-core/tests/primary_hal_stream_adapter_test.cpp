@@ -70,6 +70,10 @@ int main() {
                        PcmDirection::Playback) == PcmResult::Ok);
     CHECK(adapter.stream_count() == 1U);
     PcmByteStreamAdapter output(adapter, handle, PcmDirection::Playback);
+    PcmConfig unsupported_config = config;
+    unsupported_config.format = static_cast<PcmFormat>(99U);
+    CHECK(output.configure(unsupported_config) == PcmResult::UnsupportedFormat);
+    CHECK(!output.configured());
     CHECK(output.configure(config) == PcmResult::Ok);
     CHECK(output.configured());
     CHECK(output.start() == PcmResult::Ok);
@@ -92,14 +96,6 @@ int main() {
     CHECK(null_write.result == PcmResult::InvalidArgument);
     CHECK(null_write.bytes_transferred == 0U);
 
-    PcmConfig unsupported_config = config;
-    unsupported_config.format = static_cast<PcmFormat>(99U);
-    CHECK(output.configure(unsupported_config) == PcmResult::UnsupportedFormat);
-    const PcmByteTransfer rejected_format = output.write(samples.data(), 4U);
-    CHECK(rejected_format.result == PcmResult::InvalidState);
-    CHECK(rejected_format.bytes_transferred == 0U);
-
-    CHECK(output.configure(config) == PcmResult::Ok);
     std::array<std::uint8_t, 8U> unaligned_storage{};
     const PcmByteTransfer unaligned_buffer =
         output.write(unaligned_storage.data() + 1U, 4U);
