@@ -230,6 +230,54 @@ target-specific guarantee until the target `frameworks/av` and
 control methods (parameters, standby, effects and device controls), mmap
 threads, and offload/async callback workers independently.
 
+## Reproducible AOSP Android 9 baseline
+
+The upstream Android 9.0.0 Release 3 tag has now been resolved for the two
+framework repositories used by this lifecycle analysis:
+
+- `platform/frameworks/av`, tag `android-9.0.0_r3`, commit
+  `8d3bfcbbd96603ad74df5ee003bbf100d74a1096` (build
+  `PPR1.180610.011`).
+- `platform/system/core`, tag `android-9.0.0_r3`, commit
+  `0fac9018f2388f25f5a5778663a14712e75a9903` (same build).
+
+This pins a reproducible public AOSP baseline matching the
+`platform_hardware_libhardware` tag already used for ABI assertions. It does
+**not** prove that the MT8163 vendor image was built from these exact commits:
+the target image fingerprint, repo manifest, and vendor cherry-picks are not
+present in this repository. Treat the tag as the reference baseline, not as
+recovered device provenance.
+
+The `system/core` implementation is especially important: `Thread`'s
+destructor is empty. The join guarantee comes from the explicit
+`Thread::requestExitAndWait()` call in `ThreadBase::exit()`, which waits
+until `mRunning` becomes false. It must not be attributed to object
+destruction or to `requestExit()` alone.
+
+The offload path needs separate treatment. `OffloadThread::threadLoop_exit()`
+requests exit on `AsyncCallbackThread` when asynchronous writes are enabled,
+but `AsyncCallbackThread::exit()` itself only sets the exit request and
+signals its condition; it does not call `requestExitAndWait()`. Its worker
+processes acknowledgements/errors back into the playback-thread object; it is
+not the ordinary PCM `write()` dispatch path. Do not claim that the parent
+thread's join also joins this callback thread. Any lifetime argument involving
+the HAL's registered asynchronous callback must be audited against the
+specific HAL callback registration/unregistration contract.
+
+Mmap playback/capture uses separate AudioFlinger thread classes and close
+branches. The ordinary PlaybackThread/RecordThread sequence cannot be applied
+to mmap streams. This project currently has no mmap stream implementation,
+and its HAL stream-open methods remain fail-closed.
+
+For ordinary non-mmap PCM streams, the current defensible conclusion is
+narrow: AudioFlinger removes the thread from its registry, exits and joins
+the worker, then clears the stream and invokes the HAL close method. This is
+a strong quiescence guarantee for I/O dispatched exclusively by that worker.
+It is not a blanket guarantee for calls already holding a thread reference,
+control-plane operations, effects, mmap, or vendor-private asynchronous
+callbacks. Keep the stable-dispatch-lifetime question open until those
+classes and the exact target vendor framework delta are checked.
+
 ## Callback dispatch lifetime: unresolved hard boundary
 
 An atomic admission counter stored inside a stream wrapper is not a lifetime
