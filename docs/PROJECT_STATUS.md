@@ -134,7 +134,7 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Factory ELF/HMI/APS2 audit, stream-method and stream-manager disassembly, full shared-library scan (1,052 libraries), and MediaTek HIDL 4.1 bridge disassembly: PASS — [run 43400741972](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972/artifacts/14024861357).
+- Factory ELF/HMI/APS2 audit, stream-method and stream-manager disassembly, full shared-library scan (1,052 libraries), and MediaTek HIDL 4.1 bridge disassembly: PASS — [run 43400741972](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972/artifacts/14024862263).
 - AudioCore TSAN: PASS on feature HEAD `09b42d6893a36874961784f57817c299d9838779` — [run 43401220686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220686).
 - PCM Stream Broker TSAN: PASS on the same feature HEAD — [run 43401220580](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220580).
 - Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on the same feature HEAD — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
