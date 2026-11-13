@@ -82,8 +82,8 @@ This is not a claim that every possible minute has been eliminated:
 
 - GitHub's account-level Actions billing/remaining-minute dashboard is not exposed through the repository workflow API used for this audit. Exact minute savings and remaining quota cannot be calculated here.
 - At the audit time, private Actions jobs failed before runner allocation (`runner_id=0`, empty `runner_name`). This is a runner/quota availability problem, not evidence that builds or tests passed. Private code CI therefore remains unverified until a runner executes it.
-- The public infrastructure validator had a successful run on commit `3da40752f1f4ba8b5edf37019757ec42a8681db1`; later commits were still being validated when this audit was recorded. Recheck the latest run before treating the final public workflow edits as validated.
+- Public infrastructure validation passed on the final public workflow commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1` (run `43461096014`, completed successfully). This validates public workflow YAML, Python scripts and public tool tests covered by that workflow.
 - Android NDK installation and AOSP header acquisition still occur in relevant private builds. Caching them may help, but cache restore/save overhead and cache limits must be measured after private runners are available; no unmeasured cache layer was added.
 - Self-hosted runners or local CI can reduce dependence on GitHub-hosted private minutes, but require a maintained trusted machine and are not enabled by this change.
 
-Private branch updated: `feature`. Private `main` was not changed.
+Private branch updated: `feature` at audit commit `22bdd450ae3a73200e66d58f22a2a4e568bb00d0`. Public branch updated: `main` at audit commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1`. Private `main` was not changed.
