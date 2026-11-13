@@ -383,3 +383,12 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - The command map and mismatch are documented in [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md).
 - The framework/kernel artifact pair is still not proven to be the active path on the user's physical CD3310EO unit. Do not send any of these IDs to the physical chip. Production transport remains detached; no hardware I/O was performed.
 
+### P0-A follow-up — external CD3313 datasheet cross-check (2026-11-13)
+
+- Located a manufacturer-branded Wuxi I-CORE CD3313 datasheet (document CD3313-AX-YX-A014, version 2024-01-C1).
+- The datasheet's 8-bit write address `0x88` maps to 7-bit I2C address `0x44`, matching the recovered CD3313 module address.
+- The datasheet defines one-byte control commands and a 100 kbit/s maximum I2C clock. Its volume-control encoding interprets `0x3F` as −70 dB plus −8.75 dB attenuation (−78.75 dB total). This is consistent with the module's one-byte `0x3F` probe write being an initial volume attenuation command, not an ID read.
+- This independently corroborates the CD3313 driver identity and its CD3313 protocol. It does not establish CD3310EO compatibility.
+- Targeted public searches for the exact `CD3310EO` marking did not find a reliable datasheet or register map. This is not proof that no such documentation exists.
+- Updated [CD3310EO_FIRMWARE_INVENTORY.md](analysis-reports/CD3310EO_FIRMWARE_INVENTORY.md) with the datasheet cross-check and source links.
+- Compatibility remains UNKNOWN. No CD3313 protocol is approved for CD3310EO; no hardware I/O was performed.
