@@ -4,7 +4,7 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
-> **Latest code HEAD:** `8092e1688e889b8d4750faa118dfdc444b014b23`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
+> **Latest code HEAD:** `263825dcc080ff54983718bfd95105514cbee258`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
@@ -83,6 +83,7 @@ Final replacement target:
 - [x] Extend backend transfers to report actual frames transferred, preserving partial success and partial progress accompanied by an error.
 - [x] Keep status-only legacy backend implementations source-compatible while rejecting hidden short transfers in status-only callers.
 - [x] Validate endpoint callback availability by direction, so playback-only endpoint tables do not need capture callbacks and vice versa.
+- [x] Add broker regression coverage proving an impossible backend transfer count fails closed, rejects subsequent callbacks, and still permits explicit stop/close recovery.
 - [x] Add regression coverage for partial transfers and playback-only/capture-only endpoint operation.
 - [x] Test stop/retry while a byte-stream write is in flight, plus reconfiguration after successful stop.
 - [x] Include the byte adapter in both CMake and the Android Soong static-library source list.
@@ -173,3 +174,5 @@ Final replacement target:
 
 
 - **Latest execution caveat (2026-11-13):** workflows triggered on `07e8fae18edd39e958cc6deb78552c268ba3acf6` and `8092e1688e889b8d4750faa118dfdc444b014b23` were marked failed by GitHub, but their jobs had `runner_id=0`, an empty `runner_name`, and an empty `steps` array. Re-running the failed jobs reproduced the same pre-runner failure. Job-log retrieval returned storage `BlobNotFound`; therefore no compiler, test, TSAN, or benchmark step is known to have executed. Do not interpret these workflow conclusions as evidence of source-code test failures. The newest code changes remain unverified until a runner actually executes the workflow steps.
+
+- **Latest broker regression (2026-11-13):** commit `263825dcc080ff54983718bfd95105514cbee258` adds a test for a backend reporting more frames than requested. The expected contract is `BackendFailure`, stream state `Failed`, closed callback admission, then explicit `stop()` and `close()`. CI was triggered but all seven jobs again failed before runner assignment (`runner_id=0`, no runner name, zero executed steps); the new test has not yet executed in CI.
