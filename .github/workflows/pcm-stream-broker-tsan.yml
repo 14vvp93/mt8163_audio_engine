@@ -3,11 +3,12 @@ name: PCM Stream Broker ThreadSanitizer
 on:
   push:
     branches:
-      - work/pcm-backend
-      - integration/beta-0.1
+      - main
+      - feature
   pull_request:
     branches:
-      - work/pcm-backend
+      - main
+      - feature
   workflow_dispatch:
 
 permissions:
