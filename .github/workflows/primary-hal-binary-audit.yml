@@ -5,6 +5,7 @@ on:
     branches: [main, feature]
     paths:
       - "tools/audit_primary_hal_binary.sh"
+      - "tools/audit_android_packed_relocations.py"
       - ".github/workflows/primary-hal-binary-audit.yml"
   pull_request:
     paths:
@@ -29,6 +30,7 @@ jobs:
         with:
           sparse-checkout: |
             tools/audit_primary_hal_binary.sh
+            tools/audit_android_packed_relocations.py
           sparse-checkout-cone-mode: false
 
       - name: Checkout factory firmware artifact
@@ -64,8 +66,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sh tools/audit_primary_hal_binary.sh \
-            factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          sh tools/audit_primary_hal_binary.sh "$binary"
+          python3 tools/audit_android_packed_relocations.py "$binary"
 
       - name: Preserve audited factory binary as workflow artifact
         uses: actions/upload-artifact@v4
