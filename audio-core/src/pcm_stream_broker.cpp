@@ -113,8 +113,6 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
     for (auto& slot : streams_) {
         const auto generation = slot.generation.load(std::memory_order_acquire);
         if (slot.handle.load(std::memory_order_acquire) != handle) continue;
-        if (slot.direction != PcmDirection::Playback) return PcmResult::InvalidState;
-
         std::uint32_t gate = slot.transfer_gate.load(std::memory_order_acquire);
         for (;;) {
             if ((gate & kTransferGateOpen) == 0U) return PcmResult::InvalidState;
@@ -133,6 +131,10 @@ PcmResult PcmStreamBroker::write(std::uint32_t handle,
         }
         if (slot.state.load(std::memory_order_acquire) !=
             static_cast<std::uint32_t>(PcmStreamState::Started)) {
+            slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
+            return PcmResult::InvalidState;
+        }
+        if (slot.direction != PcmDirection::Playback) {
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return PcmResult::InvalidState;
         }
@@ -155,8 +157,6 @@ PcmResult PcmStreamBroker::read(std::uint32_t handle,
     for (auto& slot : streams_) {
         const auto generation = slot.generation.load(std::memory_order_acquire);
         if (slot.handle.load(std::memory_order_acquire) != handle) continue;
-        if (slot.direction != PcmDirection::Capture) return PcmResult::InvalidState;
-
         std::uint32_t gate = slot.transfer_gate.load(std::memory_order_acquire);
         for (;;) {
             if ((gate & kTransferGateOpen) == 0U) return PcmResult::InvalidState;
@@ -175,6 +175,10 @@ PcmResult PcmStreamBroker::read(std::uint32_t handle,
         }
         if (slot.state.load(std::memory_order_acquire) !=
             static_cast<std::uint32_t>(PcmStreamState::Started)) {
+            slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
+            return PcmResult::InvalidState;
+        }
+        if (slot.direction != PcmDirection::Capture) {
             slot.transfer_gate.fetch_sub(1U, std::memory_order_release);
             return PcmResult::InvalidState;
         }
