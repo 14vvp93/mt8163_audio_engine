@@ -210,6 +210,73 @@ libdl.so
 
 This dependency list is a compatibility constraint, not a recommendation to link every library into the replacement. Each dependency must be classified as required framework contract, vendor service/control client, codec/transport, or implementation detail before designing the replacement's linker surface.
 
+### AudioALSAHardware vtable and device callback map
+
+The factory ELF stores the C++ vtable as dynamic symbol:
+
+- Mangled symbol: `_ZTVN7android17AudioALSAHardwareE`
+- Demangled: `vtable for android::AudioALSAHardware`
+- Address: `0x00190a84`
+- Size: `236` bytes
+- Recovered entries: 57 `R_ARM_ABS32` relocations from the Android packed `APS2` `.rel.dyn` section.
+- Object vptr uses the Itanium ABI address point at vtable symbol + 8 (two header words precede virtual methods).
+
+The device adapter at offset 220 holds the `AudioALSAHardware` singleton returned by `createMTKAudioHardware()`. The public device callbacks forward through that object's vtable. Recovered mapping:
+
+| `audio_hw_device` offset | Android callback | Factory target |
+|---:|---|---|
+| 64 | `get_supported_devices` | Constant mask `0xc0103cff` |
+| 68 | `init_check` | `AudioALSAHardware::initCheck` |
+| 72 | `set_voice_volume` | `setVoiceVolume` |
+| 76 | `set_master_volume` | `setMasterVolume` |
+| 80 | `get_master_volume` | `getMasterVolume` |
+| 84 | `set_mode` | `setMode` |
+| 88 | `set_mic_mute` | `setMicMute` |
+| 92 | `get_mic_mute` | `getMicMute` |
+| 96 | `set_parameters` | `setParameters` |
+| 100 | `get_parameters` | `getParameters` |
+| 104 | `get_input_buffer_size` | `getInputBufferSize` |
+| 108 | `open_output_stream` | `openOutputStreamWithFlags` |
+| 112 | `close_output_stream` | `closeOutputStream` |
+| 116 | `open_input_stream` | `openInputStreamWithFlags` |
+| 120 | `close_input_stream` | `closeInputStream` |
+| 124 | `get_microphones` | `getMicrophones` |
+| 128 | `dump` | `dumpState` |
+| 132 | `set_master_mute` | Null in the constructed device object |
+| 136 | `get_master_mute` | Null in the constructed device object |
+| 140 | `create_audio_patch` | `createAudioPatch` |
+| 144 | `release_audio_patch` | `releaseAudioPatch` |
+| 148 | `get_audio_port` | `getAudioPort` |
+| 152 | `set_audio_port_config` | `setAudioPortConfig` |
+
+The `set_master_mute` and `get_master_mute` slots remain zero in the calloc-backed device allocation. A C++ `setMasterMute` method exists in the class vtable, but this HAL device table does not expose it through those AOSP fields.
+
+The 68-byte vendor tail is populated as follows:
+
+| Device offset | Factory forwarding target |
+|---:|---|
+| 156 | `AudioALSAHardware::xWayPlay_Start` |
+| 160 | `xWayPlay_Stop` |
+| 164 | `xWayPlay_Write` |
+| 168 | `xWayPlay_GetFreeBufferCount` |
+| 172 | Alternate entry into the `xWayRec_Stop` forwarding thunk; expects the C++ object pointer directly |
+| 176 | `xWayRec_Stop` forwarding thunk; resolves the C++ object from the device wrapper |
+| 180 | `xWayRec_Read` |
+| 184 | `ReadRefFromRing` |
+| 188 | `GetVoiceUnlockULTime` |
+| 192 | `SetVoiceUnlockSRC` |
+| 196 | `startVoiceUnlockDL` |
+| 200 | `stopVoiceUnlockDL` |
+| 204 | `getVoiceUnlockDLInstance` |
+| 208 | `setupParametersCallback` |
+| 212 | `setAudioParameterChangedCallback` |
+| 216 | `clearAudioParameterChangedCallback` |
+| 220 | Pointer to the `AudioALSAHardware` singleton object |
+
+The vendor tail is not part of the public AOSP audio HAL ABI. It is a private MediaTek contract and must be preserved only if corresponding vendor clients remain in the replacement architecture. The duplicate `xWayRec_Stop` entries have different first-argument conventions and must not be collapsed without tracing their callers.
+
+The audit helper `tools/audit_android_packed_relocations.py` decodes APS2 relocations and reconstructs the C++ vtable symbol mapping. This avoids relying on `readelf -r`, which does not display the Android packed `.rel.dyn` records as ordinary REL entries.
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
