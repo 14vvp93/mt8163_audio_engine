@@ -53,13 +53,14 @@ int main() {
         }
     }
 
-    constexpr std::array<std::uint32_t, 6> supported_channels{
+    // This list records the factory predicate, not a normative Android mask allowlist.
+    constexpr std::array<std::uint32_t, 6> factory_accepted_channels{
         0x0c, 0x10, 0x4000, 0x8000, 0xc000, 0x1c
     };
 
-    for (const auto mask : supported_channels) {
+    for (const auto mask : factory_accepted_channels) {
         if (!input_channel_mask_supported(mask)) {
-            return fail("factory input channel-mask predicate rejected a recovered mask");
+            return fail("factory input channel-mask predicate rejected a recovered factory-accepted mask");
         }
     }
 
