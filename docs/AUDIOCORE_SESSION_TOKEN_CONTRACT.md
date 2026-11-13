@@ -51,7 +51,7 @@ Do not widen a factory C ABI handle, reinterpret a pointer, or change Android fr
 - Open handle H, close its token, reopen the same H, and prove old-token transition/close/configure/start/read/write/stop all fail without affecting the replacement.
 - Reuse a different registry/PCM slot and prove the old token remains invalid.
 - Reject default tokens, mismatched handle/generation pairs and tokens from another registry instance.
-- Verify failed opens do not consume a generation unless the contract deliberately reserves it; the preferred behavior is to consume only after all validation and capacity checks succeed.
+- Verify registry validation/capacity failures do not consume a sequence. Once AudioCore successfully issues a token, a later PCM backend-open failure may retire that generation; gaps are safe and generations must never be reused.
 - Verify generation exhaustion fails closed without wraparound.
 - Exercise delayed transfer admission racing with stop/close/reopen; no old token may access the replacement backend stream.
 - Verify snapshots contain the complete token and stale token operations cannot mutate published replacement state.
