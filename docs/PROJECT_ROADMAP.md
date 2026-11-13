@@ -104,12 +104,14 @@ Firmware archives and extracted firmware are maintained in `14vvp93/public_calcu
 - PCM DSP foundations: stereo core, four-channel Float32 test foundation, EQ, crossover, dynamics, enhancement, time alignment and profile transitions.
 - Android ARMv7 static-library/JNI build workflow.
 - Android 9 effect-library ABI scaffold and host smoke tests.
+- Non-installable Android 9 / ARM32 Primary HAL bootstrap with exported `HMI`, factory wrapper layout assertions and a fail-closed module-open entry point.
 - Read-only device diagnostics collectors.
 - Static FM direct-I2S/capture, A2DP and HFP/SCO route investigations.
 
 ### Incomplete or not proven
 
-- No complete replacement `audio.primary.mt8163.so` implementation or exact factory-ABI build.
+- No complete replacement `audio.primary.mt8163.so` implementation or exact factory-ABI build; the current bootstrap deliberately returns `-ENOSYS` and is not installable.
+- No callable factory `audio_hw_device`/stream callback implementation or validated private-tail callback implementation.
 - No concrete TinyALSA/ALSA endpoint backend connected to target card/device values.
 - No live target inventory of modules, device-node ownership, ALSA cards/PCMs, mixer controls, active policy or process file descriptors.
 - No production CD3313KO hardware transport backend.
