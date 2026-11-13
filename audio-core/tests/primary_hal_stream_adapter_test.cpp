@@ -1,11 +1,13 @@
 #include "mt8163_audio_core/primary_hal_stream_adapter.hpp"
 
 #include <array>
-#include <cassert>
+#include <cstdlib>
 #include <cstddef>
 #include <cstdint>
 
 using namespace mt8163_audio_core;
+
+#define CHECK(condition) do { if (!(condition)) std::abort(); } while (false)
 
 namespace {
 class FakeBackend final : public PcmBackend {
@@ -63,21 +65,21 @@ int main() {
                                PcmFormat::Pcm16SignedLittleEndian};
     std::array<std::int16_t, 480U> samples{};
 
-    assert(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
+    CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::PrimaryPcm,
                         PcmDirection::Playback) == PcmResult::Ok);
-    assert(adapter.stream_count() == 1U);
-    assert(adapter.configure(handle, config) == PcmResult::Ok);
-    assert(adapter.start(handle) == PcmResult::Ok);
-    assert(adapter.write(handle, samples.data(), 240U) == PcmResult::Ok);
-    assert(backend.writes == 240U);
-    assert(adapter.stop(handle) == PcmResult::Ok);
-    assert(adapter.close(handle) == PcmResult::Ok);
-    assert(adapter.stream_count() == 0U);
-    assert(!backend.opened);
+    CHECK(adapter.stream_count() == 1U);
+    CHECK(adapter.configure(handle, config) == PcmResult::Ok);
+    CHECK(adapter.start(handle) == PcmResult::Ok);
+    CHECK(adapter.write(handle, samples.data(), 240U) == PcmResult::Ok);
+    CHECK(backend.writes == 240U);
+    CHECK(adapter.stop(handle) == PcmResult::Ok);
+    CHECK(adapter.close(handle) == PcmResult::Ok);
+    CHECK(adapter.stream_count() == 0U);
+    CHECK(!backend.opened);
 
-    assert(adapter.open(handle, SourceId::LocalMedia, RouteType::A2dpPcm,
+    CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::A2dpPcm,
                         PcmDirection::Playback) == PcmResult::UnsupportedRoute);
-    assert(adapter.open(0U, SourceId::LocalMedia, RouteType::PrimaryPcm,
+    CHECK(adapter.open(0U, SourceId::LocalMedia, RouteType::PrimaryPcm,
                         PcmDirection::Playback) == PcmResult::InvalidArgument);
     return 0;
 }
