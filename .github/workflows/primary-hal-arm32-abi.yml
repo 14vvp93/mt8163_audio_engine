@@ -2,11 +2,12 @@ name: Android 9 Primary HAL ARM32 ABI bootstrap
 
 on:
   push:
-    branches: [feature]
+    branches: [main, feature]
     paths:
       - "primary-hal/**"
       - ".github/workflows/primary-hal-arm32-abi.yml"
   pull_request:
+    branches: [main, feature]
     paths:
       - "primary-hal/**"
       - ".github/workflows/primary-hal-arm32-abi.yml"
