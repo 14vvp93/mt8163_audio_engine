@@ -58,6 +58,10 @@ count or format.
   `audio_stream_in::read` implementation.
 - The wrapper must be destroyed only after explicit successful close, and its
   referenced `PrimaryHalStreamAdapter` must outlive it.
+- The admission gate protects configuration/backend access after a callback
+  enters the gate. It cannot keep the C++ wrapper object alive for a callback
+  that has begun executing but has not yet acquired admission. The HAL owner
+  must quiesce callback dispatch and serialize stream destruction externally.
 
 The Android HAL device callbacks remain fail-closed. This bridge does not
 enable an output/input stream or select a hardware endpoint.

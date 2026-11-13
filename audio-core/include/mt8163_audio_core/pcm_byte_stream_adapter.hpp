@@ -8,6 +8,7 @@ struct PcmByteTransfer {
     PcmResult result{PcmResult::InvalidState};
     std::size_t bytes_transferred{0U};
 };
+// The owner must quiesce callback dispatch before destroying this object.
 class PcmByteStreamAdapter final {
 public:
     PcmByteStreamAdapter(PrimaryHalStreamAdapter& adapter, std::uint32_t handle, PcmDirection direction) noexcept;
