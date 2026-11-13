@@ -74,6 +74,19 @@ PcmTransferResult fake_partial_write(void*, std::uint32_t, const std::int16_t* d
     if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
     return {PcmResult::Ok, frames > 1U ? frames - 1U : 1U};
 }
+
+PcmTransferResult fake_device_lost_write(void*, std::uint32_t,
+                                         const std::int16_t* data,
+                                         std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
+    return {PcmResult::DeviceLost, frames > 1U ? frames - 1U : 1U};
+}
+
+PcmTransferResult fake_xrun_read(void*, std::uint32_t, std::int16_t* data,
+                                 std::size_t frames) noexcept {
+    if (data == nullptr || frames == 0U) return {PcmResult::InvalidArgument, 0U};
+    return {PcmResult::Xrun, 1U};
+}
 PcmResult fake_read(void* context, std::uint32_t, std::int16_t* data,
                     std::size_t frames) noexcept {
     auto& fake = *static_cast<FakeDevice*>(context);
@@ -340,6 +353,70 @@ void test_partial_transfer_contract() {
             "partial-transfer stream closes cleanly");
 }
 
+void test_terminal_transfer_errors_fail_closed() {
+    const std::int16_t samples[8]{};
+
+    {
+        FakeDevice fake;
+        const PcmEndpoint endpoint{
+            RouteType::PrimaryPcm, PcmDirection::Playback, 0U, 0U, 0U, true
+        };
+        PcmDeviceOps ops = make_ops(fake);
+        ops.write_transfer = fake_device_lost_write;
+        EndpointPcmBackend backend(&endpoint, 1U, ops);
+        PcmBackend::StreamToken token = 0U;
+        require(backend.valid(), "device-lost playback backend is valid");
+        require(backend.open(RouteType::PrimaryPcm, PcmDirection::Playback, &token) ==
+                    PcmResult::Ok,
+                "device-lost playback stream opens");
+        require(backend.configure(token, PcmConfig{48000U, 2U, 240U}) ==
+                    PcmResult::Ok &&
+                backend.start(token) == PcmResult::Ok,
+                "device-lost playback stream starts");
+
+        const PcmTransferResult result = backend.write_transfer(token, samples, 4U);
+        require(result.result == PcmResult::DeviceLost &&
+                result.frames_transferred == 3U,
+                "device-lost playback preserves completed frames");
+        require(backend.write_transfer(token, samples, 4U).result ==
+                    PcmResult::InvalidState,
+                "device-lost playback rejects subsequent transfers");
+        require(backend.stop(token) == PcmResult::Ok &&
+                backend.close(token) == PcmResult::Ok,
+                "device-lost playback requires stop before close");
+    }
+
+    {
+        FakeDevice fake;
+        const PcmEndpoint endpoint{
+            RouteType::PrimaryCapturePcm, PcmDirection::Capture, 0U, 0U, 0U, true
+        };
+        PcmDeviceOps ops = make_ops(fake);
+        ops.read_transfer = fake_xrun_read;
+        EndpointPcmBackend backend(&endpoint, 1U, ops);
+        PcmBackend::StreamToken token = 0U;
+        require(backend.valid(), "xrun capture backend is valid");
+        require(backend.open(RouteType::PrimaryCapturePcm, PcmDirection::Capture,
+                            &token) == PcmResult::Ok,
+                "xrun capture stream opens");
+        require(backend.configure(token, PcmConfig{48000U, 1U, 240U}) ==
+                    PcmResult::Ok &&
+                backend.start(token) == PcmResult::Ok,
+                "xrun capture stream starts");
+
+        const PcmTransferResult result = backend.read_transfer(token, samples, 4U);
+        require(result.result == PcmResult::Xrun &&
+                result.frames_transferred == 1U,
+                "xrun capture preserves completed frames");
+        require(backend.read_transfer(token, samples, 4U).result ==
+                    PcmResult::InvalidState,
+                "xrun capture rejects subsequent transfers");
+        require(backend.stop(token) == PcmResult::Ok &&
+                backend.close(token) == PcmResult::Ok,
+                "xrun capture requires stop before close");
+    }
+}
+
 void test_direction_specific_ops_requirements() {
     FakeDevice fake;
     const PcmEndpoint playback_endpoint{
@@ -465,6 +542,7 @@ int main() {
     test_state_and_error_boundaries();
     test_lifecycle_rejects_inflight_transfer();
     test_partial_transfer_contract();
+    test_terminal_transfer_errors_fail_closed();
     test_direction_specific_ops_requirements();
     test_failed_stop_requires_retry_before_close();
     test_failed_start_requires_cleanup_before_close();
