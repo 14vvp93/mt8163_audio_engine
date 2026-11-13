@@ -4,6 +4,7 @@ project(mt8163_pcm_dsp LANGUAGES CXX)
 add_library(mt8163_pcm_dsp STATIC
     src/engine.cpp
     src/fm_adapter.cpp
+    src/normal_playback_adapter.cpp
     src/quad_engine.cpp
     src/time_alignment.cpp
     src/crossover.cpp
@@ -30,6 +31,14 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(pcm_dsp_fm_adapter_tests PRIVATE mt8163_pcm_dsp)
     target_compile_options(pcm_dsp_fm_adapter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME pcm_dsp_fm_adapter_tests COMMAND pcm_dsp_fm_adapter_tests)
+
+    add_executable(pcm_dsp_normal_playback_adapter_tests
+        tests/normal_playback_adapter_test.cpp
+    )
+    target_link_libraries(pcm_dsp_normal_playback_adapter_tests PRIVATE mt8163_pcm_dsp)
+    target_compile_options(pcm_dsp_normal_playback_adapter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME pcm_dsp_normal_playback_adapter_tests
+             COMMAND pcm_dsp_normal_playback_adapter_tests)
 
     add_executable(pcm_dsp_stability_tests tests/stability_test.cpp)
     target_link_libraries(pcm_dsp_stability_tests PRIVATE mt8163_pcm_dsp)
