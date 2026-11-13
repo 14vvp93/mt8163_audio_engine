@@ -1,8 +1,12 @@
 # MT8163 Audio Engine — Documentation Index
 
+> **Canonical execution plan:** [Project Roadmap](PROJECT_ROADMAP.md). Use it for priorities, current status, gates and next actions. The older Beta 0.1 roadmap below is retained only as a historical record.
+
 Use this page as the navigation map for the project. The documents remain grouped by subject here; source files and research inputs are stored separately from buildable code.
 
 ## Project direction and status
+
+- [Project Roadmap](PROJECT_ROADMAP.md) — single source of truth for product scope, repository baseline, priorities, implementation status, acceptance gates and release definition.
 
 - [Repository migration and final ownership](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.\n- [Public compute worker](PUBLIC_COMPUTE_WORKER.md) — repository ownership, worker invocation and artifact handoff.
 - [Firmware dataset migration](public-compute/FIRMWARE_DATASET_LAYOUT.md) — public firmware layout, verified transfer and archive deletion decision.
@@ -19,7 +23,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 - [Factory artifact replacement map](FACTORY_ARTIFACT_REPLACEMENT_MAP.md) — confirmed factory paths, basenames, SHA-256 baselines and replacement dispositions.
 - [Unified Audio Core architecture](UNIFIED_AUDIO_CORE_ARCHITECTURE.md) — single state authority, module contracts, source/route model, mute arbitration and migration gates.
 - [Factory defect and risk register](FACTORY_DEFECTS.md) — confirmed static defects, unresolved cross-stack risks and closure criteria.
-- [Project status](PROJECT_STATUS.md) — evidence-backed progress, blockers and next steps.
+- [Project status](PROJECT_STATUS.md) — concise current snapshot; execution priorities remain in [Project Roadmap](PROJECT_ROADMAP.md).
 - [Repository cleanup report](repository-audit/REPOSITORY_CLEANUP_REPORT.md) — repository layout, archive handling and cleanup decisions.
 - [Archive inventory](repository-audit/ARCHIVE_INVENTORY.md) — complete extraction results and file-type counts.
 - [Duplicate analysis](repository-audit/DUPLICATE_ANALYSIS.md) — byte-identical files and redundant source archive findings.
