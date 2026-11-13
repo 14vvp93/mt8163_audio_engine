@@ -5,7 +5,7 @@
 **Canonical repository:** `14vvp93/mt8163_audio_engine`  
 **Integration branch:** `integration/beta-0.1`  
 **Last audited baseline HEAD:** `59af8ea0000c1db9e1010f6b51b0377f0c4fbd66`  
-**Current implementation HEAD at this update:** `29fa3e096f855b510d94b39926f0c11faba1d4ef`  
+**Latest code/test commit:** `7b1dbc347913c16c52460d350dcfd87913f1f5e7`  
 **Platform:** MediaTek MT8163 · Android 9 / API 28 · ARM32 / EABI5 · vendor Linux 4.9.117  
 **Product status:** engineering foundations exist; complete factory HAL replacement and device validation are not complete.
 
@@ -130,7 +130,7 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 1. Reconcile the physical-chip terminology across legacy documents using CD3313EO for the IC and CD3313KO for the driver.
 2. Pin the exact firmware manifest, binary hashes, kernel build identity, board DTB/DTBO and selected overlay evidence.
-3. Expanded the read-only PowerShell collector with PCM substream status, `/dev` node metadata, open-FD owners and I2C driver symlinks; removed the ADB serial from the saved manifest. **Pending:** run it on the target and preserve its unmodified output.
+3. The read-only PowerShell collector was expanded with PCM substream status, `/dev` node metadata, open-FD owners and I2C driver symlinks; removed the ADB serial from the saved manifest. **Pending:** run it on the target and preserve its unmodified output.
 4. Capture loaded modules, module probe logs, `/dev/audiomux` major/minor and owner, relevant process FDs, I2C device/driver bindings and kernel messages.
 5. Capture `/proc/asound/cards`, `/proc/asound/pcm`, PCM status, mixer control inventory and relevant sysfs/pinctrl metadata.
 6. Determine the live Audio Policy XML, AudioPatch state, FM route state, Bluetooth offload state and HFP/SCO lifecycle.
