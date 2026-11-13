@@ -185,3 +185,49 @@ Still unresolved:
 
 **Safety status:** all findings above are static artifact analysis. No ioctl, I2C write, module load, GPIO/mixer operation or hardware probe was performed. CD3313 command IDs must not be sent to the CD3310EO until compatibility is independently proven.
 
+## 9. Cross-check: framework wrapper IDs versus the inspected CD3313 kernel dispatcher
+
+A second pass over the paired `cd3313.ko` disassembly compared the command byte extracted by `event_callback` with the command IDs recovered from the framework wrappers above.
+
+### IDs with explicit top-level dispatch branches
+
+The inspected callback contains explicit top-level branches for:
+
+`0x01`, `0x03`, `0x04`, `0x09`, `0x10`, `0x11`, `0x12`, `0x15`, `0x20`, `0x55`, `0x56`, `0x5C`, `0xA3`, `0xF0` and `0xF1`.
+
+This is the set visible in the recovered callback dispatch, not a statement that all these operations are safe or valid for CD3310EO. `0xF0` is a read-direction chip-ID operation and is not a valid write command. `0xF1` is present in the callback's command comparisons, but its complete operation semantics are not promoted into the replacement protocol without a separate direction/framing review.
+
+### Framework wrapper IDs with no matching top-level branch in this module
+
+The framework wrappers also construct these command IDs:
+
+- `0x50` — `setEQValue`
+- `0x57` — `setSurround`
+- `0x58` — `setCompressor`
+- `0x59` — `setFreqExpansion`
+- `0x5B` — `setAlto`
+- `0x60` — `setDelay`
+- `0xA1` — `setXOverLowFreq`
+- `0xA2` — `setXOverHeighLowFreq`
+
+No corresponding top-level command comparison appears for these IDs in the inspected `cd3313.ko` `event_callback`. Unknown IDs reach its default event-release path rather than one of the visible command handlers. Therefore these framework methods are not evidence that this particular module implements those operations. They may be stale framework surface, intended for another driver/board variant, or handled by a different firmware build; the available artifact does not distinguish those explanations.
+
+### JNI size-field correlation
+
+The native JNI method's ioctl construction encodes the Java array length plus one in the ioctl size field. The paired kernel `cmd_ioctl` then:
+
+1. extracts the 14-bit size field from the ioctl request;
+2. multiplies it by four;
+3. reserves the command header in its kernel slab;
+4. copies that many bytes from the userspace payload pointer.
+
+Consequently, an array of `N` Java integers causes the kernel to copy `4 * (N + 1)` payload bytes although the Java array contains only `4 * N` bytes. The extra four-byte read is confirmed by both sides of this paired JNI/kernel path. Kernel hardened-usercopy checks destination bounds; it does not make the Java source array one word longer.
+
+The wrapper array lengths in section 8 are therefore the Java-side element counts, not the number of words the legacy ioctl asks the kernel to copy. This defect must remain explicitly represented in any compatibility adapter and must never be reproduced as an out-of-bounds Java read in replacement code.
+
+### Interpretation
+
+The method-level framework map and the kernel callback are not a single coherent, fully matching command specification: some wrapper IDs have handlers, while eight wrapper IDs do not appear in this module's dispatch. This strengthens the need to identify the active board-specific driver and exact paired firmware build before defining a replacement protocol.
+
+**No command from this table is approved for transmission to the physical CD3310EO.** The comparison is static analysis of the supplied firmware artifacts only.
+
