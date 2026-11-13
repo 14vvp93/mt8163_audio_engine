@@ -138,7 +138,28 @@ All offsets are decimal bytes from the beginning of the structure.
 
 The AOSP r3 header declares `AUDIO_DEVICE_API_VERSION_CURRENT = 3.0` and minimum supported device API 2.0. Do not assume the factory module advertises 3.0: recover the actual `hw_device_t.version` and method-table behavior from the factory module before using any appended method.
 
-## 4. Vendor-specific facts that remain unresolved
+## 4. Factory module metadata recovered from the binary
+
+The immutable factory artifact was fetched directly by GitHub Actions from `14vvp93/public_calculations`. The audit verified the expected size and SHA-256 before parsing it. The exported module object is now confirmed:
+
+- Dynamic symbol: `HMI`
+- Symbol type/binding/visibility: `OBJECT GLOBAL DEFAULT`
+- Symbol value: `0x00195014`
+- Symbol size: `128` bytes
+- Section: `.data` (section 21)
+- `hw_module_t.tag`: `0x48574d54` (`HARDWARE_MODULE_TAG`)
+- `module_api_version`: `0x0001` (module API 0.1)
+- `hal_api_version`: `0x0100` (HAL API 1.0)
+- Module ID string: `audio`
+- Module name: `MTK Audio HW HAL`
+- Module author: `MTK`
+- `hw_module_methods_t` pointer: `0x00195010`
+- `hw_module_methods_t.open` function pointer: `0x0009b70c`
+- `dso`: null; all 25 reserved words are zero in the file image.
+
+The module metadata is decoded from the actual bytes at the `HMI` object, not inferred from AOSP defaults. The `open` function pointer has been recovered, but its implementation and returned `hw_device_t.version` still require disassembly and control-flow analysis.
+
+## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
 - SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
@@ -156,7 +177,7 @@ The current static-analysis reports establish MTK filter and stream-manager symb
 
 Do not fill these values from the AOSP reference table. They must be recovered from the supplied binary's ELF symbols, relocations and disassembly.
 
-## 5. ABI audit tooling change
+## 6. ABI audit tooling change
 
 `tools/audit_primary_hal_binary.sh` now checks:
 - factory filename;
@@ -169,7 +190,7 @@ Do not fill these values from the AOSP reference table. They must be recovered f
 
 This tool is static evidence only. It does not establish callback semantics, runtime linker compatibility or device behavior. Repository CI checks its shell syntax.
 
-## 6. Next exact recovery steps
+## 7. Next exact recovery steps
 
 1. Run the improved audit on the immutable factory binary and retain its complete output.
 2. Disassemble the module constructor and `HMI` data object; identify module API fields and the `methods->open` function pointer.
