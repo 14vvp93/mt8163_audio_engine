@@ -35,6 +35,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## CD3313EO physical IC and CD3313KO Linux driver
 
+- [CD3313EO hardware and driver reference](CD3313EO_HARDWARE_AND_DRIVER_REFERENCE.md) — confirmed physical IC, datasheet electrical limits, analog signal architecture, I2C interface and implementation constraints.
 - [Protocol reconstruction](CD3313_PROTOCOL_RECONSTRUCTION.md)
 - [Character-device read/write ABI](CD3313_CHAR_DEVICE_ABI.md)
 - [ioctl and event-queue ABI](CD3313_IOCTL_ABI.md)
@@ -52,6 +53,7 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 ## MT8163 platform, HAL and vendor stack
 
+- [MT8163 platform hardware reference](MT8163_PLATFORM_HARDWARE_REFERENCE.md) — SoC capabilities, target firmware facts, AFE/ASoC boundaries and unresolved board-level evidence.
 - [Primary Audio HAL analysis](MT8163_AUDIO_HAL_ANALYSIS.md)
 - [Android 9 ARM32 primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md) — pinned PPR1.180610.011 / AOSP r3 reference, recovered factory device/stream wrappers, vtables and remaining anomalies.
 - [ARM32 ABI layout mirror](../audio-hal-abi/include/mt8163_android9_abi_layout32.h) — compile-time 32-bit layout model for factory module, device and stream wrappers.
