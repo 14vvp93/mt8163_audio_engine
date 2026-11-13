@@ -17,13 +17,13 @@ Firmware is no longer stored in this private repository. See [repository structu
 
 ## Agreed product goal
 
-The target is one integrated **MT8163 Audio Engine** that replaces the factory vendor audio implementation end to end. HAL integration, policy/routing, audio core, PCM/mixer/DSP, source and state management, and CD3313 hardware control are internal subsystems of this one product—not separate products and not an add-on over the factory engine.
+The target is one integrated **MT8163 Audio Engine** that deeply replaces selected factory DSP, processing and control layers while retaining compatible factory HAL, policy, services and kernel integrations where they remain correct and verified. It is not a wholesale rewrite of the entire vendor audio stack by default.
 
-The owner-approved decisions are: full replacement of factory vendor audio logic; one DSP engine covering all supported sources and directions with route-specific processing graphs; retain factory components and immutable artifacts for compatibility/rollback, without allowing competing runtime ownership. The authoritative details are in [Architecture Decisions — Full Replacement, All-Source DSP and Factory Retention](docs/ARCHITECTURE_DECISIONS_FULL_REPLACEMENT_ALL_DSP_FACTORY_RETENTION.md), [Project Roadmap](docs/PROJECT_ROADMAP.md) and [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md). Android framework contracts and necessary low-level platform interfaces are preserved unless evidence proves they must be replaced.
+The owner-approved decisions are: deep replacement; profile-driven DSP applied only to explicitly supported and verified routes; retain factory components and immutable artifacts for compatibility/rollback, with exactly one runtime owner for each route and hardware-control domain. The authoritative details are in [Architecture Decisions — Deep Replacement, Profile-Based DSP and Factory Retention](docs/ARCHITECTURE_DECISIONS_DEEP_REPLACEMENT_PROFILE_DSP_FACTORY_RETENTION.md), [Project Roadmap](docs/PROJECT_ROADMAP.md) and [MT8163 Audio Engine — Product Goal](docs/MT8163_AUDIO_ENGINE_GOAL.md).
 
 ## Historical research notes (not the current product target)
 
-The notes below record an earlier, narrower implementation phase. They are retained as technical evidence and must not be used as the current architecture decision. The current target is the integrated Audio Engine defined above: replace the factory vendor audio implementation end to end while preserving required Android framework and kernel contracts. Any statement below that recommends retaining the stock MTK audio HAL as the final solution is historical and superseded.
+The notes below record an earlier, narrower implementation phase. They are retained as technical evidence and must not be used as the current architecture decision. The current target is the integrated Audio Engine defined above: deeply replace selected processing/control layers while retaining compatible factory components and required Android framework/kernel contracts. Any statement below that recommends retaining the stock MTK audio HAL as the final solution is historical and superseded.
 
 ### Planned components
 
@@ -90,7 +90,7 @@ See the [documentation index](docs/README.md) for the complete, categorized list
 
 - Target platform: MT8163, Android 9, ARM 32-bit.
 - DSP foundations: PCM16 stereo core at 32/44.1/48 kHz (including the MT6627 FM base rate) and four-channel Float32 FL/FR/RL/RR core at 44.1/48 kHz, subject to runtime negotiation.
-- Bluetooth SCO, voice calls, microphone capture and every non-music path are mandatory replacement scope. Until a path is fully mapped and its replacement is validated, use only a safe temporary fallback; never mistake that fallback for a permanent exclusion.
+- Bluetooth SCO, voice calls, microphone capture and non-music paths remain in the route audit. DSP is enabled per validated profile; unintegrated paths continue through their verified factory handling and are not claimed as DSP-processed.
 - Do not assume every policy-declared route is active on every head unit.
 - Do not guess vendor ioctl structures, ACF/HCF parameter layouts, or NVRAM formats.
 - All current verification is offline/static or host-side CI. No head-unit runtime validation is claimed.
