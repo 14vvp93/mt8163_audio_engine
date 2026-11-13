@@ -71,8 +71,13 @@ int main() {
               "44.1 kHz PCM16 stereo configures");
 
         auto context = eligible_context(kRate);
+        pcm_dsp::StereoPlaybackProfile profile;
+        profile.id = pcm_dsp::StereoProfileId::PrimaryMedia;
+        profile.parameters = parameters;
+        check(pcm_dsp::validate_stereo_profile(profile, kRate),
+              "valid primary-media profile passes validation");
         auto result = adapter.process(input.data(), output.data(), kFrames,
-                                      parameters, context);
+                                      profile, context);
         check(result == pcm_dsp::NormalPlaybackResult::Processed,
               "eligible primary media route is processed");
         check(output != input, "EQ must alter the eligible stereo signal");
@@ -85,6 +90,38 @@ int main() {
             }
         }
         check(stereo_preserved, "stereo processing must not fold left and right channels");
+
+        auto invalid_profile = profile;
+        invalid_profile.schema_version =
+            pcm_dsp::kStereoProfileSchemaVersion + 1U;
+        std::fill(output.begin(), output.end(), 0);
+        result = adapter.process(input.data(), output.data(), kFrames,
+                                 invalid_profile, context);
+        check(result == pcm_dsp::NormalPlaybackResult::Bypassed,
+              "unknown profile schema fails open to bypass");
+        check(output == input,
+              "invalid profile bypass preserves PCM bit-exactly");
+
+        invalid_profile = profile;
+        invalid_profile.parameters.bands[0].gain_db =
+            std::numeric_limits<float>::quiet_NaN();
+        check(!pcm_dsp::validate_stereo_profile(invalid_profile, kRate),
+              "non-finite values are rejected even in disabled EQ bands");
+        std::fill(output.begin(), output.end(), 0);
+        result = adapter.process(input.data(), output.data(), kFrames,
+                                 invalid_profile, context);
+        check(result == pcm_dsp::NormalPlaybackResult::Bypassed,
+              "invalid numeric profile fails open");
+        check(output == input,
+              "invalid numeric profile bypass preserves input");
+
+        invalid_profile = profile;
+        invalid_profile.id = static_cast<pcm_dsp::StereoProfileId>(0xFFU);
+        check(!pcm_dsp::validate_stereo_profile(invalid_profile, kRate),
+              "unknown profile identifiers are rejected");
+
+        check(!pcm_dsp::validate_stereo_profile(profile, 96000U),
+              "unsupported profile sample rate is rejected");
 
         for (const auto route : {
                  pcm_dsp::PlaybackRoute::VoiceCall,
