@@ -111,10 +111,10 @@ PcmByteTransfer PcmByteStreamAdapter::transfer(const void* buffer,
     if (validation == PcmResult::Ok) {
         const PcmTransferResult backend_result =
             direction == PcmDirection::Playback
-                ? adapter_.write_transfer(handle_, static_cast<const std::int16_t*>(buffer),
+                ? adapter_.write_transfer(session_, static_cast<const std::int16_t*>(buffer),
                                           frames)
                 : adapter_.read_transfer(
-                      handle_, const_cast<std::int16_t*>(
+                      session_, const_cast<std::int16_t*>(
                                    static_cast<const std::int16_t*>(buffer)),
                       frames);
 
