@@ -2,7 +2,7 @@
 
 Reverse-engineering and development project for an improved audio system on MediaTek MT8163 / Android 9.
 
-**Current execution plan:** [Project Roadmap](docs/PROJECT_ROADMAP.md). This is the single source of truth for priorities, gates and project status.
+**Binding course governance:** [Project Governance](docs/PROJECT_GOVERNANCE.md). The assistant must guard the approved direction and issue a prominent red warning before any conflicting action, even when requested by the owner. Physical-access limitations may change execution order, not the product goal.\n\n**Current execution plan:** [Project Roadmap](docs/PROJECT_ROADMAP.md). This is the single source of truth for priorities, gates and project status.
 
 **Hardware terminology:** CD3313EO means the physical audio IC; CD3313KO means its Linux kernel driver (`cd3313.ko`).
 
