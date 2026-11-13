@@ -151,6 +151,52 @@ When the backend and private ABI are verified:
   public contract defines it); do not install no-op callbacks that claim
   successful hardware behavior.
 
+## Framework close sequencing: source-level evidence
+
+The framework-side close path is materially stronger than the generic HAL
+header contract:
+
+- AudioFlinger's output close path removes the playback thread from its
+  registry, calls `PlaybackThread::exit()`, then clears the stream and calls
+  `close_output_stream()`. The source contains an explicit comment that the
+  thread entity is no longer running after `exit()`.
+- AudioFlinger's input close path follows the corresponding sequence:
+  remove the record thread, call `RecordThread::exit()`, clear the input, then
+  call `close_input_stream()`.
+- Read/write callbacks are driven by those playback/record worker threads.
+  Therefore, if the target branch's `exit()` synchronously joins the worker
+  and no other framework path invokes I/O callbacks, the worker-originated
+  read/write dispatch has quiesced before the HAL close callback starts.
+
+Source references inspected for this sequencing (the exact Android 9 tag
+must still be pinned in the target platform checkout):
+
+- https://android.googlesource.com/platform/frameworks/av/+/2e422c4/services/audioflinger/AudioFlinger.cpp
+  (output close path)
+- https://android.googlesource.com/platform/frameworks/av/+/7fa0152/services/audioflinger/AudioFlinger.cpp
+  (input close path)
+
+These are source-level call-path references, not proof that the target vendor
+image uses identical framework code. The repository's pinned
+`platform_hardware_libhardware` tag does not pin
+`platform_frameworks_av`, and the matching framework revision has not yet
+been recovered from the target image.
+
+Important scope limitation: this sequencing can justify wrapper reclamation
+only for callbacks whose dispatch is exclusively owned by the stopped worker
+thread. It does not automatically cover vendor-private callbacks, callbacks
+from Binder/control threads, effect callbacks, mmap paths, or asynchronous
+HAL-originated callback mechanisms. Those require separate call-site and
+serialization audits. In particular, do not infer a global "no callback can
+run after close" guarantee from the public `audio.h` declarations.
+
+Next verification gate: pin the exact target `frameworks/av` revision and
+inspect `PlaybackThread::exit()`, `RecordThread::exit()`, their thread-loop
+shutdown/join behavior, and every call site of the stream callback tables.
+Only then decide whether framework worker quiescence is sufficient for the
+public read/write callbacks, or whether additional stable dispatch ownership
+is required for any other callback class.
+
 ## Callback dispatch lifetime: unresolved hard boundary
 
 An atomic admission counter stored inside a stream wrapper is not a lifetime
