@@ -2,11 +2,13 @@ name: Android ARMv7 cross-build
 
 on:
   push:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
       - ".github/workflows/android-armv7.yml"
   pull_request:
+    branches: [main, feature]
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
