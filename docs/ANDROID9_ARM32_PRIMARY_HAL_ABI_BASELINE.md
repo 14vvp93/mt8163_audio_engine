@@ -277,6 +277,35 @@ The vendor tail is not part of the public AOSP audio HAL ABI. It is a private Me
 
 The audit helper `tools/audit_android_packed_relocations.py` decodes APS2 relocations and reconstructs the C++ vtable symbol mapping. This avoids relying on `readelf -r`, which does not display the Android packed `.rel.dyn` records as ordinary REL entries.
 
+### Factory stream implementation vtables
+
+The same APS2 decoder recovered the concrete stream implementation vtables:
+
+- `_ZTVN7android18AudioALSAStreamOutE` — `android::AudioALSAStreamOut`, address `0x0018ffd4`, size 120 bytes.
+- `_ZTVN7android17AudioALSAStreamInE` — `android::AudioALSAStreamIn`, address `0x00191990`, size 112 bytes.
+
+The output implementation exposes these C++ methods in vtable order after the two destructor entries:
+
+```text
+sampleRate, bufferSize, channels, format, latency, setVolume, write,
+standby, standbyStreamOut, dump, setParameters, getParameters,
+getRenderPosition, getNextWriteTimestamp, getPresentationPosition,
+updateSourceMetadata, setCallBack, pause, resume, drain, flush, set,
+bufferSizeTimeUs, open, close
+```
+
+The input implementation exposes:
+
+```text
+sampleRate, bufferSize, channels, format, setGain, read, dump, standby,
+setParameters, getParameters, getInputFramesLost, addAudioEffect,
+removeAudioEffect, getCapturePosition, getActiveMicrophones,
+updateSinkMetadata, set, getStandby, open, close,
+checkOpenStreamFormat, checkOpenStreamChannels, checkOpenStreamSampleRate
+```
+
+The `AudioALSAStreamOut` constructor writes its C++ vptr at object offset 0. Therefore this implementation object is not itself the Android C `audio_stream_out` structure, whose first member is the C `audio_stream` callback table. The HAL stream adapter/wrapper and its exact C callback layout still need to be recovered from the stream-manager allocation and open/close paths. The same distinction must be verified for input streams before implementing the replacement stream ABI.
+
 ## 5. Vendor-specific facts that remain unresolved
 
 The factory binary is known from the extracted firmware:
