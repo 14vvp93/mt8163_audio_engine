@@ -193,7 +193,7 @@ private:
 
 void test_complete_lifecycle() {
     FakePcmBackend backend;
-    TestTestPcmStreamBroker broker(backend);
+    TestPcmStreamBroker broker(backend);
     const PcmConfig config{44100U, 2U, 256U};
     require(broker.open(1U, SourceId::LocalMedia, RouteType::PrimaryPcm) == PcmResult::Ok,
             "open supported primary playback route");
