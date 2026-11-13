@@ -23,8 +23,9 @@ struct SessionToken {
 - `generation` is assigned by AudioCore/SessionRegistry when a session is successfully opened.
 - A token is valid only when both fields match the currently live session.
 - The all-zero/default token is invalid.
-- Generation values are monotonically increasing across the registry lifetime, not per slot. A released slot never resets or reuses a generation.
-- If the generation counter reaches its maximum value, opening further sessions fails closed. It must never wrap to a previously issued value.
+- Each registry receives a process-unique 32-bit epoch; the token generation combines that epoch with a 32-bit per-registry sequence. This rejects tokens from other live registry instances without requiring 64-bit atomics in the PCM callback path.
+- The sequence increases monotonically across the registry lifetime, not per slot. A released slot never resets or reuses a sequence.
+- Epoch and sequence exhaustion fail closed. Neither counter wraps to a previously issued identity. Registry copy and move operations are disabled so token authority cannot be duplicated.
 - Equality compares both fields. No implicit conversion from or to `uint32_t` is permitted.
 
 ## API propagation
@@ -33,9 +34,9 @@ The migration must be atomic at the source/API level; do not leave a raw-handle 
 
 1. `SessionRegistry::open` accepts the external handle and returns the assigned `SessionToken` through an output parameter. `transition`, `close` and `find` accept only `SessionToken`.
 2. `SessionRecord` and `AudioCoreSnapshot` publish the complete token, not a handle-only identity.
-3. `AudioCore::open_session` returns the token; all subsequent session mutations require it.
-4. `PrimaryHalStreamAdapter::open` returns the token to the owning HAL stream object. Every configure/start/read/write/stop/close operation must carry that token.
-5. `PcmStreamBroker` stores and compares the complete token. The callback-safe transfer path must validate the token before entering the transfer gate and revalidate it after admission.
+3. `AudioCore::open_session` returns the token through an output parameter; all subsequent session mutations require it.
+4. `PrimaryHalStreamAdapter::open` returns the token through an output parameter to the owning HAL stream object. Every configure/start/read/write/stop/close operation must carry that token.
+5. `PcmStreamBroker` stores and compares the complete token. The callback-safe transfer path first admits through the lock-free 32-bit gate, then validates the complete token before touching the backend. The 64-bit generation is non-atomic and is read only after admission; close cannot mutate it until admitted callbacks drain.
 6. Any callback, deferred task, queue item or completion that can outlive the initiating call must capture the complete token, never only the numeric handle.
 7. Tests and diagnostics must make stale-token rejection observable.
 
