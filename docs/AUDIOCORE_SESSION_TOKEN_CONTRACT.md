@@ -55,6 +55,24 @@ Do not widen a factory C ABI handle, reinterpret a pointer, or change Android fr
 - Exercise delayed transfer admission racing with stop/close/reopen; no old token may access the replacement backend stream.
 - Verify snapshots contain the complete token and stale token operations cannot mutate published replacement state.
 
+
+## Repository consumer audit (2026-11-14)
+
+The current repository-wide implementation surface is limited to these layers:
+
+| Layer | Current raw-handle use | Required migration |
+|---|---|---|
+| `SessionRegistry` | `open/find/transition/close(uint32_t)` | Assign and validate complete token |
+| `AudioCore` | `open_session/transition_session/close_session(uint32_t)` | Return token from open; require token for mutations |
+| `PrimaryHalStreamAdapter` | `open/configure/start/read/write/stop/close(uint32_t)` | Return token to stream owner and require it for every operation |
+| `PcmStreamBroker` | Slot lookup and callback transfer keyed by `uint32_t` | Store/compare complete token at control and transfer boundaries |
+| `AudioCoreSnapshot` / `SessionRecord` | Snapshot publishes only `handle` | Publish complete token |
+| Host tests | Direct raw-handle calls across registry, coordinator, broker and adapter tests | Add same-handle-reopen stale-token regression at every layer |
+
+The production `primary-hal/src/primary_hal.cpp` bootstrap does not currently call AudioCore or the adapter. The Android effect/JNI sources also have no AudioCore session-lifecycle callsites. This is useful boundary evidence: the internal token migration can be completed before wiring the factory HAL ABI, without changing recovered Android C callback signatures.
+
+Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently in host tests; production integration remains absent. The migration must nevertheless convert the broker API itself rather than relying on the adapter as the only guard.
+
 ## Migration order
 
 1. Add `SessionToken` and token equality/value validation.
