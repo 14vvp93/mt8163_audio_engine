@@ -292,6 +292,21 @@ The factory implementation bodies were disassembled in [audit run 43404049682](h
 
 The factory ELF exports the implementation classes `Play2Way`, `Record2Way` and `AudioVUnlockDL`, including their singleton accessors and core methods. This establishes the internal owner behind every callback in the first eight slots. The expanded scan of 1,052 system/vendor shared libraries and the two vendor audio service executables did not identify a separate named xWay client. It cannot exclude clients that call the private device-tail offsets indirectly.
 
+#### Voice-unlock worker and teardown ordering
+
+The worker lifecycle was recovered in [audit run 43405588048](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43405588048):
+
+- `AudioVUnlockDL::startInput()` creates a pthread whose entry point is `android::ReadRoutine(void*)` (`0x000b2adc`, 1,684 bytes).
+- `ReadRoutine` calls `pthread_self()` and `pthread_detach()` on itself. It is therefore a detached worker; there is no joinable thread handle for a later `pthread_join()`.
+- The worker consumes reference audio, runs `AudioVUnlockDL::DoSRC`, writes into the voice-unlock ring buffer, and broadcasts condition variables as data/state changes.
+- `AudioVUnlockDL::ReadRefFromRing()` uses mutexes and condition-variable waits around the consumer path. It is a blocking producer/consumer contract, not a simple memcpy callback.
+- `AudioVUnlockDL::stopInput()` updates stop state and polls for worker exit with `usleep()`; the inspected method does not call `pthread_join()`.
+- `AudioVUnlockDL::freeInstance()` deletes the singleton and its owned SRC/ring-buffer allocations. Its body does not call `stopInput()`; the inspected `AudioVUnlockDL` destructor also does not stop or join the worker.
+- The HAL's `freeVoiceUnlockDLInstance()` wrapper calls `freeInstance()`; `stopVoiceUnlockDL()` is a separate wrapper that calls `stopInput()`.
+
+**Required lifetime ordering:** stop the voice-unlock worker and wait until its exit state is observed before freeing the singleton or allowing any further `ReadRefFromRing` callback. Do not assume `freeInstance()` performs shutdown. The HIDL adapter's `stopVoiceUnlockDL` and `getVoiceUnlockDLInstance` paths are mapped, but every external caller's ordering and callback-in-flight synchronization are not proven. A replacement must implement explicit stop/drain/free sequencing rather than relying on the factory's implicit behavior.
+
+
 The audit helper `tools/audit_android_packed_relocations.py` decodes APS2 relocations and reconstructs the C++ vtable symbol mapping. This avoids relying on `readelf -r`, which does not display the Android packed `.rel.dyn` records as ordinary REL entries.
 
 ### Factory stream implementation vtables
