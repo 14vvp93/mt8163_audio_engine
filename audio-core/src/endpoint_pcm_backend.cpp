@@ -250,6 +250,8 @@ PcmResult EndpointPcmBackend::stop(StreamToken token) noexcept {
         !slot->stop_required) {
         return PcmResult::InvalidState;
     }
+    // Close callback admission before attempting to acquire the in-flight transfer gate.
+    slot->state.store(state_value(PcmStreamState::Failed), std::memory_order_release);
     if (slot->transfer_busy.test_and_set(std::memory_order_acquire)) return PcmResult::WouldBlock;
     if (slot->token.load(std::memory_order_acquire) != token) {
         slot->transfer_busy.clear(std::memory_order_release);

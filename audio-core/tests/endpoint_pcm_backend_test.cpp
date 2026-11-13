@@ -288,6 +288,8 @@ void test_lifecycle_rejects_inflight_transfer() {
 
     require(backend.stop(token) == PcmResult::WouldBlock,
             "stop never closes the native stream during an active transfer");
+    require(backend.write(token, samples, 1U) == PcmResult::InvalidState,
+            "stop closes callback admission while waiting for an active transfer");
     require(backend.close(token) == PcmResult::InvalidState,
             "started stream must be stopped before close can be attempted");
 

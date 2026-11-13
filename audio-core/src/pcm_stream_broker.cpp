@@ -93,6 +93,7 @@ PcmResult PcmStreamBroker::start(std::uint32_t handle) noexcept {
         static_cast<std::uint32_t>(PcmStreamState::Configured)) {
         return PcmResult::InvalidState;
     }
+    slot->generation.fetch_add(1U, std::memory_order_acq_rel);
     slot->backend_stop_required = true;
     const PcmResult result = backend_.start(
         slot->backend_token.load(std::memory_order_relaxed));
@@ -242,6 +243,7 @@ PcmResult PcmStreamBroker::stop(std::uint32_t handle) noexcept {
 
     const std::uint32_t previous = slot->transfer_gate.fetch_and(
         kTransferCountMask, std::memory_order_acq_rel);
+    slot->generation.fetch_add(1U, std::memory_order_acq_rel);
     if ((previous & kTransferCountMask) != 0U) return PcmResult::WouldBlock;
 
     const PcmResult result = backend_.stop(
