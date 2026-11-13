@@ -296,6 +296,7 @@ bool PcmStreamBroker::get_record(std::uint32_t handle,
     out->direction = slot->direction;
     out->config = slot->config;
     out->state = static_cast<PcmStreamState>(slot->state.load(std::memory_order_acquire));
+    out->backend_stop_required = slot->backend_stop_required;
     return true;
 }
 
