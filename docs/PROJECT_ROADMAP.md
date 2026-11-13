@@ -253,8 +253,8 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 
 ### CI gaps to close
 
-1. <badge>Closed 2026-11-13</badge> Repository-integrity push trigger now includes `integration/beta-0.1`.
-2. <badge>Closed 2026-11-13</badge> PCM stream-broker TSAN now runs on `integration/beta-0.1` as well as its work branch.
+1. **DONE (2026-11-13):** Repository-integrity push trigger now includes `integration/beta-0.1`.
+2. **DONE (2026-11-13):** PCM stream-broker TSAN now runs on `integration/beta-0.1` as well as its work branch.
 3. Ensure the Android ARMv7 and full host-test workflows run on every relevant integration change.
 4. Add the factory HAL ABI/symbol/dependency audit as a required CI gate.
 5. Add packaging checks that reject project-named parallel runtime HALs and unexpected extra owners.
