@@ -199,12 +199,21 @@ private:
 
 void test_stale_token_after_same_handle_reopen(
     PrimaryHalStreamAdapter& adapter, SessionToken stale,
-    SessionToken replacement, const PcmConfig& config) {
+    SessionToken replacement, const PcmConfig& config,
+    std::int16_t* samples) {
     CHECK(stale.valid());
     CHECK(replacement.valid());
     CHECK(stale.handle == replacement.handle);
     CHECK(stale.generation != replacement.generation);
     CHECK(adapter.configure(stale, config) == PcmResult::NotOpen);
+    CHECK(adapter.start(stale) == PcmResult::NotOpen);
+    CHECK(adapter.write(stale, samples, 1U) == PcmResult::NotOpen);
+    CHECK(adapter.read(stale, samples, 1U) == PcmResult::NotOpen);
+    CHECK(adapter.write_transfer(stale, samples, 1U).result ==
+          PcmResult::NotOpen);
+    CHECK(adapter.read_transfer(stale, samples, 1U).result ==
+          PcmResult::NotOpen);
+    CHECK(adapter.stop(stale) == PcmResult::NotOpen);
     CHECK(adapter.close(stale) == PcmResult::NotOpen);
 }
 
@@ -308,11 +317,13 @@ int main() {
                        RouteType::PrimaryCapturePcm,
                        PcmDirection::Capture) == PcmResult::Ok);
     const SessionToken new_capture_session = adapter.token_for(handle);
-    test_stale_token_after_same_handle_reopen(
-        adapter.underlying(), old_playback_session, new_capture_session, config);
+
     PcmByteStreamAdapter input(adapter.underlying(), adapter.token_for(handle), PcmDirection::Capture);
     CHECK(input.configure(config) == PcmResult::Ok);
     CHECK(input.start() == PcmResult::Ok);
+    test_stale_token_after_same_handle_reopen(
+        adapter.underlying(), old_playback_session, new_capture_session,
+        config, samples.data());
     const PcmByteTransfer byte_read = input.read(samples.data(), 960U);
     CHECK(byte_read.result == PcmResult::Ok);
     CHECK(byte_read.bytes_transferred == 960U);
