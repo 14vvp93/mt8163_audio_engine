@@ -4,7 +4,7 @@ Updated: 2026-11-13
 Active development branch: `feature`  
 Stable branch: `main`
 
-> **Latest code HEAD:** `263825dcc080ff54983718bfd95105514cbee258`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
+> **Latest code HEAD:** `e0c499b2af1e2c7c95a8337cad8e74984ef2820e`. The PCM backend now reports exact partial-transfer frame counts and validates only the device callbacks required by each enabled endpoint direction. GitHub Actions jobs triggered by commits `07e8fae` and `8092e168` failed before runner assignment (`runner_id=0`, empty runner name, no executed steps); these are not test failures and provide no new code validation.
 
 > **Execution authority:** [Project Roadmap](PROJECT_ROADMAP.md). This file is the current evidence-based snapshot. Do not infer completion from historical plans or old CI logs.
 
@@ -176,3 +176,20 @@ Final replacement target:
 - **Latest execution caveat (2026-11-13):** workflows triggered on `07e8fae18edd39e958cc6deb78552c268ba3acf6` and `8092e1688e889b8d4750faa118dfdc444b014b23` were marked failed by GitHub, but their jobs had `runner_id=0`, an empty `runner_name`, and an empty `steps` array. Re-running the failed jobs reproduced the same pre-runner failure. Job-log retrieval returned storage `BlobNotFound`; therefore no compiler, test, TSAN, or benchmark step is known to have executed. Do not interpret these workflow conclusions as evidence of source-code test failures. The newest code changes remain unverified until a runner actually executes the workflow steps.
 
 - **Latest broker regression (2026-11-13):** commit `263825dcc080ff54983718bfd95105514cbee258` adds a test for a backend reporting more frames than requested. The expected contract is `BackendFailure`, stream state `Failed`, closed callback admission, then explicit `stop()` and `close()`. CI was triggered but all seven jobs again failed before runner assignment (`runner_id=0`, no runner name, zero executed steps); the new test has not yet executed in CI.
+
+## PCM lifecycle audit update — 2026-11-13
+
+Latest code commit: [e0c499b](https://github.com/14vvp93/mt8163_audio_engine/commit/e0c499b2af1e2c7c95a8337cad8e74984ef2820e).
+
+- Found a lifecycle defect shared by `PcmStreamBroker` and `EndpointPcmBackend`: after `start()` succeeded, a failed `stop()` changed the state to `Failed`, but `close()` still allowed native resource release.
+- Added an explicit stop-required lifecycle flag. It is set before calling backend start (so partial start failures are covered), cleared only after successful stop, and checked before close. A failed start also requires a stop/cleanup attempt.
+- A configure failure does not set the stop-required flag; an unstarted stream can still be closed without an invalid stop call.
+- Added regression tests for failed stop, retry-before-close, failed start cleanup and configure-failure close behavior in both the broker and endpoint backend test suites.
+- The control plane remains single-writer/serialized as specified by the roadmap. The new lifecycle flag is intentionally accessed only by serialized lifecycle calls; PCM transfer callbacks do not access it.
+
+### CI status for this update
+
+Workflows for commits `19017c7` and `e0c499b` again failed before runner assignment. The latest job metadata reports `runner_id=0`, empty `runner_name`, `steps=[]`, and log retrieval returns `BlobNotFound`. No compile, unit-test, TSAN, benchmark or ARM32 step is known to have executed for these commits. Do not classify these runs as source-code failures or as successful validation.
+
+A current GitHub Community report describes the same runner-allocation signature; this does not identify the cause for this repository. Private-repository Actions compute is subject to the account's included usage and billing configuration. The repository owner's **Settings → Billing and licensing → Usage** page is the next account-level check. See [GitHub Actions billing and usage](https://docs.github.com/en/actions/concepts/billing-and-usage).
+
