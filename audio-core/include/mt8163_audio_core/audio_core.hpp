@@ -41,11 +41,10 @@ public:
 
     // Control-plane API. All mutations must be serialized by one HAL control
     // context. These methods never access hardware or block on PCM activity.
-    bool open_session(std::uint32_t handle, SourceId source,
-                      RouteType route) noexcept;
-    bool transition_session(std::uint32_t handle,
-                            SessionState next) noexcept;
-    bool close_session(std::uint32_t handle) noexcept;
+    bool open_session(std::uint32_t handle, SourceId source, RouteType route,
+                      SessionToken* out_token) noexcept;
+    bool transition_session(SessionToken token, SessionState next) noexcept;
+    bool close_session(SessionToken token) noexcept;
 
     bool set_master_mute(MuteOwner owner, bool muted) noexcept;
     bool set_source_mute(SourceId source, MuteOwner owner,
