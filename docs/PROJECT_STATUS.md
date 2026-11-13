@@ -89,7 +89,8 @@ Final replacement target:
 - [ ] Recover actual Android 9 linker namespace configuration and verify every dependency is visible there.
 - [x] Recover factory output format/rate/channel predicates and input PCM16/channel/rate validators from ARM32 disassembly.
 - [x] Recover output/input handler-open dispatch and output buffer-time formula.
-- [ ] Finish stream-flag semantics, all error branches, Android-visible buffer-size contract and vendor-header reconciliation.
+- [x] Recover legacy output-open flags defaulting to zero, `openOutputStreamWithFlags()` forwarding, raw output flag storage offset and the 8,192-byte output buffer getter contract.
+- [ ] Finish individual input/output flag-bit semantics, all error branches, all channel-mask combinations and vendor-header reconciliation.
 - [x] Identify the MediaTek HIDL 4.1 bridge and recover exact legacy callback offsets for seven voice-unlock/parameter-callback methods plus the notification callback path.
 - [ ] Trace all remaining private tail entries at offsets 156–184 (`xWayPlay`, `xWayRec`, `ReadRefFromRing`) and validate callback lifetime/concurrency semantics.
 - [ ] Implement typed factory-compatible HAL shell with no hardware writes.
@@ -100,7 +101,7 @@ Final replacement target:
 - [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
 - [x] Confirm stereo-preserving DSP insertion point after DC removal and before conditional stereo-to-mono fold; fold condition and PCM16/PCM32 averaging behavior documented.
 - [x] Confirm the MTK callback does not cover every audio route.
-- [ ] Identify stereo-preserving insertion point.
+- [x] Identify stereo-preserving insertion point after DC removal and before conditional stereo-to-mono fold.
 - [ ] Integrate DSP with bit-transparent bypass on unsupported route/format or DSP failure.
 - [ ] Validate stereo separation, latency, CPU and stability.
 
@@ -133,12 +134,11 @@ Final replacement target:
 
 ## Current CI evidence
 
-- Factory ELF/HMI/APS2 audit, stream-method disassembly, full shared-library scan (1,052 libraries), and HIDL 4.1 bridge disassembly: PASS — [run 43399903328](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43399903328). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43399903328/artifacts/14023759939).
-- AudioCore TSAN: PASS on feature commit `0326c7520c297d5ba77cbafd694f59625873d20d` — [run 43399903312](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43399903312).
-- PCM Stream Broker TSAN: PASS on the same feature commit — [run 43399903317](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43399903317).
-- Earlier Repository Integrity: PASS on feature commit `dcbe2ca036db9bb098b90367f8b399ed59c14b25` — [run 43396375762](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43396375762). Subsequent changes in this sequence are workflow/docs only.
-- Android 9 ARM32 ABI layout CMake/CTest: PASS — [run 43381498046](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43381498046).
-- The full factory scan found four matching shared libraries among 1,052 scanned; the exact matches and SHA-256 hashes are recorded in [the ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md).
+- Factory ELF/HMI/APS2 audit, stream-method and stream-manager disassembly, full shared-library scan (1,052 libraries), and MediaTek HIDL 4.1 bridge disassembly: PASS — [run 43400741972](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972). Artifact [mt8163-factory-primary-hal-audit](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400741972/artifacts/14024861357).
+- AudioCore TSAN: PASS on feature HEAD `09b42d6893a36874961784f57817c299d9838779` — [run 43401220686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220686).
+- PCM Stream Broker TSAN: PASS on the same feature HEAD — [run 43401220580](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220580).
+- Android 9 ARM32 ABI layout: C++ and C11 compile-time layout tests PASS on the same feature HEAD — [run 43401220635](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401220635).
+- Repository Integrity: PASS on feature commit `5c6340c9395d3554756de3455b903edc8fceabc1` — [run 43400360902](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43400360902). Later changes add ABI assertions/C test and documentation; no production runtime HAL was introduced.
 - Linker namespace files `system/etc/ld.config*.txt` and `vendor/etc/ld.config*.txt` were absent from the extracted tree. Audio policy XML/conf and audio-device XML were present.
 - No complete Primary HAL implementation, exact ARM32 HAL build, or target-device validation is claimed.
 
