@@ -270,6 +270,21 @@ jobs:
             echo
             echo "===== AudioVUnlockDL::ReadRefFromRing ====="
             arm-linux-gnueabi-objdump -d -C --start-address=0xb40a8 --stop-address=0xb4508 "$binary"
+            echo
+            echo "===== AudioVUnlockDL::WriteStreamOutToRing ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb3e24 --stop-address=0xb40a8 "$binary"
+            echo
+            echo "===== AudioVUnlockDL::startInput ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb4508 --stop-address=0xb468c "$binary"
+            echo
+            echo "===== AudioVUnlockDL::stopInput ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb46f0 --stop-address=0xb492c "$binary"
+            echo
+            echo "===== AudioVUnlockRingBuf::WriteAdvance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb2504 --stop-address=0xb2714 "$binary"
+            echo
+            echo "===== AudioVUnlockRingBuf::ReadAdvance ====="
+            arm-linux-gnueabi-objdump -d -C --start-address=0xb27d4 --stop-address=0xb28a0 "$binary"
           } 2>&1 | tee primary-hal-xway-lifecycle.txt
 
       - name: Disassemble MediaTek HIDL 4.1 bridge to legacy Primary HAL callbacks
