@@ -319,3 +319,11 @@ Continue with the exact vendor archive module's callback disassembly and reconci
 - `system/framework/boot-carservices.vdex` contains `ExtAudioMuxer`, `DoAudioMux` and `SendCmdAudioMux` string-table entries. `system/AudioInputSource.vdex` contains the `ExtAudioMuxer` class descriptor.
 - These are leads only. No method-level VDEX callsites, command IDs or actual argument arrays have been recovered from this artifact. The full Java/Binder caller inventory remains OPEN.
 - Next action remains raw VDEX extraction/decompilation and caller-by-caller mapping. Do not implement the legacy JNI compatibility contract from string matches alone.
+
+
+### P0-A code hygiene — input-gain range diagnostic
+
+- Corrected the stale encoder exception text in `cd3313-emulator/src/protocol.cpp`: it previously said channel range `0..6`, while parser and typed builder correctly enforce `0..5`.
+- Code commit: [cfc20a4](https://github.com/14vvp93/mt8163_audio_engine/commit/cfc20a4f495eeb38b5780bd89899e4ac56b47db9).
+- The updated file was re-fetched from `integration/beta-0.1` and the corrected diagnostic was confirmed present.
+- GitHub returned no combined status contexts for this commit at verification time; no test/CI pass is claimed for this one-line diagnostic change.
