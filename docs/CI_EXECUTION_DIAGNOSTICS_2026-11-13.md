@@ -2,10 +2,24 @@
 
 **Repository:** `14vvp93/mt8163_audio_engine`  
 **Branch:** `feature`  
-**Commit:** `9c67cc41db1c69b7ecdd27fd7f9ba672f72c5427`  
+**Latest verified code HEAD:** `fb5a00e0a1d38aed71571cd3b2db41773d90e509`  
 **Purpose:** Record the latest CI evidence without attributing infrastructure failures to source code.
 
-## Latest workflow attempts
+## Latest verified workflow runs — 2026-11-13
+
+The earlier runner-allocation failures recorded below are historical. Subsequent code commits executed normally after the workflow cancellation policy was removed.
+
+| Commit | Workflow | Run ID | Result |
+|---|---|---:|---|
+| `20ff7460c15f861461d224e422d345a983707b8c` | Repository integrity | [43474595132](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474595132) | PASS |
+| `5161fa519c65d84c73bc26446e4748d63a0c8802` | PCM DSP host tests | [43474868715](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868715) | PASS |
+| `5161fa519c65d84c73bc26446e4748d63a0c8802` | Android ARMv7 cross-build + ELF verification | [43474868710](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474868710) | PASS |
+| `fb5a00e0a1d38aed71571cd3b2db41773d90e509` | PCM DSP host tests | [43474875981](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474875981) | PASS |
+| `fb5a00e0a1d38aed71571cd3b2db41773d90e509` | Android ARMv7 cross-build + ELF verification | [43474876012](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43474876012) | PASS |
+
+Both consecutive code commits completed their host and ARMv7 workflows; neither commit's runs were canceled by a later push. The ARM workflow completed its build, ELF architecture verification and artifact upload. TSAN workflows are configured for manual dispatch and were not run in this batch. These results do not establish complete Primary HAL ABI compatibility or physical-device behavior.
+
+## Historical workflow attempts (pre-runner failures)
 
 | Workflow | Run ID | Job | Job ID | Conclusion |
 |---|---:|---|---:|---|
