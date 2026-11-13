@@ -110,6 +110,9 @@ public:
         if (result == PcmResult::Ok) {
             std::lock_guard<std::mutex> lock(mutex_);
             for (auto& entry : entries_) {
+                if (entry.active && entry.handle == handle) entry.active = false;
+            }
+            for (auto& entry : entries_) {
                 if (!entry.active) {
                     entry = Entry{handle, token, true};
                     return result;
