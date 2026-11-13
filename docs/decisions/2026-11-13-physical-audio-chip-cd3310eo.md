@@ -1,3 +1,7 @@
+> **HISTORICAL DECISION — terminology superseded on 2026-11-13.** The user's latest explicit terminology correction is **CD3313EO = physical audio IC** and **CD3313KO = Linux kernel driver (`cd3313.ko`)**. Use [Project Roadmap](../PROJECT_ROADMAP.md) as the current authority. The original text below is retained to preserve the decision history and must not be used as the current chip identity.
+
+---
+
 # Hardware identity correction — CD3310EO
 
 Date: 2026-11-13
