@@ -8,7 +8,9 @@ Use this page as the navigation map for the project. The documents remain groupe
 
 - [Project Roadmap](PROJECT_ROADMAP.md) — single source of truth for product scope, repository baseline, priorities, implementation status, acceptance gates and release definition.
 
-- [Repository migration and final ownership](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.\n- [Public compute worker](PUBLIC_COMPUTE_WORKER.md) — repository ownership, worker invocation and artifact handoff.
+- [Repository migration and final ownership](REPOSITORY_MIGRATION.md) — portability rules, transfer scope and cutover checklist.
+- [Repository boundaries and public compute architecture](REPOSITORY_BOUNDARIES_AND_PUBLIC_COMPUTE.md) — authoritative ownership split, workflow/data flow, security rules and branch policy.
+- [Public compute worker](PUBLIC_COMPUTE_WORKER.md) — repository ownership, worker invocation and artifact handoff.
 - [Firmware dataset migration](public-compute/FIRMWARE_DATASET_LAYOUT.md) — public firmware layout, verified transfer and archive deletion decision.
 - [Public compute operating procedures](public-compute/WORKFLOWS.md) — workflow catalog and execution rules.
 - [Public firmware compute scripts](public-compute/COMPUTE_SCRIPTS.md) — inventory, safe extraction, audio-stack analysis and HEQ verification tools.
