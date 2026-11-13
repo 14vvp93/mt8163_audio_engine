@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
+#include <thread>
 
 using namespace mt8163_audio_core;
 
@@ -32,6 +34,10 @@ public:
                     std::size_t frames) noexcept override {
         if (!started || data == nullptr || frames == 0U) return PcmResult::InvalidArgument;
         writes += frames;
+        if (block_writes.load(std::memory_order_acquire)) {
+            write_entered.store(true, std::memory_order_release);
+            while (!release_write.load(std::memory_order_acquire)) std::this_thread::yield();
+        }
         return PcmResult::Ok;
     }
     PcmResult read(StreamToken, std::int16_t* data,
@@ -55,6 +61,9 @@ public:
     bool started{false};
     std::size_t writes{0U};
     PcmConfig config{};
+    std::atomic<bool> block_writes{false};
+    std::atomic<bool> write_entered{false};
+    std::atomic<bool> release_write{false};
 };
 }
 
@@ -106,6 +115,21 @@ int main() {
     CHECK(empty_write.result == PcmResult::InvalidArgument);
     CHECK(empty_write.bytes_transferred == 0U);
 
+    backend.block_writes.store(true, std::memory_order_release);
+    std::atomic<PcmResult> concurrent_result{PcmResult::BackendFailure};
+    std::thread writer([&] {
+        concurrent_result.store(output.write(samples.data(), 4U).result, std::memory_order_release);
+    });
+    while (!backend.write_entered.load(std::memory_order_acquire)) std::this_thread::yield();
+    CHECK(output.stop() == PcmResult::WouldBlock);
+    CHECK(output.write(samples.data(), 4U).result == PcmResult::InvalidState);
+    backend.release_write.store(true, std::memory_order_release);
+    writer.join();
+    CHECK(concurrent_result.load(std::memory_order_acquire) == PcmResult::Ok);
+    CHECK(output.stop() == PcmResult::Ok);
+    backend.block_writes.store(false, std::memory_order_release);
+    CHECK(output.configure(config) == PcmResult::Ok);
+    CHECK(output.start() == PcmResult::Ok);
     CHECK(output.stop() == PcmResult::Ok);
     CHECK(output.close() == PcmResult::Ok);
     CHECK(!output.configured());
