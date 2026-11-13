@@ -50,6 +50,10 @@ public:
                    std::size_t frames) noexcept override {
         if (!started || data == nullptr || frames == 0U) return PcmResult::InvalidArgument;
         for (std::size_t i = 0; i < frames * config.channel_count; ++i) data[i] = 0;
+        if (block_reads.load(std::memory_order_acquire)) {
+            read_entered.store(true, std::memory_order_release);
+            while (!release_read.load(std::memory_order_acquire)) std::this_thread::yield();
+        }
         return PcmResult::Ok;
     }
     PcmResult stop(StreamToken) noexcept override {
@@ -86,6 +90,9 @@ public:
     std::atomic<bool> block_writes{false};
     std::atomic<bool> write_entered{false};
     std::atomic<bool> release_write{false};
+    std::atomic<bool> block_reads{false};
+    std::atomic<bool> read_entered{false};
+    std::atomic<bool> release_read{false};
 };
 }
 
@@ -197,6 +204,32 @@ int main() {
     CHECK(input.write(samples.data(), 4U).result == PcmResult::InvalidState);
     CHECK(input.stop() == PcmResult::Ok);
     CHECK(input.close() == PcmResult::Ok);
+
+    constexpr std::uint32_t concurrent_capture_handle = 0x81630004U;
+    CHECK(adapter.open(concurrent_capture_handle, SourceId::Microphone,
+                       RouteType::PrimaryCapturePcm,
+                       PcmDirection::Capture) == PcmResult::Ok);
+    CHECK(adapter.configure(concurrent_capture_handle, config) == PcmResult::Ok);
+    CHECK(adapter.start(concurrent_capture_handle) == PcmResult::Ok);
+    backend.block_reads.store(true, std::memory_order_release);
+    backend.read_entered.store(false, std::memory_order_release);
+    backend.release_read.store(false, std::memory_order_release);
+    std::atomic<PcmResult> concurrent_read_result{PcmResult::BackendFailure};
+    std::thread reader([&] {
+        concurrent_read_result.store(
+            adapter.read(concurrent_capture_handle, samples.data(), 1U),
+            std::memory_order_release);
+    });
+    while (!backend.read_entered.load(std::memory_order_acquire)) std::this_thread::yield();
+    CHECK(adapter.close(concurrent_capture_handle) == PcmResult::WouldBlock);
+    CHECK(adapter.read(concurrent_capture_handle, samples.data(), 1U) ==
+          PcmResult::InvalidState);
+    backend.release_read.store(true, std::memory_order_release);
+    reader.join();
+    CHECK(concurrent_read_result.load(std::memory_order_acquire) == PcmResult::Ok);
+    backend.block_reads.store(false, std::memory_order_release);
+    CHECK(adapter.close(concurrent_capture_handle) == PcmResult::Ok);
+    CHECK(adapter.stream_count() == 0U);
 
     CHECK(adapter.open(handle, SourceId::LocalMedia, RouteType::A2dpPcm,
                        PcmDirection::Playback) == PcmResult::UnsupportedRoute);
