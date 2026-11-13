@@ -48,9 +48,17 @@ jobs:
             -std=c++17 \
             -Wall -Wextra -Wpedantic -Werror \
             -fvisibility=hidden \
-            -fsyntax-only \
+            -fno-exceptions -fno-rtti -fno-unwind-tables \
+            -fno-asynchronous-unwind-tables \
+            -fPIC -shared -nostdlib \
+            -Wl,-soname,audio.primary.mt8163.so \
             -Ibuild/libhardware/include \
             -Ibuild/system-core/libcutils/include \
             -Ibuild/system-core/libsystem/include \
             -Ibuild/system-media/audio/include \
-            primary-hal/src/primary_hal.cpp
+            primary-hal/src/primary_hal.cpp \
+            -o build/audio.primary.mt8163.so
+          READELF="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          "$READELF" -h build/audio.primary.mt8163.so | grep -E "Class:.*ELF32|Machine:.*ARM"
+          "$READELF" -d build/audio.primary.mt8163.so | grep -F "audio.primary.mt8163.so"
+          "$READELF" -sW build/audio.primary.mt8163.so | grep -E "GLOBAL.*DEFAULT.*HMI$"
