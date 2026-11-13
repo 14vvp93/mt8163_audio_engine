@@ -200,3 +200,14 @@ A further disassembly pass found a second ordering dependency beyond the shared 
 Therefore, if the CD3313 probe succeeds and retains the shared GPIO requests, the later AK7604/FY7604 probes can fail at GPIO acquisition before their chip-existence checks. Combined with the shared misc-device name, this creates a strong static explanation for why CD3313 is the first candidate to own the audio-mux endpoint on this firmware.
 
 This is still conditional: the CD3313 probe must first receive a successful one-byte I2C transfer at its configured address, and runtime module/probe logs are unavailable. The disassembly does not prove that the physical CD3310EO acknowledged the write or that CD3313 register commands work on it. Do not attempt to verify this with a live I2C write.
+
+
+## 11. CD3313 hardcoded GPIOs and unchecked request results — 2026-11-13
+
+The CD3313 module's undefined-symbol table contains GPIO request/descriptor/set functions but no imported OF GPIO or device-property lookup helpers. Its recovered `dsp_probe` uses literal GPIO IDs rather than retrieving the DTBO's `mute-gpios` or `sub-gpios` properties.
+
+The probe requests GPIO IDs `0x189`, `0x199`, `396` and `0x1da`. The module strings include labels `GPIO36_mute`, `GPIO52_subwoof` and `GPIO39_Aux_Aux2_SW`. The DTBO separately declares `mute-gpios` and `sub-gpios` values in the CD3313 node, but this module's visible probe path does not obtain them dynamically.
+
+The recovered probe stores the return values from `gpio_request` but does not branch on them before calling `gpio_to_desc`, `gpiod_direction_output_raw` and `gpiod_set_raw_value`. This creates a potential ownership bug: if a request fails because a GPIO is already owned, the probe still proceeds to manipulate the corresponding descriptor. This is a static control-flow finding; no runtime GPIO ownership or electrical effect is known.
+
+This reinforces the requirement not to manually load/reload the module or experiment with its GPIOs. The replacement implementation must use explicit, validated GPIO ownership and must not copy this legacy probe behavior.
