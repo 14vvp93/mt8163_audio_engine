@@ -397,6 +397,59 @@ void test_invalid_transfer_count_fails_closed_and_can_stop() {
             "backend receives one stop and one close after invalid count");
 }
 
+void test_terminal_transfer_errors_fail_closed() {
+    FakePcmBackend backend;
+    PcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 2U, 240U};
+    const std::int16_t samples[2]{};
+
+    require(broker.open(61U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok, "XRUN stream opens");
+    require(broker.configure(61U, config) == PcmResult::Ok,
+            "XRUN stream configures");
+    require(broker.start(61U) == PcmResult::Ok, "XRUN stream starts");
+
+    backend.write_result = PcmResult::Xrun;
+    require(broker.write(61U, samples, 1U) == PcmResult::Xrun,
+            "XRUN is propagated from the playback backend");
+    PcmStreamRecord playback_record{};
+    require(broker.get_record(61U, &playback_record) &&
+            playback_record.state == PcmStreamState::Failed &&
+            playback_record.backend_stop_required,
+            "XRUN marks playback failed and preserves stop requirement");
+    require(broker.write(61U, samples, 1U) == PcmResult::InvalidState,
+            "playback admission closes after XRUN");
+    require(broker.stop(61U) == PcmResult::Ok,
+            "playback can be stopped after XRUN");
+    require(broker.close(61U) == PcmResult::Ok,
+            "playback closes after XRUN cleanup");
+
+    require(broker.open(62U, SourceId::Microphone, RouteType::PrimaryCapturePcm,
+                        PcmDirection::Capture) == PcmResult::Ok,
+            "device-loss capture stream opens");
+    require(broker.configure(62U, config) == PcmResult::Ok,
+            "device-loss capture stream configures");
+    require(broker.start(62U) == PcmResult::Ok,
+            "device-loss capture stream starts");
+
+    backend.read_result = PcmResult::DeviceLost;
+    require(broker.read(62U, const_cast<std::int16_t*>(samples), 1U) ==
+                PcmResult::DeviceLost,
+            "device loss is propagated from the capture backend");
+    PcmStreamRecord capture_record{};
+    require(broker.get_record(62U, &capture_record) &&
+            capture_record.state == PcmStreamState::Failed &&
+            capture_record.backend_stop_required,
+            "device loss marks capture failed and preserves stop requirement");
+    require(broker.read(62U, const_cast<std::int16_t*>(samples), 1U) ==
+                PcmResult::InvalidState,
+            "capture admission closes after device loss");
+    require(broker.stop(62U) == PcmResult::Ok,
+            "capture can be stopped after device loss");
+    require(broker.close(62U) == PcmResult::Ok,
+            "capture closes after device-loss cleanup");
+}
+
 void test_failed_start_requires_cleanup_before_close() {
     FakePcmBackend backend;
     PcmStreamBroker broker(backend);
@@ -450,6 +503,7 @@ int main() {
     test_stop_waits_for_in_flight_callback();
     test_stop_failure_can_be_retried();
     test_invalid_transfer_count_fails_closed_and_can_stop();
+    test_terminal_transfer_errors_fail_closed();
     test_failed_start_requires_cleanup_before_close();
     test_backend_error_propagation();
     test_reopen_same_handle_while_callback_runs();
