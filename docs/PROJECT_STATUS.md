@@ -102,7 +102,6 @@ Final replacement target:
 - [x] Recover factory Normal playback pipeline and identify mono fold before MTK post-processing callback.
 - [x] Confirm stereo-preserving DSP insertion point after DC removal and before conditional stereo-to-mono fold; fold condition and PCM16/PCM32 averaging behavior documented.
 - [x] Confirm the MTK callback does not cover every audio route.
-- [x] Identify stereo-preserving insertion point after DC removal and before conditional stereo-to-mono fold.
 - [ ] Integrate DSP with bit-transparent bypass on unsupported route/format or DSP failure.
 - [ ] Validate stereo separation, latency, CPU and stability.
 
