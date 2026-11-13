@@ -6,7 +6,6 @@ on:
     paths:
       - "pcm-dsp/**"
       - "audio-core/**"
-      - ".github/workflows/test-pcm-dsp.yml"
   pull_request:
     branches: [main, feature]
     paths:
