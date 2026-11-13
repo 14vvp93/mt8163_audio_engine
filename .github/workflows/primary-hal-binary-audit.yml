@@ -69,6 +69,8 @@ jobs:
           binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
           sh tools/audit_primary_hal_binary.sh "$binary"
           python3 tools/audit_android_packed_relocations.py "$binary"
+          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
+          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
 
       - name: Preserve audited factory binary as workflow artifact
         uses: actions/upload-artifact@v4
