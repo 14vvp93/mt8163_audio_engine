@@ -240,3 +240,14 @@ A current GitHub Community report describes the same runner-allocation signature
 - Factory HAL identity remains SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
 - Evidence artifact: [mt8163-primary-hal-p2-evidence](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339), ZIP SHA-256 `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
 - The workflow confirms the HAL still fails closed, all 16 private callback slots remain inventoried, and the Primary HAL module remains non-installable. This validates static/offline evidence and CI contracts only; it does not close callback lifetime, indirect caller, linker namespace, PCM endpoint, or target-device gates. **P2 remains OPEN.**
+
+
+## P2 HIDL setup-parameters callback forwarding — 2026-11-14
+
+- CI workflow [43611282299](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43611282299) completed with all 3 jobs PASS on code HEAD `0e48652d8a49cd975491ccf7664225c9e9d51a3d`.
+- Evidence artifact [14120126885](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43611282299/artifacts/14120126885), ZIP SHA-256 `ac004cbca6fd592bef222c5345a4920c98c3fa58fd4b3b499f437aa3500547cd`.
+- Confirmed HIDL `Device::setupParametersCallback` loads and invokes private HAL slot `0xd0`, passing the `Device::syncCallback` thunk and the `Device*` cookie. Successful registration stores the HIDL callback strong reference at `Device+0x24`. The MTKPrimaryDevice override forwards to the base Device implementation.
+- Added `audit_primary_hal_p2_hidl_sync_callback.py` and extended the P2 workflow to preserve the full `syncCallback` body in the next evidence artifact. This is a report collector; semantic interpretation remains pending.
+- Updated the factory callback audit and private callback evidence matrix with the proven slot mapping.
+
+P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next evidence target: inspect `syncCallback`, then xref factory globals `0x000c4248` / `0x000c4238` and establish registration replacement, caller inventory, owner lifetime and teardown drain.
