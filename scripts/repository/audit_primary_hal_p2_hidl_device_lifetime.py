@@ -77,10 +77,75 @@ def main() -> int:
         if item[2] in {"OBJECT", "NOTYPE"} and OWNER_HINT.search(item[3])
     ]
 
+    refbase_call_pattern = re.compile(
+        r"^\\s*([0-9a-fA-F]+):.*\\bblx?\\s+([0-9a-fA-F]+)\\s+"
+        r"<([^>]*RefBase::RefBase[^>]*)>",
+        re.IGNORECASE,
+    )
+    full_disassembly = run(["arm-linux-gnueabi-objdump", "-dr", "-C", str(binary)])
+    refbase_constructor_calls: list[tuple[int, int, str, str]] = []
+    for line in full_disassembly.splitlines():
+        match = refbase_call_pattern.match(line)
+        if match is None:
+            continue
+        callsite = int(match.group(1), 16)
+        target = int(match.group(2), 16)
+        target_name = match.group(3)
+        callers = [
+            item for item in symbols
+            if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
+        ]
+        callers.sort(key=lambda item: (item[1], item[0], item[3]))
+        caller = callers[0][3] if callers else "UNRESOLVED_CALLER"
+        refbase_constructor_calls.append((callsite, target, caller, target_name))
+
+    vtables = [
+        item for item in symbols
+        if item[2] == "OBJECT"
+        and "vtable for android::hardware::audio::V4_0::implementation::Device" in item[3]
+        and item[1] > 0
+    ]
+    relocations = run(["arm-linux-gnueabi-readelf", "-r", "-C", str(binary)])
+
     print(f"HIDL bridge SHA-256: {digest}")
     print("Target Device owner/lifetime symbol inventory")
     print(f"Device constructors: {len(constructors)}")
     print(f"Device destructors: {len(destructors)}")
+
+    print(
+        "RefBase::RefBase direct bridge callsites: "
+        f"{len(refbase_constructor_calls)}"
+    )
+    if not refbase_constructor_calls:
+        print(
+            "No direct BL/BLX call to the RefBase constructor was found in the "
+            "pinned HIDL bridge disassembly."
+        )
+    for callsite, target, caller, target_name in refbase_constructor_calls:
+        print(
+            f"REFBASE_CTOR_CALLSITE 0x{callsite:08x} -> 0x{target:08x} "
+            f"caller={caller} target={target_name}"
+        )
+
+    print(f"Device vtable groups: {len(vtables)}")
+    for address, size, _, name in vtables:
+        print(f"\\n===== VTABLE {name} @ 0x{address:08x}, size={size} =====")
+        print(run([
+            "arm-linux-gnueabi-objdump", "-s", "-C",
+            f"--start-address=0x{address:x}",
+            f"--stop-address=0x{address + size:x}",
+            str(binary),
+        ]).rstrip())
+        vtable_relocations = []
+        for line in relocations.splitlines():
+            relocation = re.match(r"^\\s*([0-9a-fA-F]+)\\s+", line)
+            if relocation is None:
+                continue
+            offset = int(relocation.group(1), 16)
+            if address <= offset < address + size:
+                vtable_relocations.append(line.strip())
+        print("VTABLE_RELOCATIONS:")
+        print("\\n".join(vtable_relocations) if vtable_relocations else "none")
 
     for label, candidates in (("CONSTRUCTOR", constructors), ("DESTRUCTOR", destructors)):
         for index, (address, size, _, name) in enumerate(candidates):
