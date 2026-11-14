@@ -14,6 +14,7 @@ SYMBOL_LINE = re.compile(
 CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
 TARGETS = (
     "AudioALSAHardware::~AudioALSAHardware()",
+    "AudioALSAHardware::GetInstance()",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
     "AudioALSAHardware::onAudioParameterChangedCallback(",
@@ -132,10 +133,10 @@ def main() -> int:
     print(disassemble_range(binary, MODULE_CLOSE_START, MODULE_CLOSE_END, "HMI.close").rstrip())
 
     print(
-        "\nStatic evidence only: HMI.close invokes the legacy device close "
-        "indirectly through the returned object's common vtable. This audit "
-        "does not resolve that implementation's callback-drain semantics or "
-        "prove runtime teardown ordering."
+        "\nStatic evidence only: HMI.close dispatches through the returned object's "
+        "second vtable slot. The selected factory symbols and vtable layout must "
+        "be correlated before classifying that slot as a device close or destructor; "
+        "this audit does not prove callback-drain semantics or runtime ordering."
     )
     return 0
 
