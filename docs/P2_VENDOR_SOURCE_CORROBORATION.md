@@ -41,7 +41,7 @@ The last point conflicts with the factory-ELF disassembly: target `ReadRoutine` 
 
 ## 3. Target factory ELF: wrapper call order
 
-Evidence: GitHub Actions run `43564228492`, artifact `mt8163-primary-hal-p2-evidence`, report `p2-voiceunlock-lifecycle-disassembly.txt`. The artifact was generated against the pinned factory HAL SHA-256 above; factory ELF identity verification and the extended lifecycle job both passed.
+Evidence: GitHub Actions run `43565073615`, artifact `mt8163-primary-hal-p2-evidence` (artifact ID `14102007814`), report `p2-voiceunlock-lifecycle-disassembly.txt`. The artifact was generated against the pinned factory HAL SHA-256 above; both evidence jobs and the aggregate offline-evidence gate completed successfully. The ZIP SHA-256 is `7e86c3554efc11c15fa215ed42e01891b1115c08a1da80948f20bc3972946aca`.
 
 The target binary's four `AudioALSAHardware` wrappers were disassembled:
 
@@ -59,6 +59,16 @@ The target `AudioVUnlockDL::freeInstance()` body at `0x000b49a0` checks the sing
 The stop path also must not be summarized as a simple bounded wait followed by return: the target `stopInput()` disassembly contains a follow-on repeated check/log branch after its initial polling loop. This report does not assign source-level field names to the target's byte flags because the exact matching source revision and field mapping remain unverified.
 
 The wrapper disassembly contains no explicit serialization lock around these operations. That absence in the small wrapper bodies does not exclude synchronization in callers, in `getInstance()`, or in code not included in the targeted disassembly.
+
+## 3.1 Target factory ELF: singleton creation and destructor
+
+The same pinned-ELF audit in run `43565073615` added direct disassembly of `AudioVUnlockDL::getInstance()` and `AudioVUnlockDL::~AudioVUnlockDL()`:
+
+- `getInstance()` at `0x000b3170` (100 bytes) loads the global singleton pointer and returns it when non-null. When null, it allocates `0x1c4` bytes, calls the constructor, and stores the pointer globally. No mutex, atomic operation, or other synchronization call appears in this function body. This proves only that the function itself has no visible synchronization; caller-side or process-wide serialization remains possible and unverified.
+- `~AudioVUnlockDL()` at `0x000b3548` (96 bytes) invokes the SRC object's virtual cleanup operation, calls `deleteMtkAudioSrc()`, clears the SRC member, and deletes the dynamic array when non-null. No `stopInput()`, `pthread_join()`, `pthread_detach()`, condition wait, or worker-exit handshake appears in the destructor body.
+- Combined with `freeInstance()` and the free wrapper described above, the audited teardown path has no internally enforced sequence that stops and joins/drains the detached worker before destroying the SRC/buffer/singleton state.
+
+This is a concrete unsafe-capable lifetime design in the target binary, not proof of an observed race: the audit has not established that a caller frees the singleton while the worker or a `ReadRefFromRing` callback is active. The detached worker also means thread termination cannot be inferred from object destruction.
 
 ## 4. Framework xWay call-chain precedent — not target-build proof
 
