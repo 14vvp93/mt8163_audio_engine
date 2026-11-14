@@ -278,7 +278,7 @@ def main() -> int:
             f"callback {label} lock failure no longer falls through to registry access",
         )
     dispatch_body = callback_bodies["dispatch"]
-    callback_invoke = re.search(r"cf020:.*mov\s+r0,\s*r9.*\n\s*cf024:.*blx\s+r2", dispatch_body)
+    callback_invoke = re.search(r"cf01c:.*mov\s+r0,\s*r9.*\n\s*cf020:.*blx\s+r2", dispatch_body)
     dispatch_unlock = re.search(
         r"cf044:.*mov\s+r0,\s*r8[\s\S]*?cf050:.*bl\s+47e04 <alock_unlock@plt>",
         dispatch_body,
