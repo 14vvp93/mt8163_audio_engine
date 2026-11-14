@@ -129,3 +129,20 @@ The bridge disassembly confirms these device-tail dispatches:
 This narrows the bridge-side object-lifetime question: the HIDL callback object has strong-reference ownership during the observed notification path. It does **not** establish that the legacy HAL's raw function pointer/cookie pair remains valid during concurrent clear, that the bridge's member updates are serialized, or that all in-flight legacy invocations are drained before owner destruction. No explicit mutex or callback-admission/drain protocol is visible in the targeted bridge methods. The exact helper semantics and cross-thread ordering remain open.
 
 The HIDL bridge methods are not the source of the private HAL callback implementations; they call the target's legacy callback slots. Do not infer a complete callback lifetime contract from HIDL strong references alone.
+
+## Target HAL callback registry: lock and storage recovered
+
+Evidence: pinned factory ELF disassembly from workflow run `43565923614`, factory SHA-256 unchanged.
+
+The target `AudioALSAHardware::setAudioParameterChangedCallback(callback, cookie)` body at `0x000ce9dc`:
+- obtains the per-device lock at object offset `0x3ac` and calls `alock_lock_ms`;
+- operates on the callback vector whose storage begins at object offset `0x3b0`, with vector size at `0x3b8`;
+- compares existing entries by both callback function pointer and cookie;
+- allocates an 8-byte pair containing the callback pointer and cookie for a new registration;
+- inserts the pair into the vector and calls `alock_unlock`.
+
+The target `clearAudioParameterChangedCallback(cookie)` body at `0x000cecc0` uses the same lock and vector, compares the stored cookie, removes matching entries with `VectorImpl::removeItemsAt`, and unlocks. Thus registration and removal of the parameter-change callback registry are serialized against one another by this per-device lock. The clear operation is cookie-scoped; callers must use the same cookie identity they registered.
+
+The separate `setupParametersCallback(callback, cookie)` body at `0x000ce8fc` stores callback and cookie in global locations and contains no visible `alock_lock_ms`, `alock_unlock`, pthread mutex or condition-variable call in its body. Do not assume it shares the vector registry's locking protocol.
+
+**Important boundary:** this proves locking of registration/removal mutations only. It does not yet prove how `onAudioParameterChangedCallback` / `setParametersByCallback` snapshot or iterate the vector, whether invocation holds the same lock, whether callbacks are invoked outside the lock, or whether clear waits for in-flight callbacks. The newly expanded audit now includes both dispatch methods and will determine their visible synchronization and iteration behavior. Do not equate the registry lock with an in-flight callback drain.
