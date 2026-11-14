@@ -98,8 +98,10 @@ jobs:
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py \
             scripts/repository/audit_primary_hal_p2_device_close.py \
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py \
+            scripts/repository/test_audit_primary_hal_p2_factory_callback_xrefs.py \
             scripts/repository/audit_primary_hal_p2_device_close_contract.py \
             scripts/repository/audit_primary_hal_p2_factory_resource_manager.py
+          python3 -m unittest discover -s scripts/repository -p 'test_*.py' -v
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
         run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
