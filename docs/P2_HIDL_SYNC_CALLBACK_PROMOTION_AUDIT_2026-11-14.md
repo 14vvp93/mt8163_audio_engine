@@ -38,7 +38,7 @@ These are PLT symbol identities from the pinned ELF's disassembly. The PLT entri
 
 `Device::syncCallback` is at `0x0001cb4c`, size 240 bytes.
 
-1. Entry captures the event in `r5`, callback interface pointer in `r4`, and opaque `Device*` cookie in `r2`. The cookie is saved at `sp+4`.
+1. Entry captures the event in `r5`, parameter payload pointer in `r4`, and opaque `Device*` cookie in `r2`. The cookie is saved at `sp+4`.
 2. At `0x0001cb64–0x0001cb6e`, the bridge loads the cookie's vtable, reads the offset-to-top at `vtable-12`, computes the `RefBase` base-subobject pointer, and calls the `createWeak` PLT veneer `0x000284dc`. The weak-reference handle is saved at `sp+8`.
 3. If the cookie is non-null, at `0x0001cb7e–0x0001cb80` the bridge calls `weakref_type::attemptIncStrong` through veneer `0x000284ec`, passing the saved weak-reference handle and a stack identity pointer.
 4. The return value is checked at `0x0001cb84`. Only on successful promotion does the bridge copy the original cookie into the strong-object slot at `sp+0`. On promotion failure that slot remains null.
