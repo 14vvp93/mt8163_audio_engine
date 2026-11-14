@@ -1,6 +1,6 @@
 # MT8163 Audio Engine — current status
 
-Updated: 2026-11-13  
+Updated: 2026-11-14  
 Active development branch: `feature`  
 Stable branch: `main`
 
@@ -123,12 +123,16 @@ Final replacement target:
 - [ ] Confirm source-level return types and every external call site for the xWay callbacks; the adapter instructions establish argument forwarding but vendor declarations are absent.
 - [x] Recover `AudioVUnlockDL` detached worker lifecycle, condition-variable ring-buffer synchronization and mandatory stop-before-free ordering.
 - [ ] Identify all external consumers of the private tail and validate callback-in-flight draining. The 1,052-library/service scan found no separate named xWay client; indirect offset callers remain possible. The factory voice-unlock singleton is freed separately from `stopInput()`, so a replacement must enforce stop/drain-before-free.
+- [x] Extend the reproducible P2 audit to parse full ARM/Thumb factory disassembly, resolve callback dataflow in the vector-backed parameter registry and separate global setup-parameters callback path, and correlate HMI close with the `AudioALSAHardware` deleting destructor; CI run [43603169612](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43603169612) passed all jobs and preserved 14 reports in [artifact 14117480619](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43603169612/artifacts/14117480619).
+- [ ] Resolve the remaining 1,575 register-indirect `BLX` inventory by target dataflow where relevant, identify framework/external callers of both parameter callback paths, and prove callback owner lifetime and in-flight drain. The factory dispatcher calls under its registry lock on the lock-success path; lock failure still falls through into traversal. `setParametersByCallback()` uses a distinct global callback/cookie pair.
 - [x] Add a non-installable Android 9 ARM32 Soong bootstrap with exported `HMI`, factory module metadata and compile-time assertions for the 128/64/56/120/96/156/224-byte layouts. The device shell opens, while `init_check` and stream opens fail closed with `-ENODEV`; no hardware access is exposed.
 - [x] Add the internal PCM16 byte/frame bridge and per-stream lifecycle gate; it is not yet wired into Android `audio_stream_out` / `audio_stream_in` callbacks.
 - [x] Cross-compile the bootstrap as ELF32 ARM, verify `audio.primary.mt8163.so` SONAME and exported `HMI` (`GLOBAL DEFAULT`, 128 bytes) with NDK r27c in [CI run 43410778686](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43410778686). This is bootstrap ABI evidence, not a complete HAL build.
 - [ ] Select and implement the narrowest production integration adapter for the validated PrimaryMedia profile while retaining the factory primary HAL.
 - [ ] Verify adapter ABI, effect/stream lifecycle, linker visibility and route gating on Android 9 ARM32.
 - [ ] Do not replace the complete factory primary HAL unless later evidence demonstrates that deep integration cannot satisfy the required behavior and the owner approves that scope change.
+
+P2 safety state remains **OPEN**. The HMI close-to-destructor chain is now statically verified, but the destructor does not show an explicit callback admission-close or in-flight drain. The independently verified `AudioALSAStreamManager` event-worker join is a separate synchronization domain and is not evidence that the parameter callback registry is quiescent. Primary HAL remains fail-closed and `installable: false`.
 
 ### P3 — DSP integration
 
