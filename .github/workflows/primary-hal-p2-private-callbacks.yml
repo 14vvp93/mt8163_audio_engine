@@ -59,10 +59,10 @@ jobs:
         run: python3 scripts/repository/check_primary_hal_p2_contract.py
       - name: Validate Python and Markdown
         run: |
-          python3 -m py_compile \
-            scripts/repository/check_primary_hal_fail_closed.py \
-            scripts/repository/check_primary_hal_p2_contract.py \
-            scripts/repository/scan_primary_hal_p2_clients.py \
+          python3 -m py_compile \\
+            scripts/repository/check_primary_hal_fail_closed.py \\
+            scripts/repository/check_primary_hal_p2_contract.py \\
+            scripts/repository/scan_primary_hal_p2_clients.py \\
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
@@ -119,8 +119,11 @@ jobs:
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
       - name: Scan ELF, Android runtime bytecode, and APK/JAR clients
+        shell: bash
         run: |
           set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          test -s "$binary"
           echo "Public firmware dataset commit: 865b6efaeff0c4547dab1f4456f2fa664b3611d1"
           python3 scripts/repository/scan_primary_hal_p2_clients.py factory-firmware/firmware/extracted | tee p2-private-callback-client-scan.txt
           python3 scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py "$binary" | tee p2-voiceunlock-lifecycle-disassembly.txt
@@ -150,7 +153,7 @@ jobs:
           FACTORY: ${{ needs.factory-binary-evidence.result }}
         run: |
           set -euo pipefail
-          printf 'CONTRACTS=%s FACTORY=%s\n' "$CONTRACTS" "$FACTORY"
+          printf 'CONTRACTS=%s FACTORY=%s\\n' "$CONTRACTS" "$FACTORY"
           test "$CONTRACTS" = success
           test "$FACTORY" = success
           echo "P2 OFFLINE EVIDENCE PIPELINE COMPLETE."
