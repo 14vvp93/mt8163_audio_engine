@@ -150,6 +150,21 @@ def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
     ]
 
 
+HELPER_WINDOW_SIZE = 0x60
+
+
+def disassemble_target_window(binary: Path, target: int) -> str:
+    if target < 0:
+        raise ValueError("invalid helper target address")
+    command = [
+        "arm-linux-gnueabi-objdump", "-D", "-C", "-M", "force-thumb",
+        f"--start-address=0x{target:x}",
+        f"--stop-address=0x{target + HELPER_WINDOW_SIZE:x}",
+        str(binary),
+    ]
+    return run(command)
+
+
 def disassemble(binary: Path, address: int, size: int, thumb: bool) -> str:
     if address < 0 or size <= 0:
         raise ValueError("invalid function disassembly range")
@@ -208,6 +223,11 @@ def main() -> int:
         except RuntimeError as error:
             unresolved.append(target)
             reports.extend(unresolved_report_lines(target, error))
+            reports.extend([
+                f"TARGET_WINDOW 0x{target:08x}..0x{target + HELPER_WINDOW_SIZE:08x} "
+                "(fixed 0x60-byte Thumb inspection window; not a function boundary)",
+                disassemble_target_window(binary, target).rstrip(),
+            ])
             continue
 
         reports.extend([
