@@ -451,6 +451,7 @@ def main() -> int:
         "event_manager_destructor": "AudioEventThreadManager::~AudioEventThreadManager()",
         "event_manager_notify": "AudioEventThreadManager::notifyCallback(android::AudioEventType, void*)",
         "stream_manager_constructor": "AudioALSAStreamManager::AudioALSAStreamManager()",
+        "stream_manager_phone_call_reopen": "AudioALSAStreamManager::phoneCallReopen()",
     }
     event_thread_bodies: dict[str, str] = {}
     for label, fragment in event_thread_functions.items():
