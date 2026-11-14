@@ -221,3 +221,29 @@ This identifies a concrete external user of the MTK primary-device HIDL client f
 The pinned `vendor/audiocmdservice_atci` executable (`302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566`) has an undefined dynamic symbol for `android::MTKPrimaryDevicesHalClient::getInstance()`, an `R_ARM_JUMP_SLOT` relocation at `0x0000cf9c`, and a corresponding PLT stub at `0x000018a4`. The full executable scan did not identify a direct symbolic call site. Therefore the binary has a linked import/PLT entry, but execution of that entry by ATCI is not proven; do not list ATCI as a confirmed runtime caller. Indirect or table-based dispatch remains unresolved.
 
 Evidence was emitted by the read-only ATCI audit in workflow run [43567387148](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43567387148). The overall run failed only in the separate HIDL Thumb-disassembly address validation; the ATCI import/relocation/PLT observations above were emitted before that failure and are independent of the HIDL disassembly.
+
+
+## 2026-11-14 HIDL callback transaction mode — synchronous
+
+Pinned HIDL interface binary:
+- `vendor/lib/vendor.mediatek.hardware.audio@4.1.so`
+- SHA-256: `553704e5285c4ab1e505bab569ac261f40ce7e6aa8c0c9173e038acc59dc3be5`
+- Factory dataset: immutable public firmware commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1`
+- Evidence artifact from successful workflow run [43567544355](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43567544355), artifact ID `14102622747`, ZIP SHA-256 `0c5a641be4cc2f3c05b8978d616590432d66dbdd74b3b28d47003722bef651a4`.
+
+The SHA-pinned disassembly of `BpHwAudioParameterChangedCallback::_hidl_audioParameterChangedCallback(...)` at `0x18128` shows:
+- transaction code loaded as `1`;
+- the fifth Binder transaction argument (flags) initialized to zero before the indirect `transact` call;
+- the callback argument supplied separately on the stack.
+
+For this proxy path, Binder flags are therefore `0`: the callback transaction is **synchronous**, not `FLAG_ONEWAY`. The public `audioParameterChangedCallback(hidl_string const&)` proxy method at `0x182f8` is also present. The `BsAudioParameterChangedCallback::addOnewayTask(...)` method is a separate passthrough helper and does not change the flags used by this Bp proxy transaction.
+
+The audit script now asserts the pinned proxy's transaction-code/flags instruction signature and emits the synchronous classification; a binary/disassembly mismatch fails the audit rather than silently changing the conclusion. This assertion is static evidence for the pinned library, not a runtime Binder test.
+
+### Lock interaction and risk
+
+The factory HAL's `onAudioParameterChangedCallback(char const*)` invokes registered callbacks while holding its registry lock on the successful-lock path. If the registered callback is this HIDL proxy, the service-side dispatch waits synchronously for the remote callback transaction to return while that lock remains held.
+
+A remote callback that re-enters the HAL and synchronously attempts `clearAudioParameterChangedCallback` can consequently contend for the same lock while the original dispatch is waiting for the remote transaction. The actual callback implementation and reentrant call path have not been established, so this is a concrete deadlock/timeout-capable design hazard, **not proof of an observed deadlock**. The previously identified lock-acquisition failure fallthrough further prevents treating the factory lock as a reliable drain barrier.
+
+Replacement requirement remains unchanged: never invoke external/HIDL callbacks while holding the callback-registry mutation lock; close admission, retain an in-flight reference, invoke outside the lock, and drain before destroying the cookie owner. Keep the Primary HAL fail-closed and non-installable. P2 remains OPEN.
