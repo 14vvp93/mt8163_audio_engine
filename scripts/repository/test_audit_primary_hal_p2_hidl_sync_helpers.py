@@ -104,21 +104,24 @@ class ParseFunctionsTests(unittest.TestCase):
         self.assertFalse(any("FULL_FUNCTION_RANGE" in line for line in lines))
 
 
-    def test_resolves_exact_thumb_to_arm_veneer(self) -> None:
-        names = b"\0.shstrtab\0.text\0"
+    def test_resolves_thumb_to_arm_veneer_across_executable_sections(self) -> None:
+        names = b"\0.shstrtab\0.text\0.plt\0"
         section_table_offset = 52
-        section_count = 3
+        section_count = 4
         names_offset = section_table_offset + section_count * 40
         text_address = 0x1000
+        text = bytearray(0x80)
+        plt_address = 0x1050
+        plt = bytearray(0x40)
         text_offset = names_offset + len(names)
-        text = bytearray(0x100)
+        plt_offset = text_offset + len(text)
         target = 0x1020
-        target_offset = target - text_address
         struct.pack_into(
-            "<HHIII", text, target_offset,
+            "<HHIII", text, target - text_address,
             0x4778, 0x46C0, 0xE59FC000, 0xE08CF00F, 0x20,
         )
-        data = bytearray(text_offset + len(text))
+
+        data = bytearray(plt_offset + len(plt))
         data[:4] = b"\x7fELF"
         data[4] = 1
         data[5] = 1
@@ -132,13 +135,18 @@ class ParseFunctionsTests(unittest.TestCase):
             "<IIIIIIIIII", data, section_table_offset + 80,
             names.index(b".text"), 1, 0x6, text_address, text_offset, len(text), 0, 0, 4, 0,
         )
+        struct.pack_into(
+            "<IIIIIIIIII", data, section_table_offset + 120,
+            names.index(b".plt"), 1, 0x6, plt_address, plt_offset, len(plt), 0, 0, 4, 0,
+        )
         data[names_offset:names_offset + len(names)] = names
         data[text_offset:text_offset + len(text)] = text
+        data[plt_offset:plt_offset + len(plt)] = plt
 
         with patch.object(Path, "read_bytes", return_value=bytes(data)):
             self.assertEqual(
                 auditor.resolve_veneer_target(Path("bridge.so"), target),
-                0x1050,
+                (0x1050, ".text", ".plt"),
             )
 
     def test_rejects_non_veneer_helper_target(self) -> None:
