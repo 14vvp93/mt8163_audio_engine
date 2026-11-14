@@ -356,6 +356,28 @@ def main() -> int:
     print(atexit_target_body.rstrip())
     print("STATIC CONTRACT: AudioALSAHardware destruction dispatches the resource-manager deleting-destructor slot.")
 
+    event_thread_functions = {
+        "manager_unregister_by_type": "AudioEventThreadManager::unregisterCallback(android::AudioEventType)",
+        "manager_unregister_specific": "AudioEventThreadManager::unregisterCallback(android::AudioEventType, void (*)(int, void*), void*)",
+        "event_thread_destructor": "AudioEventThread::~AudioEventThread()",
+        "event_thread_loop": "AudioEventThread::eventThread(void*)",
+        "event_thread_signal": "AudioEventThread::signal(void*)",
+        "event_thread_add_callback": "AudioEventThread::addCallback(void (*)(int, void*), void*)",
+        "event_manager_destructor": "AudioEventThreadManager::~AudioEventThreadManager()",
+    }
+    for label, fragment in event_thread_functions.items():
+        matches = [
+            (address, size, name)
+            for address, size, name in functions
+            if fragment in name
+        ]
+        require(matches, f"AudioEventThread lifecycle symbol missing: {label} ({fragment})")
+        for address, size, name in matches:
+            body = disassemble(binary, address, address + size)
+            print(f"\n===== EVENT THREAD LIFECYCLE: {label} @ 0x{address:08x}, size={size}: {name} =====")
+            print(body.rstrip())
+
+
     if atexit_candidates:
         print(f"GetInstance __cxa_atexit function pointer 0x{ATEXIT_FUNCTION:08x} resolves to:")
         for address, size, name in atexit_candidates:
