@@ -76,26 +76,10 @@ def main() -> int:
         )
         return 0
 
-    disassembly = run(["arm-linux-gnueabi-objdump", "-d", "-C", str(binary)])
-    blocks: list[tuple[str, str]] = []
-    current_name = ""
-    current_lines: list[str] = []
-    for line in disassembly.splitlines():
-        label = FUNCTION_LABEL.match(line)
-        if label:
-            if current_name:
-                blocks.append((current_name, "\n".join(current_lines)))
-            current_name = label.group(2)
-            current_lines = [line]
-        elif current_name:
-            current_lines.append(line)
-    if current_name:
-        blocks.append((current_name, "\n".join(current_lines)))
-
-    callers = [
-        (name, block)
-        for name, block in blocks
-        if CALL_TARGET.search(block)
+    plt = run(["arm-linux-gnueabi-objdump", "-d", "-C", "-j", ".plt", str(binary)])
+    relevant_plt = [
+        line.rstrip() for line in plt.splitlines()
+        if CLIENT_SYMBOL.search(line)
     ]
 
     print(f"ATCI service SHA-256: {digest}")
@@ -105,18 +89,24 @@ def main() -> int:
     print("Dynamic relocations for MTKPrimaryDevicesHalClient:")
     for relocation in relevant_relocations:
         print(relocation)
+    print("PLT entries for MTKPrimaryDevicesHalClient:")
+    for entry in relevant_plt:
+        print(entry)
 
     if not relevant_symbols:
         print("ERROR: expected MTKPrimaryDevicesHalClient import not found", file=sys.stderr)
         return 1
 
-    if not callers:
+    if not relevant_relocations:
+        print("WARNING: no dynamic relocation references the imported client symbol.")
+    else:
         print(
-            "WARNING: no direct symbolic call site was identified. The import/relocation "
-            "does not prove an invocation; indirect or unused references remain unresolved."
+            "WARNING: a JUMP_SLOT relocation exists, but this audit does not prove "
+            "that the ATCI code executes the corresponding PLT entry."
         )
-        print("\nNo caller function is attributed to the MTK client from this binary.")
-        return 0
+
+    print("No direct caller function is claimed from symbol/relocation evidence alone.")
+    return 0
 
     print(f"Direct caller functions found: {len(callers)}")
     for name, block in callers:
