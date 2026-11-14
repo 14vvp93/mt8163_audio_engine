@@ -201,8 +201,15 @@ jobs:
 
           run_logged() {
             local name="$1"
+            local status
             shift
-            "$@" > "${name}.log" 2>&1
+            if "$@" > "${name}.log" 2>&1; then
+              status=0
+            else
+              status=$?
+            fi
+            printf '%s\\n' "$status" > "${name}.exit"
+            return 0
           }
 
           run_logged p2-client-scan python3 scripts/repository/scan_primary_hal_p2_clients.py "$root" &
@@ -238,17 +245,21 @@ jobs:
           run_logged p2-resource-vtable python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android22AudioALSAStreamManagerE &
           pid_resource_vtable=$!
 
-          failed=0
           for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_sync" "$pid_hidl_sync_helpers" "$pid_hidl_refbase" "$pid_hidl_device" "$pid_device_close" "$pid_callback_xrefs" "$pid_resource_vtable"; do
-            if ! wait "$pid"; then
+            wait "$pid"
+          done
+
+          failed=0
+          for status_file in p2-*.exit; do
+            if ! grep -qx "0" "$status_file"; then
               failed=1
             fi
           done
+          printf '%s\\n' "$failed" > p2-audit-process-failed.txt
 
           for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-sync.log p2-hidl-sync-helpers.log p2-hidl-refbase.log p2-hidl-device.log p2-device-close.log p2-callback-xrefs.log p2-resource-vtable.log; do
             cat "$log"
           done
-          test "$failed" -eq 0
 
           mv p2-client-scan.log p2-private-callback-client-scan.txt
           mv p2-voiceunlock.log p2-voiceunlock-lifecycle-disassembly.txt
@@ -294,6 +305,7 @@ jobs:
             p2-factory-device-close-contract.txt
             p2-resource-manager-relocations.txt
             p2-factory-resource-manager-lifecycle.txt
+            p2-audit-process-failed.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -302,6 +314,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -s p2-audit-process-failed.txt
+          grep -Fx "0" p2-audit-process-failed.txt
           test -s p2-hidl-sync-helpers.txt
           grep -Fx "HELPER_TARGET_RESOLUTION_STATUS: COMPLETE" p2-hidl-sync-helpers.txt
           grep -Fx "UNRESOLVED_HELPER_TARGETS: none" p2-hidl-sync-helpers.txt
