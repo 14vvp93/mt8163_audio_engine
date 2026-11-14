@@ -15,6 +15,8 @@ from tools.audit_android_packed_relocations import (
     parse_elf32,
 )
 
+R_ARM_GLOB_DAT = 21
+
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 RESOURCE_VTABLE = "_ZTVN7android22AudioALSAStreamManagerE"
 CONSTRUCTOR_START = 0x000C5274
@@ -118,6 +120,15 @@ def resolve_relocated_pointer(binary: Path, address: int) -> tuple[int, int, str
         description = (
             f"R_ARM_ABS32(symbol={target_symbol.name or '<anonymous>'}, "
             f"symbol_value=0x{target_symbol.value:08x}, addend=0x{implicit_addend:08x})"
+        )
+    elif relocation_type == R_ARM_GLOB_DAT:
+        require(symbol_index < len(symbols), f"invalid relocation symbol index {symbol_index}")
+        target_symbol = symbols[symbol_index]
+        require(target_symbol.value != 0, f"R_ARM_GLOB_DAT symbol {target_symbol.name!r} is undefined")
+        target = target_symbol.value & 0xFFFFFFFF
+        description = (
+            f"R_ARM_GLOB_DAT(symbol={target_symbol.name or '<anonymous>'}, "
+            f"symbol_value=0x{target_symbol.value:08x})"
         )
     else:
         raise RuntimeError(
