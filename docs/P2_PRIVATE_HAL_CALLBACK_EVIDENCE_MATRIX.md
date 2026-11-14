@@ -55,15 +55,15 @@ The 16 slots are a private MediaTek extension, not part of the public AOSP `audi
 
 ## Automation scope and limits
 
-The push-triggered and manually dispatched P2 GitHub Actions workflow:
+The push-triggered and manually dispatched P2 GitHub Actions workflow pins public firmware dataset commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1` and:
 - verifies the factory HAL SHA-256 and ARM32 ELF contract;
 - runs the existing APS2 relocation/vtable audit;
-- scans extracted system/vendor shared libraries and service executables for callback-related symbols and strings;
+- scans ARM32 ELF libraries/executables, Android OAT/ODEX/VDEX bytecode, and DEX/native-library members inside APK/JAR archives for callback-related symbols and strings;
 - preserves scan reports as workflow artifacts;
 - verifies that all 16 offsets remain inventoried and unresolved evidence gaps remain visible;
 - verifies that Primary HAL stream opens still clear output pointers and return `-ENODEV`, and that the module remains `installable: false`.
 
-A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
+A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. APK/JAR coverage is limited to DEX and native-library archive members in the pinned extracted dataset; it does not prove coverage of dynamically downloaded code or data-driven dispatch. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
 
 ## Enablement policy
 
