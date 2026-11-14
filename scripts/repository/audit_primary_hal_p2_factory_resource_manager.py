@@ -9,7 +9,6 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 RESOURCE_VTABLE = "_ZTVN7android22AudioALSAStreamManagerE"
-RESOURCE_VTABLE_NAME = "vtable for android::AudioALSAStreamManager"
 CONSTRUCTOR_START = 0x000C5274
 CONSTRUCTOR_END = 0x000C565C
 DESTRUCTOR_START = 0x000C56E4
@@ -147,7 +146,40 @@ def main() -> int:
             object_symbols.append((int(address, 16), int(size, 10), name))
 
     close_text = close_report.read_text(encoding="utf-8", errors="replace")
-    require("0x00192b78" in close_text, "factory close report does not confirm singleton pointer cell")
+    require(
+        "CONTRACT VERIFIED: HMI.close invokes the AudioALSAHardware deleting destructor."
+        in close_text,
+        "factory close report does not confirm the HMI.close deleting-destructor contract",
+    )
+
+    manager_get_instance = next(
+        (
+            (address, size, name)
+            for address, size, name in functions
+            if "AudioALSAStreamManager::getInstance()" in name
+        ),
+        None,
+    )
+    require(manager_get_instance is not None, "AudioALSAStreamManager::getInstance() symbol missing")
+    manager_destructor = next(
+        (
+            (address, size, name)
+            for address, size, name in functions
+            if address == deleting_destructor_address
+        ),
+        None,
+    )
+    require(manager_destructor is not None, "resource-manager deleting destructor symbol missing")
+    manager_get_instance_body = disassemble(
+        binary,
+        manager_get_instance[0],
+        manager_get_instance[0] + manager_get_instance[1],
+    )
+    manager_destructor_body = disassemble(
+        binary,
+        manager_destructor[0],
+        manager_destructor[0] + manager_destructor[1],
+    )
 
     print(f"Factory HAL SHA-256: {digest}")
     print(f"AudioALSAHardware constructor: 0x{CONSTRUCTOR_START:08x}..0x{CONSTRUCTOR_END:08x}")
@@ -155,6 +187,16 @@ def main() -> int:
     print(f"AudioALSAHardware destructor: 0x{DESTRUCTOR_START:08x}..0x{DESTRUCTOR_END:08x}")
     print("Destructor calls the second virtual slot of the object at AudioALSAHardware+0x04")
     print(f"Resource-manager vtable: {RESOURCE_VTABLE}")
+    print(
+        f"AudioALSAStreamManager::getInstance(): "
+        f"0x{manager_get_instance[0]:08x}, size={manager_get_instance[1]}"
+    )
+    print(manager_get_instance_body.rstrip())
+    print(
+        f"AudioALSAStreamManager deleting destructor: "
+        f"0x{manager_destructor[0]:08x}, size={manager_destructor[1]}"
+    )
+    print(manager_destructor_body.rstrip())
     print(f"Resource-manager deleting destructor: 0x{deleting_destructor_address:08x} {deleting_destructor_name}")
     print("STATIC CONTRACT: AudioALSAHardware destruction dispatches the resource-manager deleting-destructor slot.")
 
