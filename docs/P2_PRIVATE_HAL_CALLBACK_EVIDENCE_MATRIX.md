@@ -357,3 +357,35 @@ A read-only audit was added at `scripts/repository/audit_primary_hal_p2_hidl_dev
 The audit inventories demangled `Device` constructor/destructor symbols and named OBJECT/NOTYPE symbols whose names suggest callback ownership, vectors, weak/strong references or Device lifetime. It disassembles every retained constructor/destructor with relocations and records direct call targets. The report is intentionally a discovery aid: symbol names and constructor/destructor bodies alone cannot prove that a global owner-pin list is populated, that clear drains callbacks, or that a destructor is reachable during service teardown.
 
 The P2 workflow now includes this report as `p2-hidl-device-lifetime.txt`. **Execution against the target ELF is pending**; no target owner-pin conclusion is promoted until the resulting artifact is reviewed. Missing or stripped symbols must remain an explicit evidence gap, not be interpreted as absence of ownership.
+
+## 2026-11-14 — target HIDL Device destructor audit
+
+Workflow run: [43579336500](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43579336500)  
+Audited commit: `80a1f8d3abf8170466425ec7ad41c4f5a84f9066`  
+Bridge SHA-256: `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`  
+Artifact ID: `14107960184`  
+Artifact ZIP SHA-256: `7c5cd5d1b088f0142ca908835cf45aa3835bc015f2d6f858faae42dbba8b0da0`
+
+All three workflow jobs passed: contract/fail-closed gates, pinned factory ELF and external-client scan, and the aggregate offline-evidence gate. The artifact contains the new `p2-hidl-device-lifetime.txt` report.
+
+### Newly recovered destructor order
+
+The target bridge ELF retains two `Device` constructors and seven destructor/thunk symbols. In the complete `Device::~Device()` body at `0x1b91d`:
+
+1. It loads the legacy `audio_hw_device_mtk*` from `Device+0x08`.
+2. It calls the legacy device `close` function pointer at offset `+0x3c`.
+3. If `close` returns nonzero, it logs and branches back to retry the same close call. No bounded retry count or delay is visible in this destructor body.
+4. Only after `close` returns zero does it begin clearing/releasing the Device's strong-reference fields, including the callback-related member at `Device+0x28`.
+
+The destructor body does not visibly call the private `clearAudioParameterChangedCallback` slot at `audio_hw_device_mtk+0xd8` before invoking `close`. Therefore the teardown safety contract depends critically on the semantics of the legacy `close` implementation: whether it closes callback admission, synchronizes with every in-flight dispatch, and prevents later use of the raw `Device*` cookie before the HIDL callback strong reference is released.
+
+The symbol inventory found no named global `Device` owner/list/vector symbol in the pinned bridge ELF. This is only a symbol-table observation; it does not exclude stripped, unnamed, indirect, or externally maintained ownership.
+
+### Updated conclusion and next target
+
+This evidence narrows the target owner-lifetime question but does not close it. It does **not** prove that `close` is a callback-drain barrier, that the destructor is reached on every teardown path, or that the retry loop terminates. The factory callback registry's lock-failure fallthrough remains a known reason not to assume clear/dispatch serialization.
+
+Next audit must resolve the exact legacy device `close` callback implementation and the `AudioALSAHardware` destruction path, including callback-registry shutdown and any lock/drain behavior. Until then:
+- callback owner lifetime and in-flight drain remain OPEN;
+- Primary HAL remains fail-closed and non-installable;
+- no hardware operations or device writes are authorized.
