@@ -581,3 +581,6 @@ The factory callback auditor now verifies the pinned destructor at `0x000c56e4`:
 - Synthetic unit tests cover GOT displacement resolution, the shared effective registration/dispatch slots, changed literal rejection, and destructor clear ordering.
 
 The global callback pair is therefore cleared by factory destruction, but callback quiescence is still unproven. Registration and dispatch use separate loads/stores; a callback already admitted with the old pair can outlive the global clear. P2 remains **OPEN**.
+
+
+CI regression [43617157323](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323) passed all 3 jobs. Artifact [14121669562](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323/artifacts/14121669562), ZIP SHA-256 `5dfe84cc04a98647adca89770eb7f73a5e324b9effedbf3ccf67a8ecbefb4319`. The factory audit verified both effective GOT slots and the destructor clear order (cookie `0x00192b7c` before callback `0x00192b80`). Four synthetic unit tests passed. No in-flight drain was established; P2 remains **OPEN**.
