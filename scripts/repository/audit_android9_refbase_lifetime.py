@@ -152,6 +152,58 @@ def audit_library(binary: Path, label: str) -> tuple[list[str], set[str]]:
     return report, missing
 
 
+def audit_hidl_library(binary: Path, label: str) -> list[str]:
+    verify_arm32_elf(binary)
+    digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+    symbol_output = run(["arm-linux-gnueabi-readelf", "-Ws", "-C", str(binary)])
+    symbols = parse_function_symbols(symbol_output)
+    report = [
+        f"===== {label} =====",
+        f"PATH: {binary}",
+        f"SIZE: {binary.stat().st_size}",
+        f"SHA256: {digest}",
+        "ELF: ARM32 little-endian",
+    ]
+
+    extension_references = [
+        line.strip() for line in symbol_output.splitlines()
+        if "RefBase::extendObjectLifetime(" in line
+    ]
+    report.append(
+        "REFBASE_EXTEND_OBJECT_LIFETIME_SYMBOL_REFERENCES: "
+        + ("; ".join(extension_references) if extension_references else "none")
+    )
+
+    constructor_fragments = (
+        "IBase::IBase(",
+        "IDevice::IDevice(",
+        "IBase::~IBase(",
+        "IDevice::~IDevice(",
+    )
+    for fragment in constructor_fragments:
+        matches = find_target_symbols(symbols, fragment)
+        if not matches:
+            report.append(f"CONSTRUCTOR {fragment}: NOT FOUND")
+            continue
+        for symbol in matches:
+            body = disassemble_function(binary, symbol)
+            report.extend([
+                f"CONSTRUCTOR {fragment}: 0x{symbol.address:08x} "
+                f"size={symbol.size} mode={'Thumb' if symbol.thumb else 'ARM'} "
+                f"{symbol.name}",
+                body.rstrip(),
+            ])
+            extension_calls = [
+                line.strip() for line in body.splitlines()
+                if "RefBase::extendObjectLifetime" in line
+            ]
+            report.append(
+                "CONSTRUCTOR_EXTEND_OBJECT_LIFETIME_CALLS: "
+                + ("; ".join(extension_calls) if extension_calls else "none")
+            )
+    return report
+
+
 def audit_bridge_dependencies(bridge: Path) -> tuple[list[str], bool]:
     if not bridge.is_file() or bridge.stat().st_size == 0:
         raise RuntimeError(f"missing or empty HIDL bridge: {bridge}")
@@ -178,15 +230,26 @@ def audit_bridge_dependencies(bridge: Path) -> tuple[list[str], bool]:
 
 
 def main() -> int:
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 9:
         print(
             "usage: audit_android9_refbase_lifetime.py "
-            "<hidl-bridge.so> <system-libutils.so> <vndk-sp-libutils.so> <output.txt>",
+            "<hidl-bridge.so> <system-libutils.so> <vndk-sp-libutils.so> "
+            "<system-libhidlbase.so> <vndk-sp-libhidlbase.so> "
+            "<system-audio-v4.so> <vndk-audio-v4.so> <output.txt>",
             file=sys.stderr,
         )
         return 2
 
-    bridge, system_libutils, vndk_libutils, output = map(Path, sys.argv[1:])
+    (
+        bridge,
+        system_libutils,
+        vndk_libutils,
+        system_libhidlbase,
+        vndk_libhidlbase,
+        system_audio_v4,
+        vndk_audio_v4,
+        output,
+    ) = map(Path, sys.argv[1:])
     try:
         report, bridge_uses_libutils = audit_bridge_dependencies(bridge)
         all_missing: dict[str, set[str]] = {}
@@ -198,10 +261,18 @@ def main() -> int:
             report.extend(["", *library_report])
             all_missing[label] = missing
 
+        for label, binary in (
+            ("SYSTEM LIBHIDLBASE", system_libhidlbase),
+            ("VNDK-SP-28 LIBHIDLBASE", vndk_libhidlbase),
+            ("SYSTEM AUDIO V4 INTERFACE", system_audio_v4),
+            ("VNDK-28 AUDIO V4 INTERFACE", vndk_audio_v4),
+        ):
+            report.extend(["", *audit_hidl_library(binary, label)])
+
         report.extend([
             "",
             "===== LINKER-NAMESPACE LIMIT =====",
-            "Both system/lib and VNDK-SP-28 candidates were inspected.",
+            "Both system/lib and VNDK candidates for libutils, libhidlbase, and the audio V4 interface were inspected.",
             "This report does not select the runtime library; the target vendor linker namespace "
             "configuration and actual namespace search order are not yet pinned.",
             "",
