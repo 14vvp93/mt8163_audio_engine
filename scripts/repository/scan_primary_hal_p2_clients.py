@@ -94,7 +94,7 @@ def candidate_files(root: Path) -> list[Path]:
                 try:
                     if path.is_file() and (
                         path.suffix.lower() in CANDIDATE_SUFFIXES
-                        or path.open("rb").read(4) == b"\x7fELF"
+                        or has_elf_magic(path)
                     ):
                         files.add(path)
                 except OSError:
