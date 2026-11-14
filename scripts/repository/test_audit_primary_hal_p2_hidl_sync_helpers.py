@@ -119,7 +119,7 @@ class ParseFunctionsTests(unittest.TestCase):
             0x4778, 0x46C0, 0xE59FC000, 0xE08CF00F, 0x20,
         )
         data = bytearray(text_offset + len(text))
-        data[:4] = b"\\x7fELF"
+        data[:4] = b"\x7fELF"
         data[4] = 1
         data[5] = 1
         struct.pack_into("<I", data, 32, section_table_offset)
@@ -150,7 +150,7 @@ class ParseFunctionsTests(unittest.TestCase):
         text_offset = names_offset + len(names)
         text = bytes(0x100)
         data = bytearray(text_offset + len(text))
-        data[:4] = b"\\x7fELF"
+        data[:4] = b"\x7fELF"
         data[4] = 1
         data[5] = 1
         struct.pack_into("<I", data, 32, section_table_offset)
