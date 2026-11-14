@@ -155,3 +155,24 @@ The static evidence therefore establishes the manager's deletion chain and a pla
 
 Workflow run [43584940221](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43584940221) completed successfully on all three jobs. A follow-up audit-script change was committed as `d5fa63af140f95c17ae91be192f60b4d94eb4881` to assert the atexit lock-cleanup shape and report whether the manager destructor directly references the singleton cell. Its CI result is pending.
 
+
+
+## Correction: manager singleton reset and atexit target resolution
+
+This section supersedes the preceding statement that the manager destructor does not reset `0x001929A0`. Reinspection of the complete non-deleting destructor disassembly shows that it **does reset the manager singleton pointer**:
+
+- At `0x00077BAC`, it loads the PC-relative literal at `0x00077DE8`.
+- At `0x00077BB0`, it sets `r1 = 0`.
+- At `0x00077BB4`, it resolves the global pointer-cell address using the literal `0x0011ADE4`; ARM PC-relative arithmetic resolves this to `0x001929A0`.
+- At `0x00077BB8`, `str r1, [r0]` stores null into that cell.
+
+Therefore the earlier stale-manager-singleton-pointer conclusion is withdrawn. The destructor's reset is now a required automated regression assertion. This does not prove safe concurrent access: the reset is not visibly protected by the singleton `alock`, and the lock-failure path in `getInstance()` still proceeds without confirmed lock ownership. A concurrent get/destroy race remains a separate unresolved lifecycle concern.
+
+The `__cxa_atexit` callback pointer passed by `AudioALSAStreamManager::getInstance()` is `0x00073524`. This address is an interior cleanup thunk within `AudioALSAHardwareResourceManager::getInstance()` (the disassembler labels it as `getInstance()+0x290`), not a standalone dynamic FUNC symbol. Its body rewrites the supplied lock object's vptr and calls `alock_free()`. It is cleanup for the function-local static lock object; it is not the manager object's destructor and does not establish manager singleton ownership.
+
+The audit script was corrected in commit `37c6530db5f83173fa3d6b5dc5430af8964264cf` to:
+- verify the exact manager singleton reset instruction sequence and PC-relative literal;
+- verify the atexit cleanup thunk's `alock_free` call and lock-vptr rewrite;
+- report the confirmed reset rather than infer it from a textual address in disassembly.
+
+The previous CI failure `43585167120` was caused by an over-specific regex in the new atexit assertion; the destructor disassembly itself showed the reset sequence. The corrected script's CI run is pending.
