@@ -9,9 +9,9 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+(FUNC|OBJECT|NOTYPE)\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
-CALL_TARGET = re.compile(r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]+)>", re.IGNORECASE)
+CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
 TARGETS = (
     "AudioALSAHardware::~AudioALSAHardware()",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
@@ -38,7 +38,7 @@ def run(command: list[str]) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -46,16 +46,17 @@ def run(command: list[str]) -> str:
 def disassemble_range(binary: Path, start: int, end: int, label: str) -> str:
     if start < 0 or end <= start:
         raise ValueError(f"invalid disassembly range: {start:#x}..{end:#x}")
-    command = [
-        "arm-linux-gnueabi-objdump",
-        "-dr",
-        "-C",
-        f"--start-address=0x{start:x}",
-        f"--stop-address=0x{end:x}",
-        str(binary),
-    ]
-    output = run(command)
-    if not re.search(rf"^0*{start:x}\\s+:", output, re.MULTILINE):
+    output = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            f"--start-address=0x{start:x}",
+            f"--stop-address=0x{end:x}",
+            str(binary),
+        ]
+    )
+    if not re.search(rf"^\s*{start:x}\s+:", output, re.MULTILINE):
         raise RuntimeError(f"{label}: start address is not present in disassembly")
     return output
 
@@ -91,7 +92,6 @@ def main() -> int:
         for address, size, kind, name in symbols
         if kind == "FUNC" and any(target in name for target in TARGETS)
     ]
-
     missing = [
         target
         for target in TARGETS
@@ -106,7 +106,7 @@ def main() -> int:
     print(f"Factory HAL SHA-256: {digest}")
     print(f"Selected function symbols: {len(selected)}")
     for address, size, name in sorted(selected):
-        print(f"\\n===== {name} @ 0x{address:08x}, size={size} =====")
+        print(f"\n===== {name} @ 0x{address:08x}, size={size} =====")
         if size == 0:
             raise RuntimeError(f"zero-sized required function: {name}")
         code_address = address & ~1
@@ -125,20 +125,14 @@ def main() -> int:
         print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
         print(body.rstrip())
 
-    print("\\n===== HMI.open wrapper allocation and callback table =====")
-    open_body = disassemble_range(
-        binary, MODULE_OPEN_START, MODULE_OPEN_END, "HMI.open"
-    )
-    print(open_body.rstrip())
+    print("\n===== HMI.open wrapper allocation and callback table =====")
+    print(disassemble_range(binary, MODULE_OPEN_START, MODULE_OPEN_END, "HMI.open").rstrip())
 
-    print("\\n===== HMI.close wrapper teardown =====")
-    close_body = disassemble_range(
-        binary, MODULE_CLOSE_START, MODULE_CLOSE_END, "HMI.close"
-    )
-    print(close_body.rstrip())
+    print("\n===== HMI.close wrapper teardown =====")
+    print(disassemble_range(binary, MODULE_CLOSE_START, MODULE_CLOSE_END, "HMI.close").rstrip())
 
     print(
-        "\\nStatic evidence only: HMI.close invokes the legacy device close "
+        "\nStatic evidence only: HMI.close invokes the legacy device close "
         "indirectly through the returned object's common vtable. This audit "
         "does not resolve that implementation's callback-drain semantics or "
         "prove runtime teardown ordering."
