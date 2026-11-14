@@ -44,6 +44,18 @@ class ParseFunctionsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no FUNC symbol contains"):
             auditor.resolve_function(0x30000, [(0x20000, 0x100, "unrelated()", False)])
 
+    def test_unresolved_target_is_reported_without_inventing_a_range(self) -> None:
+        lines = auditor.unresolved_report_lines(
+            0x284DC,
+            RuntimeError("no FUNC symbol contains helper target 0x000284dc"),
+        )
+
+        self.assertIn("CALL_TARGET 0x000284dc -> UNRESOLVED", lines)
+        self.assertTrue(any("no FUNC symbol contains" in line for line in lines))
+        self.assertTrue(any("No guessed function boundary" in line for line in lines))
+        self.assertFalse(any("FULL_FUNCTION_RANGE" in line for line in lines))
+
+
     def test_disassembles_entire_function_extent(self) -> None:
         with patch.object(auditor, "run", return_value="disassembly") as run:
             output = auditor.disassemble(Path("bridge.so"), 0x28040, 0x180, True)
