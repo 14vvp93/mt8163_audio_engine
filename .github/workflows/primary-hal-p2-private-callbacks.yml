@@ -1,0 +1,171 @@
+name: Primary HAL P2 Private Callback Automation
+
+on:
+  push:
+    branches: [feature]
+    paths:
+      - "primary-hal/**"
+      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"
+      - "docs/PROJECT_ROADMAP.md"
+      - "scripts/repository/check_primary_hal_fail_closed.py"
+      - "scripts/repository/check_primary_hal_p2_contract.py"
+      - ".github/workflows/primary-hal-p2-private-callbacks.yml"
+  pull_request:
+    branches: [feature]
+    paths:
+      - "primary-hal/**"
+      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"
+      - "docs/PROJECT_ROADMAP.md"
+      - "scripts/repository/check_primary_hal_fail_closed.py"
+      - "scripts/repository/check_primary_hal_p2_contract.py"
+      - ".github/workflows/primary-hal-p2-private-callbacks.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: primary-hal-p2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract-gates:
+    name: P2 contract inventory and fail-closed gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Require feature branch for manual/scheduled execution
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/feature" || {
+            echo "::error::P2 automation must run against feature."
+            exit 1
+          }
+      - name: Verify Primary HAL remains fail-closed
+        run: python3 scripts/repository/check_primary_hal_fail_closed.py
+      - name: Verify all 16 private callback slots and open evidence gaps
+        run: python3 scripts/repository/check_primary_hal_p2_contract.py
+      - name: Validate Python and Markdown
+        run: |
+          python3 -m py_compile \
+            scripts/repository/check_primary_hal_fail_closed.py \
+            scripts/repository/check_primary_hal_p2_contract.py
+          python3 scripts/repository/check_markdown_links.py
+      - name: Validate workflow YAML
+        run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
+
+  factory-binary-evidence:
+    name: Reproducible factory binary and external-client scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout feature audit tools
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          sparse-checkout: |
+            tools/audit_primary_hal_binary.sh
+            tools/audit_android_packed_relocations.py
+          sparse-checkout-cone-mode: false
+      - name: Checkout immutable public firmware dataset
+        uses: actions/checkout@v5
+        with:
+          repository: 14vvp93/public_calculations
+          ref: main
+          path: factory-firmware
+          sparse-checkout: |
+            firmware/extracted/system/bin
+            firmware/extracted/system/lib
+            firmware/extracted/vendor/bin
+            firmware/extracted/vendor/lib
+          sparse-checkout-cone-mode: false
+      - name: Install ARM32 binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes binutils-arm-linux-gnueabi
+      - name: Verify factory HAL identity and ELF contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
+          test -s "$binary"
+          test "$(wc -c < "$binary" | tr -d ' ')" = "1671852"
+          echo "Expected SHA-256: 112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
+          actual="$(sha256sum "$binary" | awk '{print $1}')"
+          test "$actual" = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
+          sh tools/audit_primary_hal_binary.sh "$binary" | tee p2-factory-elf-audit.txt
+          python3 tools/audit_android_packed_relocations.py "$binary" | tee p2-factory-relocations.txt
+          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
+          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
+      - name: Scan extracted libraries and service executables for private-tail clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="factory-firmware/firmware/extracted"
+          report="p2-private-callback-client-scan.txt"
+          patterns='xWayPlay|xWayRec|Play2Way|Record2Way|AudioVUnlockDL|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware'
+          : > "$report"
+          scanned=0
+          matched=0
+          while IFS= read -r -d '' file; do
+            scanned=$((scanned + 1))
+            symbols="$(arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null | grep -Ei "$patterns" || true)"
+            strings_found="$(strings -a "$file" 2>/dev/null | grep -Ei "$patterns" | sort -u || true)"
+            if [ -n "$symbols" ] || [ -n "$strings_found" ]; then
+              matched=$((matched + 1))
+              {
+                printf '\n===== %s =====\n' "${file#"$root/"}"
+                sha256sum "$file"
+                if [ -n "$symbols" ]; then
+                  printf '%s\n' "-- dynamic symbols --" "$symbols"
+                fi
+                if [ -n "$strings_found" ]; then
+                  printf '%s\n' "-- printable strings --" "$strings_found"
+                fi
+              } >> "$report"
+            fi
+          done < <(find "$root/system/lib" "$root/vendor/lib" "$root/system/bin" "$root/vendor/bin" -type f -print0 2>/dev/null | sort -z)
+          {
+            printf 'Scanned ELF candidates: %s\n' "$scanned"
+            printf 'Files with symbol/string matches: %s\n' "$matched"
+            printf '%s\n' \
+              "LIMITATION: symbol/string matching cannot prove absence of stripped or indirect numeric-offset callers." \
+              "LIMITATION: static firmware scanning does not establish runtime callback ordering or device behavior."
+          } >> "$report"
+          cat "$report"
+      - name: Preserve reproducible P2 evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: mt8163-primary-hal-p2-evidence
+          path: |
+            p2-factory-elf-audit.txt
+            p2-factory-relocations.txt
+            p2-private-callback-client-scan.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  p2-complete:
+    name: P2 OFFLINE EVIDENCE PIPELINE COMPLETE
+    if: always()
+    needs:
+      - contract-gates
+      - factory-binary-evidence
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every offline evidence job
+        env:
+          CONTRACTS: ${{ needs.contract-gates.result }}
+          FACTORY: ${{ needs.factory-binary-evidence.result }}
+        run: |
+          set -euo pipefail
+          printf 'CONTRACTS=%s FACTORY=%s\n' "$CONTRACTS" "$FACTORY"
+          test "$CONTRACTS" = success
+          test "$FACTORY" = success
+          echo "P2 OFFLINE EVIDENCE PIPELINE COMPLETE."
+          echo "This does not close P2 or authorize enabling stream callbacks."
