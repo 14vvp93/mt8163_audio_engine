@@ -151,15 +151,15 @@ Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d
 
 - Function body: `0x000ce8fc..0x000ce9dc`, size 224 bytes.
 - Entry ABI observed: `r1` is copied to `r5` (callback pointer) at `0x000ce904`; `r2` is copied to `r4` (cookie) at `0x000ce908`.
-- Callback global slot: PC-relative address resolves to `0x000c4248`; pointer is stored at `0x000ce934`.
-- Cookie global slot: PC-relative address resolves to `0x000c4238`; pointer is stored at `0x000ce940`.
+- Callback global: literal `0x000c4248` is a PC-relative GOT displacement; the effective GOT slot is `0x001a2b80`, written at `0x000ce934`.
+- Cookie global: literal `0x000c4238` is a PC-relative GOT displacement; the effective GOT slot is `0x001a2b7c`, written at `0x000ce940`.
 - No lock call or synchronization/lifecycle reference is present in this 224-byte body. This is a body-local observation, not proof that all callers are unsynchronized.
 
 ### Dispatch path — `AudioALSAHardware::setParametersByCallback`
 
 - Function body: `0x000cf108..0x000cf294`, size 396 bytes.
-- Loads callback global at `0x000c4248` through `0xcf1f8/0xcf200/0xcf204` into `r3`.
-- Loads cookie global at `0x000c4238` through `0xcf208/0xcf20c/0xcf210` into `r2`.
+- Loads callback through GOT displacement `0x000c3978` at `0xcf1f8/0xcf200/0xcf204`, resolving to effective slot `0x001a2b80`.
+- Loads cookie through GOT displacement `0x000c3968` at `0xcf208/0xcf20c/0xcf210`, resolving to effective slot `0x001a2b7c`.
 - Passes event `0` in `r0`, pointer to a stack-local parameter structure in `r1`, then invokes callback with `BLX r3` at `0x000cf218`.
 - The dispatch body has no visible lock, reference acquisition, or in-flight accounting around the global callback/cookie loads and invocation.
 
@@ -183,3 +183,46 @@ Pinned HIDL bridge SHA-256 remains `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a
 - `MTKPrimaryDevice::setupParametersCallback` is a 10-byte forwarding wrapper to the base Device implementation.
 
 This closes the bridge-side forwarding gap for private slot `0xd0). It does not yet establish the complete `syncCallback` body semantics, the global callback/cookie slot xref inventory, upstream framework callers, callback owner lifetime, replacement serialization, or in-flight drain. A dedicated CI collector for the full `syncCallback` body has been added to the P2 workflow; its first non-cancelled execution is pending. Do not infer its behavior from the registration thunk. P2 remains OPEN and Primary HAL remains fail-closed/non-installable.
+
+
+## 2026-11-14 — syncCallback semantics and corrected GOT address resolution
+
+CI run [43613705447](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447) completed all three jobs successfully on feature commit `6143502ebce5a3d96a0cce0bb086e816049f4999`. Evidence artifact [14121078085](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447/artifacts/14121078085) has SHA-256 `afb24415097f0949380509e0088bf7fd3e6934119299b58f1e77230de4bb99ce`.
+
+### HIDL callback channels are distinct
+
+Pinned HIDL bridge SHA-256: `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`.
+
+- Setup-parameters channel: private slot `0xd0` registers `Device::syncCallback`; its HIDL callback strong-reference member is at `Device+0x24`.
+- Parameter-changed channel: private slot `0xd4` registers `Device::audioParameterChangedCallback`; its separate HIDL callback strong-reference member is at `Device+0x28`.
+- Do not merge these members, thunks, or lifecycle conclusions.
+
+### `Device::syncCallback` body
+
+- Address `0x0001cb4c`, size 240 bytes.
+- Receives event in `r0`, parameter string pointer in `r1`, and `Device*` cookie in `r2`.
+- Event zero follows the parameter-conversion path and dispatches through the callback interface vtable offset `0x34`, using the strong-reference member at `Device+0x24`.
+- Nonzero event follows a log/error path and does not invoke that callback interface in the audited body.
+- No explicit mutex, admission closure, or in-flight counter is visible in this function body. The smart-pointer helper calls do not establish synchronization with concurrent member replacement or Device destruction.
+
+### Corrected factory GOT resolution
+
+The prior text called `0x000c4248` and `0x000c4238` absolute global addresses. That wording was inaccurate: they are PC-relative GOT displacements loaded from literal-pool words. Exact effective slots are:
+
+| Path | Literal displacement | Instruction using PC-relative register load | Effective GOT slot |
+|---|---:|---:|---:|
+| Registration callback | `0x000c4248` | `0x000ce930` | `0x001a2b80` |
+| Registration cookie | `0x000c4238` | `0x000ce93c` | `0x001a2b7c` |
+| Dispatch callback | `0x000c3978` | `0x000cf200` | `0x001a2b80` |
+| Dispatch cookie | `0x000c3968` | `0x000cf20c` | `0x001a2b7c` |
+
+The factory auditor now asserts all four literal words and their effective PC-relative slot calculations. This corrects address interpretation; it does not claim a complete whole-ELF data-reference graph.
+
+### Teardown implications
+
+- HIDL `Device::~Device` calls the legacy device close slot before releasing its callback strong-reference members, including `Device+0x24` and `Device+0x28`.
+- The audited Device destructor does not call private setup-callback clear slot `0xd0`; the separate clear method for slot `0xd8` belongs to the other parameter-changed channel.
+- The audited `AudioALSAHardware::~AudioALSAHardware` body resets other globals but contains no reference to the setup callback/cookie GOT slots `0x001a2b80` / `0x001a2b7c`.
+- Registration stores callback and cookie independently; dispatch loads them independently before `BLX`. No lock or atomic pair snapshot is visible in the audited setup/dispatch bodies.
+
+This establishes a concrete potential stale-cookie/replacement race surface, not a proven runtime crash or observed race. Do not integrate this callback path. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
