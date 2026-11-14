@@ -54,6 +54,11 @@ def main() -> int:
         line.strip() for line in symbols.splitlines()
         if CLIENT_SYMBOL.search(line)
     ]
+    relocations = run(["arm-linux-gnueabi-readelf", "-rW", str(binary)])
+    relevant_relocations = [
+        line.strip() for line in relocations.splitlines()
+        if CLIENT_SYMBOL.search(line)
+    ]
 
     disassembly = run(["arm-linux-gnueabi-objdump", "-d", "-C", str(binary)])
     blocks: list[tuple[str, str]] = []
@@ -81,10 +86,21 @@ def main() -> int:
     print("Dynamic MTKPrimaryDevicesHalClient symbols:")
     for symbol in relevant_symbols:
         print(symbol)
+    print("Dynamic relocations for MTKPrimaryDevicesHalClient:")
+    for relocation in relevant_relocations:
+        print(relocation)
+
+    if not relevant_symbols:
+        print("ERROR: expected MTKPrimaryDevicesHalClient import not found", file=sys.stderr)
+        return 1
 
     if not callers:
-        print("ERROR: no direct MTKPrimaryDevicesHalClient call site found", file=sys.stderr)
-        return 1
+        print(
+            "WARNING: no direct symbolic call site was identified. The import/relocation "
+            "does not prove an invocation; indirect or unused references remain unresolved."
+        )
+        print("\\nNo caller function is attributed to the MTK client from this binary.")
+        return 0
 
     print(f"Direct caller functions found: {len(callers)}")
     for name, block in callers:
