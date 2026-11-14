@@ -155,7 +155,7 @@ HELPER_WINDOW_SIZE = 0x60
 
 def resolve_veneer_target(binary: Path, target: int) -> int:
     elf_data = binary.read_bytes()
-    if len(elf_data) < 52 or elf_data[:4] != b"\\x7fELF":
+    if len(elf_data) < 52 or elf_data[:4] != b"\x7fELF":
         raise RuntimeError("invalid ELF header while resolving helper veneer")
     if elf_data[4] != 1 or elf_data[5] != 1:
         raise RuntimeError("helper veneer resolution requires ELF32 little-endian input")
@@ -170,7 +170,7 @@ def resolve_veneer_target(binary: Path, target: int) -> int:
     if section_offset < 52 or section_table_end > len(elf_data):
         raise RuntimeError("ELF section table is outside the input file")
 
-    sections: list[tuple[int, int, int, int, int]] = []
+    sections: list[tuple[int, int, int, int, int, int]] = []
     for index in range(section_count):
         offset = section_offset + index * section_entry_size
         name_offset, section_type, flags, address, file_offset, size = struct.unpack_from(
@@ -190,7 +190,7 @@ def resolve_veneer_target(binary: Path, target: int) -> int:
     for name_offset, section_type, flags, address, file_offset, size in sections:
         if name_offset >= len(names):
             continue
-        name_end = names.find(b"\\0", name_offset)
+        name_end = names.find(b"\0", name_offset)
         if name_end < 0 or names[name_offset:name_end] != b".text":
             continue
         if section_type != 1 or not flags & 0x4:
