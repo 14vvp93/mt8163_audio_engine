@@ -165,10 +165,10 @@ def verify_setup_callback_global_slots(disassembly: str) -> None:
         require(actual == expected, f"{label} changed at 0x{address:08x}: 0x{actual:08x}")
 
     effective_slots = (
-        (0x000CE930, 0x000C4248, 0x001A2B80, "registration callback"),
-        (0x000CE93C, 0x000C4238, 0x001A2B7C, "registration cookie"),
-        (0x000CF200, 0x000C3978, 0x001A2B80, "dispatch callback"),
-        (0x000CF20C, 0x000C3968, 0x001A2B7C, "dispatch cookie"),
+        (0x000CE930, 0x000C4248, 0x00192B80, "registration callback"),
+        (0x000CE93C, 0x000C4238, 0x00192B7C, "registration cookie"),
+        (0x000CF200, 0x000C3978, 0x00192B80, "dispatch callback"),
+        (0x000CF20C, 0x000C3968, 0x00192B7C, "dispatch cookie"),
     )
     for instruction, displacement, expected, label in effective_slots:
         actual = instruction + 8 + displacement
@@ -178,9 +178,58 @@ def verify_setup_callback_global_slots(disassembly: str) -> None:
         )
 
     print("SETUP_CALLBACK_GLOBAL_GOT_ASSERTIONS: PASS")
-    print("SETUP_CALLBACK_GLOBAL_CALLBACK_GOT=0x001a2b80")
-    print("SETUP_CALLBACK_GLOBAL_COOKIE_GOT=0x001a2b7c")
+    print("SETUP_CALLBACK_GLOBAL_CALLBACK_GOT=0x00192b80")
+    print("SETUP_CALLBACK_GLOBAL_COOKIE_GOT=0x00192b7c")
     print("NOTE: 0xc4248/0xc4238 and 0xc3978/0xc3968 are PC-relative GOT displacements, not absolute global addresses.")
+
+
+def verify_factory_destructor_clears_setup_callback_globals(disassembly: str) -> None:
+    destructor = parse_function_instructions(
+        disassembly,
+        "android::AudioALSAHardware::~AudioALSAHardware()",
+        0x000C56E4,
+    )
+    require(destructor, "AudioALSAHardware destructor instructions missing")
+    indices = [
+        require_instruction(destructor, address, mnemonic, operand)
+        for address, mnemonic, operand in (
+            (0x000C5750, "ldr", "r0, [pc, #256]"),
+            (0x000C575C, "ldr", "r0, [pc, r0]"),
+            (0x000C5760, "str", "r6, [r0]"),
+            (0x000C5764, "ldr", "r0, [pc, #240]"),
+            (0x000C5768, "ldr", "r0, [pc, r0]"),
+            (0x000C576C, "str", "r6, [r0]"),
+            (0x000C5770, "ldr", "r0, [pc, #232]"),
+            (0x000C5774, "ldr", "r0, [pc, r0]"),
+            (0x000C5778, "str", "r6, [r0]"),
+        )
+    ]
+    require(indices == sorted(indices), "factory destructor global-clear order changed")
+
+    literal_words = (
+        (0x000C5858, 0x000CD414),
+        (0x000C585C, 0x000CD40C),
+        (0x000C5860, 0x000CD404),
+    )
+    for address, expected in literal_words:
+        actual = read_arm_word_at(disassembly, address)
+        require(actual == expected, f"factory destructor literal changed at 0x{address:08x}")
+
+    resolved = (
+        (0x000C575C, 0x000CD414, 0x00192B78, "AudioALSAHardware singleton"),
+        (0x000C5768, 0x000CD40C, 0x00192B7C, "setup callback cookie"),
+        (0x000C5774, 0x000CD404, 0x00192B80, "setup callback pointer"),
+    )
+    for instruction, displacement, expected, label in resolved:
+        actual = instruction + 8 + displacement
+        require(actual == expected, f"{label} clear slot changed: 0x{actual:08x}")
+
+    require(
+        indices[5] < indices[8],
+        "factory destructor must clear the setup cookie before the callback pointer",
+    )
+    print("SETUP_CALLBACK_GLOBAL_CLEAR_ASSERTIONS: PASS")
+    print("SETUP_CALLBACK_GLOBAL_CLEAR_ORDER=cookie(0x00192b7c),callback(0x00192b80)")
 
 
 def verify_callback_dataflow(disassembly: str) -> None:
@@ -292,6 +341,7 @@ def main() -> int:
     verify_callback_dataflow(disassembly)
     print("CALLBACK_DATAFLOW_ASSERTIONS: PASS")
     verify_setup_callback_global_slots(disassembly)
+    verify_factory_destructor_clears_setup_callback_globals(disassembly)
 
     ordered_symbols = sorted(symbols, key=lambda symbol: (symbol.address, -symbol.size))
     callsites: list[CallSite] = []
