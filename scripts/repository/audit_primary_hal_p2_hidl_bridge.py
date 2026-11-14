@@ -112,7 +112,7 @@ def main() -> int:
     setter = reports[FUNCTIONS[1]]
     clearer = reports[FUNCTIONS[2]]
 
-    if not re.search(r"\[r1,\s*#40\]", thunk, re.IGNORECASE):
+    if not re.search(r"\[r0,\s*#40\]", thunk, re.IGNORECASE):
         raise RuntimeError("callback thunk no longer accesses the expected Device callback member at +0x28")
     if not re.search(r"\[r0,\s*#52\]", thunk, re.IGNORECASE):
         raise RuntimeError("callback thunk no longer invokes the expected callback vtable slot at +0x34")
