@@ -130,7 +130,7 @@ def resolve_relocated_pointer(binary: Path, address: int) -> tuple[int, int, str
 def parse_function_symbols(readelf_output: str) -> list[tuple[int, int, str]]:
     symbols: list[tuple[int, int, str]] = []
     pattern = re.compile(
-        r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9]+)\\s+FUNC\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+        r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
     )
     for line in readelf_output.splitlines():
         match = pattern.match(line)
