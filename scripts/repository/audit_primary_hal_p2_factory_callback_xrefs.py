@@ -80,27 +80,23 @@ class InstructionRecord:
 def parse_function_instructions(
     disassembly: str,
     function_prefix: str,
+    function_address: int,
 ) -> list[InstructionRecord]:
     records: list[InstructionRecord] = []
-    current_function = ""
     matched_function = False
-    matched_address: int | None = None
     for line in disassembly.splitlines():
         header = FUNCTION_HEADER.match(line)
         if header is not None:
             header_address = int(header.group(1), 16)
             if matched_function:
-                if header_address != matched_address:
+                if header_address != function_address:
                     break
-                current_function = header.group(2)
-                matched_function = (
-                    matched_function or current_function.startswith(function_prefix)
-                )
                 continue
-            current_function = header.group(2)
-            matched_function = current_function.startswith(function_prefix)
-            if matched_function:
-                matched_address = header_address
+            if (
+                header_address == function_address
+                and header.group(2).startswith(function_prefix)
+            ):
+                matched_function = True
             continue
         if not matched_function:
             continue
@@ -149,7 +145,7 @@ def require_instruction(
 
 def verify_callback_dataflow(disassembly: str) -> None:
     dispatch = parse_function_instructions(
-        disassembly, "android::AudioALSAHardware::onAudioParameterChangedCallback("
+        disassembly, "android::AudioALSAHardware::onAudioParameterChangedCallback(", 0x000CEF18
     )
     require(dispatch, "parameter callback dispatcher instructions missing")
     dispatch_indices = [
@@ -178,7 +174,7 @@ def verify_callback_dataflow(disassembly: str) -> None:
     )
 
     global_callback = parse_function_instructions(
-        disassembly, "android::AudioALSAHardware::setParametersByCallback("
+        disassembly, "android::AudioALSAHardware::setParametersByCallback(", 0x000CF108
     )
     require(global_callback, "global parameter callback instructions missing")
     global_indices = [
@@ -201,7 +197,7 @@ def verify_callback_dataflow(disassembly: str) -> None:
     require_instruction(global_callback, 0x000CF1FC, "mov", "r1, r8")
 
     setup_callback = parse_function_instructions(
-        disassembly, "android::AudioALSAHardware::setupParametersCallback("
+        disassembly, "android::AudioALSAHardware::setupParametersCallback(", 0x000CE8FC
     )
     require(setup_callback, "setup-parameters callback registration instructions missing")
     setup_indices = [
