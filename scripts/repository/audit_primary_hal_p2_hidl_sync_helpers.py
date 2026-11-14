@@ -153,7 +153,7 @@ def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
 HELPER_WINDOW_SIZE = 0x60
 
 
-def resolve_veneer_target(binary: Path, target: int) -> int:
+def resolve_veneer_target(binary: Path, target: int) -> tuple[int, str, str]:
     elf_data = binary.read_bytes()
     if len(elf_data) < 52 or elf_data[:4] != b"\x7fELF":
         raise RuntimeError("invalid ELF header while resolving helper veneer")
@@ -173,10 +173,8 @@ def resolve_veneer_target(binary: Path, target: int) -> int:
     sections: list[tuple[int, int, int, int, int, int]] = []
     for index in range(section_count):
         offset = section_offset + index * section_entry_size
-        name_offset, section_type, flags, address, file_offset, size = struct.unpack_from(
-            "<IIIIII", elf_data, offset
-        )
-        sections.append((name_offset, section_type, flags, address, file_offset, size))
+        section = struct.unpack_from("<IIIIII", elf_data, offset)
+        sections.append(section)
 
     names_entry = sections[names_index]
     if names_entry[1] != 3:
@@ -186,26 +184,34 @@ def resolve_veneer_target(binary: Path, target: int) -> int:
         raise RuntimeError("ELF section-name table is outside the input file")
     names = elf_data[names_offset:names_offset + names_size]
 
-    text_section: tuple[int, int, int] | None = None
+    executable_sections: list[tuple[str, int, int, int]] = []
     for name_offset, section_type, flags, address, file_offset, size in sections:
         if name_offset >= len(names):
             continue
         name_end = names.find(b"\0", name_offset)
-        if name_end < 0 or names[name_offset:name_end] != b".text":
+        if name_end < 0:
             continue
+        name = names[name_offset:name_end].decode("ascii", errors="replace")
         if section_type != 1 or not flags & 0x4:
-            raise RuntimeError(".text is not an executable SHT_PROGBITS section")
+            continue
         if file_offset + size > len(elf_data):
-            raise RuntimeError(".text section is outside the input file")
-        text_section = (address, file_offset, size)
-        break
-    if text_section is None:
-        raise RuntimeError("executable .text section was not found")
+            raise RuntimeError(f"executable section {name} is outside the input file")
+        executable_sections.append((name, address, file_offset, size))
 
-    text_address, text_file_offset, text_size = text_section
-    if target < text_address or target + 16 > text_address + text_size:
-        raise RuntimeError(f"helper target 0x{target:08x} is outside executable .text")
-    offset = text_file_offset + target - text_address
+    def find_executable_section(address: int, size: int) -> tuple[str, int, int, int] | None:
+        return next(
+            (
+                section for section in executable_sections
+                if section[1] <= address and address + size <= section[1] + section[3]
+            ),
+            None,
+        )
+
+    target_section = find_executable_section(target, 16)
+    if target_section is None:
+        raise RuntimeError(f"helper target 0x{target:08x} is outside executable sections")
+    _, section_address, section_file_offset, _ = target_section
+    offset = section_file_offset + target - section_address
     thumb_branch, thumb_nop = struct.unpack_from("<HH", elf_data, offset)
     arm_load, arm_add, relative_target = struct.unpack_from("<III", elf_data, offset + 4)
 
@@ -216,12 +222,16 @@ def resolve_veneer_target(binary: Path, target: int) -> int:
             f"helper target 0x{target:08x} is not the expected Thumb-to-ARM veneer"
         )
 
-    destination = target + 16 + struct.unpack("<i", struct.pack("<I", relative_target))[0]
+    relative = struct.unpack("<i", struct.pack("<I", relative_target))[0]
+    destination = target + 16 + relative
     if destination & 0x3:
         raise RuntimeError(f"veneer destination 0x{destination:08x} is not ARM-aligned")
-    if not text_address <= destination < text_address + text_size:
-        raise RuntimeError(f"veneer destination 0x{destination:08x} is outside executable .text")
-    return destination
+    destination_section = find_executable_section(destination, 4)
+    if destination_section is None:
+        raise RuntimeError(
+            f"veneer destination 0x{destination:08x} is outside executable sections"
+        )
+    return destination, target_section[0], destination_section[0]
 
 
 def disassemble_target_window(binary: Path, target: int) -> str:
@@ -300,12 +310,14 @@ def main() -> int:
                 disassemble_target_window(binary, target).rstrip(),
             ])
             try:
-                destination = resolve_veneer_target(binary, target)
+                destination, source_section, destination_section = resolve_veneer_target(binary, target)
             except RuntimeError as veneer_error:
                 reports.append(f"VENEER_RESOLUTION_ERROR: {veneer_error}")
                 continue
 
-            reports.append(f"INTERWORKING_VENEER_ARM_DESTINATION: 0x{destination:08x}")
+            reports.append(\n                f"INTERWORKING_VENEER: {source_section} -> "
+                f"{destination_section}:0x{destination:08x}"
+            )
             try:
                 function_address, function_size, function_name, function_thumb = (
                     resolve_function(destination, functions)
