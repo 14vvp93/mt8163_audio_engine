@@ -318,6 +318,33 @@ The available service 5.0 implementation (not the target's 4.0 bridge source) ad
 
 **Evidence boundary:** this is non-matching-version source corroboration (service 5.0 / interface 4.1), not proof that the exact MT8163 Android 9 service binary uses this global list or identical error handling. Do not back-project these source details onto the pinned 4.0 bridge ELF. It does, however, provide a concrete candidate design explanation for why the bridge may retain Device owners outside the callback member itself, and identifies a specific behavior to verify against the exact target source or binary: whether failed clear still drops the owner pin.
 
-The target private clear wrapper's register-level cookie identity remains subject to exact call-site confirmation. The 4.1 HIDL API's zero-argument clear method and this later service implementation's `clear(..., this)` call are corroborating only; they do not independently prove the target 4.0 bridge passes `Device*` to the legacy clear slot.
+Target clear-wrapper cookie identity has since been resolved by register-level analysis of the pinned 4.0 bridge ELF; see the following section. The later service 5.0 source remains non-matching-version corroboration only.
 
 P2 remains OPEN. Keep the exact target ABI, owner-pin implementation, clear failure behavior, callback drain and Device destruction ordering as hard gates.
+
+
+## 2026-11-14 target bridge register-level cookie identity
+
+The pinned target bridge ELF (SHA-256 58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc) was re-read using the ARM32 AAPCS return convention for HIDL Return<void>. The non-trivial return uses a hidden sret pointer in r0; therefore r1 is the Device* this value in both member wrappers and r2 is the setter's explicit callback argument.
+
+Setter at 0x1cd1c:
+- Saves r1 (Device this) in r6.
+- Loads the legacy audio_hw_device* member from [r6, #8] into r0.
+- Loads the legacy set slot from [r0, #0xd4].
+- Places the callback thunk in r1 and restores r2 = r6 immediately before blx r3.
+- Thus the factory callback registry receives Device* as its cookie in the third argument.
+
+Clear at 0x1cdac:
+- Keeps the hidden sret pointer in r4; r1 remains the original Device* this.
+- Loads the same legacy audio_hw_device* member from [r1, #8] into r0.
+- Loads the legacy clear slot from [r0, #0xd8] into r2.
+- Calls blx r2 without modifying r1; therefore the factory member function receives the same Device* cookie as its second argument.
+
+The factory HAL ELF independently confirms the corresponding member signatures:
+- setAudioParameterChangedCallback(int (*)(char const*, void*), void*) stores its third C++ argument as the cookie.
+- clearAudioParameterChangedCallback(void*) compares its first explicit C++ argument against stored cookies.
+- Both wrappers receive the factory object pointer as the implicit C++ this in r0; the cookie is the next register argument.
+
+Conclusion: the target bridge set/clear wrappers pass the same Device* cookie. The suspected cookie mismatch is rejected. This does not establish callback drain: the factory lock-failure fallthrough remains, and the target bridge Device owner/destructor protocol is still not recovered.
+
+The bridge audit script now asserts the setter cookie register and that clear preserves r1 through the indirect call. A compiler/ABI change that alters this register contract will fail the offline audit rather than silently changing callback identity.
