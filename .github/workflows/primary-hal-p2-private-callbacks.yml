@@ -21,6 +21,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_hidl_callback.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_sync_callback.py"
+      - "scripts/repository/audit_primary_hal_p2_hidl_sync_helpers.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - "scripts/repository/audit_primary_hal_p2_device_close.py"
       - "scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py"
@@ -95,6 +96,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_hidl_callback.py \
             scripts/repository/audit_primary_hal_p2_hidl_bridge.py \
             scripts/repository/audit_primary_hal_p2_hidl_sync_callback.py \
+            scripts/repository/audit_primary_hal_p2_hidl_sync_helpers.py \
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py \
             scripts/repository/audit_primary_hal_p2_device_close.py \
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py \
@@ -125,6 +127,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_hidl_callback.py
             scripts/repository/audit_primary_hal_p2_hidl_bridge.py
             scripts/repository/audit_primary_hal_p2_hidl_sync_callback.py
+            scripts/repository/audit_primary_hal_p2_hidl_sync_helpers.py
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py
             scripts/repository/audit_primary_hal_p2_device_close.py
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py
@@ -201,6 +204,8 @@ jobs:
           pid_hidl_bridge=$!
           run_logged p2-hidl-sync python3 scripts/repository/audit_primary_hal_p2_hidl_sync_callback.py "$bridge" p2-hidl-sync-callback.txt &
           pid_hidl_sync=$!
+          run_logged p2-hidl-sync-helpers python3 scripts/repository/audit_primary_hal_p2_hidl_sync_helpers.py "$bridge" p2-hidl-sync-helpers.txt &
+          pid_hidl_sync_helpers=$!
           run_logged p2-hidl-device python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" &
           pid_hidl_device=$!
           run_logged p2-device-close python3 scripts/repository/audit_primary_hal_p2_device_close.py "$binary" &
@@ -211,13 +216,13 @@ jobs:
           pid_resource_vtable=$!
 
           failed=0
-          for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_sync" "$pid_hidl_device" "$pid_device_close" "$pid_callback_xrefs" "$pid_resource_vtable"; do
+          for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_sync" "$pid_hidl_sync_helpers" "$pid_hidl_device" "$pid_device_close" "$pid_callback_xrefs" "$pid_resource_vtable"; do
             if ! wait "$pid"; then
               failed=1
             fi
           done
 
-          for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-sync.log p2-hidl-device.log p2-device-close.log p2-callback-xrefs.log p2-resource-vtable.log; do
+          for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-sync.log p2-hidl-sync-helpers.log p2-hidl-device.log p2-device-close.log p2-callback-xrefs.log p2-resource-vtable.log; do
             cat "$log"
           done
           test "$failed" -eq 0
@@ -229,6 +234,7 @@ jobs:
           mv p2-hidl-callback.log p2-hidl-callback-transaction.txt
           mv p2-hidl-bridge.log p2-hidl-bridge-lifecycle.txt
           mv p2-hidl-sync.log p2-hidl-sync-callback.txt
+          mv p2-hidl-sync-helpers.log p2-hidl-sync-helpers.txt
           mv p2-hidl-device.log p2-hidl-device-lifetime.txt
           mv p2-device-close.log p2-factory-device-close.txt
           mv p2-callback-xrefs.log p2-factory-callback-xrefs.txt
@@ -256,6 +262,7 @@ jobs:
             p2-hidl-bridge-lifecycle.txt
             p2-hidl-setup-parameters-callback.txt
             p2-hidl-sync-callback.txt
+            p2-hidl-sync-helpers.txt
             p2-hidl-device-lifetime.txt
             p2-factory-device-close.txt
             p2-factory-callback-xrefs.txt
