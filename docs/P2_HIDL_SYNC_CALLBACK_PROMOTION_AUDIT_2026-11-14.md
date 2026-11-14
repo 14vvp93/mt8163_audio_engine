@@ -120,3 +120,18 @@ This is a **static race surface**, not proof that a particular runtime interleav
 - Runtime race/UAF occurrence: **not tested / not claimed**.
 
 Keep P2 **OPEN**. Keep Primary HAL fail-closed and `installable: false`. Do not integrate the setup callback path into AudioCore or treat the in-body promotion as a substitute for a factory-side admission/drain contract. This channel remains distinct from the vector-backed `0xd4/0xd8` parameter-change registry.
+
+## 2026-11-14 — constructor callsite parser correction
+
+A review of `audit_primary_hal_p2_hidl_device_lifetime.py` found that its direct-call and relocation-offset regular expressions were over-escaped. The direct-call parser therefore did not reliably recognize objdump `BL/BLX` records, so the earlier derived-constructor callsite inventory must not be treated as complete.
+
+The parser now uses compiled expressions for:
+- direct `BL` and `BLX` instructions with an immediate symbolized target;
+- relocation records with hexadecimal offsets;
+- normalization of Thumb target bit 0.
+
+Four regression tests cover the known `DeviceC1` branch to veneer address `0x000281dc`, an ARM `BLX` target with the Thumb bit set, unresolved register-indirect `BLX`, and relocation offset parsing. The test module is included in both workflow sparse checkout and the contract job's unittest discovery.
+
+The regex fixtures were checked locally against representative objdump lines. This is not a substitute for the pending GitHub Actions run against the pinned HIDL ELF. Until that run confirms the full derived-constructor callsite inventory, do not promote the earlier negative callsite result to proof that no derived constructor invokes `DeviceC1`.
+
+P2 remains **OPEN**. The raw-cookie pre-promotion window and factory-side in-flight drain are unchanged and remain hard gates.
