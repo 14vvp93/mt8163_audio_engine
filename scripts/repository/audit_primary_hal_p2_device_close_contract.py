@@ -15,6 +15,8 @@ COMPLETE_DTOR = ("0x000c56e4", "android::AudioALSAHardware::~AudioALSAHardware()
 DELETING_DTOR = ("0x000c5874", "android::AudioALSAHardware::~AudioALSAHardware()")
 HMI_CLOSE_START = 0x0009BA48
 HMI_CLOSE_END = 0x0009BAE4
+MODULE_OPEN_START = 0x0009B70C
+MODULE_OPEN_END = 0x0009B994
 CREATE_THUNK_START = 0x000D127C
 CREATE_THUNK_END = 0x000D1280
 
@@ -96,6 +98,29 @@ def main() -> int:
     require_relocation("+0x008", COMPLETE_DTOR[0], COMPLETE_DTOR[1])
     require_relocation("+0x00c", DELETING_DTOR[0], DELETING_DTOR[1])
 
+    module_open = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            f"--start-address=0x{MODULE_OPEN_START:x}",
+            f"--stop-address=0x{MODULE_OPEN_END:x}",
+            str(binary),
+        ]
+    )
+    require(
+        re.search(r"9b780:.*ldr\\s+r0,\\s*\\[pc,\\s*#528\\]", module_open) is not None
+        and re.search(r"9b998:\\s+000002a4", module_open) is not None
+        and re.search(r"9b79c:.*add\\s+ip,\\s*pc,\\s*r0", module_open) is not None
+        and re.search(r"9b7ac:.*str\\s+ip,\\s*\\[r5,\\s*#60\\]", module_open) is not None,
+        "factory module open no longer stores the expected close callback at audio_hw_device_mtk+0x3c",
+    )
+    close_callback_target = 0x0009B79C + 8 + 0x000002A4
+    require(
+        close_callback_target == HMI_CLOSE_START,
+        f"audio_hw_device_mtk.close target changed: 0x{close_callback_target:08x}",
+    )
+
     close = run(
         [
             "arm-linux-gnueabi-objdump",
@@ -171,6 +196,7 @@ def main() -> int:
     print("Resolved vptr+0x04 slot: vtable+0x00c -> deleting destructor 0x000c5874")
     print("Complete destructor slot: vtable+0x008 -> 0x000c56e4")
     print("AudioMTKHardwareInterface::create(): thunk -> AudioALSAHardware::GetInstance@plt")
+    print("Factory module open: audio_hw_device_mtk.close (+0x3c) -> HMI.close at 0x0009ba48")
     print("GetInstance/destructor singleton pointer cell: 0x00192b78 (read/write/reset correlated)")
     print("Additional destructor-cleared global pointer cells: 0x00192b7c, 0x00192b80 (owners unresolved)")
     print("CONTRACT VERIFIED: HMI.close invokes the AudioALSAHardware deleting destructor.")
