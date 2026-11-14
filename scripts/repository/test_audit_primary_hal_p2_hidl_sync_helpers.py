@@ -38,14 +38,14 @@ class GnuDebugDataTests(unittest.TestCase):
         return bytes(data)
 
     def test_extracts_xz_compressed_gnu_debugdata(self) -> None:
-        mini_elf = b"\\x7fELF\\x01\\x01mini-debug-elf"
-        names = b"\\0.shstrtab\\0.gnu_debugdata\\0"
+        mini_elf = b"\x7fELF\x01\x01mini-debug-elf"
+        names = b"\0.shstrtab\0.gnu_debugdata\0"
         binary = self.make_elf_with_sections(names, lzma.compress(mini_elf))
 
         self.assertEqual(auditor.extract_gnu_debugdata(binary), mini_elf)
 
     def test_returns_none_when_gnu_debugdata_is_absent(self) -> None:
-        names = b"\\0.shstrtab\\0"
+        names = b"\0.shstrtab\0"
         binary = self.make_elf_with_sections(names, None)
 
         self.assertIsNone(auditor.extract_gnu_debugdata(binary))
