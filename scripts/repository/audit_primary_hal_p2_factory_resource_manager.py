@@ -60,16 +60,22 @@ def read_elf_word(binary: Path, address: int) -> int:
         [
             "arm-linux-gnueabi-objdump",
             "-s",
-            f"--start-address=0x{address:x}",
-            f"--stop-address=0x{address + 4:x}",
             str(binary),
         ]
     )
     for line in output.splitlines():
-        match = re.match(r"^\s*([0-9a-fA-F]{8})\s+((?:[0-9a-fA-F]{8}\s*){1,4})", line)
-        if match and int(match.group(1), 16) == address:
-            raw = match.group(2).split()[0]
-            return int.from_bytes(bytes.fromhex(raw), byteorder="little")
+        match = re.match(
+            r"^\\s*([0-9a-fA-F]{4,8})\\s+((?:[0-9a-fA-F]{8}\\s*){1,4})",
+            line,
+        )
+        if match is None:
+            continue
+        row_address = int(match.group(1), 16)
+        raw = "".join(match.group(2).split())
+        row_bytes = bytes.fromhex(raw)
+        offset = address - row_address
+        if 0 <= offset and offset + 4 <= len(row_bytes):
+            return int.from_bytes(row_bytes[offset : offset + 4], byteorder="little")
     raise RuntimeError(f"could not read ELF word at 0x{address:08x}")
 
 
