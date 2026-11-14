@@ -12,7 +12,7 @@ BUILD = ROOT / "primary-hal/Android.bp"
 
 
 def extract_function(source: str, name: str) -> str:
-    match = re.search(r"\\b" + re.escape(name) + r"\\s*\\(", source)
+    match = re.search(r"\b" + re.escape(name) + r"\s*\(", source)
     if match is None:
         raise ValueError(f"missing function: {name}")
 
@@ -46,16 +46,16 @@ def main() -> int:
         for function_name in ("open_output_stream", "open_input_stream"):
             body = extract_function(source, function_name)
             require(
-                re.search(r"\\*stream\\s*=\\s*nullptr\\s*;", body) is not None,
+                re.search(r"\*stream\s*=\s*nullptr\s*;", body) is not None,
                 f"{function_name} must clear the output stream pointer",
             )
             require(
-                re.search(r"return\\s+-ENODEV\\s*;", body) is not None,
+                re.search(r"return\s+-ENODEV\s*;", body) is not None,
                 f"{function_name} must fail closed with -ENODEV",
             )
 
         require(
-            re.search(r"\\binstallable\\s*:\\s*false\\s*,", build) is not None,
+            re.search(r"\binstallable\s*:\s*false\s*,", build) is not None,
             "Primary HAL bootstrap must remain non-installable",
         )
 
