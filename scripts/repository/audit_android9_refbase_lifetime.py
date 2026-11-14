@@ -14,6 +14,12 @@ TARGETS = {
     "weakref_type::attemptIncStrong": "android::RefBase::weakref_type::attemptIncStrong(",
     "RefBase::decStrong": "android::RefBase::decStrong(",
     "weakref_type::decWeak": "android::RefBase::weakref_type::decWeak(",
+    "RefBase::RefBase": "android::RefBase::RefBase(",
+    "RefBase::~RefBase": "android::RefBase::~RefBase(",
+}
+
+OPTIONAL_TARGETS = {
+    "RefBase::extendObjectLifetime": "android::RefBase::extendObjectLifetime(",
 }
 
 
@@ -121,11 +127,14 @@ def audit_library(binary: Path, label: str) -> tuple[list[str], set[str]]:
         "SYMBOL_TABLE: readelf -Ws -C",
     ]
     missing: set[str] = set()
-    for target, fragment in TARGETS.items():
+    for target, fragment in (*TARGETS.items(), *OPTIONAL_TARGETS.items()):
         matches = find_target_symbols(symbols, fragment)
         if not matches:
-            report.append(f"SYMBOL {target}: UNRESOLVED")
-            missing.add(target)
+            if target in TARGETS:
+                report.append(f"SYMBOL {target}: UNRESOLVED")
+                missing.add(target)
+            else:
+                report.append(f"OPTIONAL_SYMBOL {target}: NOT EXPORTED")
             continue
         for symbol in matches:
             report.extend([
@@ -156,6 +165,15 @@ def audit_bridge_dependencies(bridge: Path) -> tuple[list[str], bool]:
     ]
     found = "libutils.so" in needed
     report.append(f"LIBUTILS_DT_NEEDED: {'PRESENT' if found else 'NOT FOUND'}")
+    bridge_symbols = run(["arm-linux-gnueabi-readelf", "-Ws", "-C", str(bridge)])
+    extension_refs = [
+        line.strip() for line in bridge_symbols.splitlines()
+        if "RefBase::extendObjectLifetime(" in line
+    ]
+    report.append(
+        "BRIDGE_EXTEND_OBJECT_LIFETIME_SYMBOL_REFERENCES: "
+        + ("; ".join(extension_refs) if extension_refs else "none")
+    )
     return report, found
 
 
