@@ -109,10 +109,10 @@ def main() -> int:
         ]
     )
     require(
-        re.search(r"9b780:.*ldr\\s+r0,\\s*\\[pc,\\s*#528\\]", module_open) is not None
-        and re.search(r"9b998:\\s+000002a4", module_open) is not None
-        and re.search(r"9b79c:.*add\\s+ip,\\s*pc,\\s*r0", module_open) is not None
-        and re.search(r"9b7ac:.*str\\s+ip,\\s*\\[r5,\\s*#60\\]", module_open) is not None,
+        re.search(r"9b780:.*ldr\s+r0,\s*\[pc,\s*#528\]", module_open) is not None
+        and re.search(r"9b998:\s+000002a4", module_open) is not None
+        and re.search(r"9b79c:.*add\s+ip,\s*pc,\s*r0", module_open) is not None
+        and re.search(r"9b7ac:.*str\s+ip,\s*\[r5,\s*#60\]", module_open) is not None,
         "factory module open no longer stores the expected close callback at audio_hw_device_mtk+0x3c",
     )
     close_callback_target = 0x0009B79C + 8 + 0x000002A4
