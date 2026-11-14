@@ -237,10 +237,10 @@ class ParseFunctionsTests(unittest.TestCase):
             "(android::hardware::MQFlavor)1>::~MessageQueue()@plt"
         )
         output = (
-            "bridge.so: file format elf32-littlearm\\n"
-            "Disassembly of section .plt:\\n"
-            f"0001942c <{symbol_name}>:\\n"
-            "  1942c: e28fc600 add ip, pc, #0, 12\\n"
+            "bridge.so: file format elf32-littlearm\n"
+            "Disassembly of section .plt:\n"
+            f"0001942c <{symbol_name}>:\n"
+            "  1942c: e28fc600 add ip, pc, #0, 12\n"
         )
         with patch.object(auditor, "run", return_value=output):
             resolved = auditor.resolve_plt_symbol(Path("bridge.so"), 0x1942C)
