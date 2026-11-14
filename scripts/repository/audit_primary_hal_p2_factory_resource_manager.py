@@ -408,22 +408,25 @@ def main() -> int:
     )
 
     stream_constructor = event_thread_bodies["stream_manager_constructor"]
+    constructor_registration = [
+        re.search(rf"^\s*{address}:.*{pattern}", stream_constructor, re.MULTILINE)
+        for address, pattern in (
+            ("7721c", r"\bbl\s+[0-9a-f]+\s+<android::AudioEventThreadManager::getInstance\(\)@plt>"),
+            ("77224", r"\bmov\s+r3,\s*r4\b"),
+            ("77228", r"\bldr\s+r2,"),
+            ("7722c", r"\bmov\s+r1,\s*#0\b"),
+            ("77230", r"\bbl\s+[0-9a-f]+\s+<android::AudioEventThreadManager::registerCallback\("),
+        )
+    ]
     require(
-        re.search(
-            r"7721c:.*bl\s+[0-9a-f]+ <android::AudioEventThreadManager::getInstance\(\)@plt>\n"
-            r"\s*77224:.*mov\s+r3,\s*r4\n"
-            r"\s*77228:.*ldr\s+r2,.*\n"
-            r"\s*7722c:.*mov\s+r1,\s*#0\n"
-            r"\s*77230:.*bl\s+[0-9a-f]+ <android::AudioEventThreadManager::registerCallback\(android::AudioEventType,",
-            stream_constructor,
-        ) is not None,
+        all(match is not None for match in constructor_registration),
         "AudioALSAStreamManager constructor no longer registers event type 0 with this as callback cookie",
     )
 
     worker_loop = event_thread_bodies["event_thread_loop"]
     require(
         re.search(r"13517c:.*ldrb\s+r0,\s*\[r4,\s*#28\]", worker_loop) is not None
-        and re.search(r"1351fc:.*ldr\s+r0,\s*\[r4,\s*#8\]\n\s*135200:.*blx\s+r2", worker_loop) is not None
+        and re.search(r"1351f8:.*ldr\s+r0,\s*\[r4,\s*#8\]\n\s*1351fc:.*blx\s+r2", worker_loop) is not None
         and re.search(r"1352d8:.*mov\s+r0,\s*#0\n\s*1352dc:.*bl\s+[0-9a-f]+ <pthread_exit@plt>", worker_loop) is not None,
         "AudioEventThread worker loop no longer checks stop flag, dispatches callbacks, and exits via pthread_exit",
     )
