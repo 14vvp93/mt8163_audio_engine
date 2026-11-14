@@ -175,7 +175,8 @@ def helper_target_resolution_status(
 def helper_target_resolution_exit_code(
     resolved_targets: list[int], unresolved_targets: list[int]
 ) -> int:
-    return 0 if helper_target_resolution_status(resolved_targets, unresolved_targets) == "COMPLETE" else 1
+    status = helper_target_resolution_status(resolved_targets, unresolved_targets)
+    return 0 if status == "COMPLETE" else 1
 
 
 HELPER_WINDOW_SIZE = 0x60
