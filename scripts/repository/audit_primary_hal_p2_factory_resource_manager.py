@@ -203,13 +203,13 @@ def main() -> int:
     )
     manager_lock_failure_falls_through = (
         re.search(
-            r"76674:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
-            r"\\s*76678:.*cmp\\s+r0,\\s*#0\\n"
-            r"\\s*7667c:.*beq\\s+766d8",
+            r"76674:.*bl\s+47da4 <alock_lock_ms@plt>\n"
+            r"\s*76678:.*cmp\s+r0,\s*#0\n"
+            r"\s*7667c:.*beq\s+766d8",
             manager_get_instance_body,
         )
         is not None
-        and re.search(r"766d8:.*ldr\\s+r0,.*\\n\\s*766dc:.*ldr\\s+r0,\\s*\\[pc,\\s*r0\\]", manager_get_instance_body)
+        and re.search(r"766d8:.*ldr\s+r0,.*\n\s*766dc:.*ldr\s+r0,\s*\[pc,\s*r0\]", manager_get_instance_body)
         is not None
     )
     require(
@@ -218,13 +218,13 @@ def main() -> int:
     )
     hardware_lock_failure_falls_through = (
         re.search(
-            r"d0f3c:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
-            r"\\s*d0f40:.*cmp\\s+r0,\\s*#0\\n"
-            r"\\s*d0f44:.*beq\\s+d0fa0",
+            r"d0f3c:.*bl\s+47da4 <alock_lock_ms@plt>\n"
+            r"\s*d0f40:.*cmp\s+r0,\s*#0\n"
+            r"\s*d0f44:.*beq\s+d0fa0",
             hardware_get_instance_body,
         )
         is not None
-        and re.search(r"d0fa0:.*ldr\\s+r0,.*\\n\\s*d0fa4:.*ldr\\s+r0,\\s*\\[pc,\\s*r0\\]", hardware_get_instance_body)
+        and re.search(r"d0fa0:.*ldr\s+r0,.*\n\s*d0fa4:.*ldr\s+r0,\s*\[pc,\s*r0\]", hardware_get_instance_body)
         is not None
     )
     require(
@@ -252,22 +252,22 @@ def main() -> int:
 
     callback_lock_failure_patterns = {
         "registration": (
-            r"cea38:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
-            r"\\s*cea3c:.*cmp\\s+r0,\\s*#0\\n"
-            r"\\s*cea40:.*beq\\s+cea9c",
-            r"cea9c:.*ldr\\s+r0,.*\\n\\s*ceaa0:.*add\\s+r4,\\s*r7,\\s*#944",
+            r"cea38:.*bl\s+47da4 <alock_lock_ms@plt>\n"
+            r"\s*cea3c:.*cmp\s+r0,\s*#0\n"
+            r"\s*cea40:.*beq\s+cea9c",
+            r"cea9c:.*ldr\s+r0,.*\n\s*ceaa0:.*add\s+r4,\s*r7,\s*#944",
         ),
         "clear": (
-            r"ced08:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
-            r"\\s*ced0c:.*cmp\\s+r0,\\s*#0\\n"
-            r"\\s*ced10:.*beq\\s+ced6c",
-            r"ced6c:.*ldr\\s+fp,.*\\n\\s*ced70:.*add\\s+r7,\\s+r6,\\s+#944",
+            r"ced08:.*bl\s+47da4 <alock_lock_ms@plt>\n"
+            r"\s*ced0c:.*cmp\s+r0,\s*#0\n"
+            r"\s*ced10:.*beq\s+ced6c",
+            r"ced6c:.*ldr\s+fp,.*\n\s*ced70:.*add\s+r7,\s+r6,\s+#944",
         ),
         "dispatch": (
-            r"cef60:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
-            r"\\s*cef64:.*cmp\\s+r0,\\s*#0\\n"
-            r"\\s*cef68:.*beq\\s+cefc4",
-            r"cefc4:.*ldr\\s+r0,.*\\n\\s*cefc8:.*cmp\\s+r0,\\s*#0",
+            r"cef60:.*bl\s+47da4 <alock_lock_ms@plt>\n"
+            r"\s*cef64:.*cmp\s+r0,\s*#0\n"
+            r"\s*cef68:.*beq\s+cefc4",
+            r"cefc4:.*ldr\s+r0,.*\n\s*cefc8:.*cmp\s+r0,\s*#0",
         ),
     }
     for label, (lock_pattern, fallthrough_pattern) in callback_lock_failure_patterns.items():
@@ -278,9 +278,9 @@ def main() -> int:
             f"callback {label} lock failure no longer falls through to registry access",
         )
     dispatch_body = callback_bodies["dispatch"]
-    callback_invoke = re.search(r"cf020:.*mov\\s+r0,\\s*r9.*\\n\\s*cf024:.*blx\\s+r2", dispatch_body)
+    callback_invoke = re.search(r"cf020:.*mov\s+r0,\s*r9.*\n\s*cf024:.*blx\s+r2", dispatch_body)
     dispatch_unlock = re.search(
-        r"cf044:.*mov\\s+r0,\\s*r8[\\s\\S]*?cf050:.*bl\\s+47e04 <alock_unlock@plt>",
+        r"cf044:.*mov\s+r0,\s*r8[\s\S]*?cf050:.*bl\s+47e04 <alock_unlock@plt>",
         dispatch_body,
     )
     require(
