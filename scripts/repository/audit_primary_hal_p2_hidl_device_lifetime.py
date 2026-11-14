@@ -113,25 +113,55 @@ def main() -> int:
 
     raw_constructor_symbols = [
         line.strip() for line in raw_symbol_output.splitlines()
-        if "Device" in line and re.search(r"C[123]E", line)
+        if re.search(
+            r"_ZN7android8hardware5audio4V4_014implementation6DeviceC[12]E",
+            line,
+        )
     ]
     constructor_call_sites: list[tuple[int, int, str, str]] = []
     constructor_addresses = {item[0] & ~1 for item in constructors}
-    for line in full_disassembly.splitlines():
-        match = direct_call_pattern.match(line)
-        if match is None:
-            continue
-        callsite = int(match.group(1), 16)
-        target = int(match.group(2), 16) & ~1
-        if target not in constructor_addresses:
-            continue
-        callers = [
-            item for item in symbols
-            if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
-        ]
-        callers.sort(key=lambda item: (item[1], item[0], item[3]))
-        caller = callers[0][3] if callers else "UNRESOLVED_CALLER"
-        constructor_call_sites.append((callsite, target, caller, match.group(3)))
+    derived_constructors = [
+        item for item in symbols
+        if item[2] == "FUNC"
+        and (
+            "PrimaryDevice::PrimaryDevice(" in item[3]
+            or "MTKPrimaryDevice::MTKPrimaryDevice(" in item[3]
+        )
+        and item[1] > 0
+    ]
+    constructor_bodies: list[tuple[int, int, str, str]] = []
+    for address, size, _, name in [*constructors, *derived_constructors]:
+        code_address = address & ~1
+        command = ["arm-linux-gnueabi-objdump", "-dr", "-C"]
+        if address & 1:
+            command.extend(["-M", "force-thumb"])
+        command.extend([
+            f"--start-address=0x{code_address:x}",
+            f"--stop-address=0x{code_address + size:x}",
+            str(binary),
+        ])
+        body = run(command)
+        for line in body.splitlines():
+            match = direct_call_pattern.match(line)
+            if match is None:
+                continue
+            callsite = int(match.group(1), 16)
+            target = int(match.group(2), 16) & ~1
+            target_name = match.group(3)
+            if target == refbase_constructor_veneer or "RefBase::RefBase" in target_name:
+                callers = [
+                    item for item in symbols
+                    if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
+                ]
+                callers.sort(key=lambda item: (item[1], item[0], item[3]))
+                caller = callers[0][3] if callers else name
+                refbase_constructor_calls.append(
+                    (callsite, target, caller, target_name)
+                )
+            if target in constructor_addresses:
+                constructor_call_sites.append(
+                    (callsite, target, name, target_name)
+                )
 
     print(f"HIDL bridge SHA-256: {digest}")
     print("Target Device owner/lifetime symbol inventory")
