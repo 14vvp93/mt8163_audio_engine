@@ -9,14 +9,14 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc"
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+(FUNC|OBJECT|NOTYPE)\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
 DEVICE_TYPE = re.compile(r"(?:^|::)Device(?:::|$)", re.IGNORECASE)
 OWNER_HINT = re.compile(
     r"device|callback|owner|vector|list|weak|strong|sp<|wp<",
     re.IGNORECASE,
 )
-CALL_TARGET = re.compile(r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]+)>", re.IGNORECASE)
+CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
 
 
 def run(command: list[str]) -> str:
@@ -32,7 +32,7 @@ def run(command: list[str]) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -66,11 +66,11 @@ def main() -> int:
 
     constructors = [
         item for item in symbols
-        if item[2] == "FUNC" and re.search(r"(?:^|::)Device::Device\\(", item[3])
+        if item[2] == "FUNC" and re.search(r"(?:^|::)Device::Device\(", item[3])
     ]
     destructors = [
         item for item in symbols
-        if item[2] == "FUNC" and re.search(r"(?:^|::)Device::~Device\\(", item[3])
+        if item[2] == "FUNC" and re.search(r"(?:^|::)Device::~Device\(", item[3])
     ]
     owner_candidates = [
         item for item in symbols
@@ -84,7 +84,7 @@ def main() -> int:
 
     for label, candidates in (("CONSTRUCTOR", constructors), ("DESTRUCTOR", destructors)):
         for index, (address, size, _, name) in enumerate(candidates):
-            print(f"\\n===== {label} {index}: {name} @ 0x{address:08x}, size={size} =====")
+            print(f"\n===== {label} {index}: {name} @ 0x{address:08x}, size={size} =====")
             if size <= 0:
                 print("No function size recorded; disassembly skipped.")
                 continue
@@ -102,13 +102,13 @@ def main() -> int:
             print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
             print(disassembly.rstrip())
 
-    print("\\n===== GLOBAL / OWNER CANDIDATE SYMBOLS =====")
+    print("\n===== GLOBAL / OWNER CANDIDATE SYMBOLS =====")
     if not owner_candidates:
         print("No named OBJECT/NOTYPE owner candidates found in the ELF symbol table.")
     for address, size, kind, name in owner_candidates:
         print(f"{kind} 0x{address:08x} size={size} {name}")
 
-    print("\\n===== DEVICE-RELATED SYMBOLS =====")
+    print("\n===== DEVICE-RELATED SYMBOLS =====")
     device_symbols = [
         item for item in symbols
         if DEVICE_TYPE.search(item[3]) or "Callback" in item[3]
@@ -128,7 +128,7 @@ def main() -> int:
         )
 
     print(
-        "\\nStatic symbol/disassembly inventory only. It does not prove runtime "
+        "\nStatic symbol/disassembly inventory only. It does not prove runtime "
         "registration, owner pinning, destructor reachability, callback drain, "
         "or absence of stripped/indirect ownership code."
     )
