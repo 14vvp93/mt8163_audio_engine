@@ -55,6 +55,24 @@ def disassemble(binary: Path, start: int, end: int) -> str:
     )
 
 
+def read_elf_word(binary: Path, address: int) -> int:
+    output = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-s",
+            f"--start-address=0x{address:x}",
+            f"--stop-address=0x{address + 4:x}",
+            str(binary),
+        ]
+    )
+    for line in output.splitlines():
+        match = re.match(r"^\\s*([0-9a-fA-F]{8})\\s+((?:[0-9a-fA-F]{8}\\s*){1,4})", line)
+        if match and int(match.group(1), 16) == address:
+            raw = match.group(2).split()[0]
+            return int.from_bytes(bytes.fromhex(raw), byteorder="little")
+    raise RuntimeError(f"could not read ELF word at 0x{address:08x}")
+
+
 def parse_function_symbols(readelf_output: str) -> list[tuple[int, int, str]]:
     symbols: list[tuple[int, int, str]] = []
     pattern = re.compile(
@@ -359,6 +377,8 @@ def main() -> int:
     event_thread_functions = {
         "manager_unregister_by_type": "AudioEventThreadManager::unregisterCallback(android::AudioEventType)",
         "manager_unregister_specific": "AudioEventThreadManager::unregisterCallback(android::AudioEventType, void (*)(int, void*), void*)",
+        "manager_register": "AudioEventThreadManager::registerCallback(android::AudioEventType, void (*)(int, void*), void*)",
+        "manager_get_thread": "AudioEventThreadManager::getAudioEventThread(android::AudioEventType)",
         "event_thread_destructor": "AudioEventThread::~AudioEventThread()",
         "event_thread_loop": "AudioEventThread::eventThread(void*)",
         "event_thread_signal": "AudioEventThread::signal(void*)",
@@ -421,6 +441,67 @@ def main() -> int:
     require(
         all(match is not None for match in constructor_registration),
         "AudioALSAStreamManager constructor no longer registers event type 0 with this as callback cookie",
+    )
+
+    callback_literal = re.search(
+        r"^\\s*77220:.*ldr\\s+r1,\\s*\\[pc,\\s*#732\\].*@\\s*77504",
+        stream_constructor,
+        re.MULTILINE,
+    )
+    callback_cell_load = re.search(
+        r"^\\s*77228:.*ldr\\s+r2,\\s*\\[pc,\\s*r1\\]",
+        stream_constructor,
+        re.MULTILINE,
+    )
+    require(
+        callback_literal is not None and callback_cell_load is not None,
+        "StreamManager event callback pointer load sequence changed",
+    )
+    callback_cell = 0x00077230 + read_elf_word(binary, 0x00077504)
+    require(
+        callback_cell == 0x001929C8,
+        f"unexpected StreamManager event callback pointer cell: 0x{callback_cell:08x}",
+    )
+    callback_target_raw = read_elf_word(binary, callback_cell)
+    callback_target = callback_target_raw & ~1
+    require(callback_target != 0, "StreamManager event callback pointer is null in pinned factory ELF")
+    callback_symbols = [
+        (address, size, name)
+        for address, size, name in functions
+        if address <= callback_target < address + max(size, 1)
+    ]
+    require(
+        len(callback_symbols) == 1,
+        f"StreamManager event callback target 0x{callback_target:08x} does not resolve to exactly one FUNC symbol",
+    )
+    callback_symbol = callback_symbols[0]
+    callback_body = disassemble(
+        binary,
+        callback_symbol[0],
+        callback_symbol[0] + callback_symbol[1],
+    )
+    print(
+        "StreamManager AudioEventType(0) callback pointer: "
+        f"cell=0x{callback_cell:08x}, raw=0x{callback_target_raw:08x}, "
+        f"target=0x{callback_target:08x}, symbol={callback_symbol[2]}"
+    )
+    print("===== STREAM MANAGER EVENT CALLBACK TARGET =====")
+    print(callback_body.rstrip())
+
+    manager_register_body = event_thread_bodies["manager_register"]
+    manager_get_thread_body = event_thread_bodies["manager_get_thread"]
+    require(
+        "AudioEventThread::addCallback(void (*)(int, void*), void*)@plt" in manager_register_body
+        and "AudioEventThreadManager::getAudioEventThread(android::AudioEventType)@plt" in manager_register_body,
+        "AudioEventThreadManager::registerCallback no longer routes callback registration through getAudioEventThread/addCallback",
+    )
+    require(
+        "AudioEventThread::addCallback(void (*)(int, void*), void*)@plt" not in manager_get_thread_body,
+        "getAudioEventThread unexpectedly owns callback insertion; review changed registration path",
+    )
+    print(
+        "CONTRACT VERIFIED: event type 0 callback target resolves from the pinned ELF data cell "
+        f"to {callback_symbol[2]} at 0x{callback_target:08x}."
     )
 
     worker_loop = event_thread_bodies["event_thread_loop"]
