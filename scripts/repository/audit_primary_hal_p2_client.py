@@ -21,7 +21,7 @@ CALL_TARGET = re.compile(
     re.IGNORECASE,
 )
 SYMBOL_LINE = re.compile(
-    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\\S+\s+\\S+\s+\\S+\s+(.+?)\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
 
 
