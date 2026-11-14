@@ -64,7 +64,7 @@ def main() -> int:
         if not match:
             continue
         address_text, size_text, name = match.groups()
-        symbols.setdefault(name, []).append((int(address_text, 16), int(size_text, 10))
+        symbols.setdefault(name, []).append((int(address_text, 16), int(size_text, 10)))
 
     print(f"HIDL callback interface SHA-256: {digest}")
     print("Read-only HIDL callback proxy/stub transaction disassembly")
