@@ -13,6 +13,7 @@ HAL_BUILD = ROOT / "primary-hal/Android.bp"
 HAL_SOURCE = ROOT / "primary-hal/src/primary_hal.cpp"
 EVIDENCE_MATRIX = ROOT / "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
 SOURCE_REVIEW = ROOT / "docs/P2_VENDOR_SOURCE_CORROBORATION.md"
+CALLER_AUDIT = ROOT / "docs/P2_FACTORY_CALLBACK_CALLER_AUDIT_2026-11-14.md"
 
 CALLBACKS = (
     "xWayPlay_Start", "xWayPlay_Stop", "xWayPlay_Write",
@@ -54,6 +55,7 @@ def main() -> int:
         source = HAL_SOURCE.read_text(encoding="utf-8")
         matrix = EVIDENCE_MATRIX.read_text(encoding="utf-8")
         source_review = SOURCE_REVIEW.read_text(encoding="utf-8")
+        caller_audit = CALLER_AUDIT.read_text(encoding="utf-8")
 
         required_offsets = set(range(156, 220, 4))
         table_rows = re.findall(
@@ -68,6 +70,22 @@ def main() -> int:
         missing_callbacks = [name for name in CALLBACKS if f"`{name}`" not in matrix]
         require(not missing_callbacks, f"evidence matrix callback inventory incomplete: {missing_callbacks}")
         require("Status: **OPEN" in matrix, "P2 evidence matrix must remain explicitly open")
+        require(
+            "Factory Private Callback Caller Audit" in matrix,
+            "P2 evidence matrix must link the detailed caller audit",
+        )
+        for caller_gate in (
+            "No private factory callback is currently integration-ready",
+            "Binder flags 0",
+            "No separately identified xWay caller was found",
+            "argument order differs",
+            "setParametersByCallback",
+            "P2 remains OPEN",
+        ):
+            require(
+                caller_gate.lower() in caller_audit.lower(),
+                f"factory callback caller audit missing required classification: {caller_gate}",
+            )
         for source_gate in (
             "ABI warning",
             "contains neither",
