@@ -80,8 +80,8 @@ def extract_gnu_debugdata(elf_data: bytes) -> bytes | None:
     sections: list[tuple[int, int, int, int]] = []
     for index in range(section_count):
         offset = section_offset + index * section_entry_size
-        name_offset, section_type, file_offset, size = struct.unpack_from(
-            "<IIII", elf_data, offset
+        name_offset, section_type, _, _, file_offset, size = struct.unpack_from(
+            "<IIIIII", elf_data, offset
         )
         sections.append((name_offset, section_type, file_offset, size))
 
