@@ -531,8 +531,8 @@ CI [run 43607609463](https://github.com/14vvp93/mt8163_audio_engine/actions/runs
 | Registration function | `0x000ce8fc`, 224 bytes |
 | Callback argument | `r1 → r5` at `0x000ce904` |
 | Cookie argument | `r2 → r4` at `0x000ce908` |
-| Callback global GOT displacement | `0x000c4248` → effective slot `0x001a2b80`, store at `0x000ce934` |
-| Cookie global GOT displacement | `0x000c4238` → effective slot `0x001a2b7c`, store at `0x000ce940` |
+| Callback global GOT displacement | `0x000c4248` → effective slot `0x00192b80`, store at `0x000ce934` |
+| Cookie global GOT displacement | `0x000c4238` → effective slot `0x00192b7c`, store at `0x000ce940` |
 | Dispatch function | `0x000cf108`, 396 bytes |
 | Callback load / indirect call | `0x000cf1f8..0x000cf218`, `BLX r3` |
 | Cookie load | `0x000cf208..0x000cf210` |
@@ -553,7 +553,7 @@ For the pinned bridge SHA-256 `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c2
 - On successful registration it stores the supplied HIDL callback strong reference at `Device+0x24`.
 - The 10-byte `MTKPrimaryDevice::setupParametersCallback` wrapper forwards to the base Device method.
 
-The slot mapping and registration arguments are established. The `syncCallback` body is now preserved and inspected in artifact [14121078085](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447/artifacts/14121078085). Its event-zero path dispatches through the callback interface at `Device+0x24`; nonzero events take a log/error path. This setup callback channel is distinct from the `0xd4` parameter-changed callback channel at `Device+0x28`. The effective setup callback/cookie GOT slots are `0x001a2b80` and `0x001a2b7c`; prior `0xc4248/0xc4238` values are PC-relative displacements, not absolute addresses. Upstream callers and lifetime/quiescence remain open. Do not treat the HIDL strong reference as proof that the raw `Device*` cookie remains valid during concurrent factory dispatch. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+The slot mapping and registration arguments are established. The `syncCallback` body is now preserved and inspected in artifact [14121078085](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447/artifacts/14121078085). Its event-zero path dispatches through the callback interface at `Device+0x24`; nonzero events take a log/error path. This setup callback channel is distinct from the `0xd4` parameter-changed callback channel at `Device+0x28`. The effective setup callback/cookie GOT slots are `0x00192b80` and `0x00192b7c`; prior `0xc4248/0xc4238` values are PC-relative displacements, not absolute addresses. Upstream callers and lifetime/quiescence remain open. Do not treat the HIDL strong reference as proof that the raw `Device*` cookie remains valid during concurrent factory dispatch. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
 
 
 ## 2026-11-14 — syncCallback and two-channel lifecycle evidence
@@ -567,6 +567,17 @@ CI [run 43613705447](https://github.com/14vvp93/mt8163_audio_engine/actions/runs
 
 For `syncCallback` at `0x0001cb4c` (240 bytes), event zero converts the parameter string and invokes the HIDL callback interface through vtable offset `0x34`; nonzero events take a logging/error branch. No explicit mutex/admission gate/in-flight drain is visible in this body.
 
-The setup callback and cookie are stored independently in factory GOT slots `0x001a2b80` and `0x001a2b7c`. The literals `0x000c4248`, `0x000c4238`, `0x000c3978`, and `0x000c3968` are PC-relative displacements used to resolve those slots, not absolute addresses. The factory auditor now asserts the literal words and effective PC-relative slot calculations.
+The setup callback and cookie are stored independently in factory GOT slots `0x00192b80` and `0x00192b7c`. The literals `0x000c4248`, `0x000c4238`, `0x000c3978`, and `0x000c3968` are PC-relative displacements used to resolve those slots, not absolute addresses. The factory auditor now asserts the literal words and effective PC-relative slot calculations.
 
-HIDL Device destruction closes the legacy HAL device before dropping callback strong refs at `+0x24` and `+0x28`. The audited Device destructor does not call private setup clear slot `0xd0`; the factory AudioALSAHardware destructor body does not reference the setup callback/cookie GOT slots. These static observations leave a potential stale-cookie/replacement race surface; they do not prove an observed runtime race. Do not integrate either callback channel into AudioCore until caller serialization, owner lifetime, replacement and in-flight drain are proven. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+HIDL Device destruction closes the legacy HAL device before dropping callback strong refs at `+0x24` and `+0x28`. The audited Device destructor does not call private setup clear slot `0xd0`; the factory AudioALSAHardware destructor clears the setup cookie GOT slot `0x00192b7c` and callback GOT slot `0x00192b80`, in that order, without a visible in-flight drain. A dispatch that loaded the old pair before those stores may still be executing; this is a static race surface, not a proven runtime race. Do not integrate either callback channel into AudioCore until caller serialization, owner lifetime, replacement and in-flight drain are proven. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+### Factory destructor clear regression
+
+The factory callback auditor now verifies the pinned destructor at `0x000c56e4`:
+- `0x000c576c` clears cookie slot `0x00192b7c`.
+- `0x000c5778` clears callback slot `0x00192b80`.
+- The order is cookie first, callback second; no wait/drain is visible between them.
+- Synthetic unit tests cover GOT displacement resolution, the shared effective registration/dispatch slots, changed literal rejection, and destructor clear ordering.
+
+The global callback pair is therefore cleared by factory destruction, but callback quiescence is still unproven. Registration and dispatch use separate loads/stores; a callback already admitted with the old pair can outlive the global clear. P2 remains **OPEN**.
