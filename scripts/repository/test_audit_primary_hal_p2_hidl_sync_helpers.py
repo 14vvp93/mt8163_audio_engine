@@ -116,6 +116,20 @@ class ParseFunctionsTests(unittest.TestCase):
             "INCOMPLETE",
         )
 
+    def test_incomplete_resolution_fails_the_audit_gate(self) -> None:
+        resolved = list(auditor.HELPER_TARGETS[:-1])
+        unresolved = [auditor.HELPER_TARGETS[-1]]
+        self.assertEqual(
+            auditor.helper_target_resolution_exit_code(resolved, unresolved),
+            1,
+        )
+
+    def test_complete_resolution_passes_the_audit_gate(self) -> None:
+        self.assertEqual(
+            auditor.helper_target_resolution_exit_code(list(auditor.HELPER_TARGETS), []),
+            0,
+        )
+
     def test_unresolved_target_is_reported_without_inventing_a_range(self) -> None:
         lines = auditor.unresolved_report_lines(
             0x284DC,
