@@ -65,7 +65,7 @@ def read_elf_word(binary: Path, address: int) -> int:
     )
     for line in output.splitlines():
         match = re.match(
-            r"^\\s*([0-9a-fA-F]{4,8})\\s+((?:[0-9a-fA-F]{8}\\s*){1,4})",
+            r"^\s*([0-9a-fA-F]{4,8})\s+((?:[0-9a-fA-F]{8}\s*){1,4})",
             line,
         )
         if match is None:
