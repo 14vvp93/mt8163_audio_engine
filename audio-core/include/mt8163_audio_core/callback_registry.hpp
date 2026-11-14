@@ -177,7 +177,10 @@ public:
 
             for (std::size_t i = 0U; i < slots_.size(); ++i) {
                 Slot& slot = slots_[i];
-                if (!slot.active) continue;
+                if (!slot.active ||
+                    slot.in_flight == std::numeric_limits<std::uint32_t>::max()) {
+                    continue;
+                }
                 ++slot.in_flight;
                 pending[count++] = DispatchItem{i, slot.id, slot.callback,
                                                 slot.cookie};
