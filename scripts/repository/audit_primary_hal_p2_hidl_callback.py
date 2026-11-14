@@ -79,16 +79,18 @@ def main() -> int:
         for index, (address, size) in enumerate(symbols[name]):
             if size <= 0:
                 continue
+            code_address = address & ~1
             disassembly = run([
                 "arm-linux-gnueabi-objdump",
                 "-d",
                 "-C",
-                f"--start-address=0x{address:x}",
-                f"--stop-address=0x{address + size:x}",
+                f"--start-address=0x{code_address:x}",
+                f"--stop-address=0x{code_address + size:x}",
                 str(binary),
             ])
             calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
-            print(f"\n===== {name} [{index}] @ 0x{address:08x}, size={size} =====")
+            isa = "Thumb" if address & 1 else "ARM"
+            print(f"\n===== {name} [{index}] @ 0x{code_address:08x}, size={size}, ISA={isa} =====")
             print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
             print(disassembly.rstrip())
 
