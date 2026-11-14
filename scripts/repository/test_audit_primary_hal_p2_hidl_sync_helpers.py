@@ -92,6 +92,23 @@ class ParseFunctionsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no FUNC symbol contains"):
             auditor.resolve_function(0x30000, [(0x20000, 0x100, "unrelated()", False)])
 
+    def test_all_verified_targets_report_complete_resolution(self) -> None:
+        self.assertEqual(
+            auditor.helper_target_resolution_status(
+                list(auditor.HELPER_TARGETS),
+                [],
+            ),
+            "COMPLETE",
+        )
+
+    def test_any_unresolved_target_keeps_resolution_incomplete(self) -> None:
+        resolved = list(auditor.HELPER_TARGETS[:-1])
+        unresolved = [auditor.HELPER_TARGETS[-1]]
+        self.assertEqual(
+            auditor.helper_target_resolution_status(resolved, unresolved),
+            "INCOMPLETE",
+        )
+
     def test_unresolved_target_is_reported_without_inventing_a_range(self) -> None:
         lines = auditor.unresolved_report_lines(
             0x284DC,
