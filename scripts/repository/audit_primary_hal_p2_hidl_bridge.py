@@ -108,9 +108,57 @@ def main() -> int:
             print("Visible lock calls: " + (", ".join(locks) if locks else "none detected"))
             print(output.rstrip())
 
+    destructor_name = "android::hardware::audio::V4_0::implementation::Device::~Device()"
+    destructor_symbols = [
+        item for item in symbols_output.splitlines()
+        if re.search(r"\sFUNC\s+\S+\s+\S+\s+\S+\s+" + re.escape(destructor_name) + r"\s*$", item)
+    ]
+    parsed_destructors: list[tuple[int, int]] = []
+    for line in destructor_symbols:
+        match = re.match(
+            r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+",
+            line,
+        )
+        if match:
+            parsed_destructors.append((int(match.group(1), 16), int(match.group(2), 10)))
+    complete_destructors = [item for item in parsed_destructors if item[1] == 196]
+    if len(complete_destructors) != 1:
+        raise RuntimeError(
+            f"expected one complete Device destructor of 196 bytes, found {len(complete_destructors)}"
+        )
+    destructor_address, destructor_size = complete_destructors[0]
+    destructor_code = destructor_address & ~1
+    destructor_command = ["arm-linux-gnueabi-objdump", "-d", "-C", "-M", "force-thumb"]
+    destructor_command.extend([
+        f"--start-address=0x{destructor_code:x}",
+        f"--stop-address=0x{destructor_code + destructor_size:x}",
+        str(binary),
+    ])
+    destructor = run(destructor_command)
+    if not re.search(rf"^\s*0*{destructor_code:x}(?:\s*<|:\s+)", destructor, re.MULTILINE):
+        raise RuntimeError("complete Device destructor disassembly start address mismatch")
+
     thunk = reports[FUNCTIONS[0]]
     setter = reports[FUNCTIONS[1]]
     clearer = reports[FUNCTIONS[2]]
+
+    close_dispatch = re.search(
+        r"ldr\s+r0,\s*\[r4,\s*#8\][\s\S]*?"
+        r"ldr\s+r1,\s*\[r0,\s*#60\][\s\S]*?blx\s+r1",
+        destructor,
+        re.IGNORECASE,
+    )
+    callback_member_release = re.search(
+        r"ldr\.w?\s+r0,\s*\[r1,\s*#40\]!",
+        destructor,
+        re.IGNORECASE,
+    )
+    if not close_dispatch or not callback_member_release:
+        raise RuntimeError("Device destructor close/member-release sequence changed")
+    if close_dispatch.start() >= callback_member_release.start():
+        raise RuntimeError("Device destructor no longer invokes legacy close before releasing callback member")
+    if re.search(r"ldr\.w?\s+r2,\s*\[r0,\s*#216\]", destructor, re.IGNORECASE):
+        raise RuntimeError("Device destructor unexpectedly gained a direct legacy clear-slot load")
 
     if not re.search(r"\[r0,\s*#40\]", thunk, re.IGNORECASE):
         raise RuntimeError("callback thunk no longer accesses the expected Device callback member at +0x28")
@@ -154,6 +202,8 @@ def main() -> int:
     print("- clearer invokes the legacy HAL clear slot at audio_hw_device+0xd8")
     print("- setter passes Device (this) as the callback cookie in r2")
     print("- clear preserves Device (this) in r1 as the matching cookie argument")
+    print("- complete Device destructor calls legacy close (+0x3c) before releasing Device+0x28 callback member")
+    print("- destructor has no direct legacy clear-slot (+0xd8) call")
     print("- no runtime Device destruction or callback quiescence is inferred")
     return 0
 
