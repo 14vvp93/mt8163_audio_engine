@@ -104,6 +104,72 @@ class ParseFunctionsTests(unittest.TestCase):
         self.assertFalse(any("FULL_FUNCTION_RANGE" in line for line in lines))
 
 
+    def test_resolves_exact_thumb_to_arm_veneer(self) -> None:
+        names = b"\\0.shstrtab\\0.text\\0"
+        section_table_offset = 52
+        section_count = 3
+        names_offset = section_table_offset + section_count * 40
+        text_address = 0x1000
+        text_offset = names_offset + len(names)
+        text = bytearray(0x100)
+        target = 0x1020
+        target_offset = target - text_address
+        struct.pack_into(
+            "<HHIII", text, target_offset,
+            0x4778, 0x46C0, 0xE59FC000, 0xE08CF00F, 0x20,
+        )
+        data = bytearray(text_offset + len(text))
+        data[:4] = b"\\x7fELF"
+        data[4] = 1
+        data[5] = 1
+        struct.pack_into("<I", data, 32, section_table_offset)
+        struct.pack_into("<HHH", data, 46, 40, section_count, 1)
+        struct.pack_into(
+            "<IIIIIIIIII", data, section_table_offset + 40,
+            names.index(b".shstrtab"), 3, 0, 0, names_offset, len(names), 0, 0, 1, 0,
+        )
+        struct.pack_into(
+            "<IIIIIIIIII", data, section_table_offset + 80,
+            names.index(b".text"), 1, 0x6, text_address, text_offset, len(text), 0, 0, 4, 0,
+        )
+        data[names_offset:names_offset + len(names)] = names
+        data[text_offset:text_offset + len(text)] = text
+
+        with patch.object(Path, "read_bytes", return_value=bytes(data)):
+            self.assertEqual(
+                auditor.resolve_veneer_target(Path("bridge.so"), target),
+                0x1050,
+            )
+
+    def test_rejects_non_veneer_helper_target(self) -> None:
+        names = b"\\0.shstrtab\\0.text\\0"
+        section_table_offset = 52
+        section_count = 3
+        names_offset = section_table_offset + section_count * 40
+        text_address = 0x1000
+        text_offset = names_offset + len(names)
+        text = bytes(0x100)
+        data = bytearray(text_offset + len(text))
+        data[:4] = b"\\x7fELF"
+        data[4] = 1
+        data[5] = 1
+        struct.pack_into("<I", data, 32, section_table_offset)
+        struct.pack_into("<HHH", data, 46, 40, section_count, 1)
+        struct.pack_into(
+            "<IIIIIIIIII", data, section_table_offset + 40,
+            names.index(b".shstrtab"), 3, 0, 0, names_offset, len(names), 0, 0, 1, 0,
+        )
+        struct.pack_into(
+            "<IIIIIIIIII", data, section_table_offset + 80,
+            names.index(b".text"), 1, 0x6, text_address, text_offset, len(text), 0, 0, 4, 0,
+        )
+        data[names_offset:names_offset + len(names)] = names
+        data[text_offset:text_offset + len(text)] = text
+
+        with patch.object(Path, "read_bytes", return_value=bytes(data)):
+            with self.assertRaisesRegex(RuntimeError, "not the expected Thumb-to-ARM veneer"):
+                auditor.resolve_veneer_target(Path("bridge.so"), 0x1020)
+
     def test_disassembles_bounded_thumb_target_window(self) -> None:
         with patch.object(auditor, "run", return_value="bounded disassembly") as run:
             output = auditor.disassemble_target_window(Path("bridge.so"), 0x284DC)
