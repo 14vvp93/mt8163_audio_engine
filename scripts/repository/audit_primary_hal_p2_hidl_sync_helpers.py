@@ -44,8 +44,8 @@ def run(command: list[str]) -> str:
     return result.stdout
 
 
-def parse_functions(symbols_output: str) -> list[tuple[int, int, str]]:
-    functions: list[tuple[int, int, str]] = []
+def parse_functions(symbols_output: str) -> list[tuple[int, int, str, bool]]:
+    functions: list[tuple[int, int, str, bool]] =
     for line in symbols_output.splitlines():
         match = SYMBOL_LINE.match(line)
         if not match:
@@ -54,13 +54,13 @@ def parse_functions(symbols_output: str) -> list[tuple[int, int, str]]:
         address = int(raw_address, 16)
         size = int(raw_size, 10)
         if size > 0:
-            functions.append((address & ~1, size, name))
+            functions.append((address & ~1, size, name, bool(address & 1)))
     return functions
 
 
 def resolve_function(
-    target: int, functions: list[tuple[int, int, str]]
-) -> tuple[int, int, str]:
+    target: int, functions: list[tuple[int, int, str, bool]]
+) -> tuple[int, int, str, bool]:
     matches = [
         item for item in functions
         if item[0] <= target < item[0] + item[1]
@@ -71,7 +71,7 @@ def resolve_function(
     smallest = matches[0]
     same_extent = [item for item in matches if item[:2] == smallest[:2]]
     names = sorted({item[2] for item in same_extent}, key=str.casefold)
-    return smallest[0], smallest[1], " | ".join(names)
+    return smallest[0], smallest[1], " | ".join(names), smallest[3]
 
 
 def disassemble(binary: Path, address: int, size: int, thumb: bool) -> str:
@@ -111,7 +111,7 @@ def main() -> int:
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
-    resolved: set[tuple[int, int, str]] = set()
+    resolved: set[tuple[int, int, str, bool]] = set()
     for target in HELPER_TARGETS:
         function = resolve_function(target, functions)
         resolved.add(function)
@@ -120,8 +120,8 @@ def main() -> int:
             f"FUNC 0x{function[0]:08x} size={function[1]} {function[2]}"
         )
 
-    for address, size, name in sorted(resolved):
-        disassembly = disassemble(binary, address, size, bool(address & 1))
+    for address, size, name, thumb in sorted(resolved):
+        disassembly = disassemble(binary, address, size, thumb)
         reports.extend([
             "",
             f"FUNCTION 0x{address:08x} size={size} {name}",
