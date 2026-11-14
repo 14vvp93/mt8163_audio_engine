@@ -584,3 +584,17 @@ The global callback pair is therefore cleared by factory destruction, but callba
 
 
 CI regression [43617157323](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323) passed all 3 jobs. Artifact [14121669562](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323/artifacts/14121669562), ZIP SHA-256 `5dfe84cc04a98647adca89770eb7f73a5e324b9effedbf3ccf67a8ecbefb4319`. The factory audit verified both effective GOT slots and the destructor clear order (cookie `0x00192b7c` before callback `0x00192b80`). Four synthetic unit tests passed. No in-flight drain was established; P2 remains **OPEN**.
+
+
+## 2026-11-14 — factory callback regression rerun and HIDL helper audit queued
+
+Workflow run [43617327107](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617327107) completed with all three jobs successful on audited commit `efc40cba29af57f3c093a7d6b37ba6409a52c189`:
+- P2 contract inventory and fail-closed gates: PASS.
+- Reproducible factory binary and external-client scan: PASS.
+- Aggregate offline evidence gate: PASS.
+
+The factory audit preserved 16 reports in artifact [14122478954](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617327107/artifacts/14122478954), ZIP SHA-256 `eac369dc8cacf1af624cf0ede3e906c04ef0a5b2f6317209160c0f783763f780`. It reconfirmed the pinned factory/HIDL binary identities, callback xref/dataflow assertions, setup-callback GOT clear ordering, and the external firmware scan limitations. This run is a successful static/offline audit; it does not close callback owner lifetime, registration replacement, or in-flight drain.
+
+After that run, feature advanced to `77c3741c4d3afc29298417b832b53af295bd3a3b` with the new read-only `audit_primary_hal_p2_hidl_sync_helpers.py` and its workflow integration. The helper auditor disassembles the direct helper targets reached from `Device::syncCallback` so reference ownership and lifetime behavior can be assessed from instructions/dataflow rather than helper names. **Run 43617327107 predates those additions and does not validate this helper auditor.** The current feature update is intentionally triggering a fresh P2 workflow; its artifact must be inspected before assigning semantics to those helpers.
+
+Current branch check at this update: `feature=77c3741c4d3afc29298417b832b53af295bd3a3b`; `main=cc2fd72ed118c8695ccbe9556f5b5841efc0af59` (unchanged). P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
