@@ -97,9 +97,27 @@ def main() -> int:
                     f"0x{code_address:x}: {name}\n{preview}"
                 )
             calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
+            transaction_contract = None
+            if name == FUNCTIONS[0]:
+                synchronous_signature = (
+                    re.search(r"\\bmovs\\s+r1,\\s*#1\\b", disassembly, re.IGNORECASE)
+                    and re.search(r"\\bmov\\.w\\s+sl,\\s*#0\\b", disassembly, re.IGNORECASE)
+                    and re.search(r"\\bstrd\\s+sl,\\s*r8,\\s*\\[sp\\]", disassembly, re.IGNORECASE)
+                )
+                if not synchronous_signature:
+                    raise RuntimeError(
+                        "pinned Bp proxy no longer matches the audited transaction "
+                        "signature (transaction code 1, Binder flags 0)"
+                    )
+                transaction_contract = (
+                    "Binder transaction: code=1, flags=0 (synchronous; "
+                    "not FLAG_ONEWAY)"
+                )
             isa = "Thumb" if address & 1 else "ARM"
             print(f"\n===== {name} [{index}] @ 0x{code_address:08x}, size={size}, ISA={isa} =====")
             print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
+            if transaction_contract:
+                print(transaction_contract)
             print(disassembly.rstrip())
 
     print("\nNo runtime Binder scheduling or callback completion behavior is inferred.")
