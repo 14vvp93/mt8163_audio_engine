@@ -17,6 +17,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_atci.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_callback.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
+      - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   pull_request:
     branches: [feature]
@@ -77,7 +78,8 @@ jobs:
             scripts/repository/audit_primary_hal_p2_client.py \
             scripts/repository/audit_primary_hal_p2_atci.py \
             scripts/repository/audit_primary_hal_p2_hidl_callback.py \
-            scripts/repository/audit_primary_hal_p2_hidl_bridge.py
+            scripts/repository/audit_primary_hal_p2_hidl_bridge.py \
+            scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
         run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
@@ -100,6 +102,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_atci.py
             scripts/repository/audit_primary_hal_p2_hidl_callback.py
             scripts/repository/audit_primary_hal_p2_hidl_bridge.py
+            scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py
           sparse-checkout-cone-mode: false
       - name: Checkout immutable public firmware dataset
         uses: actions/checkout@v5
@@ -157,6 +160,7 @@ jobs:
           bridge="factory-firmware/firmware/extracted/vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so"
           test -s "$bridge"
           python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" | tee p2-hidl-bridge-lifecycle.txt
+          python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" | tee p2-hidl-device-lifetime.txt
       - name: Preserve reproducible P2 evidence
         uses: actions/upload-artifact@v6
         with:
@@ -170,6 +174,7 @@ jobs:
             p2-atci-client-callers.txt
             p2-hidl-callback-transaction.txt
             p2-hidl-bridge-lifecycle.txt
+            p2-hidl-device-lifetime.txt
           if-no-files-found: error
           retention-days: 30
 
