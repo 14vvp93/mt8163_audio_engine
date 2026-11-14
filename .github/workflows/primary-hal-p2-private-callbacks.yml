@@ -32,8 +32,10 @@ on:
 permissions:
   contents: read
 
+# Each audit run is read-only and has isolated artifacts; use a unique group
+# so GitHub does not replace an older pending run with a newer request.
 concurrency:
-  group: primary-hal-p2-${{ github.ref }}
+  group: primary-hal-p2-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
