@@ -238,3 +238,18 @@ In `AudioALSAHardware::~AudioALSAHardware` at `0x000c56e4`:
 - Cookie is cleared before callback. The destructor does not show a lock acquisition or in-flight callback drain around these stores.
 
 This means the global pair is not left populated after this destructor completes. It does not make teardown safe: a dispatch that loaded both old values before the stores can still be executing, and the clear sequence does not wait for it. Registration likewise writes callback and cookie as separate stores, while dispatch loads them separately. P2 remains OPEN.
+
+
+### CI regression result — run 43617157323
+
+[Run 43617157323](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323) completed with all 3 jobs PASS on code commit `a484f64942157492561380de5374455d4f756fd9`. Artifact [14121669562](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323/artifacts/14121669562), ZIP SHA-256 `5dfe84cc04a98647adca89770eb7f73a5e324b9effedbf3ccf67a8ecbefb4319`.
+
+The factory report emits:
+- `CALLBACK_DATAFLOW_ASSERTIONS: PASS`
+- `SETUP_CALLBACK_GLOBAL_GOT_ASSERTIONS: PASS`
+- `SETUP_CALLBACK_GLOBAL_CALLBACK_GOT=0x00192b80`
+- `SETUP_CALLBACK_GLOBAL_COOKIE_GOT=0x00192b7c`
+- `SETUP_CALLBACK_GLOBAL_CLEAR_ASSERTIONS: PASS`
+- `SETUP_CALLBACK_GLOBAL_CLEAR_ORDER=cookie(0x00192b7c),callback(0x00192b80)`
+
+The contract job also ran 4 synthetic unit tests successfully, including rejection of a changed literal and verification of cookie-before-callback teardown clearing. These are static offline regressions only; they do not establish runtime quiescence or close P2.
