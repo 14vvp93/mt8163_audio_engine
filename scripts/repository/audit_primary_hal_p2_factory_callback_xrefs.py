@@ -69,6 +69,114 @@ def require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+
+@dataclass(frozen=True)
+class InstructionRecord:
+    address: int
+    mnemonic: str
+    operand: str
+
+
+def parse_function_instructions(
+    disassembly: str,
+    function_prefix: str,
+) -> list[InstructionRecord]:
+    records: list[InstructionRecord] = []
+    current_function = ""
+    for line in disassembly.splitlines():
+        header = FUNCTION_HEADER.match(line)
+        if header is not None:
+            current_function = header.group(2)
+            continue
+        if not current_function.startswith(function_prefix):
+            continue
+        match = INSTRUCTION.match(line)
+        if match is None:
+            continue
+        address_text, mnemonic, operand = match.groups()
+        records.append(
+            InstructionRecord(int(address_text, 16), mnemonic.lower(), operand.strip())
+        )
+    return records
+
+
+def normalize_operand(operand: str) -> str:
+    return re.sub(r"\\s+", "", operand.lower())
+
+
+def require_instruction(
+    records: list[InstructionRecord],
+    address: int,
+    mnemonic: str,
+    operand: str,
+) -> int:
+    matches = [index for index, item in enumerate(records) if item.address == address]
+    require(len(matches) == 1, f"expected one instruction at 0x{address:08x}")
+    index = matches[0]
+    instruction = records[index]
+    require(
+        instruction.mnemonic == mnemonic
+        and normalize_operand(instruction.operand) == normalize_operand(operand),
+        f"unexpected instruction at 0x{address:08x}: "
+        f"{instruction.mnemonic} {instruction.operand}",
+    )
+    return index
+
+
+def verify_callback_dataflow(disassembly: str) -> None:
+    dispatch = parse_function_instructions(
+        disassembly, "android::AudioALSAHardware::onAudioParameterChangedCallback("
+    )
+    require(dispatch, "parameter callback dispatcher instructions missing")
+    dispatch_indices = [
+        require_instruction(dispatch, address, mnemonic, operand)
+        for address, mnemonic, operand in (
+            (0x000CF00C, "ldr", "r0, [sl, #948]"),
+            (0x000CF010, "ldr", "r0, [r0, r7, lsl #2]"),
+            (0x000CF014, "ldr", "r1, [r0, #4]"),
+            (0x000CF018, "ldr", "r2, [r0]"),
+            (0x000CF01C, "mov", "r0, r9"),
+            (0x000CF020, "blx", "r2"),
+            (0x000CF050, "bl", "47e04 <alock_unlock@plt>"),
+        )
+    ]
+    require(
+        dispatch_indices == sorted(dispatch_indices),
+        "parameter callback dispatch order or unlock ordering changed",
+    )
+    require_instruction(dispatch, 0x000CEF60, "bl", "47da4 <alock_lock_ms@plt>")
+    require_instruction(dispatch, 0x000CEF64, "cmp", "r0, #0")
+    require_instruction(
+        dispatch,
+        0x000CEF68,
+        "beq",
+        "cefc4 <android::AudioALSAHardware::onAudioParameterChangedCallback(char const*)@@Base+0xac>",
+    )
+
+    global_callback = parse_function_instructions(
+        disassembly, "android::AudioALSAHardware::setParametersByCallback("
+    )
+    require(global_callback, "global parameter callback instructions missing")
+    global_indices = [
+        require_instruction(global_callback, address, mnemonic, operand)
+        for address, mnemonic, operand in (
+            (0x000CF1F8, "ldr", "r0, [pc, #108]"),
+            (0x000CF200, "ldr", "r0, [pc, r0]"),
+            (0x000CF204, "ldr", "r3, [r0]"),
+            (0x000CF208, "ldr", "r0, [pc, #96]"),
+            (0x000CF20C, "ldr", "r0, [pc, r0]"),
+            (0x000CF210, "ldr", "r2, [r0]"),
+            (0x000CF214, "mov", "r0, #0"),
+            (0x000CF218, "blx", "r3"),
+        )
+    ]
+    require(
+        global_indices == sorted(global_indices),
+        "global callback/cookie load or BLX order changed",
+    )
+    require_instruction(global_callback, 0x000CF1FC, "mov", "r1, r8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(
@@ -99,6 +207,9 @@ def main() -> int:
         selected[target] = matches
 
     disassembly = run(["arm-linux-gnueabi-objdump", "-dr", "-C", str(binary)], timeout=240)
+    verify_callback_dataflow(disassembly)
+    print("CALLBACK_DATAFLOW_ASSERTIONS: PASS")
+
     ordered_symbols = sorted(symbols, key=lambda symbol: (symbol.address, -symbol.size))
     callsites: list[CallSite] = []
     current_function = "<unknown>"
