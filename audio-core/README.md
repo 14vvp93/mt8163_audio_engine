@@ -27,7 +27,7 @@ The mute arbiter is a control-plane object. One serialized AudioCore control con
 
 ## Validation
 
-The CMake targets `mt8163_audio_core_tests`, `mt8163_audio_core_session_tests`, `mt8163_audio_core_coordinator_tests`, `mt8163_audio_core_hardware_tests` and `mt8163_audio_core_snapshot_tests` cover mute ownership, CD3313 reason aggregation, session lifecycle, fixed capacity, snapshot slot pinning and concurrent readers. The snapshot test runs 100,000 writer updates with two readers. They are included in the `pcm-dsp` host CMake test suite.
+The CMake targets `mt8163_audio_core_tests`, `mt8163_audio_core_session_tests`, `mt8163_audio_core_coordinator_tests`, `mt8163_audio_core_hardware_tests`, `mt8163_audio_core_snapshot_tests` and `mt8163_audio_core_callback_registry_tests` cover mute ownership, CD3313 reason aggregation, session lifecycle, fixed capacity, snapshot slot pinning, concurrent readers, callback admission closure and in-flight drain. The callback lifetime contract is documented in [AudioCore Callback Registry Contract](../docs/AUDIOCORE_CALLBACK_REGISTRY_CONTRACT.md). The snapshot test runs 100,000 writer updates with two readers. They are included in the `pcm-dsp` host CMake test suite.
 
 ## Not implemented yet
 
