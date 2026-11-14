@@ -146,3 +146,47 @@ The target `clearAudioParameterChangedCallback(cookie)` body at `0x000cecc0` use
 The separate `setupParametersCallback(callback, cookie)` body at `0x000ce8fc` stores callback and cookie in global locations and contains no visible `alock_lock_ms`, `alock_unlock`, pthread mutex or condition-variable call in its body. Do not assume it shares the vector registry's locking protocol.
 
 **Important boundary:** this proves locking of registration/removal mutations only. It does not yet prove how `onAudioParameterChangedCallback` / `setParametersByCallback` snapshot or iterate the vector, whether invocation holds the same lock, whether callbacks are invoked outside the lock, or whether clear waits for in-flight callbacks. The newly expanded audit now includes both dispatch methods and will determine their visible synchronization and iteration behavior. Do not equate the registry lock with an in-flight callback drain.
+
+## 2026-11-14 callback dispatch-versus-clear audit
+
+Workflow run: [43566157662](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43566157662)  
+Audited code commit: `c077c52231db6f721ec3ddbf38b6a8757606a0b7`  
+Factory SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`  
+Artifact ID: `14102211955`  
+Artifact ZIP SHA-256: `9e8c08c71dddcb83b6e9de1384b595d6ed89e16e183586c5340c6d637ed390ad`
+
+All 25 required target symbols resolved and were disassembled; the new synchronization scan also recognized `alock_lock_ms` and `alock_unlock`.
+
+### Dispatch behavior
+
+`AudioALSAHardware::onAudioParameterChangedCallback(char const*)` at `0x000cef18`, size 496:
+- obtains the same per-device lock at `this+0x3ac`;
+- reads the callback vector at `this+0x3b0` and its size at `this+0x3b8`;
+- iterates each 8-byte entry, loads the cookie from entry offset `+4`, loads the function pointer from entry offset `+0`, and invokes the function pointer with the changed-parameter string;
+- unlocks after the callback loop.
+
+Therefore, on the successful-lock path, callbacks are invoked while the registry lock is held. A concurrent clear using the same lock cannot remove an entry until the current dispatch releases the lock. This is a lock-based in-flight barrier only while lock acquisition succeeds.
+
+### Critical lock-failure behavior
+
+In all three target methods—`setAudioParameterChangedCallback`, `clearAudioParameterChangedCallback`, and `onAudioParameterChangedCallback`—the result of `alock_lock_ms` is checked. A nonzero result enters a warning/logging branch, then falls through into the vector operation rather than returning or aborting. The method can consequently mutate or traverse/invoke the callback vector without holding the lock when lock acquisition fails.
+
+This invalidates any unconditional claim that the factory registry is race-free or that clear always drains in-flight callbacks. The successful-lock path serializes dispatch with clear; the lock-failure path does not. Static evidence does not establish whether a real target run encounters that failure, nor does it prove an actual use-after-free.
+
+### Reentrancy and separate callback path
+
+Because the notification function calls registered callbacks while holding the registry lock, a callback that synchronously re-enters registration or clear may contend for the same lock. The exact `alock_lock_ms` timeout/recursion semantics and HIDL callback transaction mode are not proven by this disassembly; treat reentrant unregister as unsafe until those contracts are established.
+
+`setParametersByCallback(android::String8 const&)` at `0x000cf108`, size 396, is a separate path. It bounds the copied parameter string to less than 1,024 bytes and performs an indirect callback invocation, but contains no visible `alock`, pthread mutex or condition-variable call. Do not conflate it with the vector-backed callback registry.
+
+### Replacement requirement
+
+The replacement callback registry must not call client/HIDL callbacks while holding its mutation lock. It must:
+1. publish an immutable or reference-counted callback entry under a control-plane lock;
+2. acquire an in-flight reference before dispatch and invoke outside the lock;
+3. make clear/unregister close admission and remove the entry;
+4. wait for the entry's in-flight count to reach zero before releasing its cookie/owner;
+5. fail closed if lock/admission state cannot be established—never continue unlocked;
+6. define self-unregister/reentrant callback behavior explicitly.
+
+P2 remains OPEN: external caller coverage, exact private ABI prototypes, lock implementation semantics, HIDL transaction mode, callback registration/clear races, detached voice-unlock worker teardown and target linker namespace remain unresolved.
