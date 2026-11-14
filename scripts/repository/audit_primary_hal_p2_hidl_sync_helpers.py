@@ -157,7 +157,7 @@ def disassemble_target_window(binary: Path, target: int) -> str:
     if target < 0:
         raise ValueError("invalid helper target address")
     command = [
-        "arm-linux-gnueabi-objdump", "-D", "-C", "-M", "force-thumb",
+        "arm-linux-gnueabi-objdump", "-D", "-C",
         f"--start-address=0x{target:x}",
         f"--stop-address=0x{target + HELPER_WINDOW_SIZE:x}",
         str(binary),
