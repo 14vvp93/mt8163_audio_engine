@@ -578,7 +578,7 @@ def main() -> int:
             r"\s*135d14:.*str\s+r1,\s*\[r0\]\n"
             r"\s*135d18:.*ldr\s+r0,\s*\[r6,\s*#8\]\n"
             r"\s*135d1c:.*add\s+r0,\s*r0,\s*#4\n"
-            r"\s*135d20:.*str\s+r0,\s*\[r6,\s*#8\]"
+            r"\s*135d20:.*str\s+r0,\s*\[r6,\s*#8\]",
             manager_register_body,
         ) is not None,
         "AudioEventThreadManager::registerCallback no longer performs inline worker lookup, construction, and callback insertion",
