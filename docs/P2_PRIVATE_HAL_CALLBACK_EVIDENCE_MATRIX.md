@@ -633,3 +633,16 @@ The auditor now handles each helper independently:
 - report generation exits successfully so the artifact can preserve partial evidence, but this is explicitly **not** a lifetime pass and does not close P2.
 
 A regression test verifies unresolved targets cannot accidentally produce a function range. The workflow must be checked for the new report before assigning any RefBase ownership or lifetime semantics. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+## 2026-11-14 — HIDL syncCallback weak-to-strong promotion verified
+
+CI run [43630639009](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43630639009) passed all 3 jobs on audited commit `7456e83b0ac73c487dc933cb281f5773480588a8`. Artifact [14128420659](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43630639009/artifacts/14128420659), ZIP SHA-256 `9d55798856978f8bd2b5346c44ec46d0fac32c9dd817b9ded4cf2af7502cc224`.
+
+The corrected helper auditor resolves all 11 direct `BL` targets from `Device::syncCallback` through verified Thumb-to-ARM veneers into the HIDL bridge's `.plt` section. It identifies `RefBase::createWeak`, `RefBase::weakref_type::attemptIncStrong`, `RefBase::decStrong`, and `RefBase::weakref_type::decWeak` at the exact PLT entries. The full dataflow and limits are documented in [HIDL syncCallback RefBase promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md).
+
+**Newly proven:** after `syncCallback` successfully promotes the raw `Device*` cookie to a strong RefBase reference, it accesses `Device+0x24` and invokes the HIDL callback while that strong reference is held; normal cleanup releases both strong and weak references. If promotion fails, callback dispatch is skipped.
+
+**Still open:** the factory loads callback and cookie from separate global cells and has no proven in-flight drain. The promotion begins only after the raw cookie has crossed the factory-to-HIDL call boundary; it cannot protect a dispatch paused before `createWeak` or safely dereference a cookie whose object storage has already been reclaimed. Registration/replacement is not proven pair-atomic. This is a static race surface, not a demonstrated runtime UAF.
+
+P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`. Do not integrate the setup callback path into AudioCore or treat the in-body promotion as a factory-side drain.
