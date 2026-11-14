@@ -50,11 +50,10 @@ on:
 permissions:
   contents: read
 
-# Each audit run is read-only and has isolated artifacts; use a unique group
-# so GitHub does not replace an older pending run with a newer request.
+# New commits supersede older read-only audits on the same ref.
 concurrency:
-  group: primary-hal-p2-${{ github.run_id }}
-  cancel-in-progress: false
+  group: primary-hal-p2-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   contract-gates:
@@ -154,30 +153,73 @@ jobs:
           python3 tools/audit_android_packed_relocations.py "$binary" | tee p2-factory-relocations.txt
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
-      - name: Scan ELF, Android runtime bytecode, and APK/JAR clients
+      - name: Run independent factory and client audits in parallel
         shell: bash
         run: |
           set -euo pipefail
           binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
-          test -s "$binary"
-          echo "Public firmware dataset commit: 865b6efaeff0c4547dab1f4456f2fa664b3611d1"
-          python3 scripts/repository/scan_primary_hal_p2_clients.py factory-firmware/firmware/extracted | tee p2-private-callback-client-scan.txt
-          python3 scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py "$binary" | tee p2-voiceunlock-lifecycle-disassembly.txt
           client="factory-firmware/firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so"
-          test -s "$client"
-          python3 scripts/repository/audit_primary_hal_p2_client.py "$client" | tee p2-hal-client-disassembly.txt
           atci="factory-firmware/firmware/extracted/vendor/audiocmdservice_atci"
-          test -s "$atci"
-          python3 scripts/repository/audit_primary_hal_p2_atci.py "$atci" | tee p2-atci-client-callers.txt
           hidl="factory-firmware/firmware/extracted/vendor/lib/vendor.mediatek.hardware.audio@4.1.so"
-          test -s "$hidl"
-          python3 scripts/repository/audit_primary_hal_p2_hidl_callback.py "$hidl" | tee p2-hidl-callback-transaction.txt
           bridge="factory-firmware/firmware/extracted/vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so"
-          test -s "$bridge"
-          python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" | tee p2-hidl-bridge-lifecycle.txt
-          python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" | tee p2-hidl-device-lifetime.txt
-          python3 scripts/repository/audit_primary_hal_p2_device_close.py "$binary" | tee p2-factory-device-close.txt
-          python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android22AudioALSAStreamManagerE | tee p2-resource-manager-relocations.txt
+          root="factory-firmware/firmware/extracted"
+          for input in "$binary" "$client" "$atci" "$hidl" "$bridge"; do
+            test -s "$input"
+          done
+          echo "Public firmware dataset commit: 865b6efaeff0c4547dab1f4456f2fa664b3611d1"
+
+          run_logged() {
+            local name="$1"
+            shift
+            "$@" > "${name}.log" 2>&1
+          }
+
+          run_logged p2-client-scan python3 scripts/repository/scan_primary_hal_p2_clients.py "$root" &
+          pid_scan=$!
+          run_logged p2-voiceunlock python3 scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py "$binary" &
+          pid_voice=$!
+          run_logged p2-client python3 scripts/repository/audit_primary_hal_p2_client.py "$client" &
+          pid_client=$!
+          run_logged p2-atci python3 scripts/repository/audit_primary_hal_p2_atci.py "$atci" &
+          pid_atci=$!
+          run_logged p2-hidl-callback python3 scripts/repository/audit_primary_hal_p2_hidl_callback.py "$hidl" &
+          pid_hidl_callback=$!
+          run_logged p2-hidl-bridge python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" &
+          pid_hidl_bridge=$!
+          run_logged p2-hidl-device python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" &
+          pid_hidl_device=$!
+          run_logged p2-device-close python3 scripts/repository/audit_primary_hal_p2_device_close.py "$binary" &
+          pid_device_close=$!
+          run_logged p2-resource-vtable python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android22AudioALSAStreamManagerE &
+          pid_resource_vtable=$!
+
+          failed=0
+          for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_device" "$pid_device_close" "$pid_resource_vtable"; do
+            if ! wait "$pid"; then
+              failed=1
+            fi
+          done
+
+          for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-device.log p2-device-close.log p2-resource-vtable.log; do
+            cat "$log"
+          done
+          test "$failed" -eq 0
+
+          mv p2-client-scan.log p2-private-callback-client-scan.txt
+          mv p2-voiceunlock.log p2-voiceunlock-lifecycle-disassembly.txt
+          mv p2-client.log p2-hal-client-disassembly.txt
+          mv p2-atci.log p2-atci-client-callers.txt
+          mv p2-hidl-callback.log p2-hidl-callback-transaction.txt
+          mv p2-hidl-bridge.log p2-hidl-bridge-lifecycle.txt
+          mv p2-hidl-device.log p2-hidl-device-lifetime.txt
+          mv p2-device-close.log p2-factory-device-close.txt
+          mv p2-resource-vtable.log p2-resource-manager-relocations.txt
+
+      - name: Verify dependent factory lifecycle contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="factory-firmware/firmware/extracted/vendor/lib/hw/audio.primary.mt8163.so"
           python3 scripts/repository/audit_primary_hal_p2_device_close_contract.py "$binary" p2-factory-relocations.txt p2-resource-manager-relocations.txt p2-factory-device-close.txt | tee p2-factory-device-close-contract.txt
           python3 scripts/repository/audit_primary_hal_p2_factory_resource_manager.py "$binary" p2-resource-manager-relocations.txt p2-factory-device-close.txt | tee p2-factory-resource-manager-lifecycle.txt
       - name: Preserve reproducible P2 evidence
