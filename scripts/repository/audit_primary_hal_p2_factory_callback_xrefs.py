@@ -17,16 +17,16 @@ TARGETS = (
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
 )
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+(FUNC|OBJECT|NOTYPE)\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
-FUNCTION_HEADER = re.compile(r"^\\s*([0-9a-fA-F]+) <(.+)>:$")
+FUNCTION_HEADER = re.compile(r"^\s*([0-9a-fA-F]+) <(.+)>:$")
 INSTRUCTION = re.compile(
-    r"^\\s*([0-9a-fA-F]+):\\s+(?:(?:[0-9a-fA-F]{4,8})\\s+)+([a-zA-Z][a-zA-Z0-9.]*)\\s*(.*?)\\s*$"
+    r"^\s*([0-9a-fA-F]+):\s+(?:(?:[0-9a-fA-F]{4,8})\s+)+([a-zA-Z][a-zA-Z0-9.]*)\s*(.*?)\s*$"
 )
 DIRECT_BRANCH = re.compile(
-    r"^\\s*(?:0x)?([0-9a-fA-F]+)(?:\\s+<([^>]+)>)?\\s*$"
+    r"^\s*(?:0x)?([0-9a-fA-F]+)(?:\s+<([^>]+)>)?\s*$"
 )
-INDIRECT_BRANCH = re.compile(r"^\\s*(?:r(?:1[0-2]|[0-9])|ip|lr)\\s*$", re.IGNORECASE)
+INDIRECT_BRANCH = re.compile(r"^\s*(?:r(?:1[0-2]|[0-9])|ip|lr)\s*$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ def run(command: list[str], timeout: int = 180) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -134,7 +134,7 @@ def main() -> int:
     for target_name, target_symbols in selected.items():
         target_addresses = {symbol.address for symbol in target_symbols}
         direct = [site for site in callsites if site.target in target_addresses]
-        print(f"\\n===== TARGET {target_name} =====")
+        print(f"\n===== TARGET {target_name} =====")
         for symbol in target_symbols:
             print(f"SYMBOL 0x{symbol.address:08x} size={symbol.size} {symbol.name}")
         if direct:
@@ -151,7 +151,7 @@ def main() -> int:
         "AudioALSAHardware::setParametersByCallback(",
         "AudioALSAHardware::setupParametersCallback(",
     ):
-        print(f"\\n===== BODY {target_name} =====")
+        print(f"\n===== BODY {target_name} =====")
         for symbol in selected[target_name]:
             start = symbol.address
             end = start + symbol.size
@@ -163,7 +163,7 @@ def main() -> int:
             ])
             print(body.rstrip())
 
-    print("\\n===== INDIRECT CALLSITE SUMMARY =====")
+    print("\n===== INDIRECT CALLSITE SUMMARY =====")
     indirect = [site for site in callsites if site.target is None]
     print(f"REGISTER_INDIRECT_BLX_COUNT={len(indirect)}")
     for site in indirect:
@@ -173,7 +173,7 @@ def main() -> int:
         )
 
     print(
-        "\\nStatic-only result. Direct branch xrefs are exhaustive for the pinned disassembly; "
+        "\nStatic-only result. Direct branch xrefs are exhaustive for the pinned disassembly; "
         "register-indirect calls, data-driven dispatch, runtime-loaded callers and "
         "stripped external clients require separate data-flow/runtime evidence."
     )
