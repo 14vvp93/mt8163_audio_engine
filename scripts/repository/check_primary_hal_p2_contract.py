@@ -28,7 +28,7 @@ def main() -> int:
 
         required_offsets = set(range(156, 220, 4))
         table_rows = re.findall(
-            r"^\\|\\s*(156|160|164|168|172|176|180|184|188|192|196|200|204|208|212|216)\\s*\\|",
+            r"^\|\s*(156|160|164|168|172|176|180|184|188|192|196|200|204|208|212|216)\s*\|",
             baseline,
             flags=re.MULTILINE,
         )
@@ -40,13 +40,13 @@ def main() -> int:
         require("callback-in-flight" in baseline.lower(), "baseline must retain callback-drain evidence gap")
         require("linker namespace" in baseline.lower(), "baseline must retain linker-namespace evidence gap")
         require(
-            re.search(r"\\binstallable\\s*:\\s*false\\s*,", build) is not None,
+            re.search(r"\binstallable\s*:\s*false\s*,", build) is not None,
             "Primary HAL bootstrap must remain non-installable",
         )
         require("installable: false" in readme, "Primary HAL README must state non-installable status")
 
         for callback in ("open_output_stream", "open_input_stream"):
-            match = re.search(r"\\b" + callback + r"\\s*\\(", source)
+            match = re.search(r"\b" + callback + r"\s*\(", source)
             require(match is not None, f"missing callback: {callback}")
             opening = source.find("{", match.end())
             require(opening >= 0, f"missing callback body: {callback}")
@@ -62,9 +62,9 @@ def main() -> int:
                         break
             require(closing > opening, f"unterminated callback body: {callback}")
             body = source[opening + 1:closing]
-            require(re.search(r"\\*stream\\s*=\\s*nullptr\\s*;", body) is not None,
+            require(re.search(r"\*stream\s*=\s*nullptr\s*;", body) is not None,
                     f"{callback} must clear its output stream pointer")
-            require(re.search(r"return\\s+-ENODEV\\s*;", body) is not None,
+            require(re.search(r"return\s+-ENODEV\s*;", body) is not None,
                     f"{callback} must fail closed with -ENODEV")
 
         p2_section = roadmap.split("### P2 —", 1)
