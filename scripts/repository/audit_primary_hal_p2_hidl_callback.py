@@ -80,14 +80,19 @@ def main() -> int:
             if size <= 0:
                 continue
             code_address = address & ~1
-            disassembly = run([
-                "arm-linux-gnueabi-objdump",
-                "-d",
-                "-C",
+            command = ["arm-linux-gnueabi-objdump", "-d", "-C"]
+            if address & 1:
+                command.extend(["-M", "force-thumb"])
+            command.extend([
                 f"--start-address=0x{code_address:x}",
                 f"--stop-address=0x{code_address + size:x}",
                 str(binary),
             ])
+            disassembly = run(command)
+            if not re.search(rf"^\\s*{code_address:x}: ", disassembly, re.MULTILINE):
+                raise RuntimeError(
+                    f"disassembly did not start at the expected address 0x{code_address:x}: {name}"
+                )
             calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
             isa = "Thumb" if address & 1 else "ARM"
             print(f"\n===== {name} [{index}] @ 0x{code_address:08x}, size={size}, ISA={isa} =====")
