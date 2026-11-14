@@ -232,3 +232,11 @@ Workflows for commits `19017c7`, `e0c499b` and `cd1d695` again failed before run
 
 A current GitHub Community report describes the same runner-allocation signature; this does not identify the cause for this repository. Private-repository Actions compute is subject to the account's included usage and billing configuration. The repository owner's **Settings → Billing and licensing → Usage** page is the next account-level check. See [GitHub Actions billing and usage](https://docs.github.com/en/actions/concepts/billing-and-usage).
 
+## P2 callback audit CI — 2026-11-14
+
+- Exact feature HEAD under test: `162e48a3dc127a8c1e25ae9a8890abaab3881671`.
+- [Primary HAL P2 Private Callback Automation](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463): **all 3 jobs PASS** — P2 contract inventory/fail-closed gates, reproducible factory binary/external-client scan, and aggregate offline evidence gate.
+- Factory callback auditor emitted `CALLBACK_DATAFLOW_ASSERTIONS: PASS`. The regression now checks the exact-address function body for `setupParametersCallback()`, including callback/cookie argument capture and the two global registration stores, in addition to vector dispatch and the separate `setParametersByCallback()` path.
+- Factory HAL identity remains SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+- Evidence artifact: [mt8163-primary-hal-p2-evidence](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339), ZIP SHA-256 `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
+- The workflow confirms the HAL still fails closed, all 16 private callback slots remain inventoried, and the Primary HAL module remains non-installable. This validates static/offline evidence and CI contracts only; it does not close callback lifetime, indirect caller, linker namespace, PCM endpoint, or target-device gates. **P2 remains OPEN.**
