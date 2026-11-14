@@ -279,7 +279,10 @@ def main() -> int:
         )
     dispatch_body = callback_bodies["dispatch"]
     callback_invoke = re.search(r"cf020:.*mov\\s+r0,\\s*r9.*\\n\\s*cf024:.*blx\\s+r2", dispatch_body)
-    dispatch_unlock = re.search(r"cf044:.*mov\\s+r0,\\s*r8.*\\n\\s*cf050:.*bl\\s+47e04 <alock_unlock@plt>", dispatch_body)
+    dispatch_unlock = re.search(
+        r"cf044:.*mov\\s+r0,\\s*r8[\\s\\S]*?cf050:.*bl\\s+47e04 <alock_unlock@plt>",
+        dispatch_body,
+    )
     require(
         callback_invoke is not None and dispatch_unlock is not None
         and callback_invoke.start() < dispatch_unlock.start(),
