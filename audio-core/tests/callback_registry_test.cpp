@@ -110,9 +110,13 @@ void test_clear_waits_for_in_flight_callback() {
         state.condition.wait(lock, [&state] { return state.entered; });
     }
 
-    auto clearer = std::async(std::launch::async, [&registry, id] {
+    std::promise<void> clear_started;
+    auto clear_started_future = clear_started.get_future();
+    auto clearer = std::async(std::launch::async, [&registry, id, &clear_started] {
+        clear_started.set_value();
         return registry.clear_and_drain(id);
     });
+    clear_started_future.wait();
     require(clearer.wait_for(std::chrono::milliseconds(30)) ==
                 std::future_status::timeout,
             "clear does not return while callback is in flight");
