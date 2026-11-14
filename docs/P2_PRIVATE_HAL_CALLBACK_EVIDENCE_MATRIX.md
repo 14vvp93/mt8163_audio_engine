@@ -97,3 +97,35 @@ The same run scanned 1,294 firmware candidates: five files contained callback-re
 All three workflow jobs completed successfully, including the aggregate offline-evidence gate. The artifact is reproducible evidence only; no runtime/device behavior is inferred. P2 remains OPEN. External caller coverage, exact target callback ABI/prototypes, callback admission/drain, registration/clear races, detached-worker teardown ordering and target linker namespace remain hard gates.
 
 **Concurrency-fix verification status:** this successful run belongs to the pre-fix audit commit `41e52071...`, not the later concurrency-group commit `bd79bbda...`. A subsequent run on the latter or a descendant is still required to verify the unique-`run_id` concurrency configuration end-to-end.
+
+## 2026-11-14 concurrency-fix verification
+
+Workflow run: [43565923614](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43565923614)  
+Commit: `dad35b118e2d5f8cf3e28c6e8c4fae526f55d7c5`  
+Concurrency group configured in the checked-out workflow: `primary-hal-p2-${{ github.run_id }}`.
+
+All three jobs completed successfully:
+- P2 contract inventory and fail-closed gates
+- Reproducible factory binary and external-client scan
+- Aggregate P2 offline evidence gate
+
+The factory audit again resolved and disassembled all 23 required symbols against the pinned factory SHA-256. It scanned 1,294 firmware candidates; five files had callback-related matches and zero APK/JAR archive members matched. Artifact ID: `14101829575`; ZIP SHA-256: `ba4e4a15d1acd1dca08402925b126e6fa34144dabef82a84df8292f650c0f6c7`.
+
+This run completed without the earlier "higher priority waiting request" cancellation. The unique-`run_id` concurrency configuration is therefore verified for this push-triggered run. This does not prove behavior under every possible GitHub Actions event or repository setting, but it closes the previously observed pending-run replacement incident for the audited workflow path.
+
+## HIDL 4.1 callback bridge: additional static lifetime evidence
+
+Pinned bridge binary:
+- `vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so`
+- SHA-256: `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`
+- Evidence: workflow run `43401616001`, report `primary-hal-hidl-bridge.txt`.
+
+The bridge disassembly confirms these device-tail dispatches:
+- `Device::setupParametersCallback` loads the legacy callback at device offset `0xd0` (208) and invokes it with the bridge's `syncCallback` thunk and a `Device*` cookie.
+- `Device::setAudioParameterChangedCallback` loads offset `0xd4` (212) and invokes it with the bridge's `audioParameterChangedCallback` thunk and a `Device*` cookie.
+- `Device::clearAudioParameterChangedCallback` loads offset `0xd8` (216) and invokes that legacy clear callback.
+- The bridge keeps HIDL callback objects in strong-reference members within the `Device` object (member locations observed at `this+0x24` and `this+0x28` in the relevant methods). The notification path obtains a local strong reference before invoking the HIDL callback and compares the current member after the call, consistent with protecting the callback object across reentrant notification.
+
+This narrows the bridge-side object-lifetime question: the HIDL callback object has strong-reference ownership during the observed notification path. It does **not** establish that the legacy HAL's raw function pointer/cookie pair remains valid during concurrent clear, that the bridge's member updates are serialized, or that all in-flight legacy invocations are drained before owner destruction. No explicit mutex or callback-admission/drain protocol is visible in the targeted bridge methods. The exact helper semantics and cross-thread ordering remain open.
+
+The HIDL bridge methods are not the source of the private HAL callback implementations; they call the target's legacy callback slots. Do not infer a complete callback lifetime contract from HIDL strong references alone.
