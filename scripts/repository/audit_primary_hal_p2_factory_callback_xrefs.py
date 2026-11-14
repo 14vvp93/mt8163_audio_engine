@@ -83,12 +83,16 @@ def parse_function_instructions(
 ) -> list[InstructionRecord]:
     records: list[InstructionRecord] = []
     current_function = ""
+    matched_function = False
     for line in disassembly.splitlines():
         header = FUNCTION_HEADER.match(line)
         if header is not None:
+            if matched_function:
+                break
             current_function = header.group(2)
+            matched_function = current_function.startswith(function_prefix)
             continue
-        if not current_function.startswith(function_prefix):
+        if not matched_function:
             continue
         match = INSTRUCTION.match(line)
         if match is None:
