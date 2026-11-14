@@ -45,7 +45,7 @@ def run(command: list[str]) -> str:
 
 
 def parse_functions(symbols_output: str) -> list[tuple[int, int, str, bool]]:
-    functions: list[tuple[int, int, str, bool]] =
+    functions: list[tuple[int, int, str, bool]] = []
     for line in symbols_output.splitlines():
         match = SYMBOL_LINE.match(line)
         if not match:
