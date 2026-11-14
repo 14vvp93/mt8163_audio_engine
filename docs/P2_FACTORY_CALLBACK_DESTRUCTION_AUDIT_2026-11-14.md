@@ -114,3 +114,30 @@ The dispatch loop invokes the callback indirectly at `0xcf020..0xcf024` before c
 Audit-script commits `29bb71bf04239634d4e955e40536de955111db23` and `855e5a5b205594bc69b22ddd93dcbf406b864094` add exact regression assertions for all three lock-failure fallthroughs and callback-before-unlock ordering. These new assertions are not verified until CI for the latest commit passes and its artifact is inspected.
 
 The five lock-failure surfaces now targeted by the audit are the two singleton accessors plus callback registration, clear, and dispatch. They must not be treated as safe serialization. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+
+## Follow-up: resolve AudioALSAHardware+0x04 teardown dispatch
+
+The factory constructor disassembly at `0x000c5388..0x000c538c` calls `AudioALSAStreamManager::getInstance()` and stores the returned pointer at `AudioALSAHardware+0x04`.
+
+The factory vtable relocation report for `_ZTVN7android22AudioALSAStreamManagerE` identifies:
+- complete destructor slot `+0x008 -> 0x00077b58`;
+- deleting destructor slot `+0x00c -> 0x00077e20`.
+
+The `AudioALSAHardware` destructor at `0x000c5720..0x000c5734` loads `this+0x04`, reads its vptr, loads vtable byte offset `+0x04`, and invokes it. Therefore the previously unresolved virtual cleanup call is statically resolved:
+
+`AudioALSAHardware::~AudioALSAHardware() -> AudioALSAStreamManager deleting destructor(0x00077e20)`.
+
+The StreamManager destructor at `0x00077b58` clears its own singleton pointer and calls `AudioEventThreadManager::getInstance()->unregisterCallback(0)`, then destroys its own vectors and synchronization objects. This is a separate manager from `AudioALSAHardware`'s parameter-change callback registry (`this+0x3ac` lock and `this+0x3b0` vector). The observed call does not directly invoke `AudioALSAHardware::clearAudioParameterChangedCallback` and does not establish that the parameter-change callback registry is drained. The internal semantics of `AudioEventThreadManager::unregisterCallback(0)` are outside the pinned factory ELF and remain unknown.
+
+The P2 device-close contract audit now correlates the constructor store, destructor virtual dispatch, and StreamManager vtable relocation. CI must pass before this new regression gate is treated as verified.
+
+### Revised teardown interpretation
+
+The factory teardown order is now statically identified as:
+1. `HMI.close` invokes the deleting destructor of `AudioALSAHardware`.
+2. `AudioALSAHardware` invokes the deleting destructor of its `AudioALSAStreamManager` member at `+0x04`.
+3. `AudioALSAStreamManager` unregisters `AudioEventType::0` from `AudioEventThreadManager` and destroys its own state.
+4. `AudioALSAHardware` proceeds to destroy the parameter-change callback vector and free its lock.
+
+No proof yet connects step 3 to a drain of the separate parameter-change callback registry in step 4. Keep that as an open contract rather than assuming the manager cleanup is irrelevant or sufficient.
