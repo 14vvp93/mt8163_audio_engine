@@ -100,9 +100,9 @@ def main() -> int:
             transaction_contract = None
             if name == FUNCTIONS[0]:
                 synchronous_signature = (
-                    re.search(r"\\bmovs\\s+r1,\\s*#1\\b", disassembly, re.IGNORECASE)
-                    and re.search(r"\\bmov\\.w\\s+sl,\\s*#0\\b", disassembly, re.IGNORECASE)
-                    and re.search(r"\\bstrd\\s+sl,\\s*r8,\\s*\\[sp\\]", disassembly, re.IGNORECASE)
+                    re.search(r"\bmovs\s+r1,\s*#1\b", disassembly, re.IGNORECASE)
+                    and re.search(r"\bmov\.w\s+sl,\s*#0\b", disassembly, re.IGNORECASE)
+                    and re.search(r"\bstrd\s+sl,\s*r8,\s*\[sp\]", disassembly, re.IGNORECASE)
                 )
                 if not synchronous_signature:
                     raise RuntimeError(
