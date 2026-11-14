@@ -18,6 +18,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_hidl_callback.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
+      - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   pull_request:
     branches: [feature]
@@ -35,6 +36,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_atci.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_callback.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
+      - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   workflow_dispatch:
 
