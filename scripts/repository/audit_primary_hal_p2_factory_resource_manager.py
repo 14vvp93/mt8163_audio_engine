@@ -440,6 +440,7 @@ def main() -> int:
     destructor_join = re.search(
         r"135404:.*ldr\s+r0,\s*\[r4,\s*#4\]\n"
         r"\s*135408:.*mov\s+r1,\s*#0\n"
+        r"\s*13540c:.*mov\s+r5,\s*#0\n"
         r"\s*135410:.*bl\s+[0-9a-f]+ <pthread_join@plt>",
         worker_destructor,
     )
