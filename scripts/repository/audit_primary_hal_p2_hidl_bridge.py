@@ -140,7 +140,7 @@ def main() -> int:
                 output.rstrip(),
             ])
 
-    setup_report = "\\n".join(setup_evidence) + "\\n"
+    setup_report = "\n".join(setup_evidence) + "\n"
     print(setup_report)
     if len(sys.argv) == 3:
         report_path = Path(sys.argv[2])
