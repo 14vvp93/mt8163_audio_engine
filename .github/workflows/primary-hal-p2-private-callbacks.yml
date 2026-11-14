@@ -110,6 +110,7 @@ jobs:
             scripts/repository/audit_android9_refbase_lifetime.py \
             scripts/repository/test_audit_android9_refbase_lifetime.py \
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py \
+            scripts/repository/test_audit_primary_hal_p2_hidl_device_lifetime.py \
             scripts/repository/audit_primary_hal_p2_device_close.py \
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py \
             scripts/repository/test_audit_primary_hal_p2_factory_callback_xrefs.py \
@@ -144,6 +145,7 @@ jobs:
             scripts/repository/audit_android9_refbase_lifetime.py
             scripts/repository/test_audit_android9_refbase_lifetime.py
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py
+            scripts/repository/test_audit_primary_hal_p2_hidl_device_lifetime.py
             scripts/repository/audit_primary_hal_p2_device_close.py
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py
             scripts/repository/audit_primary_hal_p2_device_close_contract.py
