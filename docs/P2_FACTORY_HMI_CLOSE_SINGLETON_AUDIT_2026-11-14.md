@@ -137,3 +137,21 @@ The run's audit script did not yet emit the non-deleting destructor body or deco
 The factory path contains two nested lifetime domains: the HMI-owned `AudioALSAHardware` singleton and the `AudioALSAStreamManager` singleton retained by each hardware object at `+0x04`. The last HMI close statically dispatches the hardware deleting destructor, which in turn dispatches the manager deleting destructor. The lock-failure path in manager `getInstance()` is not fail-closed.
 
 This increases the importance of proving serialization across last-close, singleton recreation, and manager destruction. It does **not** authorize replacing either factory component or enabling the replacement HAL. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+## Follow-up: manager destructor, singleton pointer, and atexit cleanup
+
+Evidence captured from artifact `mt8163-primary-hal-p2-evidence` produced by workflow run [43584940221](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43584940221), artifact ID `14110325270`, SHA-256 `9aac3736ee6384d6d1cb4dc4f772e02a1b48293bad2083f6e462ed3f9184d6d2`:
+
+- `AudioALSAStreamManager::getInstance()` at `0x00076618` (656 bytes) uses a local-static guard and an `alock` object. Its singleton pointer cell is `0x001929A0`; the function reads this cell and, if null, allocates `0xF4` bytes, constructs the manager, and stores the pointer.
+- On `alock_lock_ms()` failure, the function logs a warning and continues to read/create the singleton without confirmed lock ownership. This is a second statically confirmed fail-open singleton path.
+- The deleting destructor at `0x00077E20` calls the non-deleting destructor through PLT and then `operator delete(void*)@plt`.
+- The non-deleting destructor at `0x00077B58` frees the optional buffer at `this+0xDC`, clears a separate global pointer, calls `AudioEventThreadManager::unregisterCallback(0)`, destroys the `String8`, finalizes/destroys five sorted/vector members, and frees several `alock` objects.
+- The destructor body does not visibly stop or join worker threads, close callback admission, or wait for in-flight work before destroying its synchronization objects and containers. This is a static absence observation, not proof that no external owner performs such synchronization.
+- The manager destructor body contains no direct reference to its singleton pointer cell `0x001929A0`. No reset of that cell is visible in the audited function. Since the destructor is invoked through `AudioALSAHardware+0x04`, a subsequent `getInstance()` may observe the old non-null pointer unless another path resets the cell. This is a high-priority stale-singleton/UAF risk; runtime occurrence is not yet proven.
+- The `__cxa_atexit` registration in manager `getInstance()` passes callback address `0x00073524` and argument `0x00198FF4`. Disassembly at the callback address writes the lock object's vtable pointer and calls `alock_free()` on the supplied argument. This is consistent with cleanup of the function-local static lock object; it is not the manager object's destructor and does not visibly reset the manager singleton pointer.
+
+The static evidence therefore establishes the manager's deletion chain and a plausible stale-pointer path. It does not establish whether another hidden/indirect path resets `0x001929A0`, nor whether a later call actually dereferences freed storage. Keep the stale singleton pointer as a blocking P2 finding until all references to the cell and lifecycle entry points are audited.
+
+Workflow run [43584940221](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43584940221) completed successfully on all three jobs. A follow-up audit-script change was committed as `d5fa63af140f95c17ae91be192f60b4d94eb4881` to assert the atexit lock-cleanup shape and report whether the manager destructor directly references the singleton cell. Its CI result is pending.
+
