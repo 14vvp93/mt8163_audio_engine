@@ -12,6 +12,15 @@ Evidence baseline:
 - Android framework close analysis: [Android 9 stream callback audit](ANDROID9_STREAM_CALLBACK_AUDIT.md).
 - Non-authoritative vendor source comparison: [P2 vendor source corroboration](P2_VENDOR_SOURCE_CORROBORATION.md).
 
+## Latest reproducible callback/lifecycle evidence
+
+- Workflow [43603169612](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43603169612): all jobs passed; evidence artifact [14117480619](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43603169612/artifacts/14117480619), containing 14 reports.
+- The corrected whole-ELF callback xref audit parsed the pinned ARM32 factory ELF and enumerated 1,575 register-indirect `BLX` sites. It found no direct branch callsites to the five audited callback methods; indirect dispatch means this is not proof that no callers exist.
+- `onAudioParameterChangedCallback()` dataflow is confirmed at `0x000cf020`: callback pointer at vector-entry `+0`, cookie at `+4`, parameters in `r0`, cookie in `r1`, indirect `BLX r2`. Invocation occurs before unlock on the lock-success path; lock-failure still falls through to traversal.
+- `setParametersByCallback()` at `0x000cf108` uses a separate global callback/cookie pair and indirect `BLX r3` at `0x000cf218`. Caller graph and lifetime remain OPEN; do not conflate it with the vector registry.
+- Factory HMI close-to-`AudioALSAHardware` deleting-destructor dispatch is now independently correlated by the dependent lifecycle audit. The destructor still shows no explicit parameter-callback admission closure or in-flight drain.
+- The `AudioALSAStreamManager` event worker's verified join/unregister path is a separate synchronization domain and does not close the parameter callback lifetime gate.
+
 ## Callback inventory
 
 | Device offset | Callback | Internal target / bridge | External caller evidence | Closure state |
