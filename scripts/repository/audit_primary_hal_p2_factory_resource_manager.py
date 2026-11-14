@@ -163,7 +163,7 @@ def main() -> int:
     )
     require(manager_get_instance is not None, "AudioALSAStreamManager::getInstance() symbol missing")
     nondeleting_slot = re.search(
-        r"^\+0x008\\s+0x[0-9a-fA-F]+\\s+(0x[0-9a-fA-F]+)\\s+(.+)$",
+        r"^\+0x008\s+0x[0-9a-fA-F]+\s+(0x[0-9a-fA-F]+)\s+(.+)$",
         relocations,
         re.MULTILINE,
     )
