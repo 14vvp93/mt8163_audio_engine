@@ -424,3 +424,12 @@ The MT8163 Audio Engine is complete only when:
 - In that later source, registration retains the Device even after a nonzero HAL registration result; clear drops the global owner pin after the HAL clear call even if that call reports failure. The thunk promotes a weak Device reference from the raw cookie without visible null checks.
 - This is explicitly non-matching-version corroboration (service 5.0 / interface 4.1), not proof of the target Android 9 service 4.0 implementation. It adds a focused verification item: recover whether the target bridge uses an equivalent owner-pin list and whether failed clear can release it before callback quiescence.
 - Exact target callback ABI/cookie identity, owner lifetime, clear drain semantics and runtime behavior remain open. Primary HAL remains fail-closed and non-installable.
+
+
+### 2026-11-14 — target HIDL bridge callback cookie identity resolved
+
+- Re-read the pinned 4.0 bridge disassembly with the hidden sret argument for HIDL Return<void> accounted for.
+- Setter passes Device* this as the factory callback cookie in r2; clear preserves the same Device* this in r1 through the indirect legacy clear call. The suspected set/clear cookie mismatch is rejected.
+- The factory ELF confirms that registration stores the explicit cookie and clear compares its explicit argument against that cookie.
+- Strengthened the SHA-pinned bridge audit to assert the register-level cookie identity. This is static ABI evidence, not proof of callback quiescence or Device owner lifetime.
+- P2 remains OPEN because the factory lock can fail open, callbacks execute under its lock, and the exact target Device owner/destructor protocol remains unresolved.
