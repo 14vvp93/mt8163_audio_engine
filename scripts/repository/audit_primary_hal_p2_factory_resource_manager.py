@@ -519,10 +519,12 @@ def main() -> int:
         binary, callback_cell
     )
     callback_target = callback_target_relocated & ~1
-    require(
-        callback_target != 0,
-        "StreamManager event callback pointer resolves to null after applying its ELF relocation",
-    )
+    if callback_target == 0:
+        raise RuntimeError(
+            "StreamManager event callback pointer resolves to null after applying its ELF relocation: "
+            f"cell=0x{callback_cell:08x}, raw_addend=0x{callback_target_raw:08x}, "
+            f"relocation={callback_relocation}, relocated=0x{callback_target_relocated:08x}"
+        )
     callback_symbols = [
         (address, size, name)
         for address, size, name in functions
