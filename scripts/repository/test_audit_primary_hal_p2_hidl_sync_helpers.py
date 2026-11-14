@@ -105,7 +105,7 @@ class ParseFunctionsTests(unittest.TestCase):
 
 
     def test_resolves_exact_thumb_to_arm_veneer(self) -> None:
-        names = b"\\0.shstrtab\\0.text\\0"
+        names = b"\0.shstrtab\0.text\0"
         section_table_offset = 52
         section_count = 3
         names_offset = section_table_offset + section_count * 40
@@ -142,7 +142,7 @@ class ParseFunctionsTests(unittest.TestCase):
             )
 
     def test_rejects_non_veneer_helper_target(self) -> None:
-        names = b"\\0.shstrtab\\0.text\\0"
+        names = b"\0.shstrtab\0.text\0"
         section_table_offset = 52
         section_count = 3
         names_offset = section_table_offset + section_count * 40
