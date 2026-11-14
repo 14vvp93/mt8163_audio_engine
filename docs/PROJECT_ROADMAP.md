@@ -433,3 +433,11 @@ The MT8163 Audio Engine is complete only when:
 - The factory ELF confirms that registration stores the explicit cookie and clear compares its explicit argument against that cookie.
 - Strengthened the SHA-pinned bridge audit to assert the register-level cookie identity. This is static ABI evidence, not proof of callback quiescence or Device owner lifetime.
 - P2 remains OPEN because the factory lock can fail open, callbacks execute under its lock, and the exact target Device owner/destructor protocol remains unresolved.
+
+
+### 2026-11-14 — target HIDL Device lifetime audit automation
+
+- Added a SHA-pinned offline audit for the Android 4.0 bridge ELF to enumerate retained `Device` constructor/destructor symbols, inspect their disassembly and direct call targets, and list named global owner/callback candidates.
+- Added the report to the P2 workflow and evidence artifact. This is discovery automation only; target ELF output must be reviewed before concluding whether an owner-pin container exists or how it is released.
+- P2 remains OPEN. In particular, callback admission/drain semantics, factory lock failure behavior, target Device owner lifetime and the detached voice-unlock teardown contract remain blocking evidence gates.
+- No runtime audio behavior or hardware path was changed. Primary HAL remains fail-closed and non-installable.
