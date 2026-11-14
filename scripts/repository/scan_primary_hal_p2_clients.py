@@ -61,6 +61,14 @@ def dynamic_symbols(path: Path, nm: str) -> list[str]:
     )
 
 
+def has_elf_magic(path: Path) -> bool:
+    try:
+        with path.open("rb") as stream:
+            return stream.read(4) == b"\\x7fELF"
+    except OSError:
+        return False
+
+
 def candidate_files(root: Path) -> list[Path]:
     scan_roots = (
         root / "system/lib",
