@@ -129,3 +129,14 @@ The parser compares normalized instruction records rather than broad source-text
 CI [43604214721](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721) passed all three jobs on commit `7a39afefa91040b62c110a0a191538da73bf06b7`; artifact [14117686286](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721/artifacts/14117686286) preserves 14 evidence reports.
 
 This closes an auditor-regression gap only. It does not resolve indirect external callers or prove callback quiescence/lifetime. P2 remains OPEN.
+
+## 2026-11-14 — exact-address parser and registration-store regression PASS
+
+The exact-address parser fix is now validated by the real push-triggered workflow on feature commit `162e48a3dc127a8c1e25ae9a8890abaab3881671`:
+
+- CI [run 43607609463](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463): all three jobs PASS, including reproducible factory binary/client scan and aggregate evidence gate.
+- The callback auditor emitted `CALLBACK_DATAFLOW_ASSERTIONS: PASS` against the pinned factory HAL SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+- In addition to the vector-backed dispatcher and separate global dispatch path, the regression now asserts the exact `setupParametersCallback()` body at `0x000ce8fc`: argument capture at `0x000ce904/0x000ce908`, callback global store at `0x000ce934`, and cookie global store at `0x000ce940`, with the required load/store ordering.
+- Evidence artifact: [14119346339](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339), ZIP SHA-256 `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
+
+This closes the parser/regression validation gap for the pinned static instruction dataflow. It does not resolve global callback ownership/lifetime, all indirect callers, callback quiescence, or runtime teardown ordering. The setup-parameters global callback remains a separate path from the vector-backed registry. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
