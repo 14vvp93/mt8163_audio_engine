@@ -57,6 +57,7 @@ def main() -> int:
         return 1
 
     symbol_output = run(["arm-linux-gnueabi-readelf", "-Ws", "-C", str(binary)])
+    raw_symbol_output = run(["arm-linux-gnueabi-readelf", "-Ws", str(binary)])
     symbols: list[tuple[int, int, str, str]] = []
     for line in symbol_output.splitlines():
         match = SYMBOL_LINE.match(line)
@@ -110,10 +111,40 @@ def main() -> int:
     ]
     relocations = run(["arm-linux-gnueabi-readelf", "-r", "-C", str(binary)])
 
+    raw_constructor_symbols = [
+        line.strip() for line in raw_symbol_output.splitlines()
+        if "Device" in line and re.search(r"C[123]E", line)
+    ]
+    constructor_call_sites: list[tuple[int, int, str, str]] = []
+    constructor_addresses = {item[0] & ~1 for item in constructors}
+    for line in full_disassembly.splitlines():
+        match = direct_call_pattern.match(line)
+        if match is None:
+            continue
+        callsite = int(match.group(1), 16)
+        target = int(match.group(2), 16) & ~1
+        if target not in constructor_addresses:
+            continue
+        callers = [
+            item for item in symbols
+            if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
+        ]
+        callers.sort(key=lambda item: (item[1], item[0], item[3]))
+        caller = callers[0][3] if callers else "UNRESOLVED_CALLER"
+        constructor_call_sites.append((callsite, target, caller, match.group(3)))
+
     print(f"HIDL bridge SHA-256: {digest}")
     print("Target Device owner/lifetime symbol inventory")
     print(f"Device constructors: {len(constructors)}")
     print(f"Device destructors: {len(destructors)}")
+    print("Raw Device constructor ABI symbols:")
+    print("\\n".join(raw_constructor_symbols) if raw_constructor_symbols else "none")
+    print(f"Direct Device constructor callsites: {len(constructor_call_sites)}")
+    for callsite, target, caller, target_name in constructor_call_sites:
+        print(
+            f"DEVICE_CTOR_CALLSITE 0x{callsite:08x} -> 0x{target:08x} "
+            f"caller={caller} target={target_name}"
+        )
 
     print(
         "RefBase constructor / interworking-veneer callsites: "
