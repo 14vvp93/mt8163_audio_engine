@@ -28,10 +28,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: audiocore-p1-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   api-contract:
     name: P1 API and stale-token contract
