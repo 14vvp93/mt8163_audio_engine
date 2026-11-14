@@ -405,9 +405,10 @@ def main() -> int:
         ])
         resolved.append(target)
 
+    resolution_status = helper_target_resolution_status(resolved, unresolved)
     reports.extend([
         "",
-        f"HELPER_TARGET_RESOLUTION_STATUS: {helper_target_resolution_status(resolved, unresolved)}",
+        f"HELPER_TARGET_RESOLUTION_STATUS: {resolution_status}",
         "RESOLVED_HELPER_TARGETS: "
         + (", ".join(f"0x{target:08x}" for target in resolved) if resolved else "none"),
         "UNRESOLVED_HELPER_TARGETS: "
@@ -424,7 +425,7 @@ def main() -> int:
     print(report, end="")
     if len(sys.argv) == 3:
         Path(sys.argv[2]).write_text(report, encoding="utf-8")
-    return 0
+    return 0 if resolution_status == "COMPLETE" else 1
 
 
 if __name__ == "__main__":
