@@ -101,7 +101,8 @@ def parse_function_instructions(
 
 
 def normalize_operand(operand: str) -> str:
-    return re.sub(r"\s+", "", operand.lower())
+    operand = re.sub(r"\s+@\s.*$", "", operand.lower())
+    return re.sub(r"\s+", "", operand)
 
 
 def require_instruction(
