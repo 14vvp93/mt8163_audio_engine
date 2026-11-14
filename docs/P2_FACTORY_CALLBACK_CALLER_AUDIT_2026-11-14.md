@@ -257,3 +257,8 @@ The factory report emits:
 - `SETUP_CALLBACK_GLOBAL_CLEAR_ORDER=cookie(0x00192b7c),callback(0x00192b80)`
 
 The contract job also ran 4 synthetic unit tests successfully, including rejection of a changed literal and verification of cookie-before-callback teardown clearing. These are static offline regressions only; they do not establish runtime quiescence or close P2.
+
+
+### Dispatch caller remains unresolved after full factory scan
+
+The pinned factory's complete direct `BL/BLX` inventory finds no direct callsite to `AudioALSAHardware::setParametersByCallback`. The full `AudioALSAHardware::setParameters` body was also added to the evidence artifact; it contains no direct call to that dispatcher. The whole factory contains 1,575 register-indirect `BLX` sites, which are enumerated but not attributed without dataflow. The external firmware scan found no confirmed external caller, but cannot exclude stripped/runtime-loaded callers or code outside the pinned dataset. Therefore do not assume the setup callback is invoked only inside a Binder transaction that already holds a strong `sp<Device>`; the caller and any outer serialization contract remain unproven. See [the HIDL RefBase promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md).
