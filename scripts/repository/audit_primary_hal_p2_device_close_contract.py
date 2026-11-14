@@ -127,6 +127,45 @@ def main() -> int:
         "AudioMTKHardwareInterface::create() no longer branches to GetInstance@plt",
     )
 
+    get_instance = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            "--start-address=0x000d0ee0",
+            "--stop-address=0x000d1244",
+            str(binary),
+        ]
+    )
+    destructor = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            "--start-address=0x000c56e4",
+            "--stop-address=0x000c57f4",
+            str(binary),
+        ]
+    )
+    require(
+        re.search(r"^\s*d1200:\s+000c1bcc\b", get_instance, re.MULTILINE) is not None
+        and re.search(r"^\s*d120c:\s+000c1b8c\b", get_instance, re.MULTILINE) is not None
+        and re.search(r"^\s*c5858:\s+000cd414\b", destructor, re.MULTILINE) is not None,
+        "singleton pointer PC-relative literal constants changed",
+    )
+    singleton_read_cell = 0x000D0FAC + 0x000C1BCC
+    singleton_write_cell = 0x000D0FEC + 0x000C1B8C
+    destructor_clear_cell = 0x000C5764 + 0x000CD414
+    require(
+        singleton_read_cell == singleton_write_cell == destructor_clear_cell == 0x0019A178,
+        "GetInstance/destructor singleton pointer cell correlation failed",
+    )
+    require(
+        re.search(r"^\s*c5760:\s+e5806000\s+str\s+r6,\s*\[r0\]", destructor, re.MULTILINE)
+        is not None,
+        "AudioALSAHardware destructor no longer clears the singleton pointer cell",
+    )
+
     print(f"Factory HAL SHA-256: {digest}")
     print(f"AudioALSAHardware vtable: 0x{vtable_address:08x}, {vtable_size} bytes")
     print("Itanium vtable address point: vtable + 0x008 = 0x00190a8c")
@@ -134,6 +173,7 @@ def main() -> int:
     print("Resolved vptr+0x04 slot: vtable+0x00c -> deleting destructor 0x000c5874")
     print("Complete destructor slot: vtable+0x008 -> 0x000c56e4")
     print("AudioMTKHardwareInterface::create(): thunk -> AudioALSAHardware::GetInstance@plt")
+    print("GetInstance/destructor singleton pointer cell: 0x0019a178 (read/write/reset correlated)")
     print("CONTRACT VERIFIED: HMI.close invokes the AudioALSAHardware deleting destructor.")
     print("Static evidence only; this does not prove safe concurrent singleton access or callback drain.")
     return 0
