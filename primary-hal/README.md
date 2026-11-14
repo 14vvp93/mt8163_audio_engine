@@ -35,6 +35,10 @@ platform tree after this repository's source is included in the vendor build.
 - No PCM device is opened.
 - No TinyALSA call, mixer write, ioctl, I2C, GPIO or module operation exists.
 - No output/input stream is exposed until a verified PCM endpoint backend is wired.
+- CI enforces that both stream-open callbacks continue clearing their output
+  pointer and returning `-ENODEV`, and that the bootstrap remains
+  `installable: false`, until callback dispatch lifetime and endpoint gates
+  are explicitly closed.
 - No unsupported route is silently mapped to Normal playback.
 - Do not set `installable: true` or stage this artifact until the public HAL
   callbacks and all required factory-private callbacks are implemented and
