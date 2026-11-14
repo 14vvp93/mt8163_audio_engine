@@ -30,6 +30,8 @@ HELPER_TARGETS = (
     0x2821C,
     0x2822C,
     0x2823C,
+    0x282EC,
+    0x2894C,
 )
 SYMBOL_LINE = re.compile(
     r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
@@ -336,7 +338,7 @@ def main() -> int:
 
     reports: list[str] = [
         f"HIDL bridge SHA-256: {digest}",
-        "Source: direct BL targets observed in Device::syncCallback at 0x0001cb4c",
+        "Source: direct BL targets observed in Device::syncCallback at 0x0001cb4c and the PrimaryDevice/MTKPrimaryDevice constructor bodies",
         "Function symbols are collected from the ELF symbol tables and the optional "
         "GNU mini-debug ELF; no boundaries are inferred from arbitrary byte windows.",
         f"GNU mini-debug data: {debugdata_status}",
