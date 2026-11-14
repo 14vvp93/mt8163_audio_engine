@@ -190,3 +190,9 @@ The replacement callback registry must not call client/HIDL callbacks while hold
 6. define self-unregister/reentrant callback behavior explicitly.
 
 P2 remains OPEN: external caller coverage, exact private ABI prototypes, lock implementation semantics, HIDL transaction mode, callback registration/clear races, detached voice-unlock worker teardown and target linker namespace remain unresolved.
+
+### Raw HIDL bridge cookie lifetime
+
+The HIDL bridge registration path passes its `Device*` as the opaque cookie alongside the static `audioParameterChangedCallback` thunk. The factory HAL stores that raw cookie in the callback-vector entry and passes it back to the thunk during dispatch. The bridge's local `sp<IAudioParameterChangedCallback>` protects the HIDL callback interface object, but it does not retain the `Device` owner referenced by the raw cookie.
+
+Consequently, bridge destruction depends on successful removal/drain of the raw `Device*` cookie before the `Device` object is destroyed. The target's lock-held dispatch/clear ordering provides this only on the successful `alock_lock_ms` path; the observed lock-failure fallthrough leaves the raw-cookie lifetime unproven. This is a concrete unsafe-capable lifetime surface, not proof that a use-after-free occurred on the device.
