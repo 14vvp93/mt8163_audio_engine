@@ -42,8 +42,8 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Require feature branch for manual/scheduled execution
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+      - name: Require feature branch for manual execution
+        if: github.event_name == 'workflow_dispatch'
         run: |
           test "${GITHUB_REF}" = "refs/heads/feature" || {
             echo "::error::P2 automation must run against feature."
