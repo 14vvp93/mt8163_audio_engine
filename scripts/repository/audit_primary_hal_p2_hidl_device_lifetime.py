@@ -83,25 +83,8 @@ def main() -> int:
         r"<([^>]+)>",
         re.IGNORECASE,
     )
-    full_disassembly = run(["arm-linux-gnueabi-objdump", "-dr", "-C", str(binary)])
     refbase_constructor_calls: list[tuple[int, int, str, str]] = []
     refbase_constructor_veneer = 0x281DC
-    for line in full_disassembly.splitlines():
-        match = direct_call_pattern.match(line)
-        if match is None:
-            continue
-        callsite = int(match.group(1), 16)
-        target = int(match.group(2), 16)
-        target_name = match.group(3)
-        if "RefBase::RefBase" not in target_name and target != refbase_constructor_veneer:
-            continue
-        callers = [
-            item for item in symbols
-            if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
-        ]
-        callers.sort(key=lambda item: (item[1], item[0], item[3]))
-        caller = callers[0][3] if callers else "UNRESOLVED_CALLER"
-        refbase_constructor_calls.append((callsite, target, caller, target_name))
 
     vtables = [
         item for item in symbols
@@ -129,7 +112,6 @@ def main() -> int:
         )
         and item[1] > 0
     ]
-    constructor_bodies: list[tuple[int, int, str, str]] = []
     for address, size, _, name in [*constructors, *derived_constructors]:
         code_address = address & ~1
         command = ["arm-linux-gnueabi-objdump", "-dr", "-C"]
