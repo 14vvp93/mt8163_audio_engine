@@ -1,12 +1,12 @@
 # AudioCore Session Token Contract
 
-**Status:** SessionToken migration and backend-token lifecycle checks passed at exact HEAD `93f7c1180d0581239626055ee0fbefde0aef7377` (workflow run `43521528904`, SUCCESS).
+**Status:** SessionToken migration, repository consumer audit and all six P1 offline gates passed at exact HEAD `ea48695c21e8ff5900c58c6bb62602d6a46bab90` (workflow run `43521731773`, SUCCESS).
 
-## Problem
+## Problem — resolved
 
-The current public session identity is a caller-supplied `uint32_t`. `SessionRegistry`, `AudioCore`, `PrimaryHalStreamAdapter` and `PcmStreamBroker` compare only that value. Closing a session and opening another session with the same numeric handle makes a delayed operation from the old session indistinguishable from an operation for the replacement.
+The original API used a caller-supplied `uint32_t` as the complete session identity. Reusing the same numeric handle after close made delayed operations ambiguous. The generation-bearing token described below resolves that defect across the internal AudioCore and PCM lifecycle APIs.
 
-The PCM broker's private slot generation does not solve this public identity problem. It is an internal transfer-race guard and is not propagated through AudioCore or adapter calls.
+The PCM broker's private slot generation remains a separate transfer-race guard; it does not replace the public `SessionToken`.
 
 ## Required identity
 
@@ -90,9 +90,9 @@ Direct `PcmStreamBroker` use outside `PrimaryHalStreamAdapter` is currently limi
 3. Convert `AudioCore`, snapshots and coordinator tests. **Implemented.**
 4. Convert `PcmStreamBroker`, callback admission validation and broker tests. **Implemented; final TSAN confirmation pending.**
 5. Convert `PrimaryHalStreamAdapter`, `PcmByteStreamAdapter` and adapter tests. **Implemented; final TSAN confirmation pending.**
-6. Audit the complete repository for raw-handle mutation paths and remove every internal occurrence. **Final audit pending.**
-7. Run full host tests, ThreadSanitizer, Android ARMv7 build and repository-integrity checks against the exact final commit. **In progress.**
-8. Only then permit HAL integration to consume the token API. **Blocked on steps 6–7.**
+6. Audit the complete repository for raw-handle mutation paths and remove every internal occurrence. **PASS at `ea48695c21e8ff5900c58c6bb62602d6a46bab90`; raw handles remain only at the external open boundary and in test harnesses.**
+7. Run full host tests, ThreadSanitizer, ASan/UBSan, Android ARMv7 build and repository-integrity checks against the exact final commit. **PASS; P1 workflow run `43521731773`, all six jobs SUCCESS.**
+8. Permit the future HAL integration to consume the token API, while preserving the factory C ABI and requiring the HAL stream object to own its token. **P1 exit gate satisfied; HAL integration remains a separate roadmap task.**
 
 ## Automated P1 gate
 
@@ -106,6 +106,6 @@ The workflow has six required checks:
 4. Android ARMv7 / API 28 cross-build and ELF architecture checks.
 5. Repository Markdown/workflow integrity.
 
-The final `P1 SESSION IDENTITY COMPLETE` job succeeds only when every required job succeeds. The workflow is expected to remain red until the full regression suite and all verification jobs pass. It is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
+The final `P1 SESSION IDENTITY COMPLETE` job succeeds only when every required job succeeds. The workflow completed successfully on `ea48695c21e8ff5900c58c6bb62602d6a46bab90`; all six required jobs passed. It is a completion gate, not a substitute for implementing P1. A green result proves offline build/test gates only; it does not prove target-device behavior or authorize HAL installation.
 
 No device validation is implied by this host/API contract.
