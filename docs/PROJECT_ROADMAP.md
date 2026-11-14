@@ -441,3 +441,12 @@ The MT8163 Audio Engine is complete only when:
 - Added the report to the P2 workflow and evidence artifact. This is discovery automation only; target ELF output must be reviewed before concluding whether an owner-pin container exists or how it is released.
 - P2 remains OPEN. In particular, callback admission/drain semantics, factory lock failure behavior, target Device owner lifetime and the detached voice-unlock teardown contract remain blocking evidence gates.
 - No runtime audio behavior or hardware path was changed. Primary HAL remains fail-closed and non-installable.
+
+### 2026-11-14 — standalone AudioCore callback registry implementation
+
+- Added `CallbackRegistry` as a fixed-capacity, 16-slot primitive with monotonic registration IDs, admission closure, per-registration in-flight accounting, callback invocation outside the mutex, and explicit clear/drain operations.
+- Dispatch uses a fixed stack snapshot and no heap allocation. It is mutex-based and explicitly not real-time safe; it is not permitted on PCM read/write callback threads.
+- Self-clear and cross-registry clear from callback context fail fast with `WouldDeadlock` when waiting would be required. Admission is still closed, and the owner must complete drain from a non-callback control context before releasing callback cookies.
+- Added host regression tests for concurrent clear/drain, self-clear, same-batch callback removal, cross-registry deadlock avoidance, cookie drain, capacity and terminal shutdown. Added an Android ARM compile probe through the existing AudioCore compile-check translation unit.
+- Added [AudioCore Callback Registry Contract](AUDIOCORE_CALLBACK_REGISTRY_CONTRACT.md). CI status for this implementation is pending confirmation; source-level repository writes are not a substitute for host, TSAN, ASan/UBSan or ARMv7 build results.
+- This is an isolated AudioCore primitive only. It is not integrated into Primary HAL or the factory HIDL callback path. P2 remains OPEN, Primary HAL remains fail-closed and `installable: false`; no hardware operations were performed.
