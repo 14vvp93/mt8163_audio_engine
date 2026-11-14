@@ -40,14 +40,16 @@ The 16 slots are a private MediaTek extension, not part of the public AOSP `audi
 3. The MediaTek HIDL 4.1 `Device` adapter loads and calls offsets 188..216. The generated HIDL interface transports the parameter-change callback in both registration and notification directions.
 4. The service init entry starts `android.hardware.audio@4.0-service-mediatek` as `vendor.audio-hal-4-0` / `audioserver`.
 5. The ATCI process loads the MediaTek primary-device client. The recovered client bridge currently establishes the parameter `setParameters/getParameters` path only; it does not establish xWay callback use.
-6. `AudioVUnlockDL::startInput()` creates a detached pthread. `stopInput()` sets stop state and polls for worker exit; `freeInstance()` separately frees singleton-owned state and does not stop/join the worker. The inspected destructor does not provide shutdown.
-7. Android 9 AOSP r3 ordinary playback/capture close waits for worker-side I/O quiescence before deleting stream wrappers. This does not establish private HIDL callback quiescence, callback-table serialization, or the lifetime of the detached voice-unlock worker.
+6. Target factory ELF `ReadRoutine` calls `pthread_self()` and `pthread_detach()`. `AudioALSAHardware::stopVoiceUnlockDL()` calls `getInstance()` then `stopInput()`; `freeVoiceUnlockDLInstance()` calls `freeInstance()` directly. The target `freeInstance()` body destroys SRC/buffer/singleton state and contains no `stopInput()`, `pthread_join()`, or worker shutdown call. The free wrapper therefore does not enforce stop-before-free. This establishes an unsafe-capable teardown surface, but not that an external caller actually frees an active instance.
+7. The target `stopInput()` has an initial polling loop followed by a repeated check/log branch; it must not be modeled as a simple bounded wait that always returns safely on timeout. The exact source-level flag semantics remain unresolved. Public V3 source has a different lifecycle implementation and is not proven to match the target ELF.
+8. Android 9 AOSP r3 ordinary playback/capture close waits for worker-side I/O quiescence before deleting stream wrappers. This does not establish private HIDL callback quiescence, callback-table serialization, or the lifetime of the detached voice-unlock worker.
 
 ## Unresolved hard gates
 
 - [ ] Identify every external xWay caller, including numeric-offset and indirect dispatch from executables, APK/JNI payloads and runtime-loaded components.
 - [ ] Recover and cross-check exact source-level prototypes and return types for all 16 slots against matching vendor headers/source or complete caller-side ABI evidence.
 - [ ] Prove callback admission, in-flight drain and owner lifetime for every private callback, including HIDL parameter callback registration, replacement and clear races.
+- [ ] Identify and verify every external caller's ordering of `stopVoiceUnlockDL()` and `freeVoiceUnlockDLInstance()`; the target free wrapper itself does not stop the worker.
 - [ ] Prove voice-unlock teardown ordering: stop request, worker-exit observation, drain all `ReadRefFromRing` callers, then free singleton and ring/SRC state. The detached worker cannot be treated as joined.
 - [ ] Prove serialization of concurrent start/stop/read/write and callback registration/control calls; define lock ordering and reentrancy.
 - [ ] Obtain the exact target Android 9 linker namespace configuration and verify all `DT_NEEDED` libraries and search paths.
@@ -64,7 +66,7 @@ The push-triggered and manually dispatched P2 GitHub Actions workflow pins publi
 - verifies that all 16 offsets remain inventoried and unresolved evidence gaps remain visible;
 - verifies that Primary HAL stream opens still clear output pointers and return `-ENODEV`, and that the module remains `installable: false`.
 
-The current scan's five matches do not include a separately identified xWay caller. A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. APK/JAR coverage is limited to DEX and native-library archive members in the pinned extracted dataset; it does not prove coverage of dynamically downloaded code or data-driven dispatch. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
+The current scan's five matches do not include a separately identified xWay caller. Target wrapper disassembly confirms that `freeVoiceUnlockDLInstance()` dispatches straight to `AudioVUnlockDL::freeInstance()` without a stop call; the target free body also has no worker shutdown call. A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. APK/JAR coverage is limited to DEX and native-library archive members in the pinned extracted dataset; it does not prove coverage of dynamically downloaded code or data-driven dispatch. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
 
 ## Enablement policy
 
