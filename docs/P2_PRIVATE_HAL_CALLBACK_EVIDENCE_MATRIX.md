@@ -620,3 +620,16 @@ Commits:
 The GitHub connector reports no CI status checks for these commits, and no workflow run has yet been retrieved for them. Therefore the correction and tests are **not CI-verified** at this point. Do not interpret the earlier run `43617327107` as validating this new collector. The next evidence step is to run the P2 workflow on current feature and inspect `p2-hidl-sync-helpers.txt` before drawing any conclusions about RefBase helper behavior.
 
 P2 remains OPEN. Primary HAL remains fail-closed and `installable: false`; no callback integration, DSP activation, or P3 transition.
+
+## 2026-11-14 — unresolved HIDL helper symbols are explicit evidence gaps
+
+Workflow run [43623686898](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43623686898) reproduced the helper auditor failure: the pinned bridge symbol table has no sized `FUNC` symbol containing direct call target `0x000284dc`. The retry failed for the same reason. This is a limitation of the symbol-to-function resolver, not evidence of a factory HAL defect or of helper lifetime semantics.
+
+The auditor now handles each helper independently:
+- helpers with a containing sized `FUNC` symbol still receive full-function disassembly;
+- helpers without a provable function range are emitted as `UNRESOLVED` with the exact resolution error;
+- no guessed boundary and no fixed-length excerpt are emitted;
+- the report ends with `HELPER_RESOLUTION_STATUS: INCOMPLETE` and enumerates unresolved targets;
+- report generation exits successfully so the artifact can preserve partial evidence, but this is explicitly **not** a lifetime pass and does not close P2.
+
+A regression test verifies unresolved targets cannot accidentally produce a function range. The workflow must be checked for the new report before assigning any RefBase ownership or lifetime semantics. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
