@@ -13,6 +13,23 @@ Status: **OPEN — partial static call graph; no factory callback is approved fo
 
 The firmware scan used immutable dataset commit `865b6efaeff0c4547dab1f4456f2fa664b3611d1`.
 
+## Additional CI evidence — run 43603169612
+
+The corrected callback xref auditor and dependent lifecycle checks passed against the pinned factory ELF. The reproducible evidence bundle is artifact `mt8163-primary-hal-p2-evidence` (14 files; artifact ID `14117480619`).
+
+### Factory callback dispatch dataflow
+
+- `onAudioParameterChangedCallback(char const*)` is at `0x000cef18`; the pinned ELF loads the callback entry from vector element offset `+0`, cookie from `+4`, moves the parameter pointer into `r0`, cookie into `r1`, then executes `BLX r2` at `0x000cf020`.
+- The call occurs before `alock_unlock()` at `0x000cf050` on the lock-success path. The lock-failure branch still falls through to vector traversal and callback dispatch. Therefore neither successful-lock serialization nor the clear operation can be treated as a universal cookie-lifetime barrier.
+- `setParametersByCallback(String8 const&)` at `0x000cf108` loads global callback and cookie cells, then invokes the callback indirectly with `BLX r3` at `0x000cf218`. This is a separate global callback path; its caller graph and teardown semantics remain unresolved. Its observed argument setup is not evidence of the vector-registry callback ABI.
+- The whole-ELF scan inventories 1,575 register-indirect `BLX` sites. It resolves no direct `BL/BLX` callsite to the five audited callback methods. This does not establish absence of callers: indirect/vtable/function-pointer dispatch remains unresolved except where local dataflow is proven.
+
+### Confirmed factory close-to-destructor chain
+
+The dependent lifecycle audit correlates the factory module close wrapper's second vtable slot with `AudioALSAHardware`'s deleting destructor. The factory `audio_hw_device_mtk.close` slot at `+0x3c` enters HMI close at `0x0009ba48`; HMI close invokes the deleting destructor through the returned object's second vtable slot. The destructor then performs its resource-manager cleanup through the second virtual slot of the object stored at `AudioALSAHardware+0x04`. This confirms the close-to-destructor identity, but does not prove that the parameter callback vector is drained: no admission closure, callback quiescence, or in-flight wait is visible in the audited destructor path.
+
+The separate `AudioALSAStreamManager` event callback path is not the parameter callback registry. CI resolved event type 0 to `callbackPhoneCallReopen(int, void*)`, and confirmed its worker unregister sequence clears the run flag, signals, joins the worker, then removes the worker entry. This worker join must not be generalized into a drain guarantee for the unrelated vector-backed parameter callback registry or global setup-parameters callback.
+
 ## Proven call paths
 
 ### Parameter-change callback: HIDL registration to factory registry
