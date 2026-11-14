@@ -142,8 +142,8 @@ void test_self_clear_is_nonblocking_and_retryable() {
     require(state.calls == 1U &&
             state.result == CallbackRegistryResult::WouldDeadlock,
             "self-clear closes admission without waiting on itself");
-    require(registry.clear_and_drain(state.id) == CallbackRegistryResult::Ok,
-            "external retry completes the drain");
+    require(registry.clear_cookie_and_drain(&state) == CallbackRegistryResult::Ok,
+            "external cookie retry completes the drain");
 }
 
 void test_callback_can_disable_later_callback_without_deadlock() {
@@ -173,6 +173,64 @@ void test_callback_can_disable_later_callback_without_deadlock() {
             "disabled callback drain completes externally");
     require(registry.clear_and_drain(first_id) == CallbackRegistryResult::Ok,
             "first callback drains");
+}
+
+struct CrossRegistryContext {
+    CallbackRegistry* target_registry{nullptr};
+    CallbackRegistry::RegistrationId target_id{0U};
+    CallbackRegistryResult result{CallbackRegistryResult::LockFailure};
+};
+
+void cross_registry_clear_callback(void* cookie, const char*) noexcept {
+    auto& state = *static_cast<CrossRegistryContext*>(cookie);
+    state.result = state.target_registry->clear_and_drain(state.target_id);
+}
+
+void test_cross_registry_clear_never_waits_from_callback() {
+    CallbackRegistry first_registry;
+    CallbackRegistry second_registry;
+    BlockingCallback blocked;
+    CrossRegistryContext first;
+    CallbackRegistry::RegistrationId first_id = 0U;
+    CallbackRegistry::RegistrationId second_id = 0U;
+    first.target_registry = &second_registry;
+
+    require(second_registry.register_callback(blocking_callback, &blocked,
+                                               &second_id) ==
+                CallbackRegistryResult::Ok,
+            "second registry blocking callback registers");
+    first.target_id = second_id;
+    require(first_registry.register_callback(cross_registry_clear_callback,
+                                              &first, &first_id) ==
+                CallbackRegistryResult::Ok,
+            "first registry cross-clear callback registers");
+
+    std::thread dispatcher([&second_registry] {
+        require(second_registry.dispatch("blocked") == 1U,
+                "second registry callback completes");
+    });
+    {
+        std::unique_lock<std::mutex> lock(blocked.mutex);
+        blocked.condition.wait(lock, [&blocked] { return blocked.entered; });
+    }
+
+    require(first_registry.dispatch("cross-clear") == 1U,
+            "cross-registry callback executes");
+    require(first.result == CallbackRegistryResult::WouldDeadlock,
+            "callback context never waits for another registry's in-flight callback");
+
+    {
+        std::lock_guard<std::mutex> lock(blocked.mutex);
+        blocked.release = true;
+    }
+    blocked.condition.notify_all();
+    dispatcher.join();
+    require(second_registry.clear_and_drain(second_id) ==
+                CallbackRegistryResult::Ok,
+            "external caller completes the second registry drain");
+    require(first_registry.clear_and_drain(first_id) ==
+                CallbackRegistryResult::Ok,
+            "first registry callback drains");
 }
 
 void test_cookie_clear_and_capacity() {
@@ -232,6 +290,7 @@ int main() {
     test_clear_waits_for_in_flight_callback();
     test_self_clear_is_nonblocking_and_retryable();
     test_callback_can_disable_later_callback_without_deadlock();
+    test_cross_registry_clear_never_waits_from_callback();
     test_cookie_clear_and_capacity();
     test_shutdown_is_terminal_and_drained();
     std::cout << "AudioCore callback registry tests passed\n";
