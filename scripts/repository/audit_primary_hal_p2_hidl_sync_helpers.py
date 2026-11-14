@@ -321,14 +321,16 @@ def main() -> int:
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
+    resolved: list[int] = []
     unresolved: list[int] = []
     for target in HELPER_TARGETS:
         try:
             address, size, name, thumb = resolve_function(target, functions)
         except RuntimeError as error:
-            unresolved.append(target)
-            reports.extend(unresolved_report_lines(target, error))
             reports.extend([
+                "",
+                f"CALL_TARGET 0x{target:08x} -> FUNCTION_SYMBOL_UNAVAILABLE",
+                f"FUNCTION_SYMBOL_RESOLUTION: {error}",
                 f"TARGET_WINDOW 0x{target:08x}..0x{target + HELPER_WINDOW_SIZE:08x} "
                 "(fixed 0x60-byte inspection window; not a function boundary)",
                 disassemble_target_window(binary, target).rstrip(),
@@ -336,13 +338,15 @@ def main() -> int:
             try:
                 destination, source_section, destination_section = resolve_veneer_target(binary, target)
             except RuntimeError as veneer_error:
-                reports.append(f"VENEER_RESOLUTION_ERROR: {veneer_error}")
+                unresolved.append(target)
+                reports.append(f"TARGET_RESOLUTION: UNRESOLVED ({veneer_error})")
                 continue
 
             reports.append(
                 f"INTERWORKING_VENEER: {source_section} -> "
                 f"{destination_section}:0x{destination:08x}"
             )
+            reports.append("TARGET_RESOLUTION: VERIFIED_INTERWORKING_VENEER")
             try:
                 function_address, function_size, function_name, function_thumb = (
                     resolve_function(destination, functions)
@@ -355,16 +359,20 @@ def main() -> int:
                 )
                 if plt_symbol is not None:
                     reports.append(f"DESTINATION_PLT_SYMBOL: {plt_symbol}")
+                    reports.append("TARGET_RESOLUTION: VERIFIED_PLT_SYMBOL")
+                    resolved.append(target)
                 else:
                     reports.append(
                         f"DESTINATION_SYMBOL: UNRESOLVED ({destination_error})"
                     )
-                reports.extend([
-                    f"DESTINATION_WINDOW 0x{destination:08x}.."
-                    f"0x{destination + HELPER_WINDOW_SIZE:08x} "
-                    "(fixed inspection window; not a function boundary)",
-                    disassemble_target_window(binary, destination).rstrip(),
-                ])
+                    unresolved.append(target)
+                    reports.append("TARGET_RESOLUTION: UNRESOLVED")
+                    reports.extend([
+                        f"DESTINATION_WINDOW 0x{destination:08x}.."
+                        f"0x{destination + HELPER_WINDOW_SIZE:08x} "
+                        "(fixed inspection window; not a function boundary)",
+                        disassemble_target_window(binary, destination).rstrip(),
+                    ])
             else:
                 reports.extend([
                     f"DESTINATION_FUNCTION 0x{function_address:08x} "
@@ -373,7 +381,9 @@ def main() -> int:
                     f"DESTINATION_FUNCTION_RANGE 0x{function_address:08x}.."
                     f"0x{function_address + function_size:08x}",
                     disassemble(binary, function_address, function_size, function_thumb).rstrip(),
+                    "TARGET_RESOLUTION: VERIFIED_DESTINATION_FUNCTION",
                 ])
+                resolved.append(target)
             continue
 
         reports.extend([
@@ -383,15 +393,21 @@ def main() -> int:
             f"mode={'Thumb' if thumb else 'ARM'} {name}",
             f"FULL_FUNCTION_RANGE 0x{address:08x}..0x{address + size:08x}",
             disassemble(binary, address, size, thumb).rstrip(),
+            "TARGET_RESOLUTION: VERIFIED_FUNCTION_SYMBOL",
         ])
+        resolved.append(target)
 
     reports.extend([
         "",
-        f"HELPER_RESOLUTION_STATUS: {'INCOMPLETE' if unresolved else 'COMPLETE'}",
+        f"HELPER_TARGET_RESOLUTION_STATUS: {'INCOMPLETE' if unresolved else 'COMPLETE'}",
+        "RESOLVED_HELPER_TARGETS: "
+        + (", ".join(f"0x{target:08x}" for target in resolved) if resolved else "none"),
         "UNRESOLVED_HELPER_TARGETS: "
         + (", ".join(f"0x{target:08x}" for target in unresolved) if unresolved else "none"),
-        "An INCOMPLETE report is a successful evidence-generation result, not a lifetime "
-        "or P2 pass. Unresolved helpers remain explicit P2 evidence gaps.",
+        "COMPLETE means every direct call target resolves to a sized FUNC symbol or to a "
+        "verified interworking veneer and exact PLT symbol. It does not claim that an "
+        "external PLT implementation body was disassembled or that callback lifetime "
+        "is safe. INCOMPLETE preserves partial evidence but is not a lifetime or P2 pass.",
         "Static helper disassembly only. Determine object pinning, reference ownership, "
         "and callback lifetime from complete instruction/dataflow evidence; helper names "
         "alone are not lifetime guarantees.",
