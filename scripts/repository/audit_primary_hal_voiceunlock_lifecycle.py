@@ -15,12 +15,12 @@ FUNCTIONS = (
     "android::AudioVUnlockDL::freeInstance()",
     "android::AudioVUnlockDL::ReadRefFromRing(void*, unsigned int, void*)",
     "android::AudioVUnlockDL::SetInputStandBy(bool)",
-    "android::AudioALSAHardware::startVoiceUnlockDL()",
-    "android::AudioALSAHardware::stopVoiceUnlockDL()",
-    "android::AudioALSAHardware::freeVoiceUnlockDLInstance()",
 )
 THREAD_CALLS = re.compile(
-    r"pthread_(?:create|detach|join|mutex_lock|mutex_unlock|cond_wait)|usleep"
+    r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait)|usleep"
+)
+SYMBOL_LINE = re.compile(
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
 
 
@@ -57,17 +57,16 @@ def main() -> int:
         print(f"ERROR: unexpected factory HAL SHA-256: {digest}", file=sys.stderr)
         return 1
 
-    nm_output = run(["arm-linux-gnueabi-nm", "-S", "-C", "--defined-only", str(binary)])
+    symbol_output = run([
+        "arm-linux-gnueabi-readelf", "-Ws", "-C", str(binary)
+    ])
     symbols: dict[str, tuple[int, int]] = {}
-    for line in nm_output.splitlines():
-        fields = line.split(maxsplit=3)
-        if len(fields) != 4:
+    for line in symbol_output.splitlines():
+        match = SYMBOL_LINE.match(line)
+        if not match:
             continue
-        address_text, size_text, _, name = fields
-        try:
-            symbols[name] = (int(address_text, 16), int(size_text, 16))
-        except ValueError:
-            continue
+        address_text, size_text, name = match.groups()
+        symbols[name] = (int(address_text, 16), int(size_text, 10))
 
     print(f"Factory SHA-256: {digest}")
     print("Read-only targeted lifecycle disassembly")
