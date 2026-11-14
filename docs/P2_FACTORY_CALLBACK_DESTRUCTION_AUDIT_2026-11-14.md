@@ -174,3 +174,15 @@ It does **not** close the factory parameter-change callback lifetime gate. The e
 - [ ] Add deterministic host tests for clear/dispatch/destruction races and reentrancy.
 
 The audit workflow completed successfully: both evidence jobs and the aggregate offline gate passed on commit `e8721fc04e5489de1b4c224359e44d98a89b5e17`. P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`.
+
+## Follow-up: identify the AudioEventType(0) callback target
+
+Evidence: workflow run [43599647260](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43599647260), factory/client job ID `132461453943`, pinned factory ELF SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+
+The relocation-backed callback pointer cell at `0x001929c8` resolves through `R_ARM_GLOB_DAT` to `android::callbackPhoneCallReopen(int, void*)` at `0x000768a8`. Its disassembly preserves the cookie in `r4`; when non-null, it tail-branches to `AudioALSAStreamManager::phoneCallReopen()` through the PLT. The StreamManager constructor passes its own `this` pointer as the event callback cookie.
+
+This identifies the event-type-0 callback as the phone-call-reopen path. It does not establish a call into `AudioALSAHardware::onAudioParameterChangedCallback(char const*)`, nor a drain of the separate `AudioALSAHardware+0x3b0` parameter-change registry. The event worker's successful stop/signal/join barrier therefore remains scoped to the phone-call-reopen worker.
+
+The factory resource-manager audit now additionally emits the complete `AudioALSAStreamManager::phoneCallReopen()` disassembly in the lifecycle report. This is an evidence-gathering addition only; its transitive call behavior must be reviewed from the next successful artifact before drawing further conclusions.
+
+P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`.
