@@ -114,3 +114,18 @@ The argument order differs, and the binary does not prove a source-level `noexce
 - [ ] Pin matching target vendor headers/source and exact Android 9 linker namespace configuration.
 
 Static evidence only. P2 remains OPEN.
+
+## 2026-11-14 — callback dataflow regression gate
+
+Added instruction-level regression assertions to `audit_primary_hal_p2_factory_callback_xrefs.py` for the pinned factory ELF:
+
+- Vector registry entry layout and load order: callback at entry `+0`, cookie at `+4`.
+- Dispatch ABI: parameter pointer in `r0`, cookie in `r1`, indirect invocation through `BLX r2`.
+- Lock branch and callback-before-unlock ordering.
+- Separate global callback/cookie loads in `setParametersByCallback()`, including its `r0/r1/r2/r3` argument setup and `BLX r3`.
+
+The parser compares normalized instruction records rather than broad source-text searches. The assertion output is `CALLBACK_DATAFLOW_ASSERTIONS: PASS`.
+
+CI [43604214721](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721) passed all three jobs on commit `7a39afefa91040b62c110a0a191538da73bf06b7`; artifact [14117686286](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721/artifacts/14117686286) preserves 14 evidence reports.
+
+This closes an auditor-regression gap only. It does not resolve indirect external callers or prove callback quiescence/lifetime. P2 remains OPEN.

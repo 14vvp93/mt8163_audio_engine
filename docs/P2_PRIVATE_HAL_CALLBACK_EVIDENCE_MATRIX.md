@@ -493,3 +493,17 @@ The worker loop at `0x00135034` checks the run byte, waits on its event lock/con
 **Scope boundary:** this establishes quiescence of the matching `AudioEventThread` worker for event type `0` on the observed successful control path. It does not establish that the event callback is the HIDL `setAudioParameterChangedCallback` registry callback, nor that it drains `AudioALSAHardware`'s separate vector at `this+0x3b0` protected by `this+0x3ac`. The StreamManager registration's cookie is `AudioALSAStreamManager*`, while the parameter-change registry is owned by `AudioALSAHardware`; no direct cross-link from this event-thread callback to that registry's dispatch/clear functions is established by the inspected disassembly. The parameter-change registry's lock-failure fallthrough and callback-under-lock behavior therefore remain unresolved safety blockers.
 
 CI run [43588457542](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43588457542) completed successfully: both evidence jobs and the aggregate offline gate passed. This is static binary evidence only. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+## 2026-11-14 — callback dataflow regression assertions
+
+The pinned factory callback audit now fails CI if the reviewed instruction-level dataflow changes:
+
+- The vector-backed dispatcher must load the registration vector and indexed entry, load the cookie from entry `+4`, load the callback from entry `+0`, move the parameter pointer into `r0`, and invoke through `BLX r2`.
+- The dispatcher must retain the observed lock-call/branch structure and invoke the callback before the `alock_unlock` call in the pinned function.
+- The separate `setParametersByCallback()` path must load its global callback and cookie cells independently, pass the stack parameter structure in `r1`, event value in `r0`, cookie in `r2`, and invoke through `BLX r3`.
+
+The assertions parse normalized ARM disassembly instruction records and are scoped to the immutable factory HAL SHA-256 already pinned by the audit. ARM objdump comments are removed before operand comparison.
+
+CI run [43604214721](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721) completed successfully on code commit `7a39afefa91040b62c110a0a191538da73bf06b7`. The artifact [14117686286](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721/artifacts/14117686286) contains the reproducible report, including `CALLBACK_DATAFLOW_ASSERTIONS: PASS`.
+
+**Scope:** this regression protects the observed static dataflow against binary/auditor drift. It does not identify all indirect callers, establish callback owner lifetime, or prove in-flight drain. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
