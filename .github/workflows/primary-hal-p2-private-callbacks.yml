@@ -173,7 +173,7 @@ jobs:
           python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" | tee p2-hidl-bridge-lifecycle.txt
           python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" | tee p2-hidl-device-lifetime.txt
           python3 scripts/repository/audit_primary_hal_p2_device_close.py "$binary" | tee p2-factory-device-close.txt
-          python3 scripts/repository/audit_primary_hal_p2_device_close_contract.py "$binary" p2-factory-relocations.txt | tee p2-factory-device-close-contract.txt
+          python3 scripts/repository/audit_primary_hal_p2_device_close_contract.py "$binary" p2-factory-relocations.txt p2-factory-device-close.txt | tee p2-factory-device-close-contract.txt
       - name: Preserve reproducible P2 evidence
         uses: actions/upload-artifact@v6
         with:
