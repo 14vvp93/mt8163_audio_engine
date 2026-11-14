@@ -68,4 +68,16 @@ if(PCM_DSP_BUILD_TESTS)
     target_link_libraries(mt8163_audio_core_snapshot_tests PRIVATE mt8163_audio_core Threads::Threads)
     target_compile_options(mt8163_audio_core_snapshot_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     add_test(NAME mt8163_audio_core_snapshot_tests COMMAND mt8163_audio_core_snapshot_tests)
+
+    add_executable(mt8163_audio_core_callback_registry_tests
+        tests/callback_registry_test.cpp
+    )
+    target_link_libraries(mt8163_audio_core_callback_registry_tests
+        PRIVATE mt8163_audio_core Threads::Threads
+    )
+    target_compile_options(mt8163_audio_core_callback_registry_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror
+    )
+    add_test(NAME mt8163_audio_core_callback_registry_tests
+             COMMAND mt8163_audio_core_callback_registry_tests)
 endif()
