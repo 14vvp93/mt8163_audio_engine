@@ -126,7 +126,16 @@ def require_instruction(
     operand: str,
 ) -> int:
     matches = [index for index, item in enumerate(records) if item.address == address]
-    require(len(matches) == 1, f"expected one instruction at 0x{address:08x}")
+    if len(matches) != 1:
+        nearby = [
+            f"0x{item.address:08x}: {item.mnemonic} {item.operand}"
+            for item in records
+            if abs(item.address - address) <= 16
+        ]
+        raise RuntimeError(
+            f"expected one instruction at 0x{address:08x}, found {len(matches)}; "
+            f"nearby records: {nearby}"
+        )
     index = matches[0]
     instruction = records[index]
     require(
