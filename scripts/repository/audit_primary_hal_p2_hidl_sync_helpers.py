@@ -111,21 +111,14 @@ def main() -> int:
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
-    resolved: set[tuple[int, int, str, bool]] = set()
     for target in HELPER_TARGETS:
-        function = resolve_function(target, functions)
-        resolved.add(function)
-        reports.append(
-            f"CALL_TARGET 0x{target:08x} -> "
-            f"FUNC 0x{function[0]:08x} size={function[1]} {function[2]}"
-        )
-
-    for address, size, name, thumb in sorted(resolved):
-        disassembly = disassemble(binary, address, size, thumb)
+        address, size, name, thumb = resolve_function(target, functions)
+        stop = min(address + size, target + 0x100)
         reports.extend([
             "",
-            f"FUNCTION 0x{address:08x} size={size} {name}",
-            disassembly.rstrip(),
+            f"CALL_TARGET 0x{target:08x} -> FUNC 0x{address:08x} "
+            f"size={size} offset=0x{target - address:x} {name}",
+            disassemble(binary, target, stop - target, thumb).rstrip(),
         ])
 
     reports.extend([
