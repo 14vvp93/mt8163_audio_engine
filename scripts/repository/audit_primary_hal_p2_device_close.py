@@ -14,6 +14,7 @@ SYMBOL_LINE = re.compile(
 CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
 TARGETS = (
     "AudioALSAHardware::~AudioALSAHardware()",
+    "AudioALSAHardware::AudioALSAHardware()",
     "AudioALSAHardware::GetInstance()",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
