@@ -409,6 +409,35 @@ def main() -> int:
             ])
             print(body.rstrip())
 
+    vtable_symbols: list[tuple[int, int, str]] = []
+    for line in readelf.splitlines():
+        match = SYMBOL_LINE.match(line)
+        if match is None:
+            continue
+        address_text, size_text, kind, name = match.groups()
+        if kind == "OBJECT" and "vtable for android::AudioALSAHardware" in name:
+            vtable_symbols.append((int(address_text, 16), int(size_text, 16), name))
+
+    for address, size, name in vtable_symbols:
+        print(f"\n===== VTABLE {name} @ 0x{address:08x} size={size} =====")
+        print(run([
+            "arm-linux-gnueabi-objdump", "-s", "-C",
+            f"--start-address=0x{address:x}",
+            f"--stop-address=0x{address + size:x}",
+            str(binary),
+        ]).rstrip())
+        relocations = run(["arm-linux-gnueabi-readelf", "-r", "-C", str(binary)])
+        relevant = []
+        for line in relocations.splitlines():
+            match = re.match(r"^\s*([0-9a-fA-F]+)\s+", line)
+            if match is None:
+                continue
+            offset = int(match.group(1), 16)
+            if address <= offset < address + size:
+                relevant.append(line)
+        print("VTABLE_RELOCATIONS:")
+        print("\n".join(relevant) if relevant else "none")
+
     print("\n===== INDIRECT CALLSITE SUMMARY =====")
     indirect = [site for site in callsites if site.target is None]
     print(f"REGISTER_INDIRECT_BLX_COUNT={len(indirect)}")
