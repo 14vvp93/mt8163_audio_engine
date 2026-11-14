@@ -437,3 +437,28 @@ Remaining blocker: obtain a callback-drain guarantee from the exact target close
 The pinned `HMI.close` body converges its null-wrapper and normal teardown branches on the final `mov r0, #0` at `0x0009badc` and returns at `0x0009bae0`. On the audited target path, the HIDL destructor's nonzero-close retry loop therefore does not repeat after a normal `HMI.close` invocation. The loop remains structurally unbounded if a different callback implementation or corrupted state returns nonzero; the target wrapper's observed success return does not prove callback drain.
 
 The close-contract regression now also checks this zero-return epilogue. Its CI result is pending.
+
+
+## 2026-11-14 — exact HIDL destruction order and factory cleanup owner
+
+Pinned bridge ELF: SHA-256 `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`.
+
+The complete `Device::~Device()` body at `0x0001b91c` now has a regression assertion for this order:
+1. Load legacy `audio_hw_device_mtk*` from `Device+0x08`.
+2. Load and invoke its `close` slot at byte offset `+0x3c`.
+3. Only after close returns, release the callback strong-reference member at `Device+0x28`.
+
+No direct load/invocation of the legacy clear slot `+0xd8` is visible in this destructor body. The callback thunk independently reads the same member at `Device+0x28` before invoking the callback interface. This proves the destructor's local instruction order, not that an already-admitted factory callback has drained before close returns.
+
+### Resolve factory cleanup object at AudioALSAHardware+0x04
+
+The pinned factory constructor calls `AudioALSAStreamManager::getInstance()` and stores its pointer at `AudioALSAHardware+0x04`. The destructor invokes that object's vtable slot `+0x04`. The `AudioALSAStreamManager` vtable relocation report resolves that slot to deleting destructor `0x00077e20` (complete destructor `0x00077b58`).
+
+The StreamManager destructor clears its singleton pointer and calls `AudioEventThreadManager::getInstance()->unregisterCallback(AudioEventType(0))`, then destroys its own vectors. It is distinct from the `AudioALSAHardware` parameter-change callback registry at `this+0x3ac` / `this+0x3b0`. The unregister call may affect an event-thread callback path, but no direct call to `AudioALSAHardware::clearAudioParameterChangedCallback` is visible. The internal event-thread unregister/drain semantics are now under separate binary audit; do not treat this cleanup as proven quiescence for the parameter-change registry.
+
+Regression gates:
+- `audit_primary_hal_p2_hidl_bridge.py`: pins close-before-`Device+0x28` release and absence of direct clear-slot invocation in the complete Device destructor.
+- `audit_primary_hal_p2_device_close_contract.py`: pins `AudioALSAHardware+0x04` construction, deleting-destructor dispatch, and StreamManager vtable slot.
+- `audit_primary_hal_p2_factory_resource_manager.py`: captures StreamManager and AudioEventThreadManager lifecycle functions, including unregister, worker loop, worker destructor, signal, and notify paths.
+
+CI status for the newest additions must be checked against the exact latest `feature` SHA before marking these regression gates verified. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
