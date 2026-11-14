@@ -60,6 +60,22 @@ def main() -> int:
         if CLIENT_SYMBOL.search(line)
     ]
 
+    if not relevant_symbols:
+        print("ERROR: expected MTKPrimaryDevicesHalClient import not found", file=sys.stderr)
+        return 1
+
+    if not relevant_relocations:
+        print(f"ATCI service SHA-256: {digest}")
+        print("Dynamic MTKPrimaryDevicesHalClient symbols:")
+        for symbol in relevant_symbols:
+            print(symbol)
+        print("Dynamic relocations for MTKPrimaryDevicesHalClient: none")
+        print(
+            "WARNING: the undefined import has no matching dynamic relocation; "
+            "no executable call site is established by this ELF."
+        )
+        return 0
+
     disassembly = run(["arm-linux-gnueabi-objdump", "-d", "-C", str(binary)])
     blocks: list[tuple[str, str]] = []
     current_name = ""
