@@ -156,12 +156,12 @@ A phase may proceed in parallel only when it does not depend on an unresolved ea
 3. Review transfer-gate shutdown, callback quiescence and object lifetime under TSAN/ASAN/UBSAN. **PASS:** the new race regression passed under [PCM broker TSAN run 43375546258](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546258).
 4. Verify AudioCore snapshot dirty-state recovery when all three slots are pinned. **PASS:** regression test committed in `7b1dbc3`, verified by [AudioCore TSAN run 43375546004](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43375546004).
 5. Migrate session identity to generation-bearing `SessionToken` through SessionRegistry, AudioCore/snapshots, PcmStreamBroker, PrimaryHalStreamAdapter and PcmByteStreamAdapter. **IMPLEMENTED.** Same-handle reuse, stale operations, foreign registry tokens and generation exhaustion have regression coverage. Contract: [AudioCore Session Token Contract](AUDIOCORE_SESSION_TOKEN_CONTRACT.md).
-6. Complete repository-wide raw-handle mutation audit and pass the [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml): full host suite, full AudioCore/DSP TSAN and ASan/UBSan suites, Android ARMv7/API 28 build, ELF checks and repository integrity. **PASS at exact HEAD `93f7c1180d0581239626055ee0fbefde0aef7377` (all six required jobs and final completion job succeeded).**
+6. Complete repository-wide raw-handle mutation audit and pass the [AudioCore P1 Session Identity Gate](../.github/workflows/audiocore-p1-session-token.yml): full host suite, full AudioCore/DSP TSAN and ASan/UBSan suites, Android ARMv7/API 28 build, ELF checks and repository integrity. **PASS at exact HEAD `ea48695c21e8ff5900c58c6bb62602d6a46bab90` (workflow run `43521731773`; all six required jobs and final completion job succeeded).**
 7. Implement the concrete TinyALSA/ALSA operation table only after P0 provides verified endpoint mappings.
 8. Validate period size, buffer size, channels, sample format, rate, interleaving and blocking behavior against the real endpoint.
 9. Preserve the existing DSP and AudioCore regression suites.
 
-**Exit gate:** lifecycle, concurrency and error recovery are sanitizer-clean; backend endpoints are based on measured target evidence, not guessed indexes.
+**Exit gate:** lifecycle, concurrency and error recovery are sanitizer-clean; backend endpoints are based on measured target evidence, not guessed indexes. Session identity sub-gate is complete at `ea48695c21e8ff5900c58c6bb62602d6a46bab90`; target endpoint mapping remains separately gated by P0 evidence.
 
 ### P2 — Preserve the factory HAL and build a narrow Android 9 integration adapter
 
@@ -396,6 +396,8 @@ The MT8163 Audio Engine is complete only when:
 ### 2026-11-14 — AudioCore session identity audit
 
 - Added regression coverage proving that a closed session's old handle cannot mutate or close a different session after its registry slot is reused with a different handle. Commit: `b794a08e66032df4ce3da44a0c533e7692014e99`.
-- Static review found an unresolved identity limitation: `SessionRegistry` accepts caller-supplied 32-bit handles. If a caller closes a session and later reopens a new session using the exact same numeric handle, a delayed operation carrying the old value is indistinguishable from an operation for the new session.
-- This cannot be fixed by an internal slot generation alone while the public API continues to accept and compare only the raw 32-bit handle. The proposed generation-bearing token and staged migration are documented in [AudioCore Session Token Contract](AUDIOCORE_SESSION_TOKEN_CONTRACT.md); the contract is not yet implemented. Before HAL integration, propagate the complete token through AudioCore and every adapter. Do not silently widen or reinterpret the current factory handle ABI.
-- The new regression test does not claim to solve same-value handle reuse. P1 remains open until the token contract and end-to-end stale-operation tests are implemented.
+- The generation-bearing `SessionToken { handle, generation }` migration was completed through SessionRegistry, AudioCore/snapshots, PcmStreamBroker, PrimaryHalStreamAdapter and PcmByteStreamAdapter.
+- Same-value handle reuse, stale operations, foreign registry tokens, sequence exhaustion, backend-token exhaustion and transfer/close lifecycle regressions are covered by host tests.
+- The P1 gate passed all six required jobs on exact HEAD `ea48695c21e8ff5900c58c6bb62602d6a46bab90`: API contract, full host suite, TSAN, ASan/UBSan, Android ARMv7/API 28 and repository integrity. Workflow run: [43521731773](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43521731773).
+- The factory Android C ABI remains unchanged. HAL stream-object ownership of internal tokens is a future integration responsibility; it is not part of this completed internal identity migration.
+- P1 Session Identity offline exit gate: **PASS**. Device verification and concrete target ALSA endpoint mapping remain separate gates and are not implied by this result.
