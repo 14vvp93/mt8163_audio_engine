@@ -44,19 +44,21 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         print(
             "Usage: audit_primary_hal_p2_device_close_contract.py "
-            "<audio.primary.mt8163.so> <p2-factory-relocations.txt> <p2-factory-device-close.txt>",
+            "<audio.primary.mt8163.so> <p2-factory-relocations.txt> <p2-stream-manager-relocations.txt> <p2-factory-device-close.txt>",
             file=sys.stderr,
         )
         return 2
 
     binary = Path(sys.argv[1])
     relocation_report = Path(sys.argv[2])
-    audit_report = Path(sys.argv[3])
+    stream_manager_relocation_report = Path(sys.argv[3])
+    audit_report = Path(sys.argv[4])
     require(binary.is_file(), f"factory HAL not found: {binary}")
     require(relocation_report.is_file(), f"vtable relocation report not found: {relocation_report}")
+    require(stream_manager_relocation_report.is_file(), f"stream-manager vtable relocation report not found: {stream_manager_relocation_report}")
     require(audit_report.is_file(), f"factory device-close audit report not found: {audit_report}")
 
     digest = hashlib.sha256(binary.read_bytes()).hexdigest()
@@ -98,6 +100,31 @@ def main() -> int:
     require_relocation("+0x008", COMPLETE_DTOR[0], COMPLETE_DTOR[1])
     require_relocation("+0x00c", DELETING_DTOR[0], DELETING_DTOR[1])
 
+    stream_manager_relocations = stream_manager_relocation_report.read_text(encoding="utf-8", errors="replace")
+    require(
+        "Vtable symbol: _ZTVN7android22AudioALSAStreamManagerE" in stream_manager_relocations
+        and "Vtable address: 0x0018feb4" in stream_manager_relocations
+        and "Vtable size: 28 bytes" in stream_manager_relocations,
+        "stream-manager vtable report does not match the pinned factory symbol",
+    )
+    stream_manager_dtor_pattern = (
+        r"^\+0x00c\s+0x[0-9a-fA-F]+\s+0x00077e20\s+"
+        r"android::AudioALSAStreamManager::~AudioALSAStreamManager\(\)\s*$"
+    )
+    require(
+        re.search(stream_manager_dtor_pattern, stream_manager_relocations, re.MULTILINE) is not None,
+        "AudioALSAStreamManager deleting-destructor vtable slot changed",
+    )
+    require(
+        re.search(
+            r"^\+0x008\s+0x[0-9a-fA-F]+\s+0x00077b58\s+"
+            r"android::AudioALSAStreamManager::~AudioALSAStreamManager\(\)\s*$",
+            stream_manager_relocations,
+            re.MULTILINE,
+        ) is not None,
+        "AudioALSAStreamManager complete-destructor vtable slot changed",
+    )
+
     module_open = run(
         [
             "arm-linux-gnueabi-objdump",
@@ -119,6 +146,39 @@ def main() -> int:
     require(
         close_callback_target == HMI_CLOSE_START,
         f"audio_hw_device_mtk.close target changed: 0x{close_callback_target:08x}",
+    )
+
+    hardware_constructor = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            "--start-address=0x000c5388",
+            "--stop-address=0x000c5390",
+            str(binary),
+        ]
+    )
+    require(
+        "android::AudioALSAStreamManager::getInstance()@plt" in hardware_constructor
+        and re.search(r"c538c:.*str\s+r0,\s*\[r4,\s*#4\]", hardware_constructor) is not None,
+        "AudioALSAHardware constructor no longer stores AudioALSAStreamManager at this+0x04",
+    )
+    hardware_destructor_dispatch = run(
+        [
+            "arm-linux-gnueabi-objdump",
+            "-dr",
+            "-C",
+            "--start-address=0x000c5720",
+            "--stop-address=0x000c5738",
+            str(binary),
+        ]
+    )
+    require(
+        re.search(r"c5720:.*ldr\s+r0,\s*\[r4,\s*#4\]", hardware_destructor_dispatch) is not None
+        and re.search(r"c572c:.*ldr\s+r1,\s*\[r0\]", hardware_destructor_dispatch) is not None
+        and re.search(r"c5730:.*ldr\s+r1,\s*\[r1,\s*#4\]", hardware_destructor_dispatch) is not None
+        and re.search(r"c5734:.*blx\s+r1", hardware_destructor_dispatch) is not None,
+        "AudioALSAHardware destructor no longer dispatches the this+0x04 object's deleting destructor",
     )
 
     close = run(
@@ -200,6 +260,7 @@ def main() -> int:
     print("HMI.close dispatch: object+0xdc -> vptr -> vptr+0x04")
     print("Resolved vptr+0x04 slot: vtable+0x00c -> deleting destructor 0x000c5874")
     print("Complete destructor slot: vtable+0x008 -> 0x000c56e4")
+    print("AudioALSAHardware+0x04: AudioALSAStreamManager; vtable+0x00c -> deleting destructor 0x00077e20")
     print("AudioMTKHardwareInterface::create(): thunk -> AudioALSAHardware::GetInstance@plt")
     print("Factory module open: audio_hw_device_mtk.close (+0x3c) -> HMI.close at 0x0009ba48")
     print("GetInstance/destructor singleton pointer cell: 0x00192b78 (read/write/reset correlated)")
