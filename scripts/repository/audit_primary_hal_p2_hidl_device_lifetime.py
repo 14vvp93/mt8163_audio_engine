@@ -77,20 +77,23 @@ def main() -> int:
         if item[2] in {"OBJECT", "NOTYPE"} and OWNER_HINT.search(item[3])
     ]
 
-    refbase_call_pattern = re.compile(
+    direct_call_pattern = re.compile(
         r"^\\s*([0-9a-fA-F]+):.*\\bblx?\\s+([0-9a-fA-F]+)\\s+"
-        r"<([^>]*RefBase::RefBase[^>]*)>",
+        r"<([^>]+)>",
         re.IGNORECASE,
     )
     full_disassembly = run(["arm-linux-gnueabi-objdump", "-dr", "-C", str(binary)])
     refbase_constructor_calls: list[tuple[int, int, str, str]] = []
+    refbase_constructor_veneer = 0x281DC
     for line in full_disassembly.splitlines():
-        match = refbase_call_pattern.match(line)
+        match = direct_call_pattern.match(line)
         if match is None:
             continue
         callsite = int(match.group(1), 16)
         target = int(match.group(2), 16)
         target_name = match.group(3)
+        if "RefBase::RefBase" not in target_name and target != refbase_constructor_veneer:
+            continue
         callers = [
             item for item in symbols
             if item[2] == "FUNC" and item[0] <= callsite < item[0] + item[1]
@@ -113,13 +116,13 @@ def main() -> int:
     print(f"Device destructors: {len(destructors)}")
 
     print(
-        "RefBase::RefBase direct bridge callsites: "
+        "RefBase constructor / interworking-veneer callsites: "
         f"{len(refbase_constructor_calls)}"
     )
     if not refbase_constructor_calls:
         print(
-            "No direct BL/BLX call to the RefBase constructor was found in the "
-            "pinned HIDL bridge disassembly."
+            "No direct BL/BLX call to the RefBase constructor or its known "
+            "interworking veneer was found in the pinned HIDL bridge."
         )
     for callsite, target, caller, target_name in refbase_constructor_calls:
         print(
