@@ -176,3 +176,15 @@ The audit script was corrected in commit `37c6530db5f83173fa3d6b5dc5430af8964264
 - report the confirmed reset rather than infer it from a textual address in disassembly.
 
 The previous CI failure `43585167120` was caused by an over-specific regex in the new atexit assertion; the destructor disassembly itself showed the reset sequence. The corrected script's CI run is pending.
+
+
+## Follow-up: automated regression checks for both singleton lock-failure paths
+
+The latest reproducible artifact (workflow run [43585742590](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43585742590), artifact ID `14110606564`, ZIP SHA-256 `b19cb857f03443d440931299f9e27942543c1756d80d0271a2eb90bda6c62451`) confirms both singleton accessors' fail-open branches in the pinned factory ELF:
+
+- `AudioALSAStreamManager::getInstance()`: after `alock_lock_ms@plt` returns nonzero at `0x76674`, the function logs a warning and falls through to the singleton pointer read at `0x766d8..0x766e0`.
+- `AudioALSAHardware::GetInstance()`: after `alock_lock_ms@plt` returns nonzero at `0xd0f3c`, the function logs a warning and falls through to the singleton pointer read at `0xd0fa0..0xd0fa8`.
+
+The audit script change in commit `4f3007b45f653b1850c2e4b8607a1443244b4254` adds exact-instruction regression assertions for both branches. The new commit's CI run must pass before these new assertions are considered verified. The finding remains static: the code proceeds without confirmed lock ownership; no actual concurrent corruption is claimed.
+
+The next lifecycle gate is to encode the callback registry's three equivalent lock-failure paths (registration, clear, dispatch) as exact static assertions, then add deterministic host-side concurrency tests for open/last-close, concurrent singleton access/destruction, callback dispatch/clear/destruction, and reentrancy.
