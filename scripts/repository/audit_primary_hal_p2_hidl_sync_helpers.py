@@ -160,7 +160,14 @@ def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
 def helper_target_resolution_status(
     resolved_targets: list[int], unresolved_targets: list[int]
 ) -> str:
-    if len(resolved_targets) == len(HELPER_TARGETS) and not unresolved_targets:
+    expected = set(HELPER_TARGETS)
+    resolved = set(resolved_targets)
+    unresolved = set(unresolved_targets)
+    if (
+        len(resolved_targets) == len(expected)
+        and resolved == expected
+        and not unresolved
+    ):
         return "COMPLETE"
     return "INCOMPLETE"
 
