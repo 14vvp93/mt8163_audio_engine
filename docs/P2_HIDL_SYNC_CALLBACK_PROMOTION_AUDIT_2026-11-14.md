@@ -168,3 +168,31 @@ The factory callback/cookie pair remains separately loaded and invoked without a
 - Runtime race/UAF occurrence: **NOT TESTED / NOT CLAIMED**.
 
 P2 remains **OPEN**. Keep Primary HAL fail-closed and `installable: false`; do not integrate this callback path or enable DSP profiles on an unverified route. Next evidence target is the actual target linker namespace configuration and an end-to-end caller/teardown ownership contract. The successful offline pipeline is not a P2 closure or installation authorization.
+
+
+## P2 HIDL derived-constructor and helper-resolution follow-up — CI 43638564073
+
+- Workflow [43638564073](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638564073) completed **successfully: all 3 jobs PASS** on feature HEAD `a739e7cf2d64dd7a8885f23849ea7480732fe075`.
+- Evidence artifact [14131102777](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638564073/artifacts/14131102777), ZIP SHA-256 `973f29da91bef15be302a3fc58df4585ab1c0e0069e4235f6cc82abf4d0daca4`.
+- The evidence archive contains the corrected derived-constructor headings and disassembly for all four constructor bodies: PrimaryDevice C2/C1 and MTKPrimaryDevice C2/C1. The earlier parser-correction caveat is superseded for this pinned ELF; constructor callsites are now decoded from the completed run.
+- The two newly added helper targets are resolved:
+  - `0x000282ec` → verified Thumb-to-ARM veneer → `android::RefBase::incStrong(void const*) const@plt`.
+  - `0x0002894c` → verified Thumb-to-ARM veneer → `android::hardware::audio::V4_0::implementation::Device::Device(audio_hw_device_mtk*)@plt`.
+- The resolver reports `HELPER_TARGET_RESOLUTION_STATUS: COMPLETE`, **20/20 targets**, and `UNRESOLVED_HELPER_TARGETS: none`. This proves the bridge call targets and PLT identities only; it does not disassemble imported implementation bodies or establish callback lifetime.
+- The derived constructor disassembly confirms that both PrimaryDevice and MTKPrimaryDevice constructor variants reach Device construction and RefBase operations. The complete-object constructor variants also contain the RefBase constructor call at `0x000281dc`; this supports the three-callsite inventory (Device C1, PrimaryDevice C1, MTKPrimaryDevice C1). Do not infer a complete runtime creation/ownership path solely from constructor disassembly.
+- The factory close-chain report independently confirms `audio_hw_device_mtk.close (+0x3c) → HMI.close → AudioALSAHardware deleting destructor`. This confirms the destructor dispatch target, **not** callback quiescence.
+- The process-failure sentinel in the artifact is `0`; both evidence-producing jobs and the aggregate gate completed successfully.
+
+### Gate decision after CI 43638564073
+
+- P2 offline evidence pipeline: **PASS (3/3 jobs)**.
+- HIDL helper target resolution: **COMPLETE (20/20)**.
+- Derived PrimaryDevice/MTKPrimaryDevice constructor disassembly: **COMPLETE (4/4 bodies)**.
+- Factory HMI close-to-deleting-destructor dispatch: **CONFIRMED**.
+- Runtime `libutils.so` linker-namespace selection: **UNRESOLVED**.
+- Atomic callback/cookie registration and replacement: **NOT PROVEN**.
+- Protection of the raw Device cookie before successful weak-to-strong promotion: **NOT PROVEN**.
+- Factory in-flight callback drain before Device destruction: **NOT PROVEN**.
+- Runtime race/UAF occurrence: **NOT TESTED / NOT CLAIMED**.
+
+P2 remains **OPEN**. Keep Primary HAL fail-closed and `installable: false`; do not integrate this callback channel, enable DSP profiles on an unverified route, or advance to P3. The next evidence target is the target linker namespace configuration plus a proven factory-side callback admission/ownership/drain contract.
