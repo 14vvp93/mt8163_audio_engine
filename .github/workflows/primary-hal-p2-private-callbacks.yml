@@ -223,7 +223,11 @@ jobs:
           pid_hidl_sync_helpers=$!
           system_libutils="factory-firmware/firmware/extracted/system/lib/libutils.so"
           vndk_libutils="factory-firmware/firmware/extracted/system/lib/vndk-sp-28/libutils.so"
-          run_logged p2-hidl-refbase python3 scripts/repository/audit_android9_refbase_lifetime.py "$bridge" "$system_libutils" "$vndk_libutils" p2-hidl-refbase-implementation.txt &
+          system_hidlbase="factory-firmware/firmware/extracted/system/lib/libhidlbase.so"
+          vndk_hidlbase="factory-firmware/firmware/extracted/system/lib/vndk-sp-28/libhidlbase.so"
+          system_audio_v4="factory-firmware/firmware/extracted/system/lib/android.hardware.audio@4.0.so"
+          vndk_audio_v4="factory-firmware/firmware/extracted/system/lib/vndk-28/android.hardware.audio@4.0.so"
+          run_logged p2-hidl-refbase python3 scripts/repository/audit_android9_refbase_lifetime.py "$bridge" "$system_libutils" "$vndk_libutils" "$system_hidlbase" "$vndk_hidlbase" "$system_audio_v4" "$vndk_audio_v4" p2-hidl-refbase-implementation.txt &
           pid_hidl_refbase=$!
           run_logged p2-hidl-device python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" &
           pid_hidl_device=$!
