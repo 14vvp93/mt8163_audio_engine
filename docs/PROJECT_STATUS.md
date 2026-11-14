@@ -251,3 +251,16 @@ A current GitHub Community report describes the same runner-allocation signature
 - Updated the factory callback audit and private callback evidence matrix with the proven slot mapping.
 
 P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next evidence target: inspect `syncCallback`, then xref factory globals `0x000c4248` / `0x000c4238` and establish registration replacement, caller inventory, owner lifetime and teardown drain.
+
+
+## P2 callback follow-up — syncCallback and GOT slot audit — 2026-11-14
+
+- Workflow [43613705447](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447) completed with all 3 jobs PASS on feature commit `6143502ebce5a3d96a0cce0bb086e816049f4999`.
+- Evidence artifact [14121078085](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447/artifacts/14121078085), ZIP SHA-256 `afb24415097f0949380509e0088bf7fd3e6934119299b58f1e77230de4bb99ce`.
+- Inspected `Device::syncCallback`: event zero invokes the HIDL callback via member `Device+0x24`; nonzero event logs and does not invoke it in the audited body.
+- Confirmed two distinct callback channels: setup slot `0xd0` → `syncCallback` / member `+0x24`; parameter-changed slot `0xd4` → `audioParameterChangedCallback` / member `+0x28`.
+- Corrected GOT interpretation: effective callback and cookie slots are `0x001a2b80` and `0x001a2b7c`; previously cited `0xc4248/0xc4238` are PC-relative displacements.
+- Extended the factory auditor to assert literal-pool words and effective GOT address calculations. The factory evidence workflow passed with these assertions.
+- HIDL Device destruction closes the legacy HAL device before releasing callback refs; the audited destructor does not call private setup clear slot `0xd0`. The factory destructor body has no reference to the setup callback/cookie GOT slots. This is a static race surface, not a proven runtime failure.
+
+P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next: inventory indirect callers and registration/replacement paths, then prove external serialization and callback drain or design an adapter that preserves the factory's ABI/lifetime constraints.
