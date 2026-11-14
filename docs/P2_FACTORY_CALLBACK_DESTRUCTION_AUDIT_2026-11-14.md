@@ -150,3 +150,27 @@ The previously listed "recover exact legacy close implementation" task is comple
 The previously unresolved `AudioALSAHardware+0x04` virtual cleanup target is also resolved to `AudioALSAStreamManager` deleting destructor `0x77e20`. That destructor calls `AudioEventThreadManager::unregisterCallback(AudioEventType(0))`. The event manager/thread worker semantics require inspection before deciding whether this provides any relevant synchronization. Even if that event path drains, it must be explicitly connected to the separate `AudioALSAHardware` parameter-change callback registry before it can close the P2 callback lifetime gate.
 
 The HIDL destructor's normal path does not retry indefinitely because the pinned HMI.close returns zero. The retry branch remains structurally unbounded for nonzero returns from other or altered close implementations; do not report it as a normal-path behavior for this pinned factory.
+
+
+## Follow-up: AudioEventThread type-0 unregister is a stop-and-join barrier
+
+Evidence: workflow run [43588457542](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43588457542), audited code commit `e8721fc04e5489de1b4c224359e44d98a89b5e17`, artifact ID `14111186560`, artifact ZIP SHA-256 `bed55851b8da6a7d57e02ffc2f760412b22211931d7392e62497b6695a30f88e`. Reviewed report: `p2-factory-resource-manager-lifecycle.txt`. Factory ELF SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+
+The StreamManager constructor at `0x00076d94` registers an `AudioEventThreadManager` callback for event type `0`, passing the StreamManager instance as the callback cookie (`0x7721c..0x77230`). The StreamManager destructor at `0x00077b58` calls `AudioEventThreadManager::unregisterCallback(0)` before destroying its own vectors and locks.
+
+The one-argument `unregisterCallback(AudioEventType)` at `0x0013612c` finds the worker for the requested type, writes zero to its run flag at worker offset `+0x1c`, signals the worker, calls `pthread_join(worker->thread_id, nullptr)`, and only then removes the worker pointer from the manager's vector. The worker loop at `0x00135034` checks this run flag around its condition wait and callback-dispatch loop and exits via `pthread_exit()`. The worker destructor at `0x001353b4` independently uses the same stop/signal/join sequence before destroying synchronization state.
+
+This resolves the event-thread teardown semantics: type-0 unregister waits for that worker thread to exit. It is stronger than a callback-list removal and is a worker-level drain barrier for that worker.
+
+It does **not** close the factory parameter-change callback lifetime gate. The event-thread worker is registered by `AudioALSAStreamManager` with a StreamManager cookie; the private HIDL parameter-change callback registry is a distinct `AudioALSAHardware` vector at `this+0x3b0`, with lock at `this+0x3ac`. The inspected disassembly does not prove that the event-thread callback dispatches through `AudioALSAHardware::onAudioParameterChangedCallback`, nor that stopping this worker prevents any other caller from entering that registry. The registry's lock-acquisition failure still falls through into vector access, and its callback invocation still occurs under the registry lock on the successful-lock path.
+
+### Corrected gate state
+
+- [x] Resolve `AudioEventThreadManager::unregisterCallback(AudioEventType)` worker stop/signal/join semantics for the pinned factory ELF.
+- [x] Confirm StreamManager registers event type `0` with its own instance cookie and unregisters that type during destruction.
+- [ ] Prove a direct call/data-flow connection between this event-thread callback and the separate HIDL parameter-change callback registry.
+- [ ] Prove all factory destruction paths close admission and drain every in-flight parameter-change callback before destroying the registry vector/lock.
+- [ ] Resolve callback-entry allocation ownership on clear and destruction.
+- [ ] Add deterministic host tests for clear/dispatch/destruction races and reentrancy.
+
+The audit workflow completed successfully: both evidence jobs and the aggregate offline gate passed on commit `e8721fc04e5489de1b4c224359e44d98a89b5e17`. P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`.
