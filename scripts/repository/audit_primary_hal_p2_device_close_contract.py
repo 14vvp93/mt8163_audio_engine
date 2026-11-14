@@ -42,18 +42,20 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(
             "Usage: audit_primary_hal_p2_device_close_contract.py "
-            "<audio.primary.mt8163.so> <p2-factory-relocations.txt>",
+            "<audio.primary.mt8163.so> <p2-factory-relocations.txt> <p2-factory-device-close.txt>",
             file=sys.stderr,
         )
         return 2
 
     binary = Path(sys.argv[1])
     relocation_report = Path(sys.argv[2])
+    audit_report = Path(sys.argv[3])
     require(binary.is_file(), f"factory HAL not found: {binary}")
     require(relocation_report.is_file(), f"vtable relocation report not found: {relocation_report}")
+    require(audit_report.is_file(), f"factory device-close audit report not found: {audit_report}")
 
     digest = hashlib.sha256(binary.read_bytes()).hexdigest()
     require(digest == EXPECTED_SHA256, f"unexpected factory HAL SHA-256: {digest}")
@@ -127,30 +129,11 @@ def main() -> int:
         "AudioMTKHardwareInterface::create() no longer branches to GetInstance@plt",
     )
 
-    get_instance = run(
-        [
-            "arm-linux-gnueabi-objdump",
-            "-dr",
-            "-C",
-            "--start-address=0x000d0ee0",
-            "--stop-address=0x000d1244",
-            str(binary),
-        ]
-    )
-    destructor = run(
-        [
-            "arm-linux-gnueabi-objdump",
-            "-dr",
-            "-C",
-            "--start-address=0x000c56e4",
-            "--stop-address=0x000c57f4",
-            str(binary),
-        ]
-    )
+    audit_text = audit_report.read_text(encoding="utf-8", errors="replace")
     require(
-        re.search(r"^\s*0*d1200:\s+000c1bcc\b", get_instance, re.MULTILINE) is not None
-        and re.search(r"^\s*0*d120c:\s+000c1b8c\b", get_instance, re.MULTILINE) is not None
-        and re.search(r"^\s*0*c5858:\s+000cd414\b", destructor, re.MULTILINE) is not None,
+        re.search(r"^\\s*0*d1200:\\s+000c1bcc\\b", audit_text, re.MULTILINE) is not None
+        and re.search(r"^\\s*0*d120c:\\s+000c1b8c\\b", audit_text, re.MULTILINE) is not None
+        and re.search(r"^\\s*0*c5858:\\s+000cd414\\b", audit_text, re.MULTILINE) is not None,
         "singleton pointer PC-relative literal constants changed",
     )
     singleton_read_cell = 0x000D0FAC + 0x000C1BCC
@@ -161,7 +144,11 @@ def main() -> int:
         "GetInstance/destructor singleton pointer cell correlation failed",
     )
     require(
-        re.search(r"^\s*0*c5760:\s+e5806000\s+str\s+r6,\s*\[r0\]", destructor, re.MULTILINE)
+        re.search(
+            r"^\\s*0*c5760:\\s+e5806000\\s+str\\s+r6,\\s*\\[r0\\]",
+            audit_text,
+            re.MULTILINE,
+        )
         is not None,
         "AudioALSAHardware destructor no longer clears the singleton pointer cell",
     )
