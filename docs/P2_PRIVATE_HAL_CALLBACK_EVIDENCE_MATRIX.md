@@ -96,7 +96,7 @@ The same run scanned 1,294 firmware candidates: five files contained callback-re
 
 All three workflow jobs completed successfully, including the aggregate offline-evidence gate. The artifact is reproducible evidence only; no runtime/device behavior is inferred. P2 remains OPEN. External caller coverage, exact target callback ABI/prototypes, callback admission/drain, registration/clear races, detached-worker teardown ordering and target linker namespace remain hard gates.
 
-**Concurrency-fix verification status:** this successful run belongs to the pre-fix audit commit `41e52071...`, not the later concurrency-group commit `bd79bbda...`. A subsequent run on the latter or a descendant is still required to verify the unique-`run_id` concurrency configuration end-to-end.
+**Historical note:** this run predates the unique-`run_id` concurrency fix. The fix was subsequently verified on run [43565923614](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43565923614), recorded below.
 
 ## 2026-11-14 concurrency-fix verification
 
@@ -145,7 +145,7 @@ The target `clearAudioParameterChangedCallback(cookie)` body at `0x000cecc0` use
 
 The separate `setupParametersCallback(callback, cookie)` body at `0x000ce8fc` stores callback and cookie in global locations and contains no visible `alock_lock_ms`, `alock_unlock`, pthread mutex or condition-variable call in its body. Do not assume it shares the vector registry's locking protocol.
 
-**Important boundary:** this proves locking of registration/removal mutations only. It does not yet prove how `onAudioParameterChangedCallback` / `setParametersByCallback` snapshot or iterate the vector, whether invocation holds the same lock, whether callbacks are invoked outside the lock, or whether clear waits for in-flight callbacks. The newly expanded audit now includes both dispatch methods and will determine their visible synchronization and iteration behavior. Do not equate the registry lock with an in-flight callback drain.
+**Important boundary:** this proves locking of registration/removal mutations only. The subsequent dispatch audit is recorded below: notification iterates and invokes callbacks while holding the same lock on successful acquisition, but all three methods continue after lock failure, so serialization and in-flight draining are not guaranteed.
 
 ## 2026-11-14 callback dispatch-versus-clear audit
 
