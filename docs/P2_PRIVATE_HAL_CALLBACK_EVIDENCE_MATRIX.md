@@ -430,3 +430,10 @@ These are static control-flow and object-layout observations. They establish an 
 `scripts/repository/audit_primary_hal_p2_device_close_contract.py` now verifies the module-open instruction/literal sequence that initializes `audio_hw_device_mtk.close` and computes that its target equals the audited `HMI.close` entry at `0x0009ba48`. The assertion runs in the P2 private-callback workflow against the SHA-pinned factory ELF.
 
 Remaining blocker: obtain a callback-drain guarantee from the exact target close path or implement a replacement lifetime protocol that closes admission and drains dispatch before destroying registry storage. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+### Close return contract refinement
+
+The pinned `HMI.close` body converges its null-wrapper and normal teardown branches on the final `mov r0, #0` at `0x0009badc` and returns at `0x0009bae0`. On the audited target path, the HIDL destructor's nonzero-close retry loop therefore does not repeat after a normal `HMI.close` invocation. The loop remains structurally unbounded if a different callback implementation or corrupted state returns nonzero; the target wrapper's observed success return does not prove callback drain.
+
+The close-contract regression now also checks this zero-return epilogue. Its CI result is pending.
