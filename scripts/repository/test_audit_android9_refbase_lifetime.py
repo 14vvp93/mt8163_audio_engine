@@ -3,6 +3,40 @@ import unittest
 import audit_android9_refbase_lifetime as auditor
 
 
+class RefBaseImplementationGateTests(unittest.TestCase):
+    def test_complete_symbol_coverage_passes(self) -> None:
+        missing = {
+            "SYSTEM LIBUTILS": set(),
+            "VNDK-SP-28 LIBUTILS": set(),
+        }
+        status = auditor.refbase_implementation_status(True, missing)
+        self.assertEqual(status, "COMPLETE")
+        self.assertEqual(auditor.refbase_implementation_exit_code(status), 0)
+
+    def test_missing_symbol_in_either_candidate_fails(self) -> None:
+        missing = {
+            "SYSTEM LIBUTILS": set(),
+            "VNDK-SP-28 LIBUTILS": {"RefBase::decStrong"},
+        }
+        status = auditor.refbase_implementation_status(True, missing)
+        self.assertEqual(status, "INCOMPLETE")
+        self.assertEqual(auditor.refbase_implementation_exit_code(status), 1)
+
+    def test_missing_bridge_dependency_fails(self) -> None:
+        missing = {
+            "SYSTEM LIBUTILS": set(),
+            "VNDK-SP-28 LIBUTILS": set(),
+        }
+        status = auditor.refbase_implementation_status(False, missing)
+        self.assertEqual(status, "INCOMPLETE")
+        self.assertEqual(auditor.refbase_implementation_exit_code(status), 1)
+
+    def test_empty_library_inventory_fails_closed(self) -> None:
+        status = auditor.refbase_implementation_status(True, {})
+        self.assertEqual(status, "INCOMPLETE")
+        self.assertEqual(auditor.refbase_implementation_exit_code(status), 1)
+
+
 class ParseFunctionSymbolsTests(unittest.TestCase):
     def test_parses_arm_and_thumb_refbase_symbols(self) -> None:
         output = "\n".join([
