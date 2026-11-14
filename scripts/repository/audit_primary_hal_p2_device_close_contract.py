@@ -133,15 +133,24 @@ def main() -> int:
     require(
         re.search(r"^\s*0*d1200:\s+000c1bcc\b", audit_text, re.MULTILINE) is not None
         and re.search(r"^\s*0*d120c:\s+000c1b8c\b", audit_text, re.MULTILINE) is not None
-        and re.search(r"^\s*0*c5858:\s+000cd414\b", audit_text, re.MULTILINE) is not None,
+        and re.search(r"^\s*0*c5858:\s+000cd414\b", audit_text, re.MULTILINE) is not None
+        and re.search(r"^\s*0*c585c:\s+000cd40c\b", audit_text, re.MULTILINE) is not None
+        and re.search(r"^\s*0*c5860:\s+000cd404\b", audit_text, re.MULTILINE) is not None,
         "singleton pointer PC-relative literal constants changed",
     )
     singleton_read_cell = 0x000D0FAC + 0x000C1BCC
     singleton_write_cell = 0x000D0FEC + 0x000C1B8C
     destructor_clear_cell = 0x000C5764 + 0x000CD414
+    second_global_clear_cell = 0x000C5770 + 0x000CD40C
+    third_global_clear_cell = 0x000C577C + 0x000CD404
     require(
         singleton_read_cell == singleton_write_cell == destructor_clear_cell == 0x00192B78,
         "GetInstance/destructor singleton pointer cell correlation failed",
+    )
+    require(
+        second_global_clear_cell == 0x00192B7C
+        and third_global_clear_cell == 0x00192B80,
+        "additional factory global pointer cell correlation failed",
     )
     require(
         re.search(
@@ -149,8 +158,10 @@ def main() -> int:
             audit_text,
             re.MULTILINE,
         )
-        is not None,
-        "AudioALSAHardware destructor no longer clears the singleton pointer cell",
+        is not None
+        and re.search(r"^\s*0*c576c:\s+e5806000\s+str\s+r6,\s*\[r0\]", audit_text, re.MULTILINE) is not None
+        and re.search(r"^\s*0*c5778:\s+e5806000\s+str\s+r6,\s*\[r0\]", audit_text, re.MULTILINE) is not None,
+        "AudioALSAHardware destructor no longer clears all three global pointer cells",
     )
 
     print(f"Factory HAL SHA-256: {digest}")
@@ -161,6 +172,7 @@ def main() -> int:
     print("Complete destructor slot: vtable+0x008 -> 0x000c56e4")
     print("AudioMTKHardwareInterface::create(): thunk -> AudioALSAHardware::GetInstance@plt")
     print("GetInstance/destructor singleton pointer cell: 0x00192b78 (read/write/reset correlated)")
+    print("Additional destructor-cleared global pointer cells: 0x00192b7c, 0x00192b80 (owners unresolved)")
     print("CONTRACT VERIFIED: HMI.close invokes the AudioALSAHardware deleting destructor.")
     print("Static evidence only; this does not prove safe concurrent singleton access or callback drain.")
     return 0
