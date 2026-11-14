@@ -415,3 +415,12 @@ The MT8163 Audio Engine is complete only when:
 - The Primary HAL remains non-installable and fail-closed. No device operations or hardware writes were performed.
 
 - Added a SHA-pinned disassembly of `libaudioprimarydevicehalifclient.so` on [run 43566518573](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43566518573). Its `setParameters/getParameters` methods serialize generic HIDL interface dispatch through vtable slots 24/28; no direct private callback or xWay call appears in those audited methods. ATCI contains an undefined `getInstance` import, `R_ARM_JUMP_SLOT` relocation and PLT stub, but no direct call site was identified; it is not a confirmed runtime caller. This narrows the known client path but does not exclude stripped/indirect callers or establish the vtable slot names without the exact interface contract.
+
+
+### 2026-11-14 — vendor HIDL Device ownership corroboration
+
+- Examined public MediaTek interface 4.1 declarations and a later service 5.0 implementation at pinned external repository commits. The interface confirms the HIDL callback method takes a string and that the public clear method has no HIDL arguments.
+- The later service source declares the legacy thunk as `int(const char*, void*)`, stores the HIDL callback as `sp<>`, and retains Device owners in a global `Vector<sp<Device>>` while callbacks are registered.
+- In that later source, registration retains the Device even after a nonzero HAL registration result; clear drops the global owner pin after the HAL clear call even if that call reports failure. The thunk promotes a weak Device reference from the raw cookie without visible null checks.
+- This is explicitly non-matching-version corroboration (service 5.0 / interface 4.1), not proof of the target Android 9 service 4.0 implementation. It adds a focused verification item: recover whether the target bridge uses an equivalent owner-pin list and whether failed clear can release it before callback quiescence.
+- Exact target callback ABI/cookie identity, owner lifetime, clear drain semantics and runtime behavior remain open. Primary HAL remains fail-closed and non-installable.
