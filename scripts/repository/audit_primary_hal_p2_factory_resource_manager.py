@@ -568,10 +568,10 @@ def main() -> int:
         "AudioEventThreadManager::registerCallback unexpectedly changed from its pinned inline registration path",
     )
     require(
-        re.search(r"135bdc:.*ldr\\s+r7,\\s*\\[r0,\\s*r3,\\s*lsl\\s+#2\\]\\n\\s*135be0:.*ldr\\s+r7,\\s*\\[r7,\\s*#8\\]", manager_register_body) is not None
-        and re.search(r"135bf8:.*mov\\s+r0,\\s*#40\\n\\s*135bfc:.*bl\\s+[0-9a-f]+ <operator new\\(unsigned int\\)@plt>", manager_register_body) is not None
+        re.search(r"135bdc:.*ldr\s+r7,\s*\[r0,\s*r3,\s*lsl\s+#2\]\n\s*135be0:.*ldr\s+r7,\s*\[r7,\s*#8\]", manager_register_body) is not None
+        and re.search(r"135bf8:.*mov\s+r0,\s*#40\n\s*135bfc:.*bl\s+[0-9a-f]+ <operator new\(unsigned int\)@plt>", manager_register_body) is not None
         and "AudioEventThread::AudioEventThread(android::AudioEventType)@plt" in manager_register_body
-        and re.search(r"135d10:.*str\\s+r1,\\s*\\[r0\\]", manager_register_body) is not None,
+        and re.search(r"135d10:.*str\s+r1,\s*\[r0\]", manager_register_body) is not None,
         "AudioEventThreadManager::registerCallback no longer performs inline worker lookup, construction, and callback insertion",
     )
     require(
