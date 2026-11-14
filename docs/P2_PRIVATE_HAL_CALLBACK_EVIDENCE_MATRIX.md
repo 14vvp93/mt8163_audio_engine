@@ -462,3 +462,23 @@ Regression gates:
 - `audit_primary_hal_p2_factory_resource_manager.py`: captures StreamManager and AudioEventThreadManager lifecycle functions, including unregister, worker loop, worker destructor, signal, and notify paths.
 
 CI status for the newest additions must be checked against the exact latest `feature` SHA before marking these regression gates verified. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+## 2026-11-14 AudioEventThread unregister/join contract — static ELF evidence
+
+Evidence: workflow run [43588457542](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43588457542), audited code commit `e8721fc04e5489de1b4c224359e44d98a89b5e17`, artifact ID `14111186560`, artifact ZIP SHA-256 `bed55851b8da6a7d57e02ffc2f760412b22211931d7392e62497b6695a30f88e`. Reviewed report: `p2-factory-resource-manager-lifecycle.txt`. Factory ELF SHA-256 remains `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+
+The target `AudioALSAStreamManager::AudioALSAStreamManager()` at `0x00076d94` calls `AudioEventThreadManager::getInstance()` and registers an event callback with event type `0`, a callback pointer loaded from the target's relocation-backed data, and `this` as cookie (`0x7721c..0x77230`). Its destructor at `0x00077b58` calls `unregisterCallback(AudioEventType(0))` before destroying its own vectors and synchronization objects.
+
+The target `AudioEventThreadManager::unregisterCallback(AudioEventType)` at `0x0013612c`:
+- finds the worker entry whose stored event type equals the requested type;
+- clears the worker's run byte at object offset `+0x1c`;
+- calls `AudioEventThread::signal()`;
+- loads the worker pthread ID and calls `pthread_join()`;
+- removes the worker entry from the manager vector only after the join returns.
+
+The worker loop at `0x00135034` checks the run byte, waits on its event lock/condition, invokes its registered callback entries, and exits through `pthread_exit()` after the run byte is cleared. The `AudioEventThread` destructor at `0x001353b4` repeats the stop/signal/join sequence before destroying its synchronization state. Thus the event-type unregister path is a real worker-stop-and-join operation, not merely removal of a callback record. The worker's callback loop is executed on this worker thread; `pthread_join()` waits for that thread to terminate.
+
+**Scope boundary:** this establishes quiescence of the matching `AudioEventThread` worker for event type `0` on the observed successful control path. It does not establish that the event callback is the HIDL `setAudioParameterChangedCallback` registry callback, nor that it drains `AudioALSAHardware`'s separate vector at `this+0x3b0` protected by `this+0x3ac`. The StreamManager registration's cookie is `AudioALSAStreamManager*`, while the parameter-change registry is owned by `AudioALSAHardware`; no direct cross-link from this event-thread callback to that registry's dispatch/clear functions is established by the inspected disassembly. The parameter-change registry's lock-failure fallthrough and callback-under-lock behavior therefore remain unresolved safety blockers.
+
+CI run [43588457542](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43588457542) completed successfully: both evidence jobs and the aggregate offline gate passed. This is static binary evidence only. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
