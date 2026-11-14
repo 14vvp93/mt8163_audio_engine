@@ -103,6 +103,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_device_close.py \
             scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py \
             scripts/repository/test_audit_primary_hal_p2_factory_callback_xrefs.py \
+            scripts/repository/test_audit_primary_hal_p2_hidl_sync_helpers.py \
             scripts/repository/audit_primary_hal_p2_device_close_contract.py \
             scripts/repository/audit_primary_hal_p2_factory_resource_manager.py
           python3 -m unittest discover -s scripts/repository -p 'test_*.py' -v
