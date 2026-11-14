@@ -287,3 +287,15 @@ This is a **possible cross-process lock cycle**, not a proven runtime deadlock. 
 - Treat lock acquisition failure as fatal to the operation; never continue unlocked.
 
 A dedicated SHA-pinned bridge audit script is now part of the P2 workflow and checks the three method symbols and key callback/legacy-slot offsets. The Primary HAL remains fail-closed and non-installable. P2 remains OPEN.
+
+
+### Reproducible bridge-audit result
+
+The new SHA-pinned bridge audit was executed by P2 workflow [43569787813](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43569787813) on commit `88b22e2bd254741a028b1a1f6b68ead63e94c1f8`. All three jobs passed, including the bridge audit and aggregate offline-evidence gate.
+
+Artifact:
+- ID: `14103379010`
+- ZIP SHA-256: `a33646a1fe7747699064d02cc040d48085a4208254bce41fae3b2e4a441bd8aa`
+- Report: `p2-hidl-bridge-lifecycle.txt`
+
+The report resolved all three required symbols and verified the callback-member access, callback vtable slot, and legacy registration/clear tail offsets against the pinned bridge ELF. The report contains no visible direct lock primitive calls in these three method bodies. It does not inspect all transitive helper implementations or prove runtime owner destruction ordering.
