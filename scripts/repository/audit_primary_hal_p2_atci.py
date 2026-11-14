@@ -99,7 +99,7 @@ def main() -> int:
             "WARNING: no direct symbolic call site was identified. The import/relocation "
             "does not prove an invocation; indirect or unused references remain unresolved."
         )
-        print("\\nNo caller function is attributed to the MTK client from this binary.")
+        print("\nNo caller function is attributed to the MTK client from this binary.")
         return 0
 
     print(f"Direct caller functions found: {len(callers)}")
