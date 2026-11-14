@@ -62,7 +62,7 @@ def parse_functions(symbols_output: str) -> list[tuple[int, int, str, bool]]:
 
 
 def extract_gnu_debugdata(elf_data: bytes) -> bytes | None:
-    if len(elf_data) < 52 or elf_data[:4] != b"\\x7fELF":
+    if len(elf_data) < 52 or elf_data[:4] != b"\x7fELF":
         raise RuntimeError("invalid ELF header while inspecting .gnu_debugdata")
     if elf_data[4] != 1 or elf_data[5] != 1:
         raise RuntimeError(".gnu_debugdata extraction requires ELF32 little-endian input")
@@ -94,7 +94,7 @@ def extract_gnu_debugdata(elf_data: bytes) -> bytes | None:
     for name_offset, section_type, file_offset, size in sections:
         if name_offset >= len(names):
             continue
-        end = names.find(b"\\0", name_offset)
+        end = names.find(b"\0", name_offset)
         if end < 0 or names[name_offset:end] != b".gnu_debugdata":
             continue
         if section_type == 8 or file_offset + size > len(elf_data):
@@ -110,7 +110,7 @@ def parse_debugdata_functions(elf_data: bytes) -> tuple[list[tuple[int, int, str
     debug_elf = extract_gnu_debugdata(elf_data)
     if debug_elf is None:
         return [], ".gnu_debugdata section is absent"
-    if len(debug_elf) < 4 or debug_elf[:4] != b"\\x7fELF":
+    if len(debug_elf) < 4 or debug_elf[:4] != b"\x7fELF":
         raise RuntimeError(".gnu_debugdata did not contain a valid ELF image")
 
     with tempfile.NamedTemporaryFile(prefix="mt8163-hidl-debug-", suffix=".elf") as stream:
