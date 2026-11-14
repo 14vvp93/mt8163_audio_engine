@@ -17,7 +17,7 @@ class GnuDebugDataTests(unittest.TestCase):
         names_offset = section_table_offset + section_count * 40
         payload_offset = names_offset + len(section_names)
         data = bytearray(payload_offset + (len(payload) if payload is not None else 0))
-        data[:4] = b"\\x7fELF"
+        data[:4] = b"\x7fELF"
         data[4] = 1
         data[5] = 1
         struct.pack_into("<I", data, 32, section_table_offset)
