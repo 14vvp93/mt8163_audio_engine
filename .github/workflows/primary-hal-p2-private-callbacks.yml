@@ -62,7 +62,7 @@ jobs:
           python3 -m py_compile \
             scripts/repository/check_primary_hal_fail_closed.py \
             scripts/repository/check_primary_hal_p2_contract.py \
-            scripts/repository/scan_primary_hal_p2_clients.py \\
+            scripts/repository/scan_primary_hal_p2_clients.py \
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
