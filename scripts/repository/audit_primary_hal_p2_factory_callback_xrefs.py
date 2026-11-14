@@ -143,6 +143,46 @@ def require_instruction(
     return index
 
 
+def read_arm_word_at(disassembly: str, address: int) -> int:
+    pattern = re.compile(
+        rf"^\\s*{address:08x}:\\s+([0-9a-fA-F]{{8}})\\s+",
+        re.MULTILINE,
+    )
+    matches = pattern.findall(disassembly)
+    require(len(matches) == 1, f"expected one ARM word at 0x{address:08x}, found {len(matches)}")
+    return int(matches[0], 16)
+
+
+def verify_setup_callback_global_slots(disassembly: str) -> None:
+    literals = (
+        (0x000CE9B8, 0x000C4248, "registration callback GOT displacement"),
+        (0x000CE9BC, 0x000C4238, "registration cookie GOT displacement"),
+        (0x000CF26C, 0x000C3978, "dispatch callback GOT displacement"),
+        (0x000CF270, 0x000C3968, "dispatch cookie GOT displacement"),
+    )
+    for address, expected, label in literals:
+        actual = read_arm_word_at(disassembly, address)
+        require(actual == expected, f"{label} changed at 0x{address:08x}: 0x{actual:08x}")
+
+    effective_slots = (
+        (0x000CE930, 0x000C4248, 0x001A2B80, "registration callback"),
+        (0x000CE93C, 0x000C4238, 0x001A2B7C, "registration cookie"),
+        (0x000CF200, 0x000C3978, 0x001A2B80, "dispatch callback"),
+        (0x000CF20C, 0x000C3968, 0x001A2B7C, "dispatch cookie"),
+    )
+    for instruction, displacement, expected, label in effective_slots:
+        actual = instruction + 8 + displacement
+        require(
+            actual == expected,
+            f"{label} effective GOT slot changed: 0x{actual:08x}",
+        )
+
+    print("SETUP_CALLBACK_GLOBAL_GOT_ASSERTIONS: PASS")
+    print("SETUP_CALLBACK_GLOBAL_CALLBACK_GOT=0x001a2b80")
+    print("SETUP_CALLBACK_GLOBAL_COOKIE_GOT=0x001a2b7c")
+    print("NOTE: 0xc4248/0xc4238 and 0xc3978/0xc3968 are PC-relative GOT displacements, not absolute global addresses.")
+
+
 def verify_callback_dataflow(disassembly: str) -> None:
     dispatch = parse_function_instructions(
         disassembly, "android::AudioALSAHardware::onAudioParameterChangedCallback(", 0x000CEF18
@@ -251,6 +291,7 @@ def main() -> int:
     disassembly = run(["arm-linux-gnueabi-objdump", "-dr", "-C", str(binary)], timeout=240)
     verify_callback_dataflow(disassembly)
     print("CALLBACK_DATAFLOW_ASSERTIONS: PASS")
+    verify_setup_callback_global_slots(disassembly)
 
     ordered_symbols = sorted(symbols, key=lambda symbol: (symbol.address, -symbol.size))
     callsites: list[CallSite] = []
