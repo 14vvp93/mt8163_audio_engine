@@ -168,3 +168,18 @@ Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d
 This confirms a separate process-global callback/cookie pair and a dispatch path that can race registration/replacement or owner teardown unless an external serialization/lifetime contract exists. The pinned code examined so far does not establish that contract. The HIDL bridge exposes `Device::setupParametersCallback` and a callback thunk; however, this evidence does not yet prove every upstream caller, whether callback registration is serialized by Binder/thread policy, or whether the Device cookie remains alive through every possible dispatch.
 
 **Do not integrate this path into AudioCore or replace it with the vector-backed registry yet.** Required next evidence: disassemble and correlate the complete HIDL `Device::setupParametersCallback` body and its MTKPrimaryDevice forwarding caller; enumerate every callsite/indirect dispatch to the setup slot and every reference to global slots `0x000c4248`/`0x000c4238`; then prove unregister/replacement ordering and teardown quiescence. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+
+## 2026-11-14 — HIDL setup-parameters registration forwarding
+
+CI run [43611282299](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43611282299) passed all three jobs on feature HEAD `0e48652d8a49cd975491ccf7664225c9e9d51a3d`. Its evidence artifact [14120126885](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43611282299/artifacts/14120126885) has ZIP SHA-256 `ac004cbca6fd592bef222c5345a4920c98c3fa58fd4b3b499f437aa3500547cd`.
+
+Pinned HIDL bridge SHA-256 remains `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`.
+
+- `Device::setupParametersCallback` is at Thumb address `0x0001cadc`, size 112 bytes.
+- It loads the legacy `audio_hw_device_mtk` function pointer from offset `0xd0` (208), checks for null, then invokes it indirectly with `BLX r3`.
+- The callback argument is loaded PC-relatively from the bridge's literal/GOT sequence; the second argument is `Device*` (`r6`). The callback target is the bridge's `Device::syncCallback` function.
+- If registration returns zero, the supplied HIDL callback strong reference is assigned into the Device member at `this+0x24`. A nonzero return follows the error path and does not perform that assignment.
+- `MTKPrimaryDevice::setupParametersCallback` is a 10-byte forwarding wrapper to the base Device implementation.
+
+This closes the bridge-side forwarding gap for private slot `0xd0). It does not yet establish the complete `syncCallback` body semantics, the global callback/cookie slot xref inventory, upstream framework callers, callback owner lifetime, replacement serialization, or in-flight drain. A dedicated CI report for the full `syncCallback` body is being added next; do not infer its behavior from the registration thunk. P2 remains OPEN and Primary HAL remains fail-closed/non-installable.
