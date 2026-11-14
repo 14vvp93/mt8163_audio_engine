@@ -13,6 +13,10 @@ FUNCTIONS = (
     "android::hardware::audio::V4_0::implementation::Device::setAudioParameterChangedCallback(android::sp<vendor::mediatek::hardware::audio::V4_1::IAudioParameterChangedCallback> const&)",
     "android::hardware::audio::V4_0::implementation::Device::clearAudioParameterChangedCallback()",
 )
+SETUP_FUNCTIONS = (
+    "android::hardware::audio::V4_0::implementation::Device::setupParametersCallback(",
+    "vendor::mediatek::hardware::audio::V4_1::implementation::MTKPrimaryDevice::setupParametersCallback(",
+)
 SYMBOL_LINE = re.compile(
     r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
@@ -59,10 +63,10 @@ def disassemble(binary: Path, address: int, size: int) -> str:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         print(
             "Usage: audit_primary_hal_p2_hidl_bridge.py "
-            "<android.hardware.audio@4.0-impl-mediatek.so>",
+            "<android.hardware.audio@4.0-impl-mediatek.so> [setup-callback-evidence.txt]",
             file=sys.stderr,
         )
         return 2
@@ -107,6 +111,40 @@ def main() -> int:
             print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
             print("Visible lock calls: " + (", ".join(locks) if locks else "none detected"))
             print(output.rstrip())
+
+    setup_evidence = [
+        f"HIDL bridge SHA-256: {digest}",
+        "Read-only setup-parameters callback forwarding disassembly",
+    ]
+    setup_symbols: dict[str, list[tuple[int, int]]] = {}
+    for name in SETUP_FUNCTIONS:
+        matches = [
+            (address, size)
+            for symbol_name, entries in symbols.items()
+            if symbol_name.startswith(name)
+            for address, size in entries
+            if size > 0
+        ]
+        if not matches:
+            raise RuntimeError(f"required setup callback symbol not found: {name}")
+        setup_symbols[name] = matches
+
+    for name in SETUP_FUNCTIONS:
+        for index, (address, size) in enumerate(setup_symbols[name]):
+            output = disassemble(binary, address, size)
+            calls = sorted(set(CALL_TARGET.findall(output)), key=str.casefold)
+            setup_evidence.extend([
+                "",
+                f"===== {name} [{index}] @ 0x{address & ~1:08x}, size={size} =====",
+                "Direct call targets: " + (", ".join(calls) if calls else "none detected"),
+                output.rstrip(),
+            ])
+
+    setup_report = "\\n".join(setup_evidence) + "\\n"
+    print(setup_report)
+    if len(sys.argv) == 3:
+        report_path = Path(sys.argv[2])
+        report_path.write_text(setup_report, encoding="utf-8")
 
     destructor_name = "android::hardware::audio::V4_0::implementation::Device::~Device()"
     destructor_symbols = [
