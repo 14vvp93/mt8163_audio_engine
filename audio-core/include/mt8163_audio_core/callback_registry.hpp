@@ -112,7 +112,7 @@ public:
         try {
             std::unique_lock<std::mutex> lock(mutex_);
             for (Slot& slot : slots_) {
-                if (slot.active && slot.cookie == cookie) {
+                if (slot.id != 0U && slot.cookie == cookie) {
                     slot.active = false;
                     ids[count++] = slot.id;
                 }
