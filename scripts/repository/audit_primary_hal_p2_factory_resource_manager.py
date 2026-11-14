@@ -121,7 +121,8 @@ def resolve_relocated_pointer(binary: Path, address: int) -> tuple[int, int, str
             f"R_ARM_ABS32(symbol={target_symbol.name or '<anonymous>'}, "
             f"symbol_value=0x{target_symbol.value:08x}, addend=0x{implicit_addend:08x})"
         )
-    elif relocation_type == R_ARM_GLOB_DAT:
+    elif relocation_type == 21:  # R_ARM_GLOB_DAT (AAELF32)
+        require(symbol_index != 0, "R_ARM_GLOB_DAT pointer relocation has a zero symbol index")
         require(symbol_index < len(symbols), f"invalid relocation symbol index {symbol_index}")
         target_symbol = symbols[symbol_index]
         require(target_symbol.value != 0, f"R_ARM_GLOB_DAT symbol {target_symbol.name!r} is undefined")
