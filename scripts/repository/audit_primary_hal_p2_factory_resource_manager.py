@@ -231,6 +231,61 @@ def main() -> int:
         hardware_lock_failure_falls_through,
         "AudioALSAHardware::GetInstance lock failure no longer falls through to singleton access",
     )
+
+    callback_functions = {
+        "registration": "AudioALSAHardware::setAudioParameterChangedCallback(",
+        "clear": "AudioALSAHardware::clearAudioParameterChangedCallback(void*)",
+        "dispatch": "AudioALSAHardware::onAudioParameterChangedCallback(char const*)",
+    }
+    callback_bodies: dict[str, str] = {}
+    for label, symbol_fragment in callback_functions.items():
+        symbol = next(
+            (
+                (address, size, name)
+                for address, size, name in functions
+                if symbol_fragment in name
+            ),
+            None,
+        )
+        require(symbol is not None, f"callback {label} function symbol missing")
+        callback_bodies[label] = disassemble(binary, symbol[0], symbol[0] + symbol[1])
+
+    callback_lock_failure_patterns = {
+        "registration": (
+            r"cea38:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
+            r"\\s*cea3c:.*cmp\\s+r0,\\s*#0\\n"
+            r"\\s*cea40:.*beq\\s+cea9c",
+            r"cea9c:.*ldr\\s+r0,.*\\n\\s*ceaa0:.*add\\s+r4,\\s*r7,\\s*#944",
+        ),
+        "clear": (
+            r"ced08:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
+            r"\\s*ced0c:.*cmp\\s+r0,\\s*#0\\n"
+            r"\\s*ced10:.*beq\\s+ced6c",
+            r"ced6c:.*ldr\\s+fp,.*\\n\\s*ced70:.*add\\s+r7,\\s+r6,\\s+#944",
+        ),
+        "dispatch": (
+            r"cef60:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
+            r"\\s*cef64:.*cmp\\s+r0,\\s*#0\\n"
+            r"\\s*cef68:.*beq\\s+cefc4",
+            r"cefc4:.*ldr\\s+r0,.*\\n\\s*cefc8:.*cmp\\s+r0,\\s*#0",
+        ),
+    }
+    for label, (lock_pattern, fallthrough_pattern) in callback_lock_failure_patterns.items():
+        body = callback_bodies[label]
+        require(
+            re.search(lock_pattern, body) is not None
+            and re.search(fallthrough_pattern, body) is not None,
+            f"callback {label} lock failure no longer falls through to registry access",
+        )
+    dispatch_body = callback_bodies["dispatch"]
+    callback_invoke = re.search(r"cf020:.*mov\\s+r0,\\s*r9.*\\n\\s*cf024:.*blx\\s+r2", dispatch_body)
+    dispatch_unlock = re.search(r"cf044:.*mov\\s+r0,\\s*r8.*\\n\\s*cf050:.*bl\\s+47e04 <alock_unlock@plt>", dispatch_body)
+    require(
+        callback_invoke is not None and dispatch_unlock is not None
+        and callback_invoke.start() < dispatch_unlock.start(),
+        "callback dispatch no longer invokes the callback before releasing the registry lock",
+    )
+
     manager_destructor_body = disassemble(
         binary,
         manager_destructor[0],
@@ -287,6 +342,8 @@ def main() -> int:
     )
     print("CONTRACT VERIFIED: AudioALSAStreamManager::getInstance lock failure falls through to singleton pointer read/create.")
     print("CONTRACT VERIFIED: AudioALSAHardware::GetInstance lock failure falls through to singleton pointer read/create.")
+    print("CONTRACT VERIFIED: callback registration, clear, and dispatch all continue into registry access after lock failure.")
+    print("CONTRACT VERIFIED: parameter-change callbacks are invoked before the registry lock is released.")
     print(
         "CONTRACT VERIFIED: AudioALSAStreamManager destructor clears singleton pointer cell "
         f"0x{MANAGER_SINGLETON_POINTER_CELL:08x} to null."
