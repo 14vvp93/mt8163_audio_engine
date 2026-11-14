@@ -178,6 +178,21 @@ class ParseFunctionsTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "not the expected Thumb-to-ARM veneer"):
                 auditor.resolve_veneer_target(Path("bridge.so"), 0x1020)
 
+    def test_resolves_plt_symbol_from_exact_entry_header(self) -> None:
+        output = (
+            "bridge.so: file format elf32-littlearm\\n"
+            "Disassembly of section .plt:\\n"
+            "000193fc <android::RefBase::RefBase()@plt>:\\n"
+            "  193fc: e28fc600 add ip, pc, #0, 12\\n"
+        )
+        with patch.object(auditor, "run", return_value=output) as run:
+            symbol = auditor.resolve_plt_symbol(Path("bridge.so"), 0x193FC)
+
+        self.assertEqual(symbol, "android::RefBase::RefBase()@plt")
+        command = run.call_args.args[0]
+        self.assertIn("--start-address=0x193fc", command)
+        self.assertIn("--stop-address=0x19400", command)
+
     def test_disassembles_bounded_thumb_target_window(self) -> None:
         with patch.object(auditor, "run", return_value="bounded disassembly") as run:
             output = auditor.disassemble_target_window(Path("bridge.so"), 0x284DC)
