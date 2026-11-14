@@ -10,14 +10,14 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 TARGETS = (
-    "AudioALSAHardware::onAudioParameterChangedCallback(char const*)",
-    "AudioALSAHardware::setParametersByCallback(android::String8 const&)",
+    "AudioALSAHardware::onAudioParameterChangedCallback(",
+    "AudioALSAHardware::setParametersByCallback(",
     "AudioALSAHardware::setupParametersCallback(",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
 )
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
 )
 FUNCTION_HEADER = re.compile(r"^\\s*([0-9a-fA-F]+) <(.+)>:$")
 INSTRUCTION = re.compile(
@@ -89,8 +89,8 @@ def main() -> int:
         if match is None:
             continue
         address, size, kind, name = match.groups()
-        if kind == "FUNC" and int(size, 10) > 0:
-            symbols.append(Symbol(int(address, 16) & ~1, int(size, 10), name))
+        if kind == "FUNC" and int(size, 16) > 0:
+            symbols.append(Symbol(int(address, 16) & ~1, int(size, 16), name))
 
     selected: dict[str, list[Symbol]] = {}
     for target in TARGETS:
@@ -147,8 +147,8 @@ def main() -> int:
             print("DIRECT_CALLS: none resolved by direct branch target address")
 
     for target_name in (
-        "AudioALSAHardware::onAudioParameterChangedCallback(char const*)",
-        "AudioALSAHardware::setParametersByCallback(android::String8 const&)",
+        "AudioALSAHardware::onAudioParameterChangedCallback(",
+        "AudioALSAHardware::setParametersByCallback(",
         "AudioALSAHardware::setupParametersCallback(",
     ):
         print(f"\\n===== BODY {target_name} =====")
