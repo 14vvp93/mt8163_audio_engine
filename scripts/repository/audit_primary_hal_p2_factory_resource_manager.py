@@ -16,6 +16,7 @@ DESTRUCTOR_END = 0x000C57F8
 GET_INSTANCE_START = 0x000D0EE0
 GET_INSTANCE_END = 0x000D1244
 ATEXIT_FUNCTION = 0x00073524
+MANAGER_SINGLETON_POINTER_CELL = 0x001929A0
 GLOBAL_POINTER_CELLS = (0x00192B78, 0x00192B7C, 0x00192B80)
 
 
@@ -161,6 +162,17 @@ def main() -> int:
         None,
     )
     require(manager_get_instance is not None, "AudioALSAStreamManager::getInstance() symbol missing")
+    nondeleting_slot = re.search(
+        r"^\\+0x008\\s+0x[0-9a-fA-F]+\\s+(0x[0-9a-fA-F]+)\\s+(.+)$",
+        relocations,
+        re.MULTILINE,
+    )
+    require(nondeleting_slot is not None, "resource-manager non-deleting-destructor slot +0x008 missing")
+    nondeleting_destructor_address = int(nondeleting_slot.group(1), 16)
+    require(
+        "AudioALSAStreamManager::~AudioALSAStreamManager()" in nondeleting_slot.group(2),
+        "unexpected resource-manager vtable slot +0x008",
+    )
     manager_destructor = next(
         (
             (address, size, name)
@@ -169,7 +181,16 @@ def main() -> int:
         ),
         None,
     )
+    manager_nondeleting_destructor = next(
+        (
+            (address, size, name)
+            for address, size, name in functions
+            if address == nondeleting_destructor_address
+        ),
+        None,
+    )
     require(manager_destructor is not None, "resource-manager deleting destructor symbol missing")
+    require(manager_nondeleting_destructor is not None, "resource-manager non-deleting destructor symbol missing")
     manager_get_instance_body = disassemble(
         binary,
         manager_get_instance[0],
@@ -180,6 +201,12 @@ def main() -> int:
         manager_destructor[0],
         manager_destructor[0] + manager_destructor[1],
     )
+    manager_nondeleting_destructor_body = disassemble(
+        binary,
+        manager_nondeleting_destructor[0],
+        manager_nondeleting_destructor[0] + manager_nondeleting_destructor[1],
+    )
+    atexit_target_body = disassemble(binary, ATEXIT_FUNCTION, ATEXIT_FUNCTION + 0x80)
 
     print(f"Factory HAL SHA-256: {digest}")
     print(f"AudioALSAHardware constructor: 0x{CONSTRUCTOR_START:08x}..0x{CONSTRUCTOR_END:08x}")
@@ -197,7 +224,19 @@ def main() -> int:
         f"0x{manager_destructor[0]:08x}, size={manager_destructor[1]}"
     )
     print(manager_destructor_body.rstrip())
+    print(
+        f"AudioALSAStreamManager non-deleting destructor: "
+        f"0x{manager_nondeleting_destructor[0]:08x}, size={manager_nondeleting_destructor[1]}"
+    )
+    print(manager_nondeleting_destructor_body.rstrip())
     print(f"Resource-manager deleting destructor: 0x{deleting_destructor_address:08x} {deleting_destructor_name}")
+    print(
+        f"AudioALSAStreamManager singleton pointer cell derived from getInstance() PC-relative load/store: "
+        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}"
+    )
+    print("getInstance() lock-failure path: alock_lock_ms failure logs and falls through to singleton pointer read/create")
+    print(f"__cxa_atexit callback target disassembly at 0x{ATEXIT_FUNCTION:08x}:")
+    print(atexit_target_body.rstrip())
     print("STATIC CONTRACT: AudioALSAHardware destruction dispatches the resource-manager deleting-destructor slot.")
 
     if atexit_candidates:
