@@ -151,15 +151,15 @@ Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d
 
 - Function body: `0x000ce8fc..0x000ce9dc`, size 224 bytes.
 - Entry ABI observed: `r1` is copied to `r5` (callback pointer) at `0x000ce904`; `r2` is copied to `r4` (cookie) at `0x000ce908`.
-- Callback global: literal `0x000c4248` is a PC-relative GOT displacement; the effective GOT slot is `0x001a2b80`, written at `0x000ce934`.
-- Cookie global: literal `0x000c4238` is a PC-relative GOT displacement; the effective GOT slot is `0x001a2b7c`, written at `0x000ce940`.
+- Callback global: literal `0x000c4248` is a PC-relative GOT displacement; the effective GOT slot is `0x00192b80`, written at `0x000ce934`.
+- Cookie global: literal `0x000c4238` is a PC-relative GOT displacement; the effective GOT slot is `0x00192b7c`, written at `0x000ce940`.
 - No lock call or synchronization/lifecycle reference is present in this 224-byte body. This is a body-local observation, not proof that all callers are unsynchronized.
 
 ### Dispatch path — `AudioALSAHardware::setParametersByCallback`
 
 - Function body: `0x000cf108..0x000cf294`, size 396 bytes.
-- Loads callback through GOT displacement `0x000c3978` at `0xcf1f8/0xcf200/0xcf204`, resolving to effective slot `0x001a2b80`.
-- Loads cookie through GOT displacement `0x000c3968` at `0xcf208/0xcf20c/0xcf210`, resolving to effective slot `0x001a2b7c`.
+- Loads callback through GOT displacement `0x000c3978` at `0xcf1f8/0xcf200/0xcf204`, resolving to effective slot `0x00192b80`.
+- Loads cookie through GOT displacement `0x000c3968` at `0xcf208/0xcf20c/0xcf210`, resolving to effective slot `0x00192b7c`.
 - Passes event `0` in `r0`, pointer to a stack-local parameter structure in `r1`, then invokes callback with `BLX r3` at `0x000cf218`.
 - The dispatch body has no visible lock, reference acquisition, or in-flight accounting around the global callback/cookie loads and invocation.
 
@@ -167,7 +167,7 @@ Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d
 
 This confirms a separate process-global callback/cookie pair and a dispatch path that can race registration/replacement or owner teardown unless an external serialization/lifetime contract exists. The pinned code examined so far does not establish that contract. The HIDL bridge exposes `Device::setupParametersCallback` and a callback thunk; however, this evidence does not yet prove every upstream caller, whether callback registration is serialized by Binder/thread policy, or whether the Device cookie remains alive through every possible dispatch.
 
-**Do not integrate this path into AudioCore or replace it with the vector-backed registry yet.** Required next evidence: disassemble and correlate the complete HIDL `Device::setupParametersCallback` body and its MTKPrimaryDevice forwarding caller; enumerate every callsite/indirect dispatch to the setup slot and every reference to global slots `0x000c4248`/`0x000c4238`; then prove unregister/replacement ordering and teardown quiescence. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+**Do not integrate this path into AudioCore or replace it with the vector-backed registry yet.** Required next evidence: disassemble and correlate the complete HIDL `Device::setupParametersCallback` body and its MTKPrimaryDevice forwarding caller; enumerate every indirect caller and every effective GOT reference to `0x00192b80`/`0x00192b7c`; then prove external serialization, replacement ordering and in-flight teardown quiescence. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
 
 
 ## 2026-11-14 — HIDL setup-parameters registration forwarding
@@ -211,10 +211,10 @@ The prior text called `0x000c4248` and `0x000c4238` absolute global addresses. T
 
 | Path | Literal displacement | Instruction using PC-relative register load | Effective GOT slot |
 |---|---:|---:|---:|
-| Registration callback | `0x000c4248` | `0x000ce930` | `0x001a2b80` |
-| Registration cookie | `0x000c4238` | `0x000ce93c` | `0x001a2b7c` |
-| Dispatch callback | `0x000c3978` | `0x000cf200` | `0x001a2b80` |
-| Dispatch cookie | `0x000c3968` | `0x000cf20c` | `0x001a2b7c` |
+| Registration callback | `0x000c4248` | `0x000ce930` | `0x00192b80` |
+| Registration cookie | `0x000c4238` | `0x000ce93c` | `0x00192b7c` |
+| Dispatch callback | `0x000c3978` | `0x000cf200` | `0x00192b80` |
+| Dispatch cookie | `0x000c3968` | `0x000cf20c` | `0x00192b7c` |
 
 The factory auditor now asserts all four literal words and their effective PC-relative slot calculations. This corrects address interpretation; it does not claim a complete whole-ELF data-reference graph.
 
@@ -222,7 +222,19 @@ The factory auditor now asserts all four literal words and their effective PC-re
 
 - HIDL `Device::~Device` calls the legacy device close slot before releasing its callback strong-reference members, including `Device+0x24` and `Device+0x28`.
 - The audited Device destructor does not call private setup-callback clear slot `0xd0`; the separate clear method for slot `0xd8` belongs to the other parameter-changed channel.
-- The audited `AudioALSAHardware::~AudioALSAHardware` body resets other globals but contains no reference to the setup callback/cookie GOT slots `0x001a2b80` / `0x001a2b7c`.
+- The audited `AudioALSAHardware::~AudioALSAHardware` body clears the setup cookie GOT slot `0x00192b7c` first and the callback GOT slot `0x00192b80` second. No in-flight drain is visible between these stores and destructor completion.
 - Registration stores callback and cookie independently; dispatch loads them independently before `BLX`. No lock or atomic pair snapshot is visible in the audited setup/dispatch bodies.
 
 This establishes a concrete potential stale-cookie/replacement race surface, not a proven runtime crash or observed race. Do not integrate this callback path. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+
+## 2026-11-14 — factory callback globals are cleared during destruction
+
+The previous GOT calculation was off by `0x10000`; the corrected effective slots are `0x00192b80` (callback) and `0x00192b7c` (cookie). The regression now verifies both registration and dispatch PC-relative sequences and the destructor clear sequence.
+
+In `AudioALSAHardware::~AudioALSAHardware` at `0x000c56e4`:
+- The literal at `0x000c585c` resolves through the PC-relative load at `0x000c5768` to cookie slot `0x00192b7c`; `str r6,[r0]` at `0x000c576c` writes zero.
+- The literal at `0x000c5860` resolves through `0x000c5774` to callback slot `0x00192b80`; `str r6,[r0]` at `0x000c5778` writes zero.
+- Cookie is cleared before callback. The destructor does not show a lock acquisition or in-flight callback drain around these stores.
+
+This means the global pair is not left populated after this destructor completes. It does not make teardown safe: a dispatch that loaded both old values before the stores can still be executing, and the clear sequence does not wait for it. Registration likewise writes callback and cookie as separate stores, while dispatch loads them separately. P2 remains OPEN.
