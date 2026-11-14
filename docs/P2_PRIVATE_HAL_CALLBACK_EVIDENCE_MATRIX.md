@@ -215,3 +215,9 @@ The dedicated audit resolved and disassembled the client singleton, constructor/
 The firmware scanner also found `vendor/audiocmdservice_atci` referencing `MTKPrimaryDevicesHalClient::getInstance()`; the ATCI executable itself was not part of this dedicated method-level disassembly. Five firmware files had callback-related string/symbol matches overall, while zero APK/JAR archive members matched.
 
 This identifies a concrete external user of the MTK primary-device HIDL client for generic parameter operations, but does not identify it as a caller of the private callback tail. It does not exclude other clients, stripped/indirect dispatch, runtime-loaded code or numeric-offset callers. The exact meaning of the interface vtable slots 24/28 must be confirmed against the matching HIDL interface contract before assigning source-level names.
+
+### ATCI import and PLT evidence — caller not confirmed
+
+The pinned `vendor/audiocmdservice_atci` executable (`302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566`) has an undefined dynamic symbol for `android::MTKPrimaryDevicesHalClient::getInstance()`, an `R_ARM_JUMP_SLOT` relocation at `0x0000cf9c`, and a corresponding PLT stub at `0x000018a4`. The full executable scan did not identify a direct symbolic call site. Therefore the binary has a linked import/PLT entry, but execution of that entry by ATCI is not proven; do not list ATCI as a confirmed runtime caller. Indirect or table-based dispatch remains unresolved.
+
+Evidence was emitted by the read-only ATCI audit in workflow run [43567387148](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43567387148). The overall run failed only in the separate HIDL Thumb-disassembly address validation; the ATCI import/relocation/PLT observations above were emitted before that failure and are independent of the HIDL disassembly.
