@@ -89,9 +89,12 @@ def main() -> int:
                 str(binary),
             ])
             disassembly = run(command)
-            if not re.search(rf"^\\s*{code_address:x}: ", disassembly, re.MULTILINE):
+            expected_address = rf"^\s*0*{code_address:x}(?:\s*<|:\s+)"
+            if not re.search(expected_address, disassembly, re.MULTILINE):
+                preview = "\n".join(disassembly.splitlines()[:8])
                 raise RuntimeError(
-                    f"disassembly did not start at the expected address 0x{code_address:x}: {name}"
+                    f"disassembly did not contain the expected start address "
+                    f"0x{code_address:x}: {name}\n{preview}"
                 )
             calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
             isa = "Thumb" if address & 1 else "ARM"
