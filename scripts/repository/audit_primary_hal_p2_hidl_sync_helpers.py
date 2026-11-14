@@ -153,6 +153,77 @@ def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
 HELPER_WINDOW_SIZE = 0x60
 
 
+def resolve_veneer_target(binary: Path, target: int) -> int:
+    elf_data = binary.read_bytes()
+    if len(elf_data) < 52 or elf_data[:4] != b"\\x7fELF":
+        raise RuntimeError("invalid ELF header while resolving helper veneer")
+    if elf_data[4] != 1 or elf_data[5] != 1:
+        raise RuntimeError("helper veneer resolution requires ELF32 little-endian input")
+
+    section_offset = struct.unpack_from("<I", elf_data, 32)[0]
+    section_entry_size, section_count, names_index = struct.unpack_from(
+        "<HHH", elf_data, 46
+    )
+    if section_entry_size < 40 or section_count == 0 or names_index >= section_count:
+        raise RuntimeError("invalid ELF section table while resolving helper veneer")
+    section_table_end = section_offset + section_entry_size * section_count
+    if section_offset < 52 or section_table_end > len(elf_data):
+        raise RuntimeError("ELF section table is outside the input file")
+
+    sections: list[tuple[int, int, int, int, int]] = []
+    for index in range(section_count):
+        offset = section_offset + index * section_entry_size
+        name_offset, section_type, flags, address, file_offset, size = struct.unpack_from(
+            "<IIIIII", elf_data, offset
+        )
+        sections.append((name_offset, section_type, flags, address, file_offset, size))
+
+    names_entry = sections[names_index]
+    if names_entry[1] != 3:
+        raise RuntimeError("ELF section-name table is not a SHT_STRTAB section")
+    names_offset, names_size = names_entry[4], names_entry[5]
+    if names_offset + names_size > len(elf_data):
+        raise RuntimeError("ELF section-name table is outside the input file")
+    names = elf_data[names_offset:names_offset + names_size]
+
+    text_section: tuple[int, int, int] | None = None
+    for name_offset, section_type, flags, address, file_offset, size in sections:
+        if name_offset >= len(names):
+            continue
+        name_end = names.find(b"\\0", name_offset)
+        if name_end < 0 or names[name_offset:name_end] != b".text":
+            continue
+        if section_type != 1 or not flags & 0x4:
+            raise RuntimeError(".text is not an executable SHT_PROGBITS section")
+        if file_offset + size > len(elf_data):
+            raise RuntimeError(".text section is outside the input file")
+        text_section = (address, file_offset, size)
+        break
+    if text_section is None:
+        raise RuntimeError("executable .text section was not found")
+
+    text_address, text_file_offset, text_size = text_section
+    if target < text_address or target + 16 > text_address + text_size:
+        raise RuntimeError(f"helper target 0x{target:08x} is outside executable .text")
+    offset = text_file_offset + target - text_address
+    thumb_branch, thumb_nop = struct.unpack_from("<HH", elf_data, offset)
+    arm_load, arm_add, relative_target = struct.unpack_from("<III", elf_data, offset + 4)
+
+    if (thumb_branch, thumb_nop, arm_load, arm_add) != (
+        0x4778, 0x46C0, 0xE59FC000, 0xE08CF00F
+    ):
+        raise RuntimeError(
+            f"helper target 0x{target:08x} is not the expected Thumb-to-ARM veneer"
+        )
+
+    destination = target + 16 + struct.unpack("<i", struct.pack("<I", relative_target))[0]
+    if destination & 0x3:
+        raise RuntimeError(f"veneer destination 0x{destination:08x} is not ARM-aligned")
+    if not text_address <= destination < text_address + text_size:
+        raise RuntimeError(f"veneer destination 0x{destination:08x} is outside executable .text")
+    return destination
+
+
 def disassemble_target_window(binary: Path, target: int) -> str:
     if target < 0:
         raise ValueError("invalid helper target address")
@@ -225,9 +296,37 @@ def main() -> int:
             reports.extend(unresolved_report_lines(target, error))
             reports.extend([
                 f"TARGET_WINDOW 0x{target:08x}..0x{target + HELPER_WINDOW_SIZE:08x} "
-                "(fixed 0x60-byte Thumb inspection window; not a function boundary)",
+                "(fixed 0x60-byte inspection window; not a function boundary)",
                 disassemble_target_window(binary, target).rstrip(),
             ])
+            try:
+                destination = resolve_veneer_target(binary, target)
+            except RuntimeError as veneer_error:
+                reports.append(f"VENEER_RESOLUTION_ERROR: {veneer_error}")
+                continue
+
+            reports.append(f"INTERWORKING_VENEER_ARM_DESTINATION: 0x{destination:08x}")
+            try:
+                function_address, function_size, function_name, function_thumb = (
+                    resolve_function(destination, functions)
+                )
+            except RuntimeError as destination_error:
+                reports.extend([
+                    f"DESTINATION_SYMBOL: UNRESOLVED ({destination_error})",
+                    f"DESTINATION_WINDOW 0x{destination:08x}.."
+                    f"0x{destination + HELPER_WINDOW_SIZE:08x} "
+                    "(fixed inspection window; not a function boundary)",
+                    disassemble_target_window(binary, destination).rstrip(),
+                ])
+            else:
+                reports.extend([
+                    f"DESTINATION_FUNCTION 0x{function_address:08x} "
+                    f"size={function_size} mode={'Thumb' if function_thumb else 'ARM'} "
+                    f"{function_name}",
+                    f"DESTINATION_FUNCTION_RANGE 0x{function_address:08x}.."
+                    f"0x{function_address + function_size:08x}",
+                    disassemble(binary, function_address, function_size, function_thumb).rstrip(),
+                ])
             continue
 
         reports.extend([
