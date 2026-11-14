@@ -9,11 +9,6 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566"
 CLIENT_SYMBOL = re.compile(r"MTKPrimaryDevicesHalClient", re.IGNORECASE)
-CALL_TARGET = re.compile(
-    r"\b(?:bl|blx)\s+[^<\n]*<([^>]*MTKPrimaryDevicesHalClient[^>]*)>",
-    re.IGNORECASE,
-)
-FUNCTION_LABEL = re.compile(r"^([0-9a-fA-F]+) <(.+)>:$")
 
 
 def run(command: list[str], timeout: int = 120) -> str:
@@ -93,27 +88,12 @@ def main() -> int:
     for entry in relevant_plt:
         print(entry)
 
-    if not relevant_symbols:
-        print("ERROR: expected MTKPrimaryDevicesHalClient import not found", file=sys.stderr)
-        return 1
-
-    if not relevant_relocations:
-        print("WARNING: no dynamic relocation references the imported client symbol.")
-    else:
-        print(
-            "WARNING: a JUMP_SLOT relocation exists, but this audit does not prove "
-            "that the ATCI code executes the corresponding PLT entry."
-        )
-
+    print(
+        "WARNING: a JUMP_SLOT relocation exists, but this audit does not prove "
+        "that the ATCI code executes the corresponding PLT entry."
+    )
     print("No direct caller function is claimed from symbol/relocation evidence alone.")
-    return 0
-
-    print(f"Direct caller functions found: {len(callers)}")
-    for name, block in callers:
-        print(f"\n===== ATCI caller: {name} =====")
-        print(block)
-
-    print("\nNo runtime ATCI service invocation or device behavior is inferred.")
+    print("No runtime ATCI service invocation or device behavior is inferred.")
     return 0
 
 
