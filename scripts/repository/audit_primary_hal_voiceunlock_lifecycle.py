@@ -15,6 +15,10 @@ FUNCTIONS = (
     "android::AudioVUnlockDL::freeInstance()",
     "android::AudioVUnlockDL::ReadRefFromRing(void*, unsigned int, void*)",
     "android::AudioVUnlockDL::SetInputStandBy(bool)",
+    "android::AudioALSAHardware::startVoiceUnlockDL()",
+    "android::AudioALSAHardware::stopVoiceUnlockDL()",
+    "android::AudioALSAHardware::freeVoiceUnlockDLInstance()",
+    "android::AudioALSAHardware::getVoiceUnlockDLInstance()",
 )
 THREAD_CALLS = re.compile(
     r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait)|usleep"
