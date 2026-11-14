@@ -507,3 +507,17 @@ The assertions parse normalized ARM disassembly instruction records and are scop
 CI run [43604214721](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721) completed successfully on code commit `7a39afefa91040b62c110a0a191538da73bf06b7`. The artifact [14117686286](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43604214721/artifacts/14117686286) contains the reproducible report, including `CALLBACK_DATAFLOW_ASSERTIONS: PASS`.
 
 **Scope:** this regression protects the observed static dataflow against binary/auditor drift. It does not identify all indirect callers, establish callback owner lifetime, or prove in-flight drain. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+## 2026-11-14 — exact-address callback registration regression CI PASS
+
+The parser fix and expanded registration-store assertions are verified on feature commit `162e48a3dc127a8c1e25ae9a8890abaab3881671` by [workflow run 43607609463](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463). All three workflow jobs passed: P2 contract inventory/fail-closed gates, reproducible factory binary/external-client scan, and aggregate offline evidence gate.
+
+The pinned factory audit emitted `CALLBACK_DATAFLOW_ASSERTIONS: PASS` for factory HAL SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`. The assertions include:
+- Exact-address parsing of `setupParametersCallback()` at `0x000ce8fc`, avoiding same-name/alias body ambiguity.
+- Callback and cookie argument capture at `0x000ce904` and `0x000ce908`.
+- Callback global pointer store at `0x000ce934` and cookie global pointer store at `0x000ce940`, including the ordered PC-relative loads.
+- Existing vector-registry dispatch ABI/lock ordering and the separate `setParametersByCallback()` global callback dispatch path.
+
+Artifact [14119346339](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339) preserves the evidence reports; ZIP SHA-256 is `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
+
+**Interpretation:** the exact-address parser and static instruction regression are now CI-verified. This does not prove the global callback's owner lifetime, registration replacement semantics, in-flight drain, complete external caller inventory, or safe destruction ordering. The vector-backed parameter-change registry and global setup-parameters callback remain distinct synchronization/lifetime domains. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
