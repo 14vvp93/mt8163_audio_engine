@@ -72,3 +72,28 @@ The current scan's five matches do not include a separately identified xWay call
 ## Enablement policy
 
 Do not implement guessed private callback prototypes. Do not enable Primary HAL stream opens, set the Soong module installable, replace the factory HIDL bridge, or free voice-unlock state without the corresponding evidence gates. The retained factory path remains authoritative until a reviewed replacement is proven safe.
+
+## 2026-11-14 expanded target-ELF dispatch audit
+
+Workflow run: [43565487354](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43565487354)  
+Audited commit: `41e52071ea6fd6bb5ba577d0de5da69f6f145fce`  
+Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`  
+Artifact: `mt8163-primary-hal-p2-evidence`, ID `14101694200`  
+Artifact ZIP SHA-256: `affcfd7f5c04751dd014a79644af0db2a0e39e27d21fb6bf264bda2075fb4688`
+
+The audit script resolved and disassembled all 23 required target symbols. In particular, exact ELF symbol names were confirmed for:
+
+- `AudioALSAHardware::setupParametersCallback(...)` at `0x000ce8fc`
+- `AudioALSAHardware::setAudioParameterChangedCallback(...)` at `0x000ce9dc`
+- `AudioALSAHardware::clearAudioParameterChangedCallback(void*)` at `0x000cecc0`
+- `xWayPlay_Start/Stop/Write/GetFreeBufferCount` at `0x000ce564`–`0x000ce628`
+- `xWayRec_Start/Stop/Read` at `0x000ce664`–`0x000ce6dc`
+- `AudioALSAHardware::ReadRefFromRing(...)` at `0x000ce728`
+
+The targeted wrapper disassembly confirms the xWay adapters dispatch to `Play2Way` and `Record2Way`; the reference-ring adapter obtains `AudioVUnlockDL::getInstance()` and forwards to `AudioVUnlockDL::ReadRefFromRing(...)`. This establishes internal dispatch destinations, not external caller existence or callback lifetime safety.
+
+The same run scanned 1,294 firmware candidates: five files contained callback-related string/symbol matches and zero APK/JAR archive members contained such matches. This is not proof that stripped, numeric-offset, indirect, dynamically loaded or runtime-downloaded callers do not exist.
+
+All three workflow jobs completed successfully, including the aggregate offline-evidence gate. The artifact is reproducible evidence only; no runtime/device behavior is inferred. P2 remains OPEN. External caller coverage, exact target callback ABI/prototypes, callback admission/drain, registration/clear races, detached-worker teardown ordering and target linker namespace remain hard gates.
+
+**Concurrency-fix verification status:** this successful run belongs to the pre-fix audit commit `41e52071...`, not the later concurrency-group commit `bd79bbda...`. A subsequent run on the latter or a descendant is still required to verify the unique-`run_id` concurrency configuration end-to-end.
