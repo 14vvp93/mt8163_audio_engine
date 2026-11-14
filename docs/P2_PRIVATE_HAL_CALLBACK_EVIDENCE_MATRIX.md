@@ -521,3 +521,23 @@ The pinned factory audit emitted `CALLBACK_DATAFLOW_ASSERTIONS: PASS` for factor
 Artifact [14119346339](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339) preserves the evidence reports; ZIP SHA-256 is `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
 
 **Interpretation:** the exact-address parser and static instruction regression are now CI-verified. This does not prove the global callback's owner lifetime, registration replacement semantics, in-flight drain, complete external caller inventory, or safe destruction ordering. The vector-backed parameter-change registry and global setup-parameters callback remain distinct synchronization/lifetime domains. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+## 2026-11-14 — global setup-parameters callback/cookie path: body-level evidence
+
+CI [run 43607609463](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463) passed on the exact-address parser commit. The pinned factory disassembly provides the following additional facts for the separate `setupParametersCallback()` mechanism:
+
+| Item | Evidence |
+|---|---|
+| Registration function | `0x000ce8fc`, 224 bytes |
+| Callback argument | `r1 → r5` at `0x000ce904` |
+| Cookie argument | `r2 → r4` at `0x000ce908` |
+| Callback global slot | `0x000c4248`, store at `0x000ce934` |
+| Cookie global slot | `0x000c4238`, store at `0x000ce940` |
+| Dispatch function | `0x000cf108`, 396 bytes |
+| Callback load / indirect call | `0x000cf1f8..0x000cf218`, `BLX r3` |
+| Cookie load | `0x000cf208..0x000cf210` |
+| Dispatch arguments | event `0` in `r0`, stack-local parameter structure in `r1`, cookie in `r2` |
+
+Neither audited function body shows a lock, reference-count pin, or in-flight drain around the global callback/cookie pair. This is a bounded static finding about these bodies, not proof that no external caller serialization exists.
+
+Keep this path separate from the vector-backed registry. The bridge's `Device::setupParametersCallback` thunk/cookie relationship is known at symbol/slot level, but complete upstream call graph, registration replacement policy, owner lifetime, and teardown quiescence are still unproven. No integration is permitted. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
