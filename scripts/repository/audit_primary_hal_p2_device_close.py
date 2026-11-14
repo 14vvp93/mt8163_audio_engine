@@ -56,7 +56,7 @@ def disassemble_range(binary: Path, start: int, end: int, label: str) -> str:
             str(binary),
         ]
     )
-    if not re.search(rf"^\s*{start:x}\s+:", output, re.MULTILINE):
+    if not re.search(rf"^\s*0*{start:x}(?:\s|<)", output, re.MULTILINE):
         raise RuntimeError(f"{label}: start address is not present in disassembly")
     return output
 
