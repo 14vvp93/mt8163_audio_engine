@@ -273,3 +273,12 @@ P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. N
 - Added synthetic unit tests for GOT resolution and destructor clear ordering; the workflow runs them in the P2 contract job.
 - Teardown clears future global admission, but no in-flight drain is visible. A dispatch that loaded the old callback/cookie pair before clear can still be active while HIDL Device destruction proceeds to release callback references.
 - P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
+
+
+### CI for callback GOT and teardown regression
+
+- [Run 43617157323](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323): all 3 jobs PASS.
+- Artifact [14121669562](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43617157323/artifacts/14121669562), SHA-256 `5dfe84cc04a98647adca89770eb7f73a5e324b9effedbf3ccf67a8ecbefb4319`.
+- Factory callback dataflow, GOT address resolution, and destructor clear assertions all PASS.
+- Four synthetic unit tests PASS.
+- This validates static evidence extraction only. Runtime callback admission/drain, indirect caller completeness and Device lifetime remain unproven. P2 stays OPEN.
