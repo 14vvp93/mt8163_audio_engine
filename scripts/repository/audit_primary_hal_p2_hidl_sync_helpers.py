@@ -75,6 +75,8 @@ def resolve_function(
 
 
 def disassemble(binary: Path, address: int, size: int, thumb: bool) -> str:
+    if address < 0 or size <= 0:
+        raise ValueError("invalid function disassembly range")
     command = ["arm-linux-gnueabi-objdump", "-d", "-C"]
     if thumb:
         command.extend(["-M", "force-thumb"])
@@ -105,27 +107,32 @@ def main() -> int:
 
     symbols_output = run(["arm-linux-gnueabi-readelf", "-Ws", "-C", str(binary)])
     functions = parse_functions(symbols_output)
+    if not functions:
+        raise RuntimeError("no sized FUNC symbols found in HIDL bridge symbol table")
+
     reports: list[str] = [
         f"HIDL bridge SHA-256: {digest}",
         "Source: direct BL targets observed in Device::syncCallback at 0x0001cb4c",
+        "Each report contains the complete containing FUNC symbol range, not a fixed-size excerpt.",
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
     for target in HELPER_TARGETS:
         address, size, name, thumb = resolve_function(target, functions)
-        stop = min(address + size, target + 0x100)
         reports.extend([
             "",
             f"CALL_TARGET 0x{target:08x} -> FUNC 0x{address:08x} "
-            f"size={size} offset=0x{target - address:x} {name}",
-            disassemble(binary, target, stop - target, thumb).rstrip(),
+            f"size={size} offset=0x{target - address:x} "
+            f"mode={'Thumb' if thumb else 'ARM'} {name}",
+            f"FULL_FUNCTION_RANGE 0x{address:08x}..0x{address + size:08x}",
+            disassemble(binary, address, size, thumb).rstrip(),
         ])
 
     reports.extend([
         "",
         "Static helper disassembly only. Determine object pinning, reference ownership, "
-        "and callback lifetime from instruction/dataflow evidence; helper names alone "
-        "are not lifetime guarantees.",
+        "and callback lifetime from complete instruction/dataflow evidence; helper names "
+        "alone are not lifetime guarantees.",
     ])
     report = "\n".join(reports) + "\n"
     print(report, end="")
@@ -137,6 +144,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+    except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         raise SystemExit(1)
