@@ -76,7 +76,8 @@ jobs:
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py \
             scripts/repository/audit_primary_hal_p2_client.py \
             scripts/repository/audit_primary_hal_p2_atci.py \
-            scripts/repository/audit_primary_hal_p2_hidl_callback.py
+            scripts/repository/audit_primary_hal_p2_hidl_callback.py \
+            scripts/repository/audit_primary_hal_p2_hidl_bridge.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
         run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
@@ -98,6 +99,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_client.py
             scripts/repository/audit_primary_hal_p2_atci.py
             scripts/repository/audit_primary_hal_p2_hidl_callback.py
+            scripts/repository/audit_primary_hal_p2_hidl_bridge.py
           sparse-checkout-cone-mode: false
       - name: Checkout immutable public firmware dataset
         uses: actions/checkout@v5
@@ -167,6 +169,7 @@ jobs:
             p2-hal-client-disassembly.txt
             p2-atci-client-callers.txt
             p2-hidl-callback-transaction.txt
+            p2-hidl-bridge-lifecycle.txt
           if-no-files-found: error
           retention-days: 30
 
