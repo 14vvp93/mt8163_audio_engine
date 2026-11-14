@@ -367,6 +367,7 @@ def main() -> int:
         "event_manager_notify": "AudioEventThreadManager::notifyCallback(android::AudioEventType, void*)",
         "stream_manager_constructor": "AudioALSAStreamManager::AudioALSAStreamManager()",
     }
+    event_thread_bodies: dict[str, str] = {}
     for label, fragment in event_thread_functions.items():
         matches = [
             (address, size, name)
@@ -374,11 +375,83 @@ def main() -> int:
             if fragment in name
         ]
         require(matches, f"AudioEventThread lifecycle symbol missing: {label} ({fragment})")
-        for address, size, name in matches:
-            body = disassemble(binary, address, address + size)
-            print(f"\n===== EVENT THREAD LIFECYCLE: {label} @ 0x{address:08x}, size={size}: {name} =====")
-            print(body.rstrip())
+        address, size, name = matches[0]
+        body = disassemble(binary, address, address + size)
+        event_thread_bodies[label] = body
+        print(f"\n===== EVENT THREAD LIFECYCLE: {label} @ 0x{address:08x}, size={size}: {name} =====")
+        print(body.rstrip())
 
+    unregister_by_type = event_thread_bodies["manager_unregister_by_type"]
+    unregister_stop = re.search(
+        r"1361a8:.*mov\s+r1,\s*#0\n"
+        r"\s*1361ac:.*strb\s+r1,\s*\[r0,\s*#28\]\n"
+        r"\s*1361b0:.*mov\s+r1,\s*r5\n"
+        r"\s*1361b4:.*bl\s+[0-9a-f]+ <android::AudioEventThread::signal\(void\*\)@plt>",
+        unregister_by_type,
+    )
+    unregister_join = re.search(
+        r"1361e0:.*ldr\s+r0,\s*\[r0,\s*#4\]\n"
+        r"\s*1361e4:.*bl\s+[0-9a-f]+ <pthread_join@plt>",
+        unregister_by_type,
+    )
+    unregister_remove = re.search(
+        r"136208:.*add\s+r0,\s*r6,.*\n"
+        r"\s*13620c:.*str\s+r0,\s*\[r5,\s*#8\]",
+        unregister_by_type,
+    )
+    require(
+        unregister_stop is not None
+        and unregister_join is not None
+        and unregister_remove is not None
+        and unregister_stop.start() < unregister_join.start() < unregister_remove.start(),
+        "AudioEventThreadManager::unregisterCallback(type) no longer stop/signals, joins, then removes worker",
+    )
+
+    stream_constructor = event_thread_bodies["stream_manager_constructor"]
+    require(
+        re.search(
+            r"7721c:.*bl\s+[0-9a-f]+ <android::AudioEventThreadManager::getInstance\(\)@plt>\n"
+            r"\s*77224:.*mov\s+r3,\s*r4\n"
+            r"\s*77228:.*ldr\s+r2,.*\n"
+            r"\s*7722c:.*mov\s+r1,\s*#0\n"
+            r"\s*77230:.*bl\s+[0-9a-f]+ <android::AudioEventThreadManager::registerCallback\(android::AudioEventType,",
+            stream_constructor,
+        ) is not None,
+        "AudioALSAStreamManager constructor no longer registers event type 0 with this as callback cookie",
+    )
+
+    worker_loop = event_thread_bodies["event_thread_loop"]
+    require(
+        re.search(r"13517c:.*ldrb\s+r0,\s*\[r4,\s*#28\]", worker_loop) is not None
+        and re.search(r"1351fc:.*ldr\s+r0,\s*\[r4,\s*#8\]\n\s*135200:.*blx\s+r2", worker_loop) is not None
+        and re.search(r"1352d8:.*mov\s+r0,\s*#0\n\s*1352dc:.*bl\s+[0-9a-f]+ <pthread_exit@plt>", worker_loop) is not None,
+        "AudioEventThread worker loop no longer checks stop flag, dispatches callbacks, and exits via pthread_exit",
+    )
+
+    worker_destructor = event_thread_bodies["event_thread_destructor"]
+    destructor_stop = re.search(
+        r"1353f0:.*mov\s+r0,\s*#0\n"
+        r"\s*1353f4:.*strb\s+r0,\s*\[r4,\s*#28\]\n"
+        r"\s*1353f8:.*mov\s+r0,\s*r4\n"
+        r"\s*1353fc:.*mov\s+r1,\s*r4\n"
+        r"\s*135400:.*bl\s+[0-9a-f]+ <android::AudioEventThread::signal\(void\*\)@plt>",
+        worker_destructor,
+    )
+    destructor_join = re.search(
+        r"135404:.*ldr\s+r0,\s*\[r4,\s*#4\]\n"
+        r"\s*135408:.*mov\s+r1,\s*#0\n"
+        r"\s*135410:.*bl\s+[0-9a-f]+ <pthread_join@plt>",
+        worker_destructor,
+    )
+    require(
+        destructor_stop is not None
+        and destructor_join is not None
+        and destructor_stop.start() < destructor_join.start(),
+        "AudioEventThread destructor no longer stops/signals and joins its worker before teardown",
+    )
+    print("CONTRACT VERIFIED: StreamManager registers AudioEventType(0) with its own instance cookie.")
+    print("CONTRACT VERIFIED: unregisterCallback(type) clears the worker run flag, signals, pthread_join()s, then removes the worker entry.")
+    print("CONTRACT VERIFIED: AudioEventThread destructor stops/signals and joins the worker before destroying its synchronization state.")
 
     if atexit_candidates:
         print(f"GetInstance __cxa_atexit function pointer 0x{ATEXIT_FUNCTION:08x} resolves to:")
