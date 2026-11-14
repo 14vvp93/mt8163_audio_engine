@@ -138,6 +138,11 @@ def main() -> int:
         and re.search(r"blx\s+r1", close) is not None,
         "HMI.close no longer matches the audited indirect vtable+4 dispatch",
     )
+    require(
+        re.search(r"9badc:.*mov\s+r0,\s*#0", close) is not None
+        and re.search(r"9bae0:.*pop\s+\{r4,\s*r5,\s*fp,\s*pc\}", close) is not None,
+        "HMI.close no longer converges on a zero return after its teardown branches",
+    )
 
     create = run(
         [
