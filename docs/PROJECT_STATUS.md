@@ -282,3 +282,14 @@ P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. N
 - Factory callback dataflow, GOT address resolution, and destructor clear assertions all PASS.
 - Four synthetic unit tests PASS.
 - This validates static evidence extraction only. Runtime callback admission/drain, indirect caller completeness and Device lifetime remain unproven. P2 stays OPEN.
+
+
+## P2 HIDL helper and RefBase constructor audit — 2026-11-14
+
+- [Workflow 43638003884](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638003884) completed with all 3 jobs PASS on code HEAD `d4f1a4a1d50cdd1681df13c1e4a5d9cbd09ef240`.
+- Evidence artifact [14130747346](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638003884/artifacts/14130747346), ZIP SHA-256 `dbd0f16ceac58f9f30bf4ee21cf117c71c89c477c70e27a5d244e0a811ca26aa`.
+- All 18 HIDL syncCallback helper targets resolve to sized function symbols or verified interworking veneers with exact PLT symbol names. No unresolved targets remain.
+- Corrected constructor scan confirms RefBase constructor callsites in Device, PrimaryDevice and MTKPrimaryDevice constructors (three callsites). This replaces the earlier incomplete negative derived-constructor inventory.
+- Both candidate system and VNDK-SP-28 libutils libraries expose the required RefBase symbols. The bridge declares DT_NEEDED libutils.so, but actual runtime linker namespace selection is still unresolved because the pinned public firmware dataset does not include the target linker namespace configuration.
+- No factory-side atomic callback/cookie snapshot, owner pin before weak promotion, or in-flight drain has been established. The pre-promotion raw Device-cookie race surface remains open.
+- P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`; no callback integration, DSP profile activation, hardware writes, or P3 transition is authorized.
