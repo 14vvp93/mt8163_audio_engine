@@ -14,6 +14,7 @@ on:
       - "scripts/repository/scan_primary_hal_p2_clients.py"
       - "scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py"
       - "scripts/repository/audit_primary_hal_p2_client.py"
+      - "scripts/repository/audit_primary_hal_p2_atci.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   pull_request:
     branches: [feature]
@@ -28,6 +29,7 @@ on:
       - "scripts/repository/scan_primary_hal_p2_clients.py"
       - "scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py"
       - "scripts/repository/audit_primary_hal_p2_client.py"
+      - "scripts/repository/audit_primary_hal_p2_atci.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   workflow_dispatch:
 
@@ -68,7 +70,8 @@ jobs:
             scripts/repository/check_primary_hal_p2_contract.py \
             scripts/repository/scan_primary_hal_p2_clients.py \
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py \
-            scripts/repository/audit_primary_hal_p2_client.py
+            scripts/repository/audit_primary_hal_p2_client.py \
+            scripts/repository/audit_primary_hal_p2_atci.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
         run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
@@ -88,6 +91,7 @@ jobs:
             scripts/repository/scan_primary_hal_p2_clients.py
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py
             scripts/repository/audit_primary_hal_p2_client.py
+            scripts/repository/audit_primary_hal_p2_atci.py
           sparse-checkout-cone-mode: false
       - name: Checkout immutable public firmware dataset
         uses: actions/checkout@v5
@@ -136,6 +140,9 @@ jobs:
           client="factory-firmware/firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so"
           test -s "$client"
           python3 scripts/repository/audit_primary_hal_p2_client.py "$client" | tee p2-hal-client-disassembly.txt
+          atci="factory-firmware/firmware/extracted/vendor/audiocmdservice_atci"
+          test -s "$atci"
+          python3 scripts/repository/audit_primary_hal_p2_atci.py "$atci" | tee p2-atci-client-callers.txt
       - name: Preserve reproducible P2 evidence
         uses: actions/upload-artifact@v6
         with:
@@ -146,6 +153,7 @@ jobs:
             p2-private-callback-client-scan.txt
             p2-voiceunlock-lifecycle-disassembly.txt
             p2-hal-client-disassembly.txt
+            p2-atci-client-callers.txt
           if-no-files-found: error
           retention-days: 30
 
