@@ -2,6 +2,8 @@
 
 Status: **OPEN — static evidence only; runtime contracts are not closed.**
 
+The expanded caller classification is maintained in [Factory Private Callback Caller Audit — 2026-11-14](P2_FACTORY_CALLBACK_CALLER_AUDIT_2026-11-14.md).
+
 Evidence baseline:
 - Factory HAL: `vendor/lib/hw/audio.primary.mt8163.so`
 - Factory SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
@@ -189,7 +191,7 @@ The replacement callback registry must not call client/HIDL callbacks while hold
 5. fail closed if lock/admission state cannot be established—never continue unlocked;
 6. define self-unregister/reentrant callback behavior explicitly.
 
-P2 remains OPEN: external caller coverage, exact private ABI prototypes, lock implementation semantics, HIDL transaction mode, callback registration/clear races, detached voice-unlock worker teardown and target linker namespace remain unresolved.
+P2 remains OPEN: external caller coverage, exact private ABI prototypes, lock implementation semantics, callback registration/clear races, detached voice-unlock worker teardown and target linker namespace remain unresolved. The pinned HIDL Bp callback proxy transaction mode is separately established as synchronous (Binder flags 0) in the evidence section below.
 
 ### Raw HIDL bridge cookie lifetime
 
