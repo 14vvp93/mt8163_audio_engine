@@ -157,6 +157,14 @@ def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
     ]
 
 
+def helper_target_resolution_status(
+    resolved_targets: list[int], unresolved_targets: list[int]
+) -> str:
+    if len(resolved_targets) == len(HELPER_TARGETS) and not unresolved_targets:
+        return "COMPLETE"
+    return "INCOMPLETE"
+
+
 HELPER_WINDOW_SIZE = 0x60
 
 
@@ -346,7 +354,7 @@ def main() -> int:
                 f"INTERWORKING_VENEER: {source_section} -> "
                 f"{destination_section}:0x{destination:08x}"
             )
-            reports.append("TARGET_RESOLUTION: VERIFIED_INTERWORKING_VENEER")
+            reports.append("VENEER_ENCODING: VERIFIED_THUMB_TO_ARM")
             try:
                 function_address, function_size, function_name, function_thumb = (
                     resolve_function(destination, functions)
@@ -399,7 +407,7 @@ def main() -> int:
 
     reports.extend([
         "",
-        f"HELPER_TARGET_RESOLUTION_STATUS: {'INCOMPLETE' if unresolved else 'COMPLETE'}",
+        f"HELPER_TARGET_RESOLUTION_STATUS: {helper_target_resolution_status(resolved, unresolved)}",
         "RESOLVED_HELPER_TARGETS: "
         + (", ".join(f"0x{target:08x}" for target in resolved) if resolved else "none"),
         "UNRESOLVED_HELPER_TARGETS: "
