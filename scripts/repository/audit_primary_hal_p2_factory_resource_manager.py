@@ -452,6 +452,9 @@ def main() -> int:
         "event_manager_notify": "AudioEventThreadManager::notifyCallback(android::AudioEventType, void*)",
         "stream_manager_constructor": "AudioALSAStreamManager::AudioALSAStreamManager()",
         "stream_manager_phone_call_reopen": "AudioALSAStreamManager::phoneCallReopen()",
+        "parameter_callback_dispatch": "AudioALSAHardware::onAudioParameterChangedCallback(char const*)",
+        "parameter_callback_register": "AudioALSAHardware::setAudioParameterChangedCallback(int (*)(char const*, void*), void*)",
+        "parameter_callback_clear": "AudioALSAHardware::clearAudioParameterChangedCallback(void*)",
     }
     event_thread_bodies: dict[str, str] = {}
     for label, fragment in event_thread_functions.items():
