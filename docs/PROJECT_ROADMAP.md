@@ -310,7 +310,7 @@ Host-side PCM16 pre-fold adapter hardening: input and output pointer alignment i
 
 1. Finish remaining output/input flag-bit semantics, full error branches and capture buffer-size caller contract; recovered predicates now have executable host tests.
 2. Resolve Android 9 vendor linker namespace configuration and pin the matching ALPS/MediaTek headers.
-3. Trace external callers and semantics of private device-tail callbacks; close the callback lock-failure and reentrant-unregister hazards found in the target ELF.
+3. Trace external callers and private device-tail callback semantics; close factory lock-failure, synchronous HIDL reentrancy, raw Device-cookie lifetime and detached voice-unlock teardown hazards. The pinned bridge audit is now automated; P2 remains open until callback admission/drain and owner lifetime are proven.
 4. Run the read-only target diagnostic collector and record runtime ownership/topology.
 5. Implement the narrow selected-profile integration adapter and compile it for ARM32 without hardware writes; do not replace the retained factory primary HAL.
 6. Keep the current C11/C++ ABI layout and AudioCore/PCM TSAN gates green on feature.
