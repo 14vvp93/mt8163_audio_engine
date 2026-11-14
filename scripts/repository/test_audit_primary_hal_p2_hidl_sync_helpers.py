@@ -210,6 +210,22 @@ class ParseFunctionsTests(unittest.TestCase):
         self.assertIn("--start-address=0x193fc", command)
         self.assertIn("--stop-address=0x19400", command)
 
+    def test_resolves_complete_demangled_template_plt_symbol(self) -> None:
+        symbol_name = (
+            "android::hardware::MessageQueue<unsigned char, "
+            "(android::hardware::MQFlavor)1>::~MessageQueue()@plt"
+        )
+        output = (
+            "bridge.so: file format elf32-littlearm\\n"
+            "Disassembly of section .plt:\\n"
+            f"0001942c <{symbol_name}>:\\n"
+            "  1942c: e28fc600 add ip, pc, #0, 12\\n"
+        )
+        with patch.object(auditor, "run", return_value=output):
+            resolved = auditor.resolve_plt_symbol(Path("bridge.so"), 0x1942C)
+
+        self.assertEqual(resolved, symbol_name)
+
     def test_disassembles_bounded_thumb_target_window(self) -> None:
         with patch.object(auditor, "run", return_value="bounded disassembly") as run:
             output = auditor.disassemble_target_window(Path("bridge.so"), 0x284DC)
