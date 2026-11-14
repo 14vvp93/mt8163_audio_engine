@@ -85,8 +85,10 @@ def extract_gnu_debugdata(elf_data: bytes) -> bytes | None:
         )
         sections.append((name_offset, section_type, file_offset, size))
 
-    names_offset, _, names_file_offset, names_size = sections[names_index]
+    names_offset, names_type, names_file_offset, names_size = sections[names_index]
     del names_offset
+    if names_type != 3:
+        raise RuntimeError("ELF section-name table is not a SHT_STRTAB section")
     if names_file_offset + names_size > len(elf_data):
         raise RuntimeError("ELF section-name table is outside the input file")
     names = elf_data[names_file_offset:names_file_offset + names_size]
