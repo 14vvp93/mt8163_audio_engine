@@ -205,7 +205,7 @@ def main() -> int:
 
     for index, (address, size, _, name) in enumerate(derived_constructors):
         print(
-            f"\\n===== DERIVED_CONSTRUCTOR {index}: {name} "
+            f"\n===== DERIVED_CONSTRUCTOR {index}: {name} "
             f"@ 0x{address:08x}, size={size} ====="
         )
         if size <= 0:
