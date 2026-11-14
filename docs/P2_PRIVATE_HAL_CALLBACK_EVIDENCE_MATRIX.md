@@ -196,3 +196,22 @@ P2 remains OPEN: external caller coverage, exact private ABI prototypes, lock im
 The HIDL bridge registration path passes its `Device*` as the opaque cookie alongside the static `audioParameterChangedCallback` thunk. The factory HAL stores that raw cookie in the callback-vector entry and passes it back to the thunk during dispatch. The bridge's local `sp<IAudioParameterChangedCallback>` protects the HIDL callback interface object, but it does not retain the `Device` owner referenced by the raw cookie.
 
 Consequently, bridge destruction depends on successful removal/drain of the raw `Device*` cookie before the `Device` object is destroyed. The target's lock-held dispatch/clear ordering provides this only on the successful `alock_lock_ms` path; the observed lock-failure fallthrough leaves the raw-cookie lifetime unproven. This is a concrete unsafe-capable lifetime surface, not proof that a use-after-free occurred on the device.
+
+## 2026-11-14 external MTK HAL client disassembly
+
+Workflow run: [43566518573](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43566518573)  
+Audited commit: `63ff6726093e6807ded739145762baf7f6aefe3e`  
+Client ELF: `vendor/lib/libaudioprimarydevicehalifclient.so`  
+Client SHA-256: `b5e805b6cf20d995babb730f70b6287d4d4ff0c7168c189de326d05e8d58c22c`  
+Artifact ID: `14103230419`  
+Artifact ZIP SHA-256: `bcdc0f36a0b11930b736d8b5cdf443b40bbb1a092e8523c438267d2fbd9e36ab`
+
+The dedicated audit resolved and disassembled the client singleton, constructor/destructor and parameter methods:
+- `MTKPrimaryDevicesHalClient::getInstance()` and `destroyInstance()` serialize singleton access with a pthread mutex.
+- `MTKPrimaryDevicesHalClientImpl` constructs an `MTKDevicesFactoryHalInterface` through its `create()` factory and retains the returned strong interface reference.
+- `setParameters(String8 const&)` and `getParameters(String8 const&)` serialize their calls with the client mutex, then dispatch through interface vtable slots at byte offsets 24 and 28 respectively.
+- The audited methods contain no direct call to the private callback registration/clear methods, xWay adapters or voice-unlock methods. The client destructor releases its retained interface reference and destroys its mutex.
+
+The firmware scanner also found `vendor/audiocmdservice_atci` referencing `MTKPrimaryDevicesHalClient::getInstance()`; the ATCI executable itself was not part of this dedicated method-level disassembly. Five firmware files had callback-related string/symbol matches overall, while zero APK/JAR archive members matched.
+
+This identifies a concrete external user of the MTK primary-device HIDL client for generic parameter operations, but does not identify it as a caller of the private callback tail. It does not exclude other clients, stripped/indirect dispatch, runtime-loaded code or numeric-offset callers. The exact meaning of the interface vtable slots 24/28 must be confirmed against the matching HIDL interface contract before assigning source-level names.
