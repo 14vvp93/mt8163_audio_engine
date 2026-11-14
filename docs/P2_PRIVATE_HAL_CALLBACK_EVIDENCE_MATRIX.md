@@ -299,3 +299,25 @@ Artifact:
 - Report: `p2-hidl-bridge-lifecycle.txt`
 
 The report resolved all three required symbols and verified the callback-member access, callback vtable slot, and legacy registration/clear tail offsets against the pinned bridge ELF. The report contains no visible direct lock primitive calls in these three method bodies. It does not inspect all transitive helper implementations or prove runtime owner destruction ordering.
+
+
+## 2026-11-14 non-matching vendor source corroboration: HIDL Device ownership
+
+Public source examined:
+- Interface definitions: [vendor.mediatek.hardware.audio@4.1 IAudioParameterChangedCallback.hal](https://github.com/dotOS-Devices/android_vendor_mediatek_interfaces/blob/5f9dde8fb39fe1ceb0a8284d93884b2490b1d7c4/audio/4.1/IAudioParameterChangedCallback.hal) and [IMTKPrimaryDevice.hal](https://github.com/dotOS-Devices/android_vendor_mediatek_interfaces/blob/5f9dde8fb39fe1ceb0a8284d93884b2490b1d7c4/audio/4.1/IMTKPrimaryDevice.hal).
+- Service implementation comparison: [Device.h](https://github.com/dotOS-Devices/android_vendor_mediatek_opensource/blob/b8bed8bbc7ed61f09258a39ca553758f6ad076be/hardware/audio/common/service/5.0/Device.h) and [Device.cpp](https://github.com/dotOS-Devices/android_vendor_mediatek_opensource/blob/b8bed8bbc7ed61f09258a39ca553758f6ad076be/hardware/audio/common/service/5.0/Device.cpp), repository commit `b8bed8bbc7ed61f09258a39ca553758f6ad076be`.
+
+The public 4.1 HIDL declaration defines `audioParameterChangedCallback(string audioTypeName)`; `IMTKPrimaryDevice` declares parameter-callback registration and a zero-argument `clearAudioParameterChangedCallback()`. This is interface-level corroboration for the HIDL callback method shape, not a declaration of the private C HAL tail prototypes.
+
+The available service 5.0 implementation (not the target's 4.0 bridge source) adds useful ownership detail:
+- `Device.h` declares `static int audioParameterChangedCallback(const char *param, void *cookie)`, and stores the callback in `sp<IAudioParameterChangedCallback>`.
+- `Device.cpp` has a process-global `Vector<sp<Device>> gCallbackDeviceList` explicitly commented as keeping Device objects alive during callback processing.
+- Registration passes `this` as the HAL cookie, then pushes `this` into that strong-reference vector and assigns the HIDL callback member. The push/member assignment occur even when the HAL registration result is nonzero; the method returns the analyzed error afterward.
+- Clear passes `this` to the HAL clear callback, then removes matching Device references from the global vector regardless of the clear result. This is a potential ownership gap if HAL clear fails or does not drain callbacks; the target HAL's lock-acquisition failure fallthrough makes this comparison especially relevant.
+- The static thunk reconstructs `wp<Device>` from the raw cookie and promotes it, then dereferences `self` and its callback member without visible null checks in this source. The global strong-reference list is intended to make promotion succeed while registered, but the clear/error path must be reliable for that assumption to hold.
+
+**Evidence boundary:** this is non-matching-version source corroboration (service 5.0 / interface 4.1), not proof that the exact MT8163 Android 9 service binary uses this global list or identical error handling. Do not back-project these source details onto the pinned 4.0 bridge ELF. It does, however, provide a concrete candidate design explanation for why the bridge may retain Device owners outside the callback member itself, and identifies a specific behavior to verify against the exact target source or binary: whether failed clear still drops the owner pin.
+
+The target private clear wrapper's register-level cookie identity remains subject to exact call-site confirmation. The 4.1 HIDL API's zero-argument clear method and this later service implementation's `clear(..., this)` call are corroborating only; they do not independently prove the target 4.0 bridge passes `Device*` to the legacy clear slot.
+
+P2 remains OPEN. Keep the exact target ABI, owner-pin implementation, clear failure behavior, callback drain and Device destruction ordering as hard gates.
