@@ -140,3 +140,31 @@ The exact-address parser fix is now validated by the real push-triggered workflo
 - Evidence artifact: [14119346339](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463/artifacts/14119346339), ZIP SHA-256 `4b78d162765e4e30ae4766168d766397a8736455061a21da9ecd81e18a91626d`.
 
 This closes the parser/regression validation gap for the pinned static instruction dataflow. It does not resolve global callback ownership/lifetime, all indirect callers, callback quiescence, or runtime teardown ordering. The setup-parameters global callback remains a separate path from the vector-backed registry. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+## 2026-11-14 — separate setup-parameters global callback dataflow
+
+The exact-address regression passed on [CI run 43607609463](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43607609463), and the job log exposes the complete pinned factory disassembly for the two relevant functions.
+
+### Registration path — `AudioALSAHardware::setupParametersCallback`
+
+Factory HAL SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+
+- Function body: `0x000ce8fc..0x000ce9dc`, size 224 bytes.
+- Entry ABI observed: `r1` is copied to `r5` (callback pointer) at `0x000ce904`; `r2` is copied to `r4` (cookie) at `0x000ce908`.
+- Callback global slot: PC-relative address resolves to `0x000c4248`; pointer is stored at `0x000ce934`.
+- Cookie global slot: PC-relative address resolves to `0x000c4238`; pointer is stored at `0x000ce940`.
+- No lock call or synchronization/lifecycle reference is present in this 224-byte body. This is a body-local observation, not proof that all callers are unsynchronized.
+
+### Dispatch path — `AudioALSAHardware::setParametersByCallback`
+
+- Function body: `0x000cf108..0x000cf294`, size 396 bytes.
+- Loads callback global at `0x000c4248` through `0xcf1f8/0xcf200/0xcf204` into `r3`.
+- Loads cookie global at `0x000c4238` through `0xcf208/0xcf20c/0xcf210` into `r2`.
+- Passes event `0` in `r0`, pointer to a stack-local parameter structure in `r1`, then invokes callback with `BLX r3` at `0x000cf218`.
+- The dispatch body has no visible lock, reference acquisition, or in-flight accounting around the global callback/cookie loads and invocation.
+
+### Safety interpretation
+
+This confirms a separate process-global callback/cookie pair and a dispatch path that can race registration/replacement or owner teardown unless an external serialization/lifetime contract exists. The pinned code examined so far does not establish that contract. The HIDL bridge exposes `Device::setupParametersCallback` and a callback thunk; however, this evidence does not yet prove every upstream caller, whether callback registration is serialized by Binder/thread policy, or whether the Device cookie remains alive through every possible dispatch.
+
+**Do not integrate this path into AudioCore or replace it with the vector-backed registry yet.** Required next evidence: disassemble and correlate the complete HIDL `Device::setupParametersCallback` body and its MTKPrimaryDevice forwarding caller; enumerate every callsite/indirect dispatch to the setup slot and every reference to global slots `0x000c4248`/`0x000c4238`; then prove unregister/replacement ordering and teardown quiescence. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
