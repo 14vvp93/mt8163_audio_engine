@@ -22,6 +22,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - "scripts/repository/audit_primary_hal_p2_device_close.py"
+      - "scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py"
       - "scripts/repository/audit_primary_hal_p2_device_close_contract.py"
       - "scripts/repository/audit_primary_hal_p2_factory_resource_manager.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
@@ -32,6 +33,7 @@ on:
       - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"
       - "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
       - "docs/P2_CALLBACK_CLEAR_FAILURE_RACE_AUDIT_2026-11-14.md"
+      - "docs/P2_FACTORY_CALLBACK_CALLER_AUDIT_2026-11-14.md"
       - "docs/P2_FACTORY_HMI_CLOSE_SINGLETON_AUDIT_2026-11-14.md"
       - "docs/P2_VENDOR_SOURCE_CORROBORATION.md"
       - "docs/PROJECT_ROADMAP.md"
@@ -45,6 +47,7 @@ on:
       - "scripts/repository/audit_primary_hal_p2_hidl_bridge.py"
       - "scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py"
       - "scripts/repository/audit_primary_hal_p2_device_close.py"
+      - "scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py"
       - "scripts/repository/audit_primary_hal_p2_device_close_contract.py"
       - "scripts/repository/audit_primary_hal_p2_factory_resource_manager.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
@@ -92,6 +95,7 @@ jobs:
             scripts/repository/audit_primary_hal_p2_hidl_bridge.py \
             scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py \
             scripts/repository/audit_primary_hal_p2_device_close.py \
+            scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py \
             scripts/repository/audit_primary_hal_p2_device_close_contract.py \
             scripts/repository/audit_primary_hal_p2_factory_resource_manager.py
           python3 scripts/repository/check_markdown_links.py
@@ -193,17 +197,19 @@ jobs:
           pid_hidl_device=$!
           run_logged p2-device-close python3 scripts/repository/audit_primary_hal_p2_device_close.py "$binary" &
           pid_device_close=$!
+          run_logged p2-callback-xrefs python3 scripts/repository/audit_primary_hal_p2_factory_callback_xrefs.py "$binary" &
+          pid_callback_xrefs=$!
           run_logged p2-resource-vtable python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android22AudioALSAStreamManagerE &
           pid_resource_vtable=$!
 
           failed=0
-          for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_device" "$pid_device_close" "$pid_resource_vtable"; do
+          for pid in "$pid_scan" "$pid_voice" "$pid_client" "$pid_atci" "$pid_hidl_callback" "$pid_hidl_bridge" "$pid_hidl_device" "$pid_device_close" "$pid_callback_xrefs" "$pid_resource_vtable"; do
             if ! wait "$pid"; then
               failed=1
             fi
           done
 
-          for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-device.log p2-device-close.log p2-resource-vtable.log; do
+          for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-device.log p2-device-close.log p2-callback-xrefs.log p2-resource-vtable.log; do
             cat "$log"
           done
           test "$failed" -eq 0
@@ -216,6 +222,7 @@ jobs:
           mv p2-hidl-bridge.log p2-hidl-bridge-lifecycle.txt
           mv p2-hidl-device.log p2-hidl-device-lifetime.txt
           mv p2-device-close.log p2-factory-device-close.txt
+          mv p2-callback-xrefs.log p2-factory-callback-xrefs.txt
           mv p2-resource-vtable.log p2-resource-manager-relocations.txt
 
       - name: Verify dependent factory lifecycle contracts
@@ -240,6 +247,7 @@ jobs:
             p2-hidl-bridge-lifecycle.txt
             p2-hidl-device-lifetime.txt
             p2-factory-device-close.txt
+            p2-factory-callback-xrefs.txt
             p2-factory-device-close-contract.txt
             p2-resource-manager-relocations.txt
             p2-factory-resource-manager-lifecycle.txt
