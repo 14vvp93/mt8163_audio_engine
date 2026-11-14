@@ -297,6 +297,15 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Require complete HIDL helper target resolution
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s p2-hidl-sync-helpers.txt
+          grep -Fx "HELPER_TARGET_RESOLUTION_STATUS: COMPLETE" p2-hidl-sync-helpers.txt
+          grep -Fx "UNRESOLVED_HELPER_TARGETS: none" p2-hidl-sync-helpers.txt
+
   p2-complete:
     name: P2 OFFLINE EVIDENCE PIPELINE COMPLETE
     if: always()
