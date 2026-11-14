@@ -21,6 +21,17 @@ FUNCTIONS = (
     "android::AudioALSAHardware::stopVoiceUnlockDL()",
     "android::AudioALSAHardware::freeVoiceUnlockDLInstance()",
     "android::AudioALSAHardware::getVoiceUnlockDLInstance()",
+    "android::AudioALSAHardware::setupParametersCallback(int (*)(device_parameters_callback_event_t, audio_hw_device_set_parameters_callback*, void*), void*)",
+    "android::AudioALSAHardware::setAudioParameterChangedCallback(int (*)(char const*, void*), void*)",
+    "android::AudioALSAHardware::clearAudioParameterChangedCallback(void*)",
+    "android::AudioALSAHardware::xWayPlay_Start(int)",
+    "android::AudioALSAHardware::xWayPlay_Stop()",
+    "android::AudioALSAHardware::xWayPlay_Write(void*, int)",
+    "android::AudioALSAHardware::xWayPlay_GetFreeBufferCount()",
+    "android::AudioALSAHardware::xWayRec_Start(int)",
+    "android::AudioALSAHardware::xWayRec_Stop()",
+    "android::AudioALSAHardware::xWayRec_Read(void*, int)",
+    "android::AudioALSAHardware::ReadRefFromRing(void*, unsigned int, void*)",
 )
 THREAD_CALLS = re.compile(
     r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait)|usleep"
