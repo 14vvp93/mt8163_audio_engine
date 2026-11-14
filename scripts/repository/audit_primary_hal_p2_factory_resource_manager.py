@@ -66,7 +66,7 @@ def read_elf_word(binary: Path, address: int) -> int:
         ]
     )
     for line in output.splitlines():
-        match = re.match(r"^\\s*([0-9a-fA-F]{8})\\s+((?:[0-9a-fA-F]{8}\\s*){1,4})", line)
+        match = re.match(r"^\s*([0-9a-fA-F]{8})\s+((?:[0-9a-fA-F]{8}\s*){1,4})", line)
         if match and int(match.group(1), 16) == address:
             raw = match.group(2).split()[0]
             return int.from_bytes(bytes.fromhex(raw), byteorder="little")
