@@ -655,3 +655,8 @@ CI run [43632653555](https://github.com/14vvp93/mt8163_audio_engine/actions/runs
 The same run expands the factory caller evidence: `AudioALSAHardware::setParameters` was disassembled, and the full factory direct-call inventory still found no direct caller of `setParametersByCallback`. The method's actual external/indirect caller and any outer serialization contract remain unresolved. Details and hashes are in [the HIDL RefBase promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md) and [the factory callback caller audit](P2_FACTORY_CALLBACK_CALLER_AUDIT_2026-11-14.md).
 
 P2 remains **OPEN**. The in-body Device promotion is confirmed, but the raw-cookie interval before weak-reference creation, factory dispatch admission/drain, and the actual dispatch caller remain unresolved. Primary HAL stays fail-closed and `installable: false`.
+
+
+### Device RefBase constructor subobject resolved — 2026-11-14
+
+The second sized `Device::Device(audio_hw_device_mtk*)` body at `0x0001b8d8` initializes the RefBase base subobject at `Device+0x2c`: instruction `0x0001b8de` computes `this+44`, and `0x0001b8e2` branches to veneer `0x000281dc`, which resolves to the HIDL bridge PLT entry `android::RefBase::RefBase()@plt` at `0x000193fc`. Android 9 `RefBase::RefBase()` initializes flags to zero. The other constructor body at `0x0001b87c` does not make this call. The latest audit is extending raw Itanium C1/C2 symbol and constructor-caller mapping to establish which variant is used by the actual Device creation path. Until that mapping is complete, the base-constructor call is confirmed statically but the full runtime construction path remains open.
