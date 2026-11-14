@@ -89,7 +89,7 @@ public:
             if (target == nullptr) return CallbackRegistryResult::NotFound;
 
             target->active = false;
-            if (active_registry_ == this) {
+            if (target->in_flight != 0U && inside_callback_) {
                 return CallbackRegistryResult::WouldDeadlock;
             }
 
@@ -118,7 +118,13 @@ public:
                 }
             }
             if (count == 0U) return CallbackRegistryResult::NotFound;
-            if (active_registry_ == this) {
+            bool has_in_flight = false;
+            for (std::size_t i = 0U; i < count; ++i) {
+                const Slot* slot = find_slot_locked(ids[i]);
+                has_in_flight = has_in_flight ||
+                    (slot != nullptr && slot->in_flight != 0U);
+            }
+            if (has_in_flight && inside_callback_) {
                 return CallbackRegistryResult::WouldDeadlock;
             }
 
@@ -141,7 +147,11 @@ public:
             shutting_down_ = true;
             for (Slot& slot : slots_) slot.active = false;
 
-            if (active_registry_ == this) {
+            bool has_in_flight = false;
+            for (const Slot& slot : slots_) {
+                has_in_flight = has_in_flight || slot.in_flight != 0U;
+            }
+            if (has_in_flight && inside_callback_) {
                 return CallbackRegistryResult::WouldDeadlock;
             }
 
@@ -190,10 +200,10 @@ public:
             }
 
             if (should_invoke) {
-                const CallbackRegistry* previous = active_registry_;
-                active_registry_ = this;
+                const bool previous = inside_callback_;
+                inside_callback_ = true;
                 item.callback(item.cookie, parameters);
-                active_registry_ = previous;
+                inside_callback_ = previous;
                 ++invoked;
             }
             release_dispatch(item);
@@ -263,7 +273,7 @@ private:
     RegistrationId next_id_{1U};
     bool shutting_down_{false};
 
-    inline static thread_local const CallbackRegistry* active_registry_{nullptr};
+    inline static thread_local bool inside_callback_{false};
 };
 
 }  // namespace mt8163_audio_core
