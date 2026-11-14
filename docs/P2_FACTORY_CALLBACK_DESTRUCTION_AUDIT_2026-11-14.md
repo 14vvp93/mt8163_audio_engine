@@ -92,8 +92,8 @@ The target HIDL destructor calls the legacy device `close` function before relea
 
 ## Gate state
 
-- [ ] Recover the exact legacy `hw_device_t.close` implementation and prove its callback-admission/drain semantics.
-- [ ] Resolve the `this+0x04` virtual cleanup call in the factory destructor.
+- [x] Recover the exact legacy `hw_device_t.close` implementation and correlate it across the HIDL bridge, HMI wrapper, and AudioALSAHardware destructor. Callback-admission/drain semantics remain OPEN.
+- [x] Resolve the `this+0x04` virtual cleanup call to the AudioALSAStreamManager deleting destructor. Its AudioEventThreadManager unregister path is being audited separately; no parameter-callback drain is established.
 - [ ] Prove all factory destruction paths stop callback admission and drain in-flight dispatch before vector/lock destruction.
 - [ ] Resolve callback-entry allocation ownership on clear and destruction.
 - [ ] Add deterministic host tests for clear/dispatch/destruction races and reentrancy.
@@ -141,3 +141,12 @@ The factory teardown order is now statically identified as:
 4. `AudioALSAHardware` proceeds to destroy the parameter-change callback vector and free its lock.
 
 No proof yet connects step 3 to a drain of the separate parameter-change callback registry in step 4. Keep that as an open contract rather than assuming the manager cleanup is irrelevant or sufficient.
+
+
+### Gate status correction — 2026-11-14
+
+The previously listed "recover exact legacy close implementation" task is complete as a static call-chain task: HIDL `Device::~Device()` calls `audio_hw_device_mtk.close(+0x3c)`, which is factory `HMI.close(0x9ba48)), which dispatches to `AudioALSAHardware` deleting destructor `0xc5874`. The pinned HMI.close wrapper converges on return value zero for the normal/null-wrapper paths. This resolves the implementation identity and normal return value only; it does not establish callback drain.
+
+The previously unresolved `AudioALSAHardware+0x04` virtual cleanup target is also resolved to `AudioALSAStreamManager` deleting destructor `0x77e20`. That destructor calls `AudioEventThreadManager::unregisterCallback(AudioEventType(0))`. The event manager/thread worker semantics require inspection before deciding whether this provides any relevant synchronization. Even if that event path drains, it must be explicitly connected to the separate `AudioALSAHardware` parameter-change callback registry before it can close the P2 callback lifetime gate.
+
+The HIDL destructor's normal path does not retry indefinitely because the pinned HMI.close returns zero. The retry branch remains structurally unbounded for nonzero returns from other or altered close implementations; do not report it as a normal-path behavior for this pinned factory.
