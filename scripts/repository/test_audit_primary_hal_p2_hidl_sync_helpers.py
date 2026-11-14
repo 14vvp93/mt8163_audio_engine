@@ -109,6 +109,13 @@ class ParseFunctionsTests(unittest.TestCase):
             "INCOMPLETE",
         )
 
+    def test_duplicate_target_cannot_substitute_for_missing_coverage(self) -> None:
+        resolved = list(auditor.HELPER_TARGETS[:-1]) + [auditor.HELPER_TARGETS[0]]
+        self.assertEqual(
+            auditor.helper_target_resolution_status(resolved, []),
+            "INCOMPLETE",
+        )
+
     def test_unresolved_target_is_reported_without_inventing_a_range(self) -> None:
         lines = auditor.unresolved_report_lines(
             0x284DC,
