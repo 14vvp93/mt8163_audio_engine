@@ -5,10 +5,12 @@ on:
     branches: [main, feature]
     paths:
       - "primary-hal/**"
+      - "scripts/repository/check_primary_hal_fail_closed.py"
   pull_request:
     branches: [main, feature]
     paths:
       - "primary-hal/**"
+      - "scripts/repository/check_primary_hal_fail_closed.py"
   workflow_dispatch:
 
 permissions:
@@ -20,6 +22,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+
+      - name: Enforce fail-closed stream-open safety gate
+        run: python3 scripts/repository/check_primary_hal_fail_closed.py
 
       - name: Use preinstalled Android NDK r27d (install only if missing)
         env:
