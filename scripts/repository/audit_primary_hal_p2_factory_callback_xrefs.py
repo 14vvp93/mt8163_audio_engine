@@ -12,6 +12,7 @@ EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bf
 TARGETS = (
     "AudioALSAHardware::onAudioParameterChangedCallback(",
     "AudioALSAHardware::setParametersByCallback(",
+    "AudioALSAHardware::setParameters(",
     "AudioALSAHardware::setupParametersCallback(",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
@@ -393,6 +394,7 @@ def main() -> int:
     for target_name in (
         "AudioALSAHardware::onAudioParameterChangedCallback(",
         "AudioALSAHardware::setParametersByCallback(",
+        "AudioALSAHardware::setParameters(",
         "AudioALSAHardware::setupParametersCallback(",
     ):
         print(f"\n===== BODY {target_name} =====")
