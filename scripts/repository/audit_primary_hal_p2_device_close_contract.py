@@ -148,9 +148,9 @@ def main() -> int:
         ]
     )
     require(
-        re.search(r"^\s*d1200:\s+000c1bcc\b", get_instance, re.MULTILINE) is not None
-        and re.search(r"^\s*d120c:\s+000c1b8c\b", get_instance, re.MULTILINE) is not None
-        and re.search(r"^\s*c5858:\s+000cd414\b", destructor, re.MULTILINE) is not None,
+        re.search(r"^\s*0*d1200:\s+000c1bcc\b", get_instance, re.MULTILINE) is not None
+        and re.search(r"^\s*0*d120c:\s+000c1b8c\b", get_instance, re.MULTILINE) is not None
+        and re.search(r"^\s*0*c5858:\s+000cd414\b", destructor, re.MULTILINE) is not None,
         "singleton pointer PC-relative literal constants changed",
     )
     singleton_read_cell = 0x000D0FAC + 0x000C1BCC
@@ -161,7 +161,7 @@ def main() -> int:
         "GetInstance/destructor singleton pointer cell correlation failed",
     )
     require(
-        re.search(r"^\s*c5760:\s+e5806000\s+str\s+r6,\s*\[r0\]", destructor, re.MULTILINE)
+        re.search(r"^\s*0*c5760:\s+e5806000\s+str\s+r6,\s*\[r0\]", destructor, re.MULTILINE)
         is not None,
         "AudioALSAHardware destructor no longer clears the singleton pointer cell",
     )
