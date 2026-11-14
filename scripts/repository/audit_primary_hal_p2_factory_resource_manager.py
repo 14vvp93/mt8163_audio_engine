@@ -444,12 +444,12 @@ def main() -> int:
     )
 
     callback_literal = re.search(
-        r"^\\s*77220:.*ldr\\s+r1,\\s*\\[pc,\\s*#732\\].*@\\s*77504",
+        r"^\s*77220:.*ldr\s+r1,\s*\[pc,\s*#732\].*@\s*77504",
         stream_constructor,
         re.MULTILINE,
     )
     callback_cell_load = re.search(
-        r"^\\s*77228:.*ldr\\s+r2,\\s*\\[pc,\\s*r1\\]",
+        r"^\s*77228:.*ldr\s+r2,\s*\[pc,\s*r1\]",
         stream_constructor,
         re.MULTILINE,
     )
