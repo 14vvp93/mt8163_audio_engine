@@ -13,6 +13,7 @@ on:
       - "scripts/repository/check_primary_hal_p2_contract.py"
       - "scripts/repository/scan_primary_hal_p2_clients.py"
       - "scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py"
+      - "scripts/repository/audit_primary_hal_p2_client.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   pull_request:
     branches: [feature]
@@ -65,7 +66,8 @@ jobs:
             scripts/repository/check_primary_hal_fail_closed.py \
             scripts/repository/check_primary_hal_p2_contract.py \
             scripts/repository/scan_primary_hal_p2_clients.py \
-            scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py
+            scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py \\
+            scripts/repository/audit_primary_hal_p2_client.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
         run: ruby -e 'require "yaml"; y = YAML.load_file(".github/workflows/primary-hal-p2-private-callbacks.yml"); abort("invalid workflow") unless y.is_a?(Hash) && y["jobs"].is_a?(Hash); puts "P2 workflow YAML OK"'
@@ -84,6 +86,7 @@ jobs:
             tools/audit_android_packed_relocations.py
             scripts/repository/scan_primary_hal_p2_clients.py
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py
+            scripts/repository/audit_primary_hal_p2_client.py
           sparse-checkout-cone-mode: false
       - name: Checkout immutable public firmware dataset
         uses: actions/checkout@v5
@@ -129,6 +132,9 @@ jobs:
           echo "Public firmware dataset commit: 865b6efaeff0c4547dab1f4456f2fa664b3611d1"
           python3 scripts/repository/scan_primary_hal_p2_clients.py factory-firmware/firmware/extracted | tee p2-private-callback-client-scan.txt
           python3 scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py "$binary" | tee p2-voiceunlock-lifecycle-disassembly.txt
+          client="factory-firmware/firmware/extracted/vendor/lib/libaudioprimarydevicehalifclient.so"
+          test -s "$client"
+          python3 scripts/repository/audit_primary_hal_p2_client.py "$client" | tee p2-hal-client-disassembly.txt
       - name: Preserve reproducible P2 evidence
         uses: actions/upload-artifact@v6
         with:
@@ -138,6 +144,7 @@ jobs:
             p2-factory-relocations.txt
             p2-private-callback-client-scan.txt
             p2-voiceunlock-lifecycle-disassembly.txt
+            p2-hal-client-disassembly.txt
           if-no-files-found: error
           retention-days: 30
 
