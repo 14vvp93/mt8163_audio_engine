@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import hashlib
+import lzma
 import re
+import struct
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 EXPECTED_SHA256 = "58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc"
@@ -56,6 +59,68 @@ def parse_functions(symbols_output: str) -> list[tuple[int, int, str, bool]]:
         if size > 0:
             functions.append((address & ~1, size, name, bool(address & 1)))
     return functions
+
+
+def extract_gnu_debugdata(elf_data: bytes) -> bytes | None:
+    if len(elf_data) < 52 or elf_data[:4] != b"\\x7fELF":
+        raise RuntimeError("invalid ELF header while inspecting .gnu_debugdata")
+    if elf_data[4] != 1 or elf_data[5] != 1:
+        raise RuntimeError(".gnu_debugdata extraction requires ELF32 little-endian input")
+
+    section_offset = struct.unpack_from("<I", elf_data, 32)[0]
+    section_entry_size, section_count, names_index = struct.unpack_from(
+        "<HHH", elf_data, 46
+    )
+    if section_entry_size < 40 or section_count == 0 or names_index >= section_count:
+        raise RuntimeError("invalid ELF section table while inspecting .gnu_debugdata")
+    section_table_end = section_offset + section_entry_size * section_count
+    if section_offset < 52 or section_table_end > len(elf_data):
+        raise RuntimeError("ELF section table is outside the input file")
+
+    sections: list[tuple[int, int, int, int]] = []
+    for index in range(section_count):
+        offset = section_offset + index * section_entry_size
+        name_offset, section_type, file_offset, size = struct.unpack_from(
+            "<IIII", elf_data, offset
+        )
+        sections.append((name_offset, section_type, file_offset, size))
+
+    names_offset, _, names_file_offset, names_size = sections[names_index]
+    del names_offset
+    if names_file_offset + names_size > len(elf_data):
+        raise RuntimeError("ELF section-name table is outside the input file")
+    names = elf_data[names_file_offset:names_file_offset + names_size]
+
+    for name_offset, section_type, file_offset, size in sections:
+        if name_offset >= len(names):
+            continue
+        end = names.find(b"\\0", name_offset)
+        if end < 0 or names[name_offset:end] != b".gnu_debugdata":
+            continue
+        if section_type == 8 or file_offset + size > len(elf_data):
+            raise RuntimeError("invalid .gnu_debugdata section bounds")
+        try:
+            return lzma.decompress(elf_data[file_offset:file_offset + size])
+        except lzma.LZMAError as error:
+            raise RuntimeError(f"cannot decompress .gnu_debugdata: {error}") from error
+    return None
+
+
+def parse_debugdata_functions(elf_data: bytes) -> tuple[list[tuple[int, int, str, bool]], str]:
+    debug_elf = extract_gnu_debugdata(elf_data)
+    if debug_elf is None:
+        return [], ".gnu_debugdata section is absent"
+    if len(debug_elf) < 4 or debug_elf[:4] != b"\\x7fELF":
+        raise RuntimeError(".gnu_debugdata did not contain a valid ELF image")
+
+    with tempfile.NamedTemporaryFile(prefix="mt8163-hidl-debug-", suffix=".elf") as stream:
+        stream.write(debug_elf)
+        stream.flush()
+        output = run([
+            "arm-linux-gnueabi-readelf", "-Ws", "-C", stream.name
+        ])
+    functions = parse_functions(output)
+    return functions, f"loaded {len(functions)} sized FUNC symbols from .gnu_debugdata"
 
 
 def resolve_function(
@@ -116,13 +181,21 @@ def main() -> int:
 
     symbols_output = run(["arm-linux-gnueabi-readelf", "-Ws", "-C", str(binary)])
     functions = parse_functions(symbols_output)
+    debugdata_status = ".gnu_debugdata not inspected"
+    try:
+        debug_functions, debugdata_status = parse_debugdata_functions(binary.read_bytes())
+        functions.extend(debug_functions)
+    except RuntimeError as error:
+        debugdata_status = f".gnu_debugdata unavailable: {error}"
     if not functions:
-        raise RuntimeError("no sized FUNC symbols found in HIDL bridge symbol table")
+        raise RuntimeError("no sized FUNC symbols found in HIDL bridge or .gnu_debugdata")
 
     reports: list[str] = [
         f"HIDL bridge SHA-256: {digest}",
         "Source: direct BL targets observed in Device::syncCallback at 0x0001cb4c",
-        "Each report contains the complete containing FUNC symbol range, not a fixed-size excerpt.",
+        "Function symbols are collected from the ELF symbol tables and the optional "
+        "GNU mini-debug ELF; no boundaries are inferred from arbitrary byte windows.",
+        f"GNU mini-debug data: {debugdata_status}",
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
