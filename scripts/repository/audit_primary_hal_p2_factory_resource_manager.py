@@ -207,6 +207,14 @@ def main() -> int:
         manager_nondeleting_destructor[0] + manager_nondeleting_destructor[1],
     )
     atexit_target_body = disassemble(binary, ATEXIT_FUNCTION, ATEXIT_FUNCTION + 0x80)
+    require(
+        "alock_free@plt" in atexit_target_body
+        and re.search(r"str\\s+r1,\\s*\\[r0\\],\\s*#4", atexit_target_body) is not None,
+        "__cxa_atexit target no longer matches the static alock cleanup callback shape",
+    )
+    manager_singleton_cell_referenced_by_destructor = (
+        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}" in manager_nondeleting_destructor_body.lower()
+    )
 
     print(f"Factory HAL SHA-256: {digest}")
     print(f"AudioALSAHardware constructor: 0x{CONSTRUCTOR_START:08x}..0x{CONSTRUCTOR_END:08x}")
@@ -235,6 +243,12 @@ def main() -> int:
         f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}"
     )
     print("getInstance() lock-failure path: alock_lock_ms failure logs and falls through to singleton pointer read/create")
+    print(
+        "STATIC OBSERVATION: manager destructor directly references singleton pointer cell "
+        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}: {manager_singleton_cell_referenced_by_destructor}"
+    )
+    print("The destructor body contains no direct reference to that singleton cell when the value is False.")
+    print("__cxa_atexit callback target matches alock_free cleanup of its supplied static lock object argument.")
     print(f"__cxa_atexit callback target disassembly at 0x{ATEXIT_FUNCTION:08x}:")
     print(atexit_target_body.rstrip())
     print("STATIC CONTRACT: AudioALSAHardware destruction dispatches the resource-manager deleting-destructor slot.")
