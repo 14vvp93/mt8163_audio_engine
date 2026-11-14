@@ -39,6 +39,20 @@ THREAD_CALLS = re.compile(
     r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait|cond_timedwait|cond_broadcast|cond_signal)|"
     r"alock_(?:lock_ms|unlock)|usleep"
 )
+REQUIRED_LOCK_CALLS = {
+    "android::AudioALSAHardware::setAudioParameterChangedCallback(int (*)(char const*, void*), void*)": {
+        "alock_lock_ms",
+        "alock_unlock",
+    },
+    "android::AudioALSAHardware::clearAudioParameterChangedCallback(void*)": {
+        "alock_lock_ms",
+        "alock_unlock",
+    },
+    "android::AudioALSAHardware::onAudioParameterChangedCallback(char const*)": {
+        "alock_lock_ms",
+        "alock_unlock",
+    },
+}
 SYMBOL_LINE = re.compile(
     r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
@@ -112,6 +126,15 @@ def main() -> int:
         calls = sorted(set(THREAD_CALLS.findall(disassembly)))
         print(f"\n===== {name} @ 0x{address:08x}, size={size} =====")
         print("Synchronization/lifecycle references: " + (", ".join(calls) if calls else "none detected"))
+        required_calls = REQUIRED_LOCK_CALLS.get(name, set())
+        missing_calls = sorted(required_calls.difference(calls))
+        if missing_calls:
+            print(
+                f"ERROR: {name} is missing expected synchronization calls: "
+                + ", ".join(missing_calls),
+                file=sys.stderr,
+            )
+            return 1
         print(disassembly.rstrip())
 
     print("\nNo runtime or device behavior is inferred by this disassembly report.")
