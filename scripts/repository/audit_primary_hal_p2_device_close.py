@@ -9,9 +9,9 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+(FUNC|OBJECT|NOTYPE)\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
 )
-CALL_TARGET = re.compile(r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]+)>", re.IGNORECASE)
+CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
 TARGETS = (
     "AudioALSAHardware::~AudioALSAHardware()",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
@@ -33,7 +33,7 @@ def run(command: list[str]) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -66,9 +66,7 @@ def main() -> int:
 
     selected: list[tuple[int, int, str]] = []
     for address, size, kind, name in symbols:
-        if kind != "FUNC":
-            continue
-        if any(target in name for target in TARGETS):
+        if kind == "FUNC" and any(target in name for target in TARGETS):
             selected.append((address, size, name))
 
     print(f"Factory HAL SHA-256: {digest}")
@@ -76,7 +74,7 @@ def main() -> int:
     print(f"Selected function symbols: {len(selected)}")
 
     for address, size, name in sorted(selected):
-        print(f"\\n===== {name} @ 0x{address:08x}, size={size} =====")
+        print(f"\n===== {name} @ 0x{address:08x}, size={size} =====")
         if size <= 0:
             print("No function size recorded; disassembly skipped.")
             continue
@@ -103,12 +101,13 @@ def main() -> int:
         if not any(target in name for _, _, name in selected)
     ]
     if missing:
-        print("\\nWARNING: symbols not retained in the pinned ELF symbol table:")
+        print("\nERROR: required symbols not retained in the pinned ELF symbol table:")
         for target in missing:
             print(f"- {target}")
+        return 1
 
     print(
-        "\\nStatic disassembly only. It does not prove that the HIDL destructor "
+        "\nStatic disassembly only. It does not prove that the HIDL destructor "
         "reaches this path at runtime, that close drains callback dispatch, or "
         "that indirect/stripped teardown paths are absent."
     )
