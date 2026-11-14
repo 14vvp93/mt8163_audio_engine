@@ -196,6 +196,41 @@ def main() -> int:
         manager_get_instance[0],
         manager_get_instance[0] + manager_get_instance[1],
     )
+    hardware_get_instance_body = disassemble(
+        binary,
+        GET_INSTANCE_START,
+        GET_INSTANCE_END,
+    )
+    manager_lock_failure_falls_through = (
+        re.search(
+            r"76674:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
+            r"\\s*76678:.*cmp\\s+r0,\\s*#0\\n"
+            r"\\s*7667c:.*beq\\s+766d8",
+            manager_get_instance_body,
+        )
+        is not None
+        and re.search(r"766d8:.*ldr\\s+r0,.*\\n\\s*766dc:.*ldr\\s+r0,\\s*\\[pc,\\s*r0\\]", manager_get_instance_body)
+        is not None
+    )
+    require(
+        manager_lock_failure_falls_through,
+        "AudioALSAStreamManager::getInstance lock failure no longer falls through to singleton access",
+    )
+    hardware_lock_failure_falls_through = (
+        re.search(
+            r"d0f3c:.*bl\\s+47da4 <alock_lock_ms@plt>\\n"
+            r"\\s*d0f40:.*cmp\\s+r0,\\s*#0\\n"
+            r"\\s*d0f44:.*beq\\s+d0fa0",
+            hardware_get_instance_body,
+        )
+        is not None
+        and re.search(r"d0fa0:.*ldr\\s+r0,.*\\n\\s*d0fa4:.*ldr\\s+r0,\\s*\\[pc,\\s*r0\\]", hardware_get_instance_body)
+        is not None
+    )
+    require(
+        hardware_lock_failure_falls_through,
+        "AudioALSAHardware::GetInstance lock failure no longer falls through to singleton access",
+    )
     manager_destructor_body = disassemble(
         binary,
         manager_destructor[0],
@@ -250,7 +285,8 @@ def main() -> int:
         f"AudioALSAStreamManager singleton pointer cell derived from getInstance() PC-relative load/store: "
         f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}"
     )
-    print("getInstance() lock-failure path: alock_lock_ms failure logs and falls through to singleton pointer read/create")
+    print("CONTRACT VERIFIED: AudioALSAStreamManager::getInstance lock failure falls through to singleton pointer read/create.")
+    print("CONTRACT VERIFIED: AudioALSAHardware::GetInstance lock failure falls through to singleton pointer read/create.")
     print(
         "CONTRACT VERIFIED: AudioALSAStreamManager destructor clears singleton pointer cell "
         f"0x{MANAGER_SINGLETON_POINTER_CELL:08x} to null."
