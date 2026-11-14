@@ -69,7 +69,9 @@ Both export the four RefBase methods above, plus `RefBase::RefBase()`, `RefBase:
 
 **Follow-up audit:** CI run [43632653555](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43632653555) passed and inspected both system and VNDK candidates of `libhidlbase.so` and `android.hardware.audio@4.0.so`, in addition to both `libutils.so` candidates. Neither HIDL library candidate has a `RefBase::extendObjectLifetime` symbol reference, and no sized `IBase::IBase` or `IDevice::IDevice` constructor symbols were found in those libraries. The HIDL bridge also has no such reference.
 
-**Remaining limit:** this does not yet identify the exact inherited base-constructor path for the concrete `Device` object. Therefore default RefBase flags initialization is proven, and no extension call was found in the inspected bridge/HIDL libraries, but the final `Device` subobject's flags value is not asserted until its full constructor chain is resolved.
+**Concrete Device constructor path — newly resolved:** the second sized constructor body, `Device::Device(audio_hw_device_mtk*)` at `0x0001b8d8` (68 bytes), executes `add.w r0, r5, #44` at `0x0001b8de`, then `BL 0x000281dc` at `0x0001b8e2`. The Thumb-to-ARM veneer at `0x000281dc` resolves to `.plt:0x000193fc`, whose exact entry is `android::RefBase::RefBase()@plt`. Therefore this constructor initializes the RefBase base subobject at `Device + 0x2c`; the imported Android 9 RefBase constructor initializes that subobject's weak-reference state with default flags zero. The first constructor body at `0x0001b87c` (92 bytes) does not contain this call.
+
+**Remaining limit:** confirm the raw Itanium C1/C2 constructor symbol identities and actual creation call path to establish which constructor variant is selected at runtime. Until that caller/variant mapping is closed, record the RefBase initialization path as statically present, not as a complete runtime construction proof. No `extendObjectLifetime` call was found in the inspected bridge/HIDL libraries.
 
 Additional pinned candidates from run 43632653555:
 
