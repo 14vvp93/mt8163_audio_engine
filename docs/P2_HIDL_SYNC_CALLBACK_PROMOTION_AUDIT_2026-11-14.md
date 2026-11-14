@@ -67,7 +67,18 @@ Both export the four RefBase methods above, plus `RefBase::RefBase()`, `RefBase:
 - `weakref_type::attemptIncStrong` checks flags bit 0 when the strong count is below one. If bit 0 is clear, it drops its temporary weak reference and returns false. If bit 0 is set, it calls the object's `onIncStrongAttempted` virtual hook and may promote.
 - The pinned HIDL bridge has no dynamic symbol reference to `RefBase::extendObjectLifetime`.
 
-**Limit:** the exact inherited constructor path through `libhidlbase.so` and generated `android.hardware.audio@4.0.so` has not yet been audited. Therefore the default flags initialization is proven, but the final `Device` subobject's flags value is not yet asserted. The bridge's lack of a direct extension import alone does not rule out a call from an inherited base constructor in another dependency.
+**Follow-up audit:** CI run [43632653555](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43632653555) passed and inspected both system and VNDK candidates of `libhidlbase.so` and `android.hardware.audio@4.0.so`, in addition to both `libutils.so` candidates. Neither HIDL library candidate has a `RefBase::extendObjectLifetime` symbol reference, and no sized `IBase::IBase` or `IDevice::IDevice` constructor symbols were found in those libraries. The HIDL bridge also has no such reference.
+
+**Remaining limit:** this does not yet identify the exact inherited base-constructor path for the concrete `Device` object. Therefore default RefBase flags initialization is proven, and no extension call was found in the inspected bridge/HIDL libraries, but the final `Device` subobject's flags value is not asserted until its full constructor chain is resolved.
+
+Additional pinned candidates from run 43632653555:
+
+| Candidate | SHA-256 |
+|---|---|
+| `system/lib/libhidlbase.so` | `4cbbb56c84d7390c5ad2fdc9d2fff10057b7c0ccdaa2eb412af745a8fbdd7467` |
+| `system/lib/vndk-sp-28/libhidlbase.so` | `fe3168c6b47f5bb89648cee201c6c069e24b909b2a5e6935c3b015b3492caec8` |
+| `system/lib/android.hardware.audio@4.0.so` | `3074f2be7e737d4534bed19a7edf91612f23c65d6877fc9c75af609fbeaf03a2` |
+| `system/lib/vndk-28/android.hardware.audio@4.0.so` | `2e4833a3ab5cbfba58fe4cff6f069e87c62d3be0b07415e5c68ddb21e30f6748` |
 
 ## Remaining race and teardown boundary
 
