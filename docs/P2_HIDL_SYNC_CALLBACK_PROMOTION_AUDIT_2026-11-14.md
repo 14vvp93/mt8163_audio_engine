@@ -77,6 +77,10 @@ Factory dispatch at `AudioALSAHardware::setParametersByCallback` (`0x000cf108`) 
 - `0x000cf208–0x000cf210` separately loads the cookie from effective GOT cell `0x00192b7c` into `r2`.
 - `0x000cf218` invokes `BLX r3` with event 0 and the parameter payload.
 - There is no visible lock, atomic pair load, owner pin, or in-flight accounting around these loads and invocation in the audited body.
+- The whole-ELF direct `BL/BLX` inventory found **no direct callsite** to `setParametersByCallback`. The `AudioALSAHardware::setParameters` body was also disassembled; it has no direct call to this dispatcher. The pinned factory contains 1,575 register-indirect `BLX` sites, and those without proven dataflow remain unattributed.
+- The external firmware scan found no confirmed external caller of this method. It cannot exclude stripped or runtime-loaded callers, function-pointer dispatch, or code outside the pinned dataset.
+
+Because the dispatch caller is unresolved, it is not safe to assume that every callback is issued only synchronously inside a HIDL `Device::setParameters` Binder transaction that independently holds a strong `sp<Device>`. That possible serialization must be established from the actual caller path, not inferred from the method name.
 - Registration stores callback before cookie; factory destruction clears cookie before callback. Concurrent replacement can therefore expose a mixed pair, and a dispatch that has already loaded the old pair can continue after the global cells are cleared.
 
 The promotion does **not** close the interval before `createWeak`/ `attemptIncStrong` succeeds:
