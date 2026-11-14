@@ -51,6 +51,24 @@ These are PLT symbol identities from the pinned ELF's disassembly. The PLT entri
 
 This is stronger evidence than merely observing the callback interface's own strong reference at `Device+0x24`: the bridge separately attempts to pin the Device object represented by the raw cookie.
 
+## RefBase implementation behavior and Device-specific limit
+
+The immutable dataset contains both candidate Android 9 libraries:
+
+| Candidate | SHA-256 |
+|---|---|
+| `system/lib/libutils.so` | `22137df4f6b2e26d30c4a0fab3987adfffa1210266144295d3ab3cccbc5a31f2` |
+| `system/lib/vndk-sp-28/libutils.so` | `4e35093a70c58b863e9b14c79a1979caa8b7bf2a05d1630488231ab41df718d0` |
+
+Both export the four RefBase methods above, plus `RefBase::RefBase()`, `RefBase::~RefBase()`, and `RefBase::extendObjectLifetime(int)`. Their relevant implementations are instruction-equivalent:
+
+- `RefBase::RefBase()` initializes the weak-reference control block with `INITIAL_STRONG_VALUE = 0x10000000`, weak count zero, base pointer `this`, and flags at offset `+12` set to zero.
+- `extendObjectLifetime(int)` atomically ORs its argument into that flags field.
+- `weakref_type::attemptIncStrong` checks flags bit 0 when the strong count is below one. If bit 0 is clear, it drops its temporary weak reference and returns false. If bit 0 is set, it calls the object's `onIncStrongAttempted` virtual hook and may promote.
+- The pinned HIDL bridge has no dynamic symbol reference to `RefBase::extendObjectLifetime`.
+
+**Limit:** the exact inherited constructor path through `libhidlbase.so` and generated `android.hardware.audio@4.0.so` has not yet been audited. Therefore the default flags initialization is proven, but the final `Device` subobject's flags value is not yet asserted. The bridge's lack of a direct extension import alone does not rule out a call from an inherited base constructor in another dependency.
+
 ## Remaining race and teardown boundary
 
 Factory dispatch at `AudioALSAHardware::setParametersByCallback` (`0x000cf108`) makes the pre-promotion window concrete:
