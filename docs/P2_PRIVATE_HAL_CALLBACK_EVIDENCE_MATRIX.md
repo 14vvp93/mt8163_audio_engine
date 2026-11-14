@@ -247,3 +247,43 @@ The factory HAL's `onAudioParameterChangedCallback(char const*)` invokes registe
 A remote callback that re-enters the HAL and synchronously attempts `clearAudioParameterChangedCallback` can consequently contend for the same lock while the original dispatch is waiting for the remote transaction. The actual callback implementation and reentrant call path have not been established, so this is a concrete deadlock/timeout-capable design hazard, **not proof of an observed deadlock**. The previously identified lock-acquisition failure fallthrough further prevents treating the factory lock as a reliable drain barrier.
 
 Replacement requirement remains unchanged: never invoke external/HIDL callbacks while holding the callback-registry mutation lock; close admission, retain an in-flight reference, invoke outside the lock, and drain before destroying the cookie owner. Keep the Primary HAL fail-closed and non-installable. P2 remains OPEN.
+
+
+## 2026-11-14 HIDL bridge callback ownership and reentrancy audit
+
+Pinned bridge binary:
+- `vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so`
+- SHA-256: `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`
+- Prior source artifact: workflow run [43401616001](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43401616001), artifact ID `14024364994`, report `primary-hal-hidl-bridge.txt`.
+
+The targeted disassembly establishes these bridge-side operations:
+
+1. `Device::setAudioParameterChangedCallback(...)` reads the legacy HAL registration slot at `audio_hw_device+0xd4` and invokes it with the static `Device::audioParameterChangedCallback` thunk and the `Device*` cookie. It then assigns the supplied HIDL callback strong reference to the member at `Device+0x28`.
+2. `Device::clearAudioParameterChangedCallback()` invokes the legacy HAL clear slot at `audio_hw_device+0xd8` with the same `Device*` cookie before releasing/resetting the stored callback strong reference at `Device+0x28`.
+3. The static callback thunk obtains a local strong reference from the callback member at `Device+0x28`, invokes the callback interface through vtable byte offset `0x34`, then compares the current member with the previously observed callback and performs the corresponding reference cleanup. This is consistent with protecting the HIDL callback object across a reentrant callback-member replacement.
+4. No direct `alock`, pthread mutex or rwlock primitive call is visible in these three targeted bridge method bodies. This is not proof that every helper or caller is lock-free, and no Device destructor/owner teardown protocol was recovered from this report.
+
+### Reentrancy boundary
+
+The local `sp<IAudioParameterChangedCallback>` protects the callback interface object after it has been acquired. It does **not** keep the `Device` object alive while the thunk dereferences the raw `Device*` cookie to acquire that strong reference.
+
+The bridge's clear ordering is correct in intent—ask the legacy HAL to remove the cookie before dropping the stored HIDL callback reference—but its completion is only as strong as the legacy clear operation. The pinned factory HAL can continue into registry operations after `alock_lock_ms` fails, so this ordering is not a proven callback drain barrier.
+
+Combining the independently pinned transaction and dispatch evidence:
+- the factory HAL invokes the registered callback while holding its registry lock on the successful-lock path;
+- the HIDL Bp proxy sends a synchronous Binder transaction (`flags=0`);
+- the remote callback therefore runs before the factory dispatch call returns;
+- if remote callback code synchronously calls back into the same Device service to clear/re-register, a Binder worker can block on the factory registry lock while the original dispatch waits for the remote callback.
+
+This is a **possible cross-process lock cycle**, not a proven runtime deadlock. The actual remote callback implementation and whether it re-enters Device were not found in the pinned evidence. A same-thread local member replacement is partially protected by the thunk's local strong reference; that does not resolve the cross-process factory-lock cycle or raw-cookie lifetime.
+
+### Replacement contract
+
+- Never invoke HIDL/client callbacks while holding the callback-registry mutation lock.
+- Use a stable owner token rather than a raw `Device*` cookie, or provide an independently proven owner-lifetime pin.
+- Close callback admission before unregistering.
+- Retain an in-flight reference, invoke outside the lock, then drain before releasing the owner.
+- Define self-unregister and cross-process reentrant unregister behavior.
+- Treat lock acquisition failure as fatal to the operation; never continue unlocked.
+
+A dedicated SHA-pinned bridge audit script is now part of the P2 workflow and checks the three method symbols and key callback/legacy-slot offsets. The Primary HAL remains fail-closed and non-installable. P2 remains OPEN.
