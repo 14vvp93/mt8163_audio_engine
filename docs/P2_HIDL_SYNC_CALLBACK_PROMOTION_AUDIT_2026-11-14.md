@@ -1,0 +1,77 @@
+# HIDL syncCallback RefBase promotion audit — 2026-11-14
+
+Status: **PARTIAL LIFETIME PROOF — pre-promotion raw-cookie race and factory drain remain OPEN.**
+
+## Pinned evidence
+
+- HIDL bridge: `vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so`
+- SHA-256: `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`
+- Factory HAL: `vendor/lib/hw/audio.primary.mt8163.so`
+- SHA-256: `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`
+- CI run: [43630639009](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43630639009)
+- Evidence artifact: [14128420659](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43630639009/artifacts/14128420659)
+- Artifact ZIP SHA-256: `9d55798856978f8bd2b5346c44ec46d0fac32c9dd817b9ded4cf2af7502cc224`
+- Audited feature commit: `7456e83b0ac73c487dc933cb281f5773480588a8`
+- CI: P2 contract gate **PASS**, reproducible factory/client audit **PASS**, aggregate offline evidence gate **PASS**.
+
+The helper auditor verifies the Thumb-to-ARM veneer opcode sequence, resolves the signed PC-relative target, identifies its executable ELF section, then disassembles the corresponding PLT entry. No function boundary is inferred from a fixed-size instruction window.
+
+## Resolved helper targets
+
+| Direct BL target in `Device::syncCallback` | Resolved PLT symbol | Meaning at call site |
+|---:|---|---|
+| `0x000284dc` | `android::RefBase::createWeak(void const*) const` at `0x0001963c` | Create weak-reference handle from the Device RefBase subobject |
+| `0x000284ec` | `android::RefBase::weakref_type::attemptIncStrong(void const*)` at `0x00019648` | Attempt weak-to-strong promotion |
+| `0x000281ec` | `android::RefBase::decStrong(void const*) const` at `0x00019408` | Release promoted Device strong reference |
+| `0x0002851c` | `android::RefBase::weakref_type::decWeak(void const*)` at `0x0001966c` | Release temporary weak reference |
+| `0x0002817c` | `__android_log_print` at `0x000193b4` | Error/event logging |
+| `0x000280ec` | `operator new(unsigned int)` at `0x00019348` | Allocate parameter buffer |
+| `0x000281cc` | `__aeabi_memclr8` at `0x000193f0` | Initialize temporary storage |
+| `0x000284fc` | `__memcpy_chk` at `0x00019654` | Bounded parameter copy |
+| `0x0002850c` | `android::hardware::details::return_status::~return_status()` at `0x00019660` | Destroy callback result wrapper |
+| `0x0002820c` | `operator delete(void*)` at `0x00019420` | Free temporary parameter buffer |
+| `0x0002811c` | `__stack_chk_fail` at `0x0001936c` | Stack-canary failure path |
+
+These are PLT symbol identities from the pinned ELF's disassembly. The PLT entries are not the implementations of the imported functions; this report establishes the exact calls made by the bridge, not the internals of the external libraries.
+
+## Device cookie promotion dataflow
+
+`Device::syncCallback` is at `0x0001cb4c`, size 240 bytes.
+
+1. Entry captures the event in `r5`, callback interface pointer in `r4`, and opaque `Device*` cookie in `r2`. The cookie is saved at `sp+4`.
+2. At `0x0001cb64–0x0001cb6e`, the bridge loads the cookie's vtable, reads the offset-to-top at `vtable-12`, computes the `RefBase` base-subobject pointer, and calls the `createWeak` PLT veneer `0x000284dc`. The weak-reference handle is saved at `sp+8`.
+3. If the cookie is non-null, at `0x0001cb7e–0x0001cb80` the bridge calls `weakref_type::attemptIncStrong` through veneer `0x000284ec`, passing the saved weak-reference handle and a stack identity pointer.
+4. The return value is checked at `0x0001cb84`. Only on successful promotion does the bridge copy the original cookie into the strong-object slot at `sp+0`. On promotion failure that slot remains null.
+5. The callback member at `Device+0x24` is loaded only after the strong-object slot is checked at `0x0001cb92–0x0001cb96`. Event zero invokes the callback interface through vtable byte offset `0x34` at `0x0001cbe6`. Nonzero events take the logging path; null cookie, failed promotion, or null callback member skip invocation.
+6. Normal cleanup converges at `0x0001cbf4–0x0001cc10`. If promotion succeeded, the bridge recomputes the `RefBase` base pointer and calls `decStrong` through `0x000281ec`. If a weak handle was created, it calls `decWeak` through `0x0002851c`.
+
+### Proven conclusion
+
+**Once `syncCallback` successfully promotes the cookie, the Device object is held by a strong RefBase reference while the callback member is accessed and the HIDL callback is invoked.** The bridge releases the promoted strong reference and temporary weak reference on the normal cleanup paths. If promotion fails, it does not dereference `Device+0x24` or invoke the HIDL callback.
+
+This is stronger evidence than merely observing the callback interface's own strong reference at `Device+0x24`: the bridge separately attempts to pin the Device object represented by the raw cookie.
+
+## Remaining race and teardown boundary
+
+The promotion does **not** close the interval before `createWeak`/ `attemptIncStrong` succeeds:
+
+- Factory `AudioALSAHardware::setParametersByCallback` loads the global callback pointer and cookie from separate GOT cells, then calls the function pointer. No lock, atomic pair load, owner pin, or in-flight counter is visible around those operations in the audited body.
+- Factory `setupParametersCallback` stores callback and cookie separately, without a visible synchronization primitive. Concurrent replacement can expose a mixed callback/cookie pair unless an external serialization contract exists.
+- Factory destruction clears the cookie cell `0x00192b7c` and then callback cell `0x00192b80`, but does not wait for a dispatch that already loaded the old pair.
+- The HIDL `Device` destructor calls legacy HAL close before releasing its callback strong-reference members at `+0x24` and `+0x28`. The factory close/destructor path has no proven in-flight drain for the global setup callback.
+- A dispatch paused after loading the raw cookie but before `syncCallback` successfully creates/promotes the weak reference is not protected by the later strong reference. If the Device is destroyed and its storage reclaimed before that dispatch reaches `createWeak`, the bridge may dereference a stale cookie while trying to obtain the weak reference.
+
+This is a **static race surface**, not proof that a particular runtime interleaving or use-after-free occurs. The HIDL callback strong reference at `Device+0x24` protects the callback interface object, not the raw Device cookie before promotion.
+
+## Gate decision
+
+- `syncCallback` weak-reference creation: **confirmed**.
+- `syncCallback` weak-to-strong promotion attempt: **confirmed**.
+- Strong Device reference held during callback access/invocation after successful promotion: **confirmed**.
+- Strong/weak release calls on normal cleanup: **confirmed**.
+- Atomic callback/cookie pair registration and replacement: **not proven**.
+- Protection of raw cookie between factory load and successful promotion: **not proven**.
+- Factory in-flight dispatch drain before Device destruction: **not proven**.
+- Runtime race/UAF occurrence: **not tested / not claimed**.
+
+Keep P2 **OPEN**. Keep Primary HAL fail-closed and `installable: false`. Do not integrate the setup callback path into AudioCore or treat the in-body promotion as a substitute for a factory-side admission/drain contract. This channel remains distinct from the vector-backed `0xd4/0xd8` parameter-change registry.
