@@ -192,7 +192,7 @@ jobs:
           pid_atci=$!
           run_logged p2-hidl-callback python3 scripts/repository/audit_primary_hal_p2_hidl_callback.py "$hidl" &
           pid_hidl_callback=$!
-          run_logged p2-hidl-bridge python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" &
+          run_logged p2-hidl-bridge python3 scripts/repository/audit_primary_hal_p2_hidl_bridge.py "$bridge" p2-hidl-setup-parameters-callback.txt &
           pid_hidl_bridge=$!
           run_logged p2-hidl-device python3 scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py "$bridge" &
           pid_hidl_device=$!
@@ -246,6 +246,7 @@ jobs:
             p2-atci-client-callers.txt
             p2-hidl-callback-transaction.txt
             p2-hidl-bridge-lifecycle.txt
+            p2-hidl-setup-parameters-callback.txt
             p2-hidl-device-lifetime.txt
             p2-factory-device-close.txt
             p2-factory-callback-xrefs.txt
