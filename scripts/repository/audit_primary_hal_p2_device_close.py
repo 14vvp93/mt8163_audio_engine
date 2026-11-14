@@ -9,15 +9,20 @@ from pathlib import Path
 
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 SYMBOL_LINE = re.compile(
-    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+(FUNC|OBJECT|NOTYPE)\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
+    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+(FUNC|OBJECT|NOTYPE)\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
 )
-CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
+CALL_TARGET = re.compile(r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]+)>", re.IGNORECASE)
 TARGETS = (
     "AudioALSAHardware::~AudioALSAHardware()",
     "AudioALSAHardware::setAudioParameterChangedCallback(",
     "AudioALSAHardware::clearAudioParameterChangedCallback(",
     "AudioALSAHardware::onAudioParameterChangedCallback(",
+    "AudioMTKHardwareInterface::create()",
 )
+MODULE_OPEN_START = 0x0009B70C
+MODULE_OPEN_END = 0x0009B994
+MODULE_CLOSE_START = 0x0009BA48
+MODULE_CLOSE_END = 0x0009BAE4
 
 
 def run(command: list[str]) -> str:
@@ -33,9 +38,26 @@ def run(command: list[str]) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
         )
     return result.stdout
+
+
+def disassemble_range(binary: Path, start: int, end: int, label: str) -> str:
+    if start < 0 or end <= start:
+        raise ValueError(f"invalid disassembly range: {start:#x}..{end:#x}")
+    command = [
+        "arm-linux-gnueabi-objdump",
+        "-dr",
+        "-C",
+        f"--start-address=0x{start:x}",
+        f"--stop-address=0x{end:x}",
+        str(binary),
+    ]
+    output = run(command)
+    if not re.search(rf"^0*{start:x}\\s+:", output, re.MULTILINE):
+        raise RuntimeError(f"{label}: start address is not present in disassembly")
+    return output
 
 
 def main() -> int:
@@ -64,21 +86,29 @@ def main() -> int:
             address, size, kind, name = match.groups()
             symbols.append((int(address, 16), int(size, 10), kind, name))
 
-    selected: list[tuple[int, int, str]] = []
-    for address, size, kind, name in symbols:
-        if kind == "FUNC" and any(target in name for target in TARGETS):
-            selected.append((address, size, name))
+    selected = [
+        (address, size, name)
+        for address, size, kind, name in symbols
+        if kind == "FUNC" and any(target in name for target in TARGETS)
+    ]
+
+    missing = [
+        target
+        for target in TARGETS
+        if not any(target in name for _, _, name in selected)
+    ]
+    if missing:
+        print("ERROR: required symbols missing from pinned ELF:")
+        for target in missing:
+            print(f"- {target}")
+        return 1
 
     print(f"Factory HAL SHA-256: {digest}")
-    print("Target legacy device-close/destruction audit")
     print(f"Selected function symbols: {len(selected)}")
-
     for address, size, name in sorted(selected):
-        print(f"\n===== {name} @ 0x{address:08x}, size={size} =====")
-        if size <= 0:
-            print("No function size recorded; disassembly skipped.")
-            continue
-
+        print(f"\\n===== {name} @ 0x{address:08x}, size={size} =====")
+        if size == 0:
+            raise RuntimeError(f"zero-sized required function: {name}")
         code_address = address & ~1
         command = ["arm-linux-gnueabi-objdump", "-dr", "-C"]
         if address & 1:
@@ -90,26 +120,28 @@ def main() -> int:
                 str(binary),
             ]
         )
-        disassembly = run(command)
-        calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
+        body = run(command)
+        calls = sorted(set(CALL_TARGET.findall(body)), key=str.casefold)
         print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
-        print(disassembly.rstrip())
+        print(body.rstrip())
 
-    missing = [
-        target
-        for target in TARGETS
-        if not any(target in name for _, _, name in selected)
-    ]
-    if missing:
-        print("\nERROR: required symbols not retained in the pinned ELF symbol table:")
-        for target in missing:
-            print(f"- {target}")
-        return 1
+    print("\\n===== HMI.open wrapper allocation and callback table =====")
+    open_body = disassemble_range(
+        binary, MODULE_OPEN_START, MODULE_OPEN_END, "HMI.open"
+    )
+    print(open_body.rstrip())
+
+    print("\\n===== HMI.close wrapper teardown =====")
+    close_body = disassemble_range(
+        binary, MODULE_CLOSE_START, MODULE_CLOSE_END, "HMI.close"
+    )
+    print(close_body.rstrip())
 
     print(
-        "\nStatic disassembly only. It does not prove that the HIDL destructor "
-        "reaches this path at runtime, that close drains callback dispatch, or "
-        "that indirect/stripped teardown paths are absent."
+        "\\nStatic evidence only: HMI.close invokes the legacy device close "
+        "indirectly through the returned object's common vtable. This audit "
+        "does not resolve that implementation's callback-drain semantics or "
+        "prove runtime teardown ordering."
     )
     return 0
 
@@ -117,6 +149,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+    except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         raise SystemExit(1)
