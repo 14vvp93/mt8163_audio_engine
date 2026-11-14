@@ -55,7 +55,7 @@ The 16 slots are a private MediaTek extension, not part of the public AOSP `audi
 
 ## Automation scope and limits
 
-The P2 GitHub Actions workflow:
+The push-triggered and manually dispatched P2 GitHub Actions workflow:
 - verifies the factory HAL SHA-256 and ARM32 ELF contract;
 - runs the existing APS2 relocation/vtable audit;
 - scans extracted system/vendor shared libraries and service executables for callback-related symbols and strings;
