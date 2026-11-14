@@ -208,7 +208,7 @@ jobs:
             else
               status=$?
             fi
-            printf '%s\\n' "$status" > "${name}.exit"
+            printf '%s\n' "$status" > "${name}.exit"
             return 0
           }
 
@@ -255,7 +255,7 @@ jobs:
               failed=1
             fi
           done
-          printf '%s\\n' "$failed" > p2-audit-process-failed.txt
+          printf '%s\n' "$failed" > p2-audit-process-failed.txt
 
           for log in p2-client-scan.log p2-voiceunlock.log p2-client.log p2-atci.log p2-hidl-callback.log p2-hidl-bridge.log p2-hidl-sync.log p2-hidl-sync-helpers.log p2-hidl-refbase.log p2-hidl-device.log p2-device-close.log p2-callback-xrefs.log p2-resource-vtable.log; do
             cat "$log"
