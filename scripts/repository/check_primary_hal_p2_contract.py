@@ -12,6 +12,7 @@ HAL_README = ROOT / "primary-hal/README.md"
 HAL_BUILD = ROOT / "primary-hal/Android.bp"
 HAL_SOURCE = ROOT / "primary-hal/src/primary_hal.cpp"
 EVIDENCE_MATRIX = ROOT / "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
+SOURCE_REVIEW = ROOT / "docs/P2_VENDOR_SOURCE_CORROBORATION.md"
 
 CALLBACKS = (
     "xWayPlay_Start", "xWayPlay_Stop", "xWayPlay_Write",
@@ -52,6 +53,7 @@ def main() -> int:
         build = HAL_BUILD.read_text(encoding="utf-8")
         source = HAL_SOURCE.read_text(encoding="utf-8")
         matrix = EVIDENCE_MATRIX.read_text(encoding="utf-8")
+        source_review = SOURCE_REVIEW.read_text(encoding="utf-8")
 
         required_offsets = set(range(156, 220, 4))
         table_rows = re.findall(
@@ -66,6 +68,15 @@ def main() -> int:
         missing_callbacks = [name for name in CALLBACKS if f"`{name}`" not in matrix]
         require(not missing_callbacks, f"evidence matrix callback inventory incomplete: {missing_callbacks}")
         require("Status: **OPEN" in matrix, "P2 evidence matrix must remain explicitly open")
+        for source_gate in (
+            "ABI warning",
+            "contains neither",
+            "mReadFunctionActive",
+            "not target-build proof",
+            "P2 remains **OPEN**",
+        ):
+            require(source_gate.lower() in source_review.lower(),
+                    f"source corroboration document missing required caveat: {source_gate}")
 
         for gate in (
             "external xWay caller",
