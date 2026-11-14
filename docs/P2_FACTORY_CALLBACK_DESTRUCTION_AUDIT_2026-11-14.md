@@ -99,3 +99,18 @@ The target HIDL destructor calls the legacy device `close` function before relea
 - [ ] Add deterministic host tests for clear/dispatch/destruction races and reentrancy.
 
 Primary HAL remains fail-closed and `installable: false`. No hardware operations are authorized. P2 remains **OPEN**.
+
+
+## Follow-up: callback registry lock-failure and dispatch-order regression gates
+
+The pinned factory ELF report from workflow run [43585742590](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43585742590), artifact ID `14110606564`, confirms three additional fail-open paths:
+
+- Registration: `setAudioParameterChangedCallback` calls `alock_lock_ms@plt` at `0xcea38`; nonzero status logs and falls through to registry/vector access at `0xcea9c`.
+- Clear: `clearAudioParameterChangedCallback` calls `alock_lock_ms@plt` at `0xced08`; nonzero status logs and falls through to registry/vector access at `0xced6c`.
+- Dispatch: `onAudioParameterChangedCallback` calls `alock_lock_ms@plt` at `0xcef60`; nonzero status logs and falls through to registry traversal at `0xcefc4`.
+
+The dispatch loop invokes the callback indirectly at `0xcf020..0xcf024` before calling `alock_unlock@plt` at `0xcf050`. Thus callbacks execute while the registry lock is held on the lock-success path. This can create a reentrancy/lock-cycle hazard; actual deadlock is not established.
+
+Audit-script commits `29bb71bf04239634d4e955e40536de955111db23` and `855e5a5b205594bc69b22ddd93dcbf406b864094` add exact regression assertions for all three lock-failure fallthroughs and callback-before-unlock ordering. These new assertions are not verified until CI for the latest commit passes and its artifact is inspected.
+
+The five lock-failure surfaces now targeted by the audit are the two singleton accessors plus callback registration, clear, and dispatch. They must not be treated as safe serialization. P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
