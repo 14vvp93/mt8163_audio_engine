@@ -250,7 +250,7 @@ A current GitHub Community report describes the same runner-allocation signature
 - Added `audit_primary_hal_p2_hidl_sync_callback.py` and extended the P2 workflow to preserve the full `syncCallback` body in the next evidence artifact. This is a report collector; semantic interpretation remains pending.
 - Updated the factory callback audit and private callback evidence matrix with the proven slot mapping.
 
-P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next evidence target: inspect `syncCallback`, then xref factory globals `0x000c4248` / `0x000c4238` and establish registration replacement, caller inventory, owner lifetime and teardown drain.
+P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next evidence target: inventory indirect callers and effective GOT references to `0x00192b80` / `0x00192b7c`, then establish registration replacement, owner lifetime and in-flight teardown drain.
 
 
 ## P2 callback follow-up — syncCallback and GOT slot audit — 2026-11-14
@@ -259,8 +259,17 @@ P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. N
 - Evidence artifact [14121078085](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43613705447/artifacts/14121078085), ZIP SHA-256 `afb24415097f0949380509e0088bf7fd3e6934119299b58f1e77230de4bb99ce`.
 - Inspected `Device::syncCallback`: event zero invokes the HIDL callback via member `Device+0x24`; nonzero event logs and does not invoke it in the audited body.
 - Confirmed two distinct callback channels: setup slot `0xd0` → `syncCallback` / member `+0x24`; parameter-changed slot `0xd4` → `audioParameterChangedCallback` / member `+0x28`.
-- Corrected GOT interpretation: effective callback and cookie slots are `0x001a2b80` and `0x001a2b7c`; previously cited `0xc4248/0xc4238` are PC-relative displacements.
+- Corrected GOT interpretation: effective callback and cookie slots are `0x00192b80` and `0x00192b7c`; previously cited `0xc4248/0xc4238` are PC-relative displacements.
 - Extended the factory auditor to assert literal-pool words and effective GOT address calculations. The factory evidence workflow passed with these assertions.
-- HIDL Device destruction closes the legacy HAL device before releasing callback refs; the audited destructor does not call private setup clear slot `0xd0`. The factory destructor body has no reference to the setup callback/cookie GOT slots. This is a static race surface, not a proven runtime failure.
+- HIDL Device destruction closes the legacy HAL device before releasing callback refs; its destructor does not call private setup clear slot `0xd0`. The factory destructor clears cookie slot `0x00192b7c` then callback slot `0x00192b80`, but no in-flight drain is visible. A dispatch that loaded the old pair can remain active. This is a static race surface, not a proven runtime failure.
 
 P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. No callback integration, DSP profile activation, hardware write, or P3 transition is authorized. Next: inventory indirect callers and registration/replacement paths, then prove external serialization and callback drain or design an adapter that preserves the factory's ABI/lifetime constraints.
+
+
+## P2 factory callback teardown update — 2026-11-14
+
+- Corrected effective GOT slots: callback `0x00192b80`, cookie `0x00192b7c`. Earlier `0x0c4248/0x0c4238` and `0x0c3978/0x0c3968` are PC-relative displacements.
+- Factory destructor `AudioALSAHardware::~AudioALSAHardware` clears cookie first, callback second. The audit now checks exact literal words, PC-relative address calculations, and both clear stores.
+- Added synthetic unit tests for GOT resolution and destructor clear ordering; the workflow runs them in the P2 contract job.
+- Teardown clears future global admission, but no in-flight drain is visible. A dispatch that loaded the old callback/cookie pair before clear can still be active while HIDL Device destruction proceeds to release callback references.
+- P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
