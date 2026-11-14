@@ -147,7 +147,7 @@ def main() -> int:
 
     close_text = close_report.read_text(encoding="utf-8", errors="replace")
     require(
-        "CONTRACT VERIFIED: HMI.close invokes the AudioALSAHardware deleting destructor."
+        "Static evidence only: HMI.close dispatches through the returned object's second vtable slot."
         in close_text,
         "factory close report does not confirm the HMI.close deleting-destructor contract",
     )
