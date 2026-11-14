@@ -1,10 +1,58 @@
 from __future__ import annotations
 
+import lzma
+import struct
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import audit_primary_hal_p2_hidl_sync_helpers as auditor
+
+
+class GnuDebugDataTests(unittest.TestCase):
+    @staticmethod
+    def make_elf_with_sections(section_names: bytes, payload: bytes | None) -> bytes:
+        section_count = 3 if payload is not None else 2
+        section_table_offset = 52
+        names_offset = section_table_offset + section_count * 40
+        payload_offset = names_offset + len(section_names)
+        data = bytearray(payload_offset + (len(payload) if payload is not None else 0))
+        data[:4] = b"\\x7fELF"
+        data[4] = 1
+        data[5] = 1
+        struct.pack_into("<I", data, 32, section_table_offset)
+        struct.pack_into("<HHH", data, 46, 40, section_count, 1)
+        names_index = section_names.index(b".shstrtab")
+        struct.pack_into(
+            "<IIIIII", data, section_table_offset + 40,
+            names_index, 3, 0, 0, names_offset, len(section_names),
+        )
+        if payload is not None:
+            debug_name_index = section_names.index(b".gnu_debugdata")
+            struct.pack_into(
+                "<IIIIII", data, section_table_offset + 80,
+                debug_name_index, 1, 0, 0, payload_offset, len(payload),
+            )
+            data[payload_offset:payload_offset + len(payload)] = payload
+        data[names_offset:names_offset + len(section_names)] = section_names
+        return bytes(data)
+
+    def test_extracts_xz_compressed_gnu_debugdata(self) -> None:
+        mini_elf = b"\\x7fELF\\x01\\x01mini-debug-elf"
+        names = b"\\0.shstrtab\\0.gnu_debugdata\\0"
+        binary = self.make_elf_with_sections(names, lzma.compress(mini_elf))
+
+        self.assertEqual(auditor.extract_gnu_debugdata(binary), mini_elf)
+
+    def test_returns_none_when_gnu_debugdata_is_absent(self) -> None:
+        names = b"\\0.shstrtab\\0"
+        binary = self.make_elf_with_sections(names, None)
+
+        self.assertIsNone(auditor.extract_gnu_debugdata(binary))
+
+    def test_rejects_non_elf_input(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "invalid ELF header"):
+            auditor.extract_gnu_debugdata(b"not-an-elf")
 
 
 class ParseFunctionsTests(unittest.TestCase):
