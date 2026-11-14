@@ -13,6 +13,8 @@ FUNCTIONS = (
     "android::AudioVUnlockDL::startInput()",
     "android::AudioVUnlockDL::stopInput()",
     "android::AudioVUnlockDL::freeInstance()",
+    "android::AudioVUnlockDL::getInstance()",
+    "android::AudioVUnlockDL::~AudioVUnlockDL()",
     "android::AudioVUnlockDL::ReadRefFromRing(void*, unsigned int, void*)",
     "android::AudioVUnlockDL::SetInputStandBy(bool)",
     "android::AudioALSAHardware::startVoiceUnlockDL()",
