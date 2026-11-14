@@ -294,7 +294,8 @@ def main() -> int:
             "configuration and actual namespace search order are not yet pinned.",
             "",
             f"BRIDGE_LIBUTILS_DEPENDENCY: {'CONFIRMED' if bridge_uses_libutils else 'UNRESOLVED'}",
-            f"REFBASE_IMPLEMENTATION_STATUS: {implementation_status}",
+            f"REFBASE_CANDIDATE_SYMBOL_STATUS: {implementation_status}",
+            "REFBASE_RUNTIME_SELECTION_STATUS: UNRESOLVED",
         ])
         rendered = "\n".join(report) + "\n"
         output.write_text(rendered, encoding="utf-8")
