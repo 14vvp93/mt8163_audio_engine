@@ -145,7 +145,7 @@ def require_instruction(
 
 def read_arm_word_at(disassembly: str, address: int) -> int:
     pattern = re.compile(
-        rf"^\\s*{address:08x}:\\s+([0-9a-fA-F]{{8}})\\s+",
+        rf"^\\s*0*{address:x}:\\s+([0-9a-fA-F]{{8}})\\s+",
         re.MULTILINE,
     )
     matches = pattern.findall(disassembly)
