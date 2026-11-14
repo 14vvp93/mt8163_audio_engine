@@ -57,6 +57,8 @@ The synchronous Binder transaction makes callback reentrancy possible at the arc
 
 The HIDL bridge `Device::setupParametersCallback()` loads legacy slot `0xd0` (208) and calls it with the bridge's `syncCallback` thunk and a `Device*` cookie. The target factory `AudioALSAHardware::setupParametersCallback(...)` stores callback/cookie state in global locations; its body has no visible lock acquisition. Factory `setParametersByCallback(String8 const&)` is a separate indirect-callback path and has no visible mutex/condition-variable calls in the audited body.
 
+The bridge-side `Device::syncCallback` lifetime helpers are now resolved in [the dedicated RefBase promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md). The callback thunk calls `RefBase::createWeak`, attempts `weakref_type::attemptIncStrong`, uses `Device+0x24` only after successful promotion, then releases the strong and weak references through `decStrong`/`decWeak`. This proves Device pinning **after successful promotion**, not before it. The raw cookie can still be stale in the interval between the factory's separate global loads/indirect call and the thunk's weak-reference creation; no factory in-flight drain or atomic callback/cookie pair replacement is proven.
+
 Do not merge this global callback path with the vector-backed `setAudioParameterChangedCallback` registry. Its exact registration replacement, invocation callers, and teardown/owner lifetime remain unresolved.
 
 ## Caller inventory and evidence level
@@ -67,7 +69,7 @@ Do not merge this global callback path with the vector-backed `setAudioParameter
 | `0xac–0xb4` | `xWayRec_Start/Stop/Read` → `Record2Way` | No external caller identified in the pinned scan; numeric-offset/indirect callers remain possible |
 | `0xb8` | `ReadRefFromRing` → `AudioVUnlockDL::ReadRefFromRing` | Internal forwarding target identified; external entry and concurrent caller ordering unresolved |
 | `0xbc–0xcc` | Voice Unlock HIDL 4.1 Device methods | Bridge-to-slot mapping identified; concrete framework/client call sites and stop/free ordering not proven |
-| `0xd0` | `setupParametersCallback` | HIDL bridge invocation identified; upstream framework/client call sites and global callback lifetime unresolved |
+| `0xd0` | `setupParametersCallback` | HIDL in-body weak-to-strong promotion confirmed; pre-promotion raw-cookie lifetime, global pair replacement, upstream callers and factory drain remain OPEN |
 | `0xd4` | `setAudioParameterChangedCallback` | HIDL bridge registration invocation and Device cookie identified |
 | `0xd8` | `clearAudioParameterChangedCallback` | HIDL bridge clear invocation and matching Device cookie identified; not a proven drain |
 
@@ -90,6 +92,8 @@ The pinned HIDL bridge thunk symbol is:
 `Device::audioParameterChangedCallback(char const*, void*)`
 
 The argument order differs, and the binary does not prove a source-level `noexcept` contract. A dedicated typed adapter may be possible after exact ABI confirmation, but direct function-pointer substitution is not valid. The generic registry must not be connected to this slot by casting or guessed prototypes.
+
+The `0xd0` thunk's successful RefBase promotion protects the Device during callback execution, but it does not close the raw-cookie interval before promotion. Do not treat this as a substitute for factory-side callback admission and in-flight drain.
 
 ## Integration decision
 
