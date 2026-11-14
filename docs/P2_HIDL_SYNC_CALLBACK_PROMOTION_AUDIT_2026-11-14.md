@@ -136,3 +136,35 @@ The regex fixtures were checked locally against representative objdump lines. Th
 
 P2 remains **OPEN**. The raw-cookie pre-promotion window and factory-side in-flight drain are unchanged and remain hard gates.
 The RefBase collector now labels successful symbol coverage as `REFBASE_CANDIDATE_SYMBOL_STATUS: COMPLETE` and separately emits `REFBASE_RUNTIME_SELECTION_STATUS: UNRESOLVED`. The former means both candidate `libutils.so` files expose and disassemble the required symbols; it does not select which library the vendor linker namespace loads at runtime.
+
+
+## 2026-11-14 — pinned HIDL helper and RefBase constructor audit (CI 43638003884)
+
+The corrected parser and the complete pinned-ELF audit ran successfully on feature HEAD `d4f1a4a1d50cdd1681df13c1e4a5d9cbd09ef240`.
+
+- [P2 workflow](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638003884): all 3 jobs PASS, including the aggregate offline evidence gate.
+- [Evidence artifact](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638003884/artifacts/14130747346), SHA-256 `dbd0f16ceac58f9f30bf4ee21cf117c71c89c477c70e27a5d244e0a811ca26aa`.
+- Pinned HIDL bridge SHA-256 remains `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`.
+- The helper resolver now proves all **18/18** direct helper targets using either sized function symbols or verified Thumb-to-ARM veneers with exact PLT symbol names. `HELPER_TARGET_RESOLUTION_STATUS: COMPLETE`; unresolved targets: none. This resolves call targets, not external PLT implementation bodies or callback lifetime.
+- The RefBase constructor scan found three direct callsites to the same verified interworking veneer at `0x000281dc`:
+  - `Device::Device(audio_hw_device_mtk*)`, callsite `0x0001b8e2`;
+  - `PrimaryDevice::PrimaryDevice(audio_hw_device_mtk*)`, callsite `0x0001f802`;
+  - `MTKPrimaryDevice::MTKPrimaryDevice(audio_hw_device_mtk*)`, callsite `0x00025d0a`.
+- The veneer resolves to `android::RefBase::RefBase()@plt`. This corrects the earlier incomplete inventory: derived constructor paths do contain RefBase constructor calls. It does not establish the exact C++ base-subobject construction semantics or runtime implementation selected by the linker.
+- Both candidate `libutils.so` implementations (system and VNDK-SP-28) expose and were disassembled for the required RefBase symbols; candidate symbol status is COMPLETE. The bridge has `DT_NEEDED: libutils.so`.
+- Runtime library selection remains **UNRESOLVED**. The pinned public firmware dataset does not contain the target vendor/system linker namespace configuration needed to prove which candidate backs the bridge's `libutils.so` PLT binding. Candidate coverage must not be represented as runtime binding proof.
+- The HIDL helper report resolves the following relevant PLT imports: `RefBase::createWeak`, `weakref_type::attemptIncStrong`, `RefBase::RefBase`, `RefBase::decStrong`, and `weakref_type::decWeak`. The syncCallback body shows weak creation/promotion and cleanup after promotion; this still does not protect the raw Device cookie before successful promotion.
+
+The factory callback/cookie pair remains separately loaded and invoked without a visible factory-side lock, atomic pair snapshot, owner pin, or in-flight drain in the audited functions. Therefore the constructor evidence does not close the pre-promotion raw-cookie race surface.
+
+### Gate decision after CI 43638003884
+
+- Pinned helper target resolution: **COMPLETE (18/18)**.
+- Device / PrimaryDevice / MTKPrimaryDevice RefBase constructor callsites: **CONFIRMED (3)**.
+- Candidate RefBase symbol coverage: **COMPLETE**.
+- Runtime `libutils.so` selection: **UNRESOLVED**.
+- Factory callback/cookie pair atomicity and pre-promotion cookie protection: **NOT PROVEN**.
+- Factory in-flight dispatch drain before Device destruction: **NOT PROVEN**.
+- Runtime race/UAF occurrence: **NOT TESTED / NOT CLAIMED**.
+
+P2 remains **OPEN**. Keep Primary HAL fail-closed and `installable: false`; do not integrate this callback path or enable DSP profiles on an unverified route. Next evidence target is the actual target linker namespace configuration and an end-to-end caller/teardown ownership contract. The successful offline pipeline is not a P2 closure or installation authorization.
