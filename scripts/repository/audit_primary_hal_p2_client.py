@@ -17,11 +17,11 @@ FUNCTIONS = (
     "android::MTKPrimaryDevicesHalClientImpl::getParameters(android::String8 const&)",
 )
 CALL_TARGET = re.compile(
-    r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]+)>",
+    r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>",
     re.IGNORECASE,
 )
 SYMBOL_LINE = re.compile(
-    r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+FUNC\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
+    r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\\S+\s+\\S+\s+\\S+\s+(.+?)\s*$"
 )
 
 
@@ -38,7 +38,7 @@ def run(command: list[str]) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -89,11 +89,11 @@ def main() -> int:
                 str(binary),
             ])
             calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
-            print(f"\\n===== {name} [{index}] @ 0x{address:08x}, size={size} =====")
+            print(f"\n===== {name} [{index}] @ 0x{address:08x}, size={size} =====")
             print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
             print(disassembly.rstrip())
 
-    print("\\nNo runtime service registration, callback ordering or device behavior is inferred.")
+    print("\nNo runtime service registration, callback ordering or device behavior is inferred.")
     return 0
 
 
