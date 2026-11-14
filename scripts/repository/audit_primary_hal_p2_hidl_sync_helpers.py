@@ -315,7 +315,8 @@ def main() -> int:
                 reports.append(f"VENEER_RESOLUTION_ERROR: {veneer_error}")
                 continue
 
-            reports.append(\n                f"INTERWORKING_VENEER: {source_section} -> "
+            reports.append(
+                f"INTERWORKING_VENEER: {source_section} -> "
                 f"{destination_section}:0x{destination:08x}"
             )
             try:
