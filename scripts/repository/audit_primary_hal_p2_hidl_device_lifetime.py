@@ -17,6 +17,24 @@ OWNER_HINT = re.compile(
     re.IGNORECASE,
 )
 CALL_TARGET = re.compile(r"\b(?:bl|blx)\s+[^<\n]*<([^>]+)>", re.IGNORECASE)
+DIRECT_CALL_PATTERN = re.compile(
+    r"^\s*([0-9a-fA-F]+):.*\bblx?\s+([0-9a-fA-F]+)\s+<([^>]+)>",
+    re.IGNORECASE,
+)
+RELOCATION_OFFSET_PATTERN = re.compile(r"^\s*([0-9a-fA-F]+)\s+")
+
+
+def parse_direct_call(line: str) -> tuple[int, int, str] | None:
+    match = DIRECT_CALL_PATTERN.match(line)
+    if match is None:
+        return None
+    callsite, target, target_name = match.groups()
+    return int(callsite, 16), int(target, 16) & ~1, target_name
+
+
+def parse_relocation_offset(line: str) -> int | None:
+    match = RELOCATION_OFFSET_PATTERN.match(line)
+    return int(match.group(1), 16) if match else None
 
 
 def run(command: list[str]) -> str:
@@ -78,11 +96,6 @@ def main() -> int:
         if item[2] in {"OBJECT", "NOTYPE"} and OWNER_HINT.search(item[3])
     ]
 
-    direct_call_pattern = re.compile(
-        r"^\\s*([0-9a-fA-F]+):.*\\bblx?\\s+([0-9a-fA-F]+)\\s+"
-        r"<([^>]+)>",
-        re.IGNORECASE,
-    )
     refbase_constructor_calls: list[tuple[int, int, str, str]] = []
     refbase_constructor_veneer = 0x281DC
 
@@ -124,12 +137,10 @@ def main() -> int:
         ])
         body = run(command)
         for line in body.splitlines():
-            match = direct_call_pattern.match(line)
-            if match is None:
+            parsed_call = parse_direct_call(line)
+            if parsed_call is None:
                 continue
-            callsite = int(match.group(1), 16)
-            target = int(match.group(2), 16) & ~1
-            target_name = match.group(3)
+            callsite, target, target_name = parsed_call
             if target == refbase_constructor_veneer or "RefBase::RefBase" in target_name:
                 callers = [
                     item for item in symbols
@@ -150,7 +161,7 @@ def main() -> int:
     print(f"Device constructors: {len(constructors)}")
     print(f"Device destructors: {len(destructors)}")
     print("Raw Device constructor ABI symbols:")
-    print("\\n".join(raw_constructor_symbols) if raw_constructor_symbols else "none")
+    print("\n".join(raw_constructor_symbols) if raw_constructor_symbols else "none")
     print(f"Direct Device constructor callsites: {len(constructor_call_sites)}")
     for callsite, target, caller, target_name in constructor_call_sites:
         print(
@@ -175,7 +186,7 @@ def main() -> int:
 
     print(f"Device vtable groups: {len(vtables)}")
     for address, size, _, name in vtables:
-        print(f"\\n===== VTABLE {name} @ 0x{address:08x}, size={size} =====")
+        print(f"\n===== VTABLE {name} @ 0x{address:08x}, size={size} =====")
         print(run([
             "arm-linux-gnueabi-objdump", "-s", "-C",
             f"--start-address=0x{address:x}",
@@ -184,14 +195,13 @@ def main() -> int:
         ]).rstrip())
         vtable_relocations = []
         for line in relocations.splitlines():
-            relocation = re.match(r"^\\s*([0-9a-fA-F]+)\\s+", line)
-            if relocation is None:
+            offset = parse_relocation_offset(line)
+            if offset is None:
                 continue
-            offset = int(relocation.group(1), 16)
             if address <= offset < address + size:
                 vtable_relocations.append(line.strip())
         print("VTABLE_RELOCATIONS:")
-        print("\\n".join(vtable_relocations) if vtable_relocations else "none")
+        print("\n".join(vtable_relocations) if vtable_relocations else "none")
 
     for label, candidates in (("CONSTRUCTOR", constructors), ("DESTRUCTOR", destructors)):
         for index, (address, size, _, name) in enumerate(candidates):
