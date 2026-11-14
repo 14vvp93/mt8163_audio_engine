@@ -646,3 +646,12 @@ The corrected helper auditor resolves all 11 direct `BL` targets from `Device::s
 **Still open:** the factory loads callback and cookie from separate global cells and has no proven in-flight drain. The promotion begins only after the raw cookie has crossed the factory-to-HIDL call boundary; it cannot protect a dispatch paused before `createWeak` or safely dereference a cookie whose object storage has already been reclaimed. Registration/replacement is not proven pair-atomic. This is a static race surface, not a demonstrated runtime UAF.
 
 P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`. Do not integrate the setup callback path into AudioCore or treat the in-body promotion as a factory-side drain.
+
+
+## 2026-11-14 — RefBase implementation and caller-context follow-up
+
+CI run [43632653555](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43632653555) passed all three jobs. It inspected both system and VNDK candidates for `libutils.so`, `libhidlbase.so`, and `android.hardware.audio@4.0.so`. The exact Android 9 `RefBase::RefBase()` implementations initialize flags to zero; `attemptIncStrong` checks flags bit 0 when the strong count is below one. No `RefBase::extendObjectLifetime` symbol reference was found in the HIDL bridge, either `libhidlbase` candidate, or either audio V4 interface candidate. The concrete `Device` inherited constructor chain is still not fully identified, so do not assert its final flags value.
+
+The same run expands the factory caller evidence: `AudioALSAHardware::setParameters` was disassembled, and the full factory direct-call inventory still found no direct caller of `setParametersByCallback`. The method's actual external/indirect caller and any outer serialization contract remain unresolved. Details and hashes are in [the HIDL RefBase promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md) and [the factory callback caller audit](P2_FACTORY_CALLBACK_CALLER_AUDIT_2026-11-14.md).
+
+P2 remains **OPEN**. The in-body Device promotion is confirmed, but the raw-cookie interval before weak-reference creation, factory dispatch admission/drain, and the actual dispatch caller remain unresolved. Primary HAL stays fail-closed and `installable: false`.
