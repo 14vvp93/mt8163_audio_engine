@@ -37,11 +37,30 @@ Observed in this source revision:
 5. `freeInstance()` deletes the singleton without calling `stopInput()`. The inspected destructor closes the SRC object and frees its temporary buffer; it does not stop or join the worker.
 6. The source file contains neither `pthread_detach` nor `pthread_join`.
 
-The last point conflicts with the existing factory-ELF disassembly note that the target `ReadRoutine` calls `pthread_self()` and `pthread_detach()`. This is direct evidence that the public V3 source snapshot is not yet proven identical to the target binary revision. Keep the target binary finding and source finding separate until targeted disassembly and a matching vendor source revision reconcile them.
+The last point conflicts with the factory-ELF disassembly: target `ReadRoutine` calls `pthread_self()` and `pthread_detach()`. This is direct evidence that the public V3 source snapshot is not yet proven identical to the target binary revision. Keep the target binary finding and source finding separate until a matching vendor source revision is found.
 
-**Safety consequence:** even in this V3 source snapshot, `mReadThreadActive == false` is not sufficient proof that all `ReadRefFromRing` calls have drained. The source's bounded wait can time out, and `freeInstance()` does not enforce shutdown. A replacement must use an explicit admission gate, in-flight callback count, worker termination handshake and owner lifetime barrier. Do not reproduce the source's timeout-as-quiescence behavior.
+## 3. Target factory ELF: wrapper call order
 
-## 3. Framework xWay call-chain precedent — not target-build proof
+Evidence: GitHub Actions run `43564228492`, artifact `mt8163-primary-hal-p2-evidence`, report `p2-voiceunlock-lifecycle-disassembly.txt`. The artifact was generated against the pinned factory HAL SHA-256 above; factory ELF identity verification and the extended lifecycle job both passed.
+
+The target binary's four `AudioALSAHardware` wrappers were disassembled:
+
+| Method | Address | Observed call path |
+|---|---:|---|
+| `startVoiceUnlockDL()` | `0x000ce80c` | Calls `AudioVUnlockDL::getInstance()`, then tail-branches to `AudioVUnlockDL::startInput()` |
+| `stopVoiceUnlockDL()` | `0x000ce848` | Calls `AudioVUnlockDL::getInstance()`, then tail-branches to `AudioVUnlockDL::stopInput()` |
+| `freeVoiceUnlockDLInstance()` | `0x000ce884` | Tail-branches directly to `AudioVUnlockDL::freeInstance()`; no stop call is present in this wrapper |
+| `getVoiceUnlockDLInstance()` | `0x000ce8bc` | Calls `AudioVUnlockDL::getInstance()`, then returns whether the result is non-null |
+
+The target `AudioVUnlockDL::freeInstance()` body at `0x000b49a0` checks the singleton pointer, destroys the SRC object when present, deletes the dynamic buffer when present, deletes the singleton allocation, and clears the singleton pointer. Its disassembled body contains no call to `stopInput()`, `pthread_join()`, or another worker-shutdown function.
+
+**Target-binary teardown conclusion:** neither the `freeVoiceUnlockDLInstance()` wrapper nor the inspected `freeInstance()` body enforces `stop → worker termination → callback drain → free`. The separate stop wrapper is not automatically invoked by the free wrapper. Therefore, the target binary exposes a teardown path whose safety depends on external call ordering and/or an unobserved synchronization contract. Static evidence does not establish that a real caller actually invokes free while the worker is active; it does establish that these functions do not enforce the required ordering internally.
+
+The stop path also must not be summarized as a simple bounded wait followed by return: the target `stopInput()` disassembly contains a follow-on repeated check/log branch after its initial polling loop. This report does not assign source-level field names to the target's byte flags because the exact matching source revision and field mapping remain unverified.
+
+The wrapper disassembly contains no explicit serialization lock around these operations. That absence in the small wrapper bodies does not exclude synchronization in callers, in `getInstance()`, or in code not included in the targeted disassembly.
+
+## 4. Framework xWay call-chain precedent — not target-build proof
 
 A separate MediaTek framework source tree, [CM-Huawei/Source_MT6582](https://github.com/CM-Huawei/Source_MT6582), commit `01ffc3cca24a197d66b9662822de150d5ab6fbc0`, contains:
 - [AudioSystem.cpp](https://github.com/CM-Huawei/Source_MT6582/blob/01ffc3cca24a197d66b9662822de150d5ab6fbc0/frameworks/av/media/libmedia/AudioSystem.cpp#L936-L1018): public xWay methods forward through `IAudioFlinger`.
@@ -50,19 +69,20 @@ A separate MediaTek framework source tree, [CM-Huawei/Source_MT6582](https://git
 
 This establishes a known MediaTek framework integration pattern and identifies a possible caller class. These repositories are not the exact MT8163 Android 9 framework source and must not be presented as proof that the target head unit ships or uses this path.
 
-## 4. Target MT8163 framework evidence
+## 5. Target MT8163 framework evidence
 
 The public [mt8173-dev/android_device_amazon_sloane](https://github.com/mt8173-dev/android_device_amazon_sloane/tree/7a41e2f9314b0b20f49538718e5e515824c2f97d) device source snapshot includes [patch 0004](https://github.com/mt8173-dev/android_device_amazon_sloane/blob/7a41e2f9314b0b20f49538718e5e515824c2f97d/patches/frameworks/av/0004-mt8163-libmedia-add-missing-mtkaudiostub.patch#L24-L86), which supplies no-op/false `AudioSystem` voice-unlock stubs rather than a real AudioFlinger forwarding path. Repository search in that target-device snapshot did not find `AudioPCMxWay`, `xWayPlay` or `xWayRec` callers.
 
 This is supporting evidence only: a device patch repository is not a complete source checkout of the exact installed framework, and it cannot exclude vendor-private, dynamically loaded or application-level clients.
 
-## 5. Current conclusion and remaining gates
+## 6. Current conclusion and remaining gates
 
 - First eight private callback C++ method signatures and internal forwarding destinations are corroborated by public MT8163 V3 source.
 - The legacy C extension header is not layout-compatible with the target binary's 16-slot tail and is explicitly non-authoritative for offsets.
-- The target firmware scan now covers 1,294 ELF/bytecode/archive candidates; no new xWay client was identified. The scan is symbol/string based and cannot prove absence of stripped or indirect callers.
+- The target firmware scan covers 1,294 ELF/bytecode/archive candidates; no new xWay client was identified. The scan is symbol/string based and cannot prove absence of stripped or indirect callers.
 - The target-device framework snapshot contains no-op voice-unlock stubs and no xWay references, but the exact installed Android 9 framework source/build remains unpinned.
-- The V3 voice-unlock lifecycle source has bounded drain waits and a delete-without-stop path; it is not proven to match the target binary. The `pthread_detach` discrepancy must be resolved from the target ELF.
+- The V3 voice-unlock lifecycle source has bounded drain waits and a delete-without-stop path; it is not proven to match the target binary. The target binary independently confirms that the free wrapper does not call stop and the free body does not shut down the worker.
+- The target `ReadRoutine` calls `pthread_self()` and `pthread_detach()`; the exact matching source revision remains unknown.
 - No callback prototype or lifetime contract is promoted to implementation-ready solely on the basis of these cross-repository sources.
 
 P2 remains **OPEN**. Preserve the factory components, keep Primary HAL stream opens fail-closed, and do not implement guessed private callbacks.
