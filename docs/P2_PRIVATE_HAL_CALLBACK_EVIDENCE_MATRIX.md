@@ -389,3 +389,44 @@ Next audit must resolve the exact legacy device `close` callback implementation 
 - callback owner lifetime and in-flight drain remain OPEN;
 - Primary HAL remains fail-closed and non-installable;
 - no hardware operations or device writes are authorized.
+
+
+## 2026-11-14 — HIDL close callback correlated with factory destruction
+
+Evidence sources:
+- Pinned factory HAL: `vendor/lib/hw/audio.primary.mt8163.so`, SHA-256 `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+- Pinned HIDL bridge: `vendor/lib/hw/android.hardware.audio@4.0-impl-mediatek.so`, SHA-256 `58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`.
+- Factory artifact: workflow run [43586351304](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43586351304), artifact ID `14109858471`; reviewed reports `p2-factory-elf-audit.txt`, `p2-factory-device-close.txt`, and `p2-hidl-device-lifetime.txt`.
+- Target HIDL destructor audit: workflow run [43579336500](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43579336500), artifact ID `14107960184`.
+
+### Cross-ELF call chain
+
+The HIDL bridge's complete `Device::~Device()` at `0x0001b91c` loads the legacy `audio_hw_device_mtk*` from `Device+0x08`, reads its close function pointer at byte offset `+0x3c`, and calls it indirectly. It retries while the callback returns nonzero; no bounded retry count or delay is visible.
+
+The factory module-open routine at `0x0009b70c` allocates the 0xe0-byte legacy device structure and stores the callback at offset `+0x3c`. The PC-relative sequence at `0x0009b780`, `0x0009b79c`, and `0x0009b7ac`, with literal `0x000002a4` at `0x0009b998`, resolves the stored callback target to:
+
+`0x0009b79c + 8 + 0x000002a4 = 0x0009ba48`.
+
+Address `0x0009ba48` is the factory `HMI.close` wrapper. Its last-reference path loads the legacy C++ object from wrapper offset `+0xdc`, dispatches through the object's vtable slot `+0x00c`, and reaches the deleting destructor `AudioALSAHardware::~AudioALSAHardware()` at `0x000c5874`. The vtable relocation report pins the non-deleting destructor at `0x000c56e4` and deleting thunk at `0x000c5874`.
+
+Therefore the cross-binary teardown chain is statically established:
+
+`HIDL Device::~Device() -> audio_hw_device_mtk.close(+0x3c) -> HMI.close(0x9ba48) -> AudioALSAHardware deleting destructor(0xc5874)`.
+
+### Safety interpretation
+
+This correlation resolves which factory function the HIDL destructor invokes; it does **not** establish callback quiescence:
+
+- The factory `AudioALSAHardware` destructor destroys the callback vector and its `alock` storage. Its audited body has no visible callback-admission closure, registry clear loop, or in-flight dispatch drain.
+- The factory callback dispatcher invokes the registered callback while holding the registry lock on the successful-lock path. Registration, clear, and dispatch all fall through to registry access after `alock_lock_ms` failure.
+- The HIDL `Device` destructor does not visibly call private clear slot `+0xd8` before invoking legacy close. It releases the callback-related strong-reference member at `Device+0x28` only after close returns zero.
+- The raw `Device*` cookie is therefore kept allocated by the destructor's active stack frame during the close call, but no evidence proves that factory callback dispatch has stopped before the factory callback registry is destroyed or before the HIDL destructor releases its callback member.
+- A nonzero close result causes an unbounded retry loop in the HIDL destructor body. Do not assume this path always terminates.
+
+These are static control-flow and object-layout observations. They establish an unsafe-capable teardown surface, not a runtime UAF, race, or deadlock.
+
+### Regression gate added
+
+`scripts/repository/audit_primary_hal_p2_device_close_contract.py` now verifies the module-open instruction/literal sequence that initializes `audio_hw_device_mtk.close` and computes that its target equals the audited `HMI.close` entry at `0x0009ba48`. The assertion runs in the P2 private-callback workflow against the SHA-pinned factory ELF.
+
+Remaining blocker: obtain a callback-drain guarantee from the exact target close path or implement a replacement lifetime protocol that closes admission and drains dispatch before destroying registry storage. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
