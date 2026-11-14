@@ -348,3 +348,12 @@ The factory HAL ELF independently confirms the corresponding member signatures:
 Conclusion: the target bridge set/clear wrappers pass the same Device* cookie. The suspected cookie mismatch is rejected. This does not establish callback drain: the factory lock-failure fallthrough remains, and the target bridge Device owner/destructor protocol is still not recovered.
 
 The bridge audit script now asserts the setter cookie register and that clear preserves r1 through the indirect call. A compiler/ABI change that alters this register contract will fail the offline audit rather than silently changing callback identity.
+
+
+## Next target-binary owner-lifetime audit — automation added 2026-11-14
+
+A read-only audit was added at `scripts/repository/audit_primary_hal_p2_hidl_device_lifetime.py` for the SHA-pinned Android 4.0 bridge ELF (`58a1a464ae4cdce9e55693795cca2a01f4a50ffcf27a801c226891a27ecbabfc`).
+
+The audit inventories demangled `Device` constructor/destructor symbols and named OBJECT/NOTYPE symbols whose names suggest callback ownership, vectors, weak/strong references or Device lifetime. It disassembles every retained constructor/destructor with relocations and records direct call targets. The report is intentionally a discovery aid: symbol names and constructor/destructor bodies alone cannot prove that a global owner-pin list is populated, that clear drains callbacks, or that a destructor is reachable during service teardown.
+
+The P2 workflow now includes this report as `p2-hidl-device-lifetime.txt`. **Execution against the target ELF is pending**; no target owner-pin conclusion is promoted until the resulting artifact is reviewed. Missing or stripped symbols must remain an explicit evidence gap, not be interpreted as absence of ownership.
