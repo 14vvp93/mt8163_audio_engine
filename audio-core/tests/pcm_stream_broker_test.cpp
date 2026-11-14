@@ -397,6 +397,64 @@ void test_callback_write_while_opening_another_stream() {
     require(broker.close(11U) == PcmResult::Ok, "first stream closes");
 }
 
+void test_stop_drains_multiple_concurrent_callbacks() {
+    FakePcmBackend backend;
+    TestPcmStreamBroker broker(backend);
+    const PcmConfig config{48000U, 2U, 240U};
+    const std::int16_t samples[2]{};
+    constexpr std::size_t kConcurrentCallbacks = 4U;
+
+    require(broker.open(22U, SourceId::LocalMedia, RouteType::PrimaryPcm) ==
+                PcmResult::Ok,
+            "multi-callback stream opens");
+    require(broker.configure(22U, config) == PcmResult::Ok,
+            "multi-callback stream configures");
+    require(broker.start(22U) == PcmResult::Ok,
+            "multi-callback stream starts");
+
+    backend.block_writes.store(true, std::memory_order_release);
+    std::array<PcmResult, kConcurrentCallbacks> results{};
+    std::array<std::thread, kConcurrentCallbacks> callbacks;
+    for (std::size_t index = 0U; index < kConcurrentCallbacks; ++index) {
+        callbacks[index] = std::thread([&, index] {
+            results[index] = broker.write(22U, samples, 1U);
+        });
+    }
+
+    constexpr std::size_t kSpinLimit = 10'000'000U;
+    std::size_t spins = 0U;
+    while (backend.writes.load(std::memory_order_acquire) <
+               kConcurrentCallbacks &&
+           spins < kSpinLimit) {
+        ++spins;
+        std::this_thread::yield();
+    }
+    require(backend.writes.load(std::memory_order_acquire) ==
+                kConcurrentCallbacks,
+            "all callback threads enter the backend before stop");
+
+    require(broker.stop(22U) == PcmResult::WouldBlock,
+            "stop closes admission while multiple callbacks are in flight");
+    require(backend.stops.load(std::memory_order_acquire) == 0U,
+            "backend stop waits for every admitted callback");
+    require(broker.write(22U, samples, 1U) == PcmResult::InvalidState,
+            "new callback admission is rejected after stop begins");
+
+    backend.release_blocked_write.store(true, std::memory_order_release);
+    for (auto& callback : callbacks) callback.join();
+
+    for (const PcmResult result : results) {
+        require(result == PcmResult::Ok,
+                "each callback admitted before stop completes successfully");
+    }
+    require(broker.stop(22U) == PcmResult::Ok,
+            "stop succeeds after all concurrent callbacks drain");
+    require(backend.stops.load(std::memory_order_acquire) == 1U,
+            "backend stop executes exactly once after concurrent drain");
+    require(broker.close(22U) == PcmResult::Ok,
+            "stream closes after concurrent callback drain");
+}
+
 void test_stop_waits_for_in_flight_callback() {
     FakePcmBackend backend;
     TestPcmStreamBroker broker(backend);
@@ -677,6 +735,7 @@ int main() {
     test_invalid_order_and_arguments();
     test_fixed_capacity();
     test_callback_write_while_opening_another_stream();
+    test_stop_drains_multiple_concurrent_callbacks();
     test_stop_waits_for_in_flight_callback();
     test_stop_failure_can_be_retried();
     test_same_handle_reopen_rejects_stale_session_token();
