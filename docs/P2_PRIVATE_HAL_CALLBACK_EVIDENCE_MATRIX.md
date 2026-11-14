@@ -259,7 +259,7 @@ Pinned bridge binary:
 The targeted disassembly establishes these bridge-side operations:
 
 1. `Device::setAudioParameterChangedCallback(...)` reads the legacy HAL registration slot at `audio_hw_device+0xd4` and invokes it with the static `Device::audioParameterChangedCallback` thunk and the `Device*` cookie. It then assigns the supplied HIDL callback strong reference to the member at `Device+0x28`.
-2. `Device::clearAudioParameterChangedCallback()` invokes the legacy HAL clear slot at `audio_hw_device+0xd8` with the same `Device*` cookie before releasing/resetting the stored callback strong reference at `Device+0x28`.
+2. `Device::clearAudioParameterChangedCallback()` invokes the legacy HAL clear slot at `audio_hw_device+0xd8` before releasing/resetting the stored callback strong reference at `Device+0x28`. The exact argument identity passed through this wrapper is not promoted to a source-level prototype without matching headers.
 3. The static callback thunk obtains a local strong reference from the callback member at `Device+0x28`, invokes the callback interface through vtable byte offset `0x34`, then compares the current member with the previously observed callback and performs the corresponding reference cleanup. This is consistent with protecting the HIDL callback object across a reentrant callback-member replacement.
 4. No direct `alock`, pthread mutex or rwlock primitive call is visible in these three targeted bridge method bodies. This is not proof that every helper or caller is lock-free, and no Device destructor/owner teardown protocol was recovered from this report.
 
