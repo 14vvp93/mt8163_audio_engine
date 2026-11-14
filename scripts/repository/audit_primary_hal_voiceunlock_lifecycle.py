@@ -24,6 +24,8 @@ FUNCTIONS = (
     "android::AudioALSAHardware::setupParametersCallback(int (*)(device_parameters_callback_event_t, audio_hw_device_set_parameters_callback*, void*), void*)",
     "android::AudioALSAHardware::setAudioParameterChangedCallback(int (*)(char const*, void*), void*)",
     "android::AudioALSAHardware::clearAudioParameterChangedCallback(void*)",
+    "android::AudioALSAHardware::onAudioParameterChangedCallback(char const*)",
+    "android::AudioALSAHardware::setParametersByCallback(android::String8 const&)",
     "android::AudioALSAHardware::xWayPlay_Start(int)",
     "android::AudioALSAHardware::xWayPlay_Stop()",
     "android::AudioALSAHardware::xWayPlay_Write(void*, int)",
@@ -34,7 +36,8 @@ FUNCTIONS = (
     "android::AudioALSAHardware::ReadRefFromRing(void*, unsigned int, void*)",
 )
 THREAD_CALLS = re.compile(
-    r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait)|usleep"
+    r"pthread_(?:create|self|detach|join|mutex_lock|mutex_unlock|cond_wait|cond_timedwait|cond_broadcast|cond_signal)|"
+    r"alock_(?:lock_ms|unlock)|usleep"
 )
 SYMBOL_LINE = re.compile(
     r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
@@ -108,7 +111,7 @@ def main() -> int:
         ])
         calls = sorted(set(THREAD_CALLS.findall(disassembly)))
         print(f"\n===== {name} @ 0x{address:08x}, size={size} =====")
-        print("Thread/lifecycle references: " + (", ".join(calls) if calls else "none detected"))
+        print("Synchronization/lifecycle references: " + (", ".join(calls) if calls else "none detected"))
         print(disassembly.rstrip())
 
     print("\nNo runtime or device behavior is inferred by this disassembly report.")
