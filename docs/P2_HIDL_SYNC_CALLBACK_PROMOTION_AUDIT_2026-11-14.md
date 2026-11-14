@@ -135,3 +135,4 @@ Four regression tests cover the known `DeviceC1` branch to veneer address `0x000
 The regex fixtures were checked locally against representative objdump lines. This is not a substitute for the pending GitHub Actions run against the pinned HIDL ELF. Until that run confirms the full derived-constructor callsite inventory, do not promote the earlier negative callsite result to proof that no derived constructor invokes `DeviceC1`.
 
 P2 remains **OPEN**. The raw-cookie pre-promotion window and factory-side in-flight drain are unchanged and remain hard gates.
+The RefBase collector now labels successful symbol coverage as `REFBASE_CANDIDATE_SYMBOL_STATUS: COMPLETE` and separately emits `REFBASE_RUNTIME_SELECTION_STATUS: UNRESOLVED`. The former means both candidate `libutils.so` files expose and disassemble the required symbols; it does not select which library the vendor linker namespace loads at runtime.
