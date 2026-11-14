@@ -10,6 +10,7 @@ on:
       - "docs/PROJECT_ROADMAP.md"
       - "scripts/repository/check_primary_hal_fail_closed.py"
       - "scripts/repository/check_primary_hal_p2_contract.py"
+      - "scripts/repository/scan_primary_hal_p2_clients.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   pull_request:
     branches: [feature]
@@ -20,6 +21,7 @@ on:
       - "docs/PROJECT_ROADMAP.md"
       - "scripts/repository/check_primary_hal_fail_closed.py"
       - "scripts/repository/check_primary_hal_p2_contract.py"
+      - "scripts/repository/scan_primary_hal_p2_clients.py"
       - ".github/workflows/primary-hal-p2-private-callbacks.yml"
   workflow_dispatch:
 
@@ -77,13 +79,18 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: 14vvp93/public_calculations
-          ref: main
+          ref: 865b6efaeff0c4547dab1f4456f2fa664b3611d1
           path: factory-firmware
           sparse-checkout: |
             firmware/extracted/system/bin
             firmware/extracted/system/lib
             firmware/extracted/vendor/bin
             firmware/extracted/vendor/lib
+            firmware/extracted/system/framework
+            firmware/extracted/system/AudioInputSource
+            firmware/extracted/system/audioserver
+            firmware/extracted/vendor/android.hardware.audio@4.0-service-mediatek
+            firmware/extracted/vendor/audiocmdservice_atci
           sparse-checkout-cone-mode: false
       - name: Install ARM32 binutils
         run: |
@@ -103,42 +110,11 @@ jobs:
           python3 tools/audit_android_packed_relocations.py "$binary" | tee p2-factory-relocations.txt
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android18AudioALSAStreamOutE
           python3 tools/audit_android_packed_relocations.py "$binary" --symbol _ZTVN7android17AudioALSAStreamInE
-      - name: Scan extracted libraries and service executables for private-tail clients
-        shell: bash
+      - name: Scan ELF, Android runtime bytecode, and APK/JAR clients
         run: |
           set -euo pipefail
-          root="factory-firmware/firmware/extracted"
-          report="p2-private-callback-client-scan.txt"
-          patterns='xWayPlay|xWayRec|Play2Way|Record2Way|AudioVUnlockDL|VoiceUnlock|voice.?unlock|ReadRefFromRing|setupParametersCallback|audioParameterChanged|setAudioParameterChangedCallback|clearAudioParameterChangedCallback|MTKPrimaryDevicesHalClient|AudioALSAHardware'
-          : > "$report"
-          scanned=0
-          matched=0
-          while IFS= read -r -d '' file; do
-            scanned=$((scanned + 1))
-            symbols="$(arm-linux-gnueabi-nm -D -C "$file" 2>/dev/null | grep -Ei "$patterns" || true)"
-            strings_found="$(strings -a "$file" 2>/dev/null | grep -Ei "$patterns" | sort -u || true)"
-            if [ -n "$symbols" ] || [ -n "$strings_found" ]; then
-              matched=$((matched + 1))
-              {
-                printf '\n===== %s =====\n' "${file#"$root/"}"
-                sha256sum "$file"
-                if [ -n "$symbols" ]; then
-                  printf '%s\n' "-- dynamic symbols --" "$symbols"
-                fi
-                if [ -n "$strings_found" ]; then
-                  printf '%s\n' "-- printable strings --" "$strings_found"
-                fi
-              } >> "$report"
-            fi
-          done < <(find "$root/system/lib" "$root/vendor/lib" "$root/system/bin" "$root/vendor/bin" -type f -print0 2>/dev/null | sort -z)
-          {
-            printf 'Scanned ELF candidates: %s\n' "$scanned"
-            printf 'Files with symbol/string matches: %s\n' "$matched"
-            printf '%s\n' \
-              "LIMITATION: symbol/string matching cannot prove absence of stripped or indirect numeric-offset callers." \
-              "LIMITATION: static firmware scanning does not establish runtime callback ordering or device behavior."
-          } >> "$report"
-          cat "$report"
+          echo "Public firmware dataset commit: 865b6efaeff0c4547dab1f4456f2fa664b3611d1"
+          python3 scripts/repository/scan_primary_hal_p2_clients.py factory-firmware/firmware/extracted | tee p2-private-callback-client-scan.txt
       - name: Preserve reproducible P2 evidence
         uses: actions/upload-artifact@v6
         with:
