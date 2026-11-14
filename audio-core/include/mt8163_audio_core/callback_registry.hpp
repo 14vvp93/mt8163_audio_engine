@@ -97,6 +97,10 @@ public:
                 const Slot* slot = find_slot_locked(id);
                 return slot == nullptr || slot->in_flight == 0U;
             });
+            Slot* drained_slot = find_slot_locked(id);
+            if (drained_slot != nullptr && drained_slot->in_flight == 0U) {
+                retire_slot_locked(*drained_slot);
+            }
             return CallbackRegistryResult::Ok;
         } catch (...) {
             return CallbackRegistryResult::LockFailure;
@@ -135,6 +139,12 @@ public:
                 }
                 return true;
             });
+            for (std::size_t i = 0U; i < count; ++i) {
+                Slot* slot = find_slot_locked(ids[i]);
+                if (slot != nullptr && slot->in_flight == 0U) {
+                    retire_slot_locked(*slot);
+                }
+            }
             return CallbackRegistryResult::Ok;
         } catch (...) {
             return CallbackRegistryResult::LockFailure;
@@ -161,6 +171,7 @@ public:
                 }
                 return true;
             });
+            for (Slot& slot : slots_) retire_slot_locked(slot);
             return CallbackRegistryResult::Ok;
         } catch (...) {
             return CallbackRegistryResult::LockFailure;
@@ -242,6 +253,13 @@ private:
         Callback callback{nullptr};
         void* cookie{nullptr};
     };
+
+    static void retire_slot_locked(Slot& slot) noexcept {
+        slot.callback = nullptr;
+        slot.cookie = nullptr;
+        slot.id = 0U;
+        slot.active = false;
+    }
 
     Slot* find_slot_locked(RegistrationId id) noexcept {
         for (Slot& slot : slots_) {
