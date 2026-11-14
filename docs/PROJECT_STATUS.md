@@ -293,3 +293,14 @@ P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`. N
 - Both candidate system and VNDK-SP-28 libutils libraries expose the required RefBase symbols. The bridge declares DT_NEEDED libutils.so, but actual runtime linker namespace selection is still unresolved because the pinned public firmware dataset does not include the target linker namespace configuration.
 - No factory-side atomic callback/cookie snapshot, owner pin before weak promotion, or in-flight drain has been established. The pre-promotion raw Device-cookie race surface remains open.
 - P2 remains **OPEN**. Primary HAL remains fail-closed and `installable: false`; no callback integration, DSP profile activation, hardware writes, or P3 transition is authorized.
+
+
+## P2 HIDL constructor/helper audit — 2026-11-14
+
+- [CI run 43638564073](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638564073): **3/3 jobs PASS** on feature HEAD `a739e7cf2d64dd7a8885f23849ea7480732fe075`.
+- Evidence artifact [14131102777](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43638564073/artifacts/14131102777), SHA-256 `973f29da91bef15be302a3fc58df4585ab1c0e0069e4235f6cc82abf4d0daca4`.
+- HIDL helper resolution is now **20/20 COMPLETE**, including `0x282ec → RefBase::incStrong@plt` and `0x2894c → Device::Device@plt`; no unresolved helper targets remain.
+- All four PrimaryDevice/MTKPrimaryDevice C1/C2 constructor bodies were disassembled and their headings verified. The three RefBase constructor callsites remain confirmed.
+- Factory `audio_hw_device_mtk.close → HMI.close → AudioALSAHardware deleting destructor` is statically confirmed. This is not proof of callback drain.
+- **P2 remains OPEN**: runtime `libutils.so` namespace selection, callback/cookie pair atomicity, raw-cookie protection before weak promotion, and factory in-flight drain are still unresolved. Primary HAL stays fail-closed and `installable: false`; no DSP activation, hardware writes, or P3 transition.
+- Detailed evidence and gate decision: [P2 HIDL syncCallback promotion audit](P2_HIDL_SYNC_CALLBACK_PROMOTION_AUDIT_2026-11-14.md).
