@@ -8,6 +8,7 @@ Evidence baseline:
 - Target: Android 9, ARM32, MT8163.
 - Primary ABI and private-tail analysis: [Android 9 ARM32 Primary HAL ABI baseline](ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md).
 - Android framework close analysis: [Android 9 stream callback audit](ANDROID9_STREAM_CALLBACK_AUDIT.md).
+- Non-authoritative vendor source comparison: [P2 vendor source corroboration](P2_VENDOR_SOURCE_CORROBORATION.md).
 
 ## Callback inventory
 
@@ -63,7 +64,7 @@ The push-triggered and manually dispatched P2 GitHub Actions workflow pins publi
 - verifies that all 16 offsets remain inventoried and unresolved evidence gaps remain visible;
 - verifies that Primary HAL stream opens still clear output pointers and return `-ENODEV`, and that the module remains `installable: false`.
 
-A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. APK/JAR coverage is limited to DEX and native-library archive members in the pinned extracted dataset; it does not prove coverage of dynamically downloaded code or data-driven dispatch. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
+The current scan's five matches do not include a separately identified xWay caller. A clean symbol/string scan is not proof that stripped or indirect numeric-offset callers do not exist. APK/JAR coverage is limited to DEX and native-library archive members in the pinned extracted dataset; it does not prove coverage of dynamically downloaded code or data-driven dispatch. Static CI cannot prove runtime callback quiescence, target linker namespace behavior, or hardware routing. P2 must remain open until the hard gates above are closed with source/binary evidence and deterministic tests.
 
 ## Enablement policy
 
