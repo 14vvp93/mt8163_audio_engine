@@ -72,7 +72,7 @@ The non-deleting destructor at `0x000c56e4`, size 400 bytes:
 
 No explicit callback admission closure, callback-vector clear loop, or in-flight callback drain is visible in this destructor body. The virtual cleanup at `this+0x04` remains unresolved and could have relevant behavior; its semantics must not be guessed.
 
-The global-pointer identity can be correlated across both functions. In GetInstance(), the load at `0x000d0fa0` resolves through the PC-relative literal to the global pointer cell at `0x00192b78`; the store at `0x000d0fe0` writes the newly constructed object to that same cell. In the destructor, the clear at `0x000c575c..0x000c5760` resolves to `0x00192b78` and stores null. Therefore the destructor explicitly resets the singleton pointer used by GetInstance(). The two following destructor clears target `0x0019a17c` and `0x0019a180`; their ownership is not yet identified.
+The global-pointer identity can be correlated across both functions. In GetInstance(), the load at `0x000d0fa0` resolves through the PC-relative literal to the global pointer cell at `0x00192b78`; the store at `0x000d0fe0` writes the newly constructed object to that same cell. In the destructor, the clear at `0x000c575c..0x000c5760` resolves to `0x00192b78` and stores null. Therefore the destructor explicitly resets the singleton pointer used by GetInstance(). The two following destructor clears target `0x00192b7c` and `0x00192b80`; their ownership is not yet identified.
 
 ## Concurrency risk surface
 
