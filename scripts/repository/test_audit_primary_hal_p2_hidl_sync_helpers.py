@@ -104,6 +104,18 @@ class ParseFunctionsTests(unittest.TestCase):
         self.assertFalse(any("FULL_FUNCTION_RANGE" in line for line in lines))
 
 
+    def test_disassembles_bounded_thumb_target_window(self) -> None:
+        with patch.object(auditor, "run", return_value="bounded disassembly") as run:
+            output = auditor.disassemble_target_window(Path("bridge.so"), 0x284DC)
+
+        self.assertEqual(output, "bounded disassembly")
+        command = run.call_args.args[0]
+        self.assertIn("-D", command)
+        self.assertIn("-M", command)
+        self.assertIn("force-thumb", command)
+        self.assertIn("--start-address=0x284dc", command)
+        self.assertIn("--stop-address=0x2853c", command)
+
     def test_disassembles_entire_function_extent(self) -> None:
         with patch.object(auditor, "run", return_value="disassembly") as run:
             output = auditor.disassemble(Path("bridge.so"), 0x28040, 0x180, True)
