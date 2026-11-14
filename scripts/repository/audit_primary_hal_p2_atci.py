@@ -10,7 +10,7 @@ from pathlib import Path
 EXPECTED_SHA256 = "302eee8562067a54d4b9e65ef982a100b94b36be6f73a993b9e01e059421a566"
 CLIENT_SYMBOL = re.compile(r"MTKPrimaryDevicesHalClient", re.IGNORECASE)
 CALL_TARGET = re.compile(
-    r"\\b(?:bl|blx)\\s+[^<\\n]*<([^>]*MTKPrimaryDevicesHalClient[^>]*)>",
+    r"\b(?:bl|blx)\s+[^<\n]*<([^>]*MTKPrimaryDevicesHalClient[^>]*)>",
     re.IGNORECASE,
 )
 FUNCTION_LABEL = re.compile(r"^([0-9a-fA-F]+) <(.+)>:$")
@@ -29,7 +29,7 @@ def run(command: list[str], timeout: int = 120) -> str:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\\n{result.stderr}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr}"
         )
     return result.stdout
 
@@ -63,13 +63,13 @@ def main() -> int:
         label = FUNCTION_LABEL.match(line)
         if label:
             if current_name:
-                blocks.append((current_name, "\\n".join(current_lines)))
+                blocks.append((current_name, "\n".join(current_lines)))
             current_name = label.group(2)
             current_lines = [line]
         elif current_name:
             current_lines.append(line)
     if current_name:
-        blocks.append((current_name, "\\n".join(current_lines)))
+        blocks.append((current_name, "\n".join(current_lines)))
 
     callers = [
         (name, block)
@@ -88,10 +88,10 @@ def main() -> int:
 
     print(f"Direct caller functions found: {len(callers)}")
     for name, block in callers:
-        print(f"\\n===== ATCI caller: {name} =====")
+        print(f"\n===== ATCI caller: {name} =====")
         print(block)
 
-    print("\\nNo runtime ATCI service invocation or device behavior is inferred.")
+    print("\nNo runtime ATCI service invocation or device behavior is inferred.")
     return 0
 
 
