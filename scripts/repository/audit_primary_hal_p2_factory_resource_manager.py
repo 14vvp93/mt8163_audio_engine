@@ -209,11 +209,19 @@ def main() -> int:
     atexit_target_body = disassemble(binary, ATEXIT_FUNCTION, ATEXIT_FUNCTION + 0x80)
     require(
         "alock_free@plt" in atexit_target_body
-        and re.search(r"str\\s+r1,\\s*\\[r0\\],\\s*#4", atexit_target_body) is not None,
+        and re.search(r"str\s+r1,\s*\[r0\],\s*#4", atexit_target_body) is not None,
         "__cxa_atexit target no longer matches the static alock cleanup callback shape",
     )
-    manager_singleton_cell_referenced_by_destructor = (
-        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}" in manager_nondeleting_destructor_body.lower()
+    manager_singleton_reset = (
+        re.search(r"77bac:.*ldr\s+r0,\s*\[pc,\s*#564\].*@ 77de8", manager_nondeleting_destructor_body) is not None
+        and re.search(r"77bb0:.*mov\s+r1,\s*#0", manager_nondeleting_destructor_body) is not None
+        and re.search(r"77bb4:.*ldr\s+r0,\s*\[pc,\s*r0\]", manager_nondeleting_destructor_body) is not None
+        and re.search(r"77bb8:.*str\s+r1,\s*\[r0\]", manager_nondeleting_destructor_body) is not None
+        and re.search(r"77de8:\s+0011ade4", manager_nondeleting_destructor_body) is not None
+    )
+    require(
+        manager_singleton_reset,
+        "AudioALSAStreamManager destructor no longer resets singleton pointer cell 0x001929A0",
     )
 
     print(f"Factory HAL SHA-256: {digest}")
@@ -244,11 +252,10 @@ def main() -> int:
     )
     print("getInstance() lock-failure path: alock_lock_ms failure logs and falls through to singleton pointer read/create")
     print(
-        "STATIC OBSERVATION: manager destructor directly references singleton pointer cell "
-        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x}: {manager_singleton_cell_referenced_by_destructor}"
+        "CONTRACT VERIFIED: AudioALSAStreamManager destructor clears singleton pointer cell "
+        f"0x{MANAGER_SINGLETON_POINTER_CELL:08x} to null."
     )
-    print("The destructor body contains no direct reference to that singleton cell when the value is False.")
-    print("__cxa_atexit callback target matches alock_free cleanup of its supplied static lock object argument.")
+    print("__cxa_atexit callback target is an interior cleanup thunk in AudioALSAHardwareResourceManager::getInstance(); it rewrites the supplied lock object's vptr and calls alock_free.")
     print(f"__cxa_atexit callback target disassembly at 0x{ATEXIT_FUNCTION:08x}:")
     print(atexit_target_body.rstrip())
     print("STATIC CONTRACT: AudioALSAHardware destruction dispatches the resource-manager deleting-destructor slot.")
