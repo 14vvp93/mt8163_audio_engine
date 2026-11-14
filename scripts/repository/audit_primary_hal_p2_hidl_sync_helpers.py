@@ -23,6 +23,13 @@ HELPER_TARGETS = (
     0x281EC,
     0x2851C,
     0x2811C,
+    0x281DC,
+    0x2824C,
+    0x2825C,
+    0x281FC,
+    0x2821C,
+    0x2822C,
+    0x2823C,
 )
 SYMBOL_LINE = re.compile(
     r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
