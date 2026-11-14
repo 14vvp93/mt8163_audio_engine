@@ -74,6 +74,15 @@ def resolve_function(
     return smallest[0], smallest[1], " | ".join(names), smallest[3]
 
 
+def unresolved_report_lines(target: int, error: RuntimeError) -> list[str]:
+    return [
+        "",
+        f"CALL_TARGET 0x{target:08x} -> UNRESOLVED",
+        f"RESOLUTION_ERROR: {error}",
+        "No guessed function boundary or truncated disassembly was emitted.",
+    ]
+
+
 def disassemble(binary: Path, address: int, size: int, thumb: bool) -> str:
     if address < 0 or size <= 0:
         raise ValueError("invalid function disassembly range")
@@ -123,12 +132,7 @@ def main() -> int:
             address, size, name, thumb = resolve_function(target, functions)
         except RuntimeError as error:
             unresolved.append(target)
-            reports.extend([
-                "",
-                f"CALL_TARGET 0x{target:08x} -> UNRESOLVED",
-                f"RESOLUTION_ERROR: {error}",
-                "No guessed function boundary or truncated disassembly was emitted.",
-            ])
+            reports.extend(unresolved_report_lines(target, error))
             continue
 
         reports.extend([
