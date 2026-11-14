@@ -251,7 +251,7 @@ def resolve_plt_symbol(binary: Path, address: int) -> str | None:
         str(binary),
     ])
     pattern = re.compile(
-        rf"^\\s*{address:08x}\\s+<([^>]+)>:",
+        rf"^\s*{address:08x}\s+<([^>]+)>:",
         re.MULTILINE,
     )
     match = pattern.search(output)
