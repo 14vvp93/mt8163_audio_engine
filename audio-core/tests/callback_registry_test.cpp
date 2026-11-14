@@ -76,8 +76,9 @@ void test_register_dispatch_and_clear() {
     require(registry.register_callback(count_callback, &counter, &id) ==
                 CallbackRegistryResult::Ok && id != 0U,
             "callback registers with a nonzero identity");
-    require(registry.register_callback(count_callback, &counter, &id) ==
-                CallbackRegistryResult::AlreadyRegistered,
+    CallbackRegistry::RegistrationId duplicate_id = 0U;
+    require(registry.register_callback(count_callback, &counter, &duplicate_id) ==
+                CallbackRegistryResult::AlreadyRegistered && duplicate_id == 0U,
             "duplicate callback and cookie are rejected");
     require(registry.dispatch("mode=normal") == 1U,
             "active callback is dispatched");
