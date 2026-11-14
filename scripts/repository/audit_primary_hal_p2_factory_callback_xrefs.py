@@ -90,7 +90,7 @@ def parse_function_instructions(
         if header is not None:
             header_address = int(header.group(1), 16)
             if matched_function:
-                if records or header_address != matched_address:
+                if header_address != matched_address:
                     break
                 current_function = header.group(2)
                 matched_function = (
