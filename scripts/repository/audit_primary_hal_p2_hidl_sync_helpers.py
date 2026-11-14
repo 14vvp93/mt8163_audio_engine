@@ -241,6 +241,23 @@ def resolve_veneer_target(binary: Path, target: int) -> tuple[int, str, str]:
     return destination, target_section[0], destination_section[0]
 
 
+def resolve_plt_symbol(binary: Path, address: int) -> str | None:
+    if address < 0:
+        raise ValueError("invalid PLT address")
+    output = run([
+        "arm-linux-gnueabi-objdump", "-D", "-C",
+        f"--start-address=0x{address:x}",
+        f"--stop-address=0x{address + 4:x}",
+        str(binary),
+    ])
+    pattern = re.compile(
+        rf"^\\s*{address:08x}\\s+<([^>]+)>:",
+        re.MULTILINE,
+    )
+    match = pattern.search(output)
+    return match.group(1) if match is not None else None
+
+
 def disassemble_target_window(binary: Path, target: int) -> str:
     if target < 0:
         raise ValueError("invalid helper target address")
@@ -331,8 +348,18 @@ def main() -> int:
                     resolve_function(destination, functions)
                 )
             except RuntimeError as destination_error:
+                plt_symbol = (
+                    resolve_plt_symbol(binary, destination)
+                    if destination_section.startswith(".plt")
+                    else None
+                )
+                if plt_symbol is not None:
+                    reports.append(f"DESTINATION_PLT_SYMBOL: {plt_symbol}")
+                else:
+                    reports.append(
+                        f"DESTINATION_SYMBOL: UNRESOLVED ({destination_error})"
+                    )
                 reports.extend([
-                    f"DESTINATION_SYMBOL: UNRESOLVED ({destination_error})",
                     f"DESTINATION_WINDOW 0x{destination:08x}.."
                     f"0x{destination + HELPER_WINDOW_SIZE:08x} "
                     "(fixed inspection window; not a function boundary)",
