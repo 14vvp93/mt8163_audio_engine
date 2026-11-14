@@ -111,8 +111,8 @@ class ParseFunctionsTests(unittest.TestCase):
         self.assertEqual(output, "bounded disassembly")
         command = run.call_args.args[0]
         self.assertIn("-D", command)
-        self.assertIn("-M", command)
-        self.assertIn("force-thumb", command)
+        self.assertNotIn("-M", command)
+        self.assertNotIn("force-thumb", command)
         self.assertIn("--start-address=0x284dc", command)
         self.assertIn("--stop-address=0x2853c", command)
 
