@@ -53,6 +53,14 @@ This is stronger evidence than merely observing the callback interface's own str
 
 ## Remaining race and teardown boundary
 
+Factory dispatch at `AudioALSAHardware::setParametersByCallback` (`0x000cf108`) makes the pre-promotion window concrete:
+
+- `0x000cf1f8–0x000cf204` loads the callback pointer from effective GOT cell `0x00192b80` into `r3`.
+- `0x000cf208–0x000cf210` separately loads the cookie from effective GOT cell `0x00192b7c` into `r2`.
+- `0x000cf218` invokes `BLX r3` with event 0 and the parameter payload.
+- There is no visible lock, atomic pair load, owner pin, or in-flight accounting around these loads and invocation in the audited body.
+- Registration stores callback before cookie; factory destruction clears cookie before callback. Concurrent replacement can therefore expose a mixed pair, and a dispatch that has already loaded the old pair can continue after the global cells are cleared.
+
 The promotion does **not** close the interval before `createWeak`/ `attemptIncStrong` succeeds:
 
 - Factory `AudioALSAHardware::setParametersByCallback` loads the global callback pointer and cookie from separate GOT cells, then calls the function pointer. No lock, atomic pair load, owner pin, or in-flight counter is visible around those operations in the audited body.
