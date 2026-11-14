@@ -283,8 +283,8 @@ void test_shutdown_is_terminal_and_drained() {
             "shutdown permanently rejects new callbacks");
     require(registry.dispatch("ignored") == 0U,
             "shutdown registry never dispatches callbacks");
-    require(registry.clear_and_drain(id) == CallbackRegistryResult::Ok,
-            "shutdown leaves no in-flight callback");
+    require(registry.clear_and_drain(id) == CallbackRegistryResult::NotFound,
+            "shutdown retires every registration after draining");
 }
 
 }  // namespace
