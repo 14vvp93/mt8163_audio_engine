@@ -117,8 +117,20 @@ def main() -> int:
         "All helper inspection is read-only; no runtime behavior is inferred from names.",
     ]
 
+    unresolved: list[int] = []
     for target in HELPER_TARGETS:
-        address, size, name, thumb = resolve_function(target, functions)
+        try:
+            address, size, name, thumb = resolve_function(target, functions)
+        except RuntimeError as error:
+            unresolved.append(target)
+            reports.extend([
+                "",
+                f"CALL_TARGET 0x{target:08x} -> UNRESOLVED",
+                f"RESOLUTION_ERROR: {error}",
+                "No guessed function boundary or truncated disassembly was emitted.",
+            ])
+            continue
+
         reports.extend([
             "",
             f"CALL_TARGET 0x{target:08x} -> FUNC 0x{address:08x} "
@@ -130,6 +142,11 @@ def main() -> int:
 
     reports.extend([
         "",
+        f"HELPER_RESOLUTION_STATUS: {'INCOMPLETE' if unresolved else 'COMPLETE'}",
+        "UNRESOLVED_HELPER_TARGETS: "
+        + (", ".join(f"0x{target:08x}" for target in unresolved) if unresolved else "none"),
+        "An INCOMPLETE report is a successful evidence-generation result, not a lifetime "
+        "or P2 pass. Unresolved helpers remain explicit P2 evidence gaps.",
         "Static helper disassembly only. Determine object pinning, reference ownership, "
         "and callback lifetime from complete instruction/dataflow evidence; helper names "
         "alone are not lifetime guarantees.",
