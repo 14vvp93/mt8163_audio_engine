@@ -364,6 +364,8 @@ def main() -> int:
         "event_thread_signal": "AudioEventThread::signal(void*)",
         "event_thread_add_callback": "AudioEventThread::addCallback(void (*)(int, void*), void*)",
         "event_manager_destructor": "AudioEventThreadManager::~AudioEventThreadManager()",
+        "event_manager_notify": "AudioEventThreadManager::notifyCallback(android::AudioEventType, void*)",
+        "stream_manager_constructor": "AudioALSAStreamManager::AudioALSAStreamManager()",
     }
     for label, fragment in event_thread_functions.items():
         matches = [
