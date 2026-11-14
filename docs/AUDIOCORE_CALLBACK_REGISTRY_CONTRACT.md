@@ -7,6 +7,7 @@
 ## Synchronization contract
 
 - Capacity is fixed at 16 registrations. Registration is the only operation that may fail for capacity; dispatch uses a fixed stack snapshot and performs no heap allocation.
+- Dispatch takes a mutex and is not real-time safe. This component is only a candidate for serialized/control-plane parameter notifications; it must never be called from PCM read/write callbacks or a hard real-time audio thread.
 - One mutex protects slot identity, callback admission, and in-flight counters.
 - Dispatch reserves an in-flight reference for every admitted slot while holding the mutex, then invokes callbacks after releasing the mutex.
 - Before each invocation, dispatch rechecks admission. A callback disabled by an earlier callback in the same batch is skipped.
