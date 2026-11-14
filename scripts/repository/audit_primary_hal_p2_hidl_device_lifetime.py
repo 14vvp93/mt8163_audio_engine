@@ -203,6 +203,28 @@ def main() -> int:
         print("VTABLE_RELOCATIONS:")
         print("\n".join(vtable_relocations) if vtable_relocations else "none")
 
+    for index, (address, size, _, name) in enumerate(derived_constructors):
+        print(
+            f"\\n===== DERIVED_CONSTRUCTOR {index}: {name} "
+            f"@ 0x{address:08x}, size={size} ====="
+        )
+        if size <= 0:
+            print("No function size recorded; disassembly skipped.")
+            continue
+        code_address = address & ~1
+        command = ["arm-linux-gnueabi-objdump", "-dr", "-C"]
+        if address & 1:
+            command.extend(["-M", "force-thumb"])
+        command.extend([
+            f"--start-address=0x{code_address:x}",
+            f"--stop-address=0x{code_address + size:x}",
+            str(binary),
+        ])
+        disassembly = run(command)
+        calls = sorted(set(CALL_TARGET.findall(disassembly)), key=str.casefold)
+        print("Direct call targets: " + (", ".join(calls) if calls else "none detected"))
+        print(disassembly.rstrip())
+
     for label, candidates in (("CONSTRUCTOR", constructors), ("DESTRUCTOR", destructors)):
         for index, (address, size, _, name) in enumerate(candidates):
             print(f"\n===== {label} {index}: {name} @ 0x{address:08x}, size={size} =====")
