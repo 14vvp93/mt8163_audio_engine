@@ -73,7 +73,7 @@ jobs:
             scripts/repository/scan_primary_hal_p2_clients.py \
             scripts/repository/audit_primary_hal_voiceunlock_lifecycle.py \
             scripts/repository/audit_primary_hal_p2_client.py \
-            scripts/repository/audit_primary_hal_p2_atci.py
+            scripts/repository/audit_primary_hal_p2_atci.py \
             scripts/repository/audit_primary_hal_p2_hidl_callback.py
           python3 scripts/repository/check_markdown_links.py
       - name: Validate workflow YAML
