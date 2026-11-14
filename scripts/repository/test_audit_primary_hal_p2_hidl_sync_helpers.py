@@ -110,7 +110,7 @@ class ParseFunctionsTests(unittest.TestCase):
         section_count = 4
         names_offset = section_table_offset + section_count * 40
         text_address = 0x1000
-        text = bytearray(0x80)
+        text = bytearray(0x50)
         plt_address = 0x1050
         plt = bytearray(0x40)
         text_offset = names_offset + len(names)
