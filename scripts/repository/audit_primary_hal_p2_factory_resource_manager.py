@@ -7,6 +7,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.audit_android_packed_relocations import (
+    R_ARM_ABS32,
+    R_ARM_RELATIVE,
+    decode_aps2,
+    parse_elf32,
+)
+
 EXPECTED_SHA256 = "112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4"
 RESOURCE_VTABLE = "_ZTVN7android22AudioALSAStreamManagerE"
 CONSTRUCTOR_START = 0x000C5274
@@ -79,10 +87,50 @@ def read_elf_word(binary: Path, address: int) -> int:
     raise RuntimeError(f"could not read ELF word at 0x{address:08x}")
 
 
+def resolve_relocated_pointer(binary: Path, address: int) -> tuple[int, int, str]:
+    data = binary.read_bytes()
+    sections, symbols = parse_elf32(data)
+    relocation_section = next((section for section in sections if section.name == ".rel.dyn"), None)
+    require(relocation_section is not None, "factory ELF has no .rel.dyn section")
+    relocation_data = data[
+        relocation_section.offset : relocation_section.offset + relocation_section.size
+    ]
+    relocations, _ = decode_aps2(relocation_data)
+    matches = [relocation for relocation in relocations if relocation.offset == address]
+    require(
+        len(matches) == 1,
+        f"expected one dynamic relocation for pointer cell 0x{address:08x}, found {len(matches)}",
+    )
+
+    relocation = matches[0]
+    relocation_type = relocation.info & 0xFF
+    symbol_index = relocation.info >> 8
+    implicit_addend = read_elf_word(binary, address)
+
+    if relocation_type == R_ARM_RELATIVE:
+        require(symbol_index == 0, "R_ARM_RELATIVE pointer relocation has a non-zero symbol index")
+        target = implicit_addend
+        description = f"R_ARM_RELATIVE(addend=0x{implicit_addend:08x})"
+    elif relocation_type == R_ARM_ABS32:
+        require(symbol_index < len(symbols), f"invalid relocation symbol index {symbol_index}")
+        target_symbol = symbols[symbol_index]
+        target = (target_symbol.value + implicit_addend) & 0xFFFFFFFF
+        description = (
+            f"R_ARM_ABS32(symbol={target_symbol.name or '<anonymous>'}, "
+            f"symbol_value=0x{target_symbol.value:08x}, addend=0x{implicit_addend:08x})"
+        )
+    else:
+        raise RuntimeError(
+            f"unsupported pointer relocation type {relocation_type} at 0x{address:08x}"
+        )
+
+    return implicit_addend, target, description
+
+
 def parse_function_symbols(readelf_output: str) -> list[tuple[int, int, str]]:
     symbols: list[tuple[int, int, str]] = []
     pattern = re.compile(
-        r"^\s*\d+:\s+([0-9a-fA-F]+)\s+([0-9]+)\s+FUNC\s+\S+\s+\S+\s+\S+\s+(.+?)\s*$"
+        r"^\\s*\\d+:\\s+([0-9a-fA-F]+)\\s+([0-9]+)\\s+FUNC\\s+\\S+\\s+\\S+\\s+\\S+\\s+(.+?)\\s*$"
     )
     for line in readelf_output.splitlines():
         match = pattern.match(line)
@@ -90,7 +138,6 @@ def parse_function_symbols(readelf_output: str) -> list[tuple[int, int, str]]:
             address, size, name = match.groups()
             symbols.append((int(address, 16), int(size, 10), name))
     return symbols
-
 
 def main() -> int:
     if len(sys.argv) != 4:
@@ -468,9 +515,14 @@ def main() -> int:
         callback_cell == 0x001929C8,
         f"unexpected StreamManager event callback pointer cell: 0x{callback_cell:08x}",
     )
-    callback_target_raw = read_elf_word(binary, callback_cell)
-    callback_target = callback_target_raw & ~1
-    require(callback_target != 0, "StreamManager event callback pointer is null in pinned factory ELF")
+    callback_target_raw, callback_target_relocated, callback_relocation = resolve_relocated_pointer(
+        binary, callback_cell
+    )
+    callback_target = callback_target_relocated & ~1
+    require(
+        callback_target != 0,
+        "StreamManager event callback pointer resolves to null after applying its ELF relocation",
+    )
     callback_symbols = [
         (address, size, name)
         for address, size, name in functions
@@ -488,7 +540,8 @@ def main() -> int:
     )
     print(
         "StreamManager AudioEventType(0) callback pointer: "
-        f"cell=0x{callback_cell:08x}, raw=0x{callback_target_raw:08x}, "
+        f"cell=0x{callback_cell:08x}, raw_addend=0x{callback_target_raw:08x}, "
+        f"relocation={callback_relocation}, relocated=0x{callback_target_relocated:08x}, "
         f"target=0x{callback_target:08x}, symbol={callback_symbol[2]}"
     )
     print("===== STREAM MANAGER EVENT CALLBACK TARGET =====")
