@@ -5,7 +5,8 @@ on:
     branches: [feature]
     paths:
       - "primary-hal/**"
-      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"\n      - "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
+      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"
+      - "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
       - "docs/PROJECT_ROADMAP.md"
       - "scripts/repository/check_primary_hal_fail_closed.py"
       - "scripts/repository/check_primary_hal_p2_contract.py"
@@ -14,7 +15,8 @@ on:
     branches: [feature]
     paths:
       - "primary-hal/**"
-      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"\n      - "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
+      - "docs/ANDROID9_ARM32_PRIMARY_HAL_ABI_BASELINE.md"
+      - "docs/P2_PRIVATE_HAL_CALLBACK_EVIDENCE_MATRIX.md"
       - "docs/PROJECT_ROADMAP.md"
       - "scripts/repository/check_primary_hal_fail_closed.py"
       - "scripts/repository/check_primary_hal_p2_contract.py"
