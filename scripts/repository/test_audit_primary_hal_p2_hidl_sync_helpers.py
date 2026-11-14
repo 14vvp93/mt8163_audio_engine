@@ -180,10 +180,10 @@ class ParseFunctionsTests(unittest.TestCase):
 
     def test_resolves_plt_symbol_from_exact_entry_header(self) -> None:
         output = (
-            "bridge.so: file format elf32-littlearm\\n"
-            "Disassembly of section .plt:\\n"
-            "000193fc <android::RefBase::RefBase()@plt>:\\n"
-            "  193fc: e28fc600 add ip, pc, #0, 12\\n"
+            "bridge.so: file format elf32-littlearm\n"
+            "Disassembly of section .plt:\n"
+            "000193fc <android::RefBase::RefBase()@plt>:\n"
+            "  193fc: e28fc600 add ip, pc, #0, 12\n"
         )
         with patch.object(auditor, "run", return_value=output) as run:
             symbol = auditor.resolve_plt_symbol(Path("bridge.so"), 0x193FC)
