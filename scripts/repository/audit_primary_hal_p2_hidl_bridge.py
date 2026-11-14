@@ -121,11 +121,39 @@ def main() -> int:
     if not re.search(r"#216", clearer) or not re.search(r"\bblx\s+r2\b", clearer):
         raise RuntimeError("callback clearer no longer dispatches the legacy clear slot at device offset 0xd8")
 
+    set_cookie = re.search(
+        r"mov\s+r6,\s*r1[\s\S]*?ldr\s+r0,\s*\[r6,\s*#8\][\s\S]*?"
+        r"ldr\.w?\s+r3,\s*\[r0,\s*#212\][\s\S]*?"
+        r"mov\s+r2,\s*r6[\s\S]*?blx\s+r3",
+        setter,
+        re.IGNORECASE,
+    )
+    if not set_cookie:
+        raise RuntimeError("setter no longer passes Device (this) as the third legacy HAL registration argument")
+
+    clear_call = re.search(
+        r"ldr\s+r0,\s*\[r1,\s*#8\][\s\S]*?"
+        r"ldr\.w?\s+r2,\s*\[r0,\s*#216\][\s\S]*?blx\s+r2",
+        clearer,
+        re.IGNORECASE,
+    )
+    if not clear_call:
+        raise RuntimeError("clearer no longer loads the legacy clear slot and calls it with the expected object pointer")
+    clear_prefix = clearer[:clear_call.end()]
+    if re.search(
+        r"^\s*[0-9a-f]+:.*\b(?:mov|ldr(?:\.w)?|add(?:\.w)?|sub(?:\.w)?|eor|orr)\s+r1(?:,|\s)",
+        clear_prefix,
+        re.IGNORECASE | re.MULTILINE,
+    ):
+        raise RuntimeError("clear wrapper now clobbers r1 before the legacy clear call; Device cookie identity changed")
+
     print("\nVerified bridge contract:")
     print("- callback thunk reads the stored HIDL callback member at Device+0x28")
     print("- callback thunk invokes the callback interface through vtable byte offset 0x34")
     print("- setter invokes the legacy HAL registration slot at audio_hw_device+0xd4")
     print("- clearer invokes the legacy HAL clear slot at audio_hw_device+0xd8")
+    print("- setter passes Device (this) as the callback cookie in r2")
+    print("- clear preserves Device (this) in r1 as the matching cookie argument")
     print("- no runtime Device destruction or callback quiescence is inferred")
     return 0
 
