@@ -114,3 +114,26 @@ The check has been committed but its first CI execution is pending. Do not repor
 - [ ] Add deterministic host tests for open/last-close, concurrent GetInstance/destructor, callback dispatch/destruction, and reentrancy.
 
 Primary HAL remains fail-closed and `installable: false`. No device writes, flashing, or hardware operations are authorized. P2 remains **OPEN**.
+
+
+## Follow-up: resource-manager singleton and second destruction edge
+
+Evidence captured by workflow run [43584659206](https://github.com/14vvp93/mt8163_audio_engine/actions/runs/43584659206), commit `25d31c459f46360c5b12ba083af2b061ffa2cf82`, artifact ID `14110150942`:
+
+- All three workflow jobs completed successfully.
+- Factory ELF SHA-256 remains `112744a4dad30d809d638d8aecd75ddba1ed7bbfcda8c4d2f9fde4463d8bfde4`.
+- `AudioALSAHardware::AudioALSAHardware()` calls `AudioALSAStreamManager::getInstance()` and stores the result at `this+0x04`.
+- `AudioALSAHardware::~AudioALSAHardware()` loads that member and invokes its second virtual slot.
+- Resource-manager vtable `_ZTVN7android22AudioALSAStreamManagerE` has non-deleting destructor at `+0x008` / `0x00077b58`, and deleting destructor at `+0x00c` / `0x00077e20`.
+- The deleting destructor at `0x00077e20` calls the non-deleting destructor through PLT, then branches to `operator delete(void*)@plt`. This proves the virtual cleanup releases the manager allocation after its non-deleting destructor returns; it does not yet establish what resources the non-deleting destructor tears down.
+- `AudioALSAStreamManager::getInstance()` at `0x00076618`, size 656, lazily allocates `0xF4` bytes when its global pointer is null. The PC-relative load/store pair resolves to singleton pointer cell `0x001929A0`.
+- The function initializes a local-static guard and an `alock` lock object. On `alock_lock_ms()` failure it logs a warning and falls through into the singleton pointer read/create path. Therefore this factory singleton accessor also has a statically confirmed lock-failure path that proceeds without confirmed lock ownership.
+- The resource-manager vtable relocation report and HMI close contract establish the destructor dispatch chain, but no runtime race or use-after-free is claimed.
+
+The run's audit script did not yet emit the non-deleting destructor body or decode the `__cxa_atexit` target. A follow-up CI change now adds both disassemblies and records the manager singleton pointer cell. The exact manager teardown semantics and the atexit callback target remain pending until that follow-up run passes and its artifact is inspected.
+
+## Current safety interpretation
+
+The factory path contains two nested lifetime domains: the HMI-owned `AudioALSAHardware` singleton and the `AudioALSAStreamManager` singleton retained by each hardware object at `+0x04`. The last HMI close statically dispatches the hardware deleting destructor, which in turn dispatches the manager deleting destructor. The lock-failure path in manager `getInstance()` is not fail-closed.
+
+This increases the importance of proving serialization across last-close, singleton recreation, and manager destruction. It does **not** authorize replacing either factory component or enabling the replacement HAL. P2 remains **OPEN**; Primary HAL remains fail-closed and `installable: false`.
