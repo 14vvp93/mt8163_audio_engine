@@ -204,6 +204,19 @@ def audit_hidl_library(binary: Path, label: str) -> list[str]:
     return report
 
 
+def refbase_implementation_status(
+    bridge_uses_libutils: bool,
+    missing_by_library: dict[str, set[str]],
+) -> str:
+    if bridge_uses_libutils and missing_by_library and not any(missing_by_library.values()):
+        return "COMPLETE"
+    return "INCOMPLETE"
+
+
+def refbase_implementation_exit_code(status: str) -> int:
+    return 0 if status == "COMPLETE" else 1
+
+
 def audit_bridge_dependencies(bridge: Path) -> tuple[list[str], bool]:
     if not bridge.is_file() or bridge.stat().st_size == 0:
         raise RuntimeError(f"missing or empty HIDL bridge: {bridge}")
@@ -269,6 +282,10 @@ def main() -> int:
         ):
             report.extend(["", *audit_hidl_library(binary, label)])
 
+        implementation_status = refbase_implementation_status(
+            bridge_uses_libutils,
+            all_missing,
+        )
         report.extend([
             "",
             "===== LINKER-NAMESPACE LIMIT =====",
@@ -277,12 +294,7 @@ def main() -> int:
             "configuration and actual namespace search order are not yet pinned.",
             "",
             f"BRIDGE_LIBUTILS_DEPENDENCY: {'CONFIRMED' if bridge_uses_libutils else 'UNRESOLVED'}",
-            "REFBASE_IMPLEMENTATION_STATUS: "
-            + (
-                "COMPLETE"
-                if bridge_uses_libutils and not any(all_missing.values())
-                else "INCOMPLETE"
-            ),
+            f"REFBASE_IMPLEMENTATION_STATUS: {implementation_status}",
         ])
         rendered = "\n".join(report) + "\n"
         output.write_text(rendered, encoding="utf-8")
@@ -290,7 +302,7 @@ def main() -> int:
     except (OSError, RuntimeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    return 0
+    return refbase_implementation_exit_code(implementation_status)
 
 
 if __name__ == "__main__":
