@@ -598,3 +598,25 @@ The factory audit preserved 16 reports in artifact [14122478954](https://github.
 After that run, feature advanced to `77c3741c4d3afc29298417b832b53af295bd3a3b` with the new read-only `audit_primary_hal_p2_hidl_sync_helpers.py` and its workflow integration. The helper auditor disassembles the direct helper targets reached from `Device::syncCallback` so reference ownership and lifetime behavior can be assessed from instructions/dataflow rather than helper names. **Run 43617327107 predates those additions and does not validate this helper auditor.** The current feature update is intentionally triggering a fresh P2 workflow; its artifact must be inspected before assigning semantics to those helpers.
 
 Current branch check at this update: `feature=77c3741c4d3afc29298417b832b53af295bd3a3b`; `main=cc2fd72ed118c8695ccbe9556f5b5841efc0af59` (unchanged). P2 remains OPEN; Primary HAL remains fail-closed and `installable: false`.
+
+
+## 2026-11-14 — HIDL syncCallback helper auditor range correction
+
+The first helper collector limited each disassembly to at most 0x100 bytes beginning at the call target. That excerpt could omit a helper's entry prologue, later control-flow branches, or epilogue and was insufficient as the sole basis for reference-lifetime conclusions.
+
+The collector was corrected on feature:
+- resolve each direct BL target to its smallest containing sized `FUNC` symbol;
+- preserve the exact target offset and ARM/Thumb mode in the report;
+- disassemble the complete containing function range, from symbol start through symbol size;
+- fail when the symbol table has no usable sized function entries;
+- retain the pinned HIDL bridge SHA-256 check.
+
+Added four unit tests covering ARM/Thumb symbol parsing, smallest-containing-function and alias resolution, unknown target rejection, and full-function disassembly bounds. The P2 workflow now explicitly py-compiles the new test module; its existing unittest discovery also executes it.
+
+Commits:
+- Auditor and tests: `eb00679ef692ac18e68ef74017c4fd9946c60ea2`, `735b73944fb6c9a6b086e56968c8a696d11f4c6a`.
+- Workflow py_compile integration: `ff9d0cb5eee84344ca8479304e597281fbbbccd3`.
+
+The GitHub connector reports no CI status checks for these commits, and no workflow run has yet been retrieved for them. Therefore the correction and tests are **not CI-verified** at this point. Do not interpret the earlier run `43617327107` as validating this new collector. The next evidence step is to run the P2 workflow on current feature and inspect `p2-hidl-sync-helpers.txt` before drawing any conclusions about RefBase helper behavior.
+
+P2 remains OPEN. Primary HAL remains fail-closed and `installable: false`; no callback integration, DSP activation, or P3 transition.
