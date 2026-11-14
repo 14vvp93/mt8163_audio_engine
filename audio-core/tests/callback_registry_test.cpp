@@ -278,8 +278,9 @@ void test_shutdown_is_terminal_and_drained() {
             "callback registers before shutdown");
     require(registry.shutdown_and_drain() == CallbackRegistryResult::Ok,
             "shutdown closes admission and drains callbacks");
-    require(registry.register_callback(count_callback, &counter, &id) ==
-                CallbackRegistryResult::ShuttingDown,
+    CallbackRegistry::RegistrationId rejected_id = 0U;
+    require(registry.register_callback(count_callback, &counter, &rejected_id) ==
+                CallbackRegistryResult::ShuttingDown && rejected_id == 0U,
             "shutdown permanently rejects new callbacks");
     require(registry.dispatch("ignored") == 0U,
             "shutdown registry never dispatches callbacks");
