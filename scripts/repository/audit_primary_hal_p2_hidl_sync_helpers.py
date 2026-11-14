@@ -172,6 +172,12 @@ def helper_target_resolution_status(
     return "INCOMPLETE"
 
 
+def helper_target_resolution_exit_code(
+    resolved_targets: list[int], unresolved_targets: list[int]
+) -> int:
+    return 0 if helper_target_resolution_status(resolved_targets, unresolved_targets) == "COMPLETE" else 1
+
+
 HELPER_WINDOW_SIZE = 0x60
 
 
@@ -432,7 +438,7 @@ def main() -> int:
     print(report, end="")
     if len(sys.argv) == 3:
         Path(sys.argv[2]).write_text(report, encoding="utf-8")
-    return 0 if resolution_status == "COMPLETE" else 1
+    return helper_target_resolution_exit_code(resolved, unresolved)
 
 
 if __name__ == "__main__":
