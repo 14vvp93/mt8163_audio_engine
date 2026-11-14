@@ -181,6 +181,28 @@ def verify_callback_dataflow(disassembly: str) -> None:
     )
     require_instruction(global_callback, 0x000CF1FC, "mov", "r1, r8")
 
+    setup_callback = parse_function_instructions(
+        disassembly, "android::AudioALSAHardware::setupParametersCallback("
+    )
+    require(setup_callback, "setup-parameters callback registration instructions missing")
+    setup_indices = [
+        require_instruction(setup_callback, address, mnemonic, operand)
+        for address, mnemonic, operand in (
+            (0x000CE904, "mov", "r5, r1"),
+            (0x000CE908, "mov", "r4, r2"),
+            (0x000CE928, "ldr", "r0, [pc, #136]"),
+            (0x000CE930, "ldr", "r0, [pc, r0]"),
+            (0x000CE934, "str", "r5, [r0]"),
+            (0x000CE938, "ldr", "r0, [pc, #124]"),
+            (0x000CE93C, "ldr", "r0, [pc, r0]"),
+            (0x000CE940, "str", "r4, [r0]"),
+        )
+    ]
+    require(
+        setup_indices == sorted(setup_indices),
+        "setup-parameters callback/cookie registration dataflow changed",
+    )
+
 
 def main() -> int:
     if len(sys.argv) != 2:
